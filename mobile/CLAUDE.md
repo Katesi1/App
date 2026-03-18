@@ -8,7 +8,7 @@ Tài liệu này định nghĩa conventions và standards để AI (Claude Code)
 
 - **App**: Homestay Management Mobile App
 - **Platform**: Flutter (iOS + Android)
-- **Backend API**: `http://103.183.118.148/api/v1`
+- **Backend API**: `http://103.183.118.148/api`
 - **Swagger docs**: `http://103.183.118.148/index.html`
 
 ---
@@ -273,7 +273,7 @@ GoRoute(
 ```dart
 // Tất cả endpoints khai báo trong ApiConstants
 class ApiConstants {
-  static const String baseUrl = 'http://103.183.118.148/api/v1';
+  static const String baseUrl = 'http://103.183.118.148/api';
   static const String login = '/auth/login';
   // ... thêm endpoint mới tại đây
 }

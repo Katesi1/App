@@ -47,13 +47,15 @@ class AuthNotifier extends StateNotifier<AuthState> {
   }
 
   Future<String?> login(String phone, String password) async {
-    state = state.copyWith(isLoading: true, error: null);
+    // Không set isLoading trên auth state — LoginScreen có local _isLoading.
+    // Set isLoading ở đây sẽ trigger GoRouter redirect sang /splash,
+    // khiến LoginScreen unmount và user không thấy error message.
     final result = await _repo.login(phone, password);
     if (result.success) {
       state = AuthState(user: result.data, isLoggedIn: true);
       return null;
     } else {
-      state = state.copyWith(isLoading: false, error: result.message);
+      state = state.copyWith(error: result.message);
       return result.message;
     }
   }

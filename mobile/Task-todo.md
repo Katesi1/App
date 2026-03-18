@@ -9,7 +9,7 @@
 
 | | |
 |---|---|
-| **Base URL** | `http://103.183.118.148:3000/api/v1` |
+| **Base URL** | `http://103.183.118.148:3000/api` |
 | **Swagger UI** | `http://103.183.118.148:3000/index.html` |
 | **Admin phone** | `Admin` |
 | **Admin password** | `Abcd@1234` |
@@ -21,7 +21,7 @@
 
 | # | Vấn đề | File | Ghi chú |
 |---|--------|------|---------|
-| 🔴 | Base URL sai port | `api_constants.dart` | Code: `:80/api/v1` → Đúng: `:3000/api/v1` |
+| 🔴 | Base URL sai port | `api_constants.dart` | Code: `:80/api` → Đúng: `:3000/api` |
 | 🔴 | BookingStatus enum sai case | `app_constants.dart` | Code: lowercase `hold` → API trả: `HOLD` (uppercase) |
 | 🟡 | Thiếu endpoint `GET /users/:id` | `api_constants.dart` | Cần thêm để fix `_loadUser()` |
 | 🟡 | Price endpoint path sai | `api_constants.dart` | Cần `/rooms/:id/prices` riêng |
@@ -31,7 +31,7 @@
 
 ## PHASE 0 — SETUP & INFRASTRUCTURE
 
-- [x] **P0-1** Sửa `ApiConstants.baseUrl` từ `:80` → `:3000/api/v1`
+- [x] **P0-1** Sửa `ApiConstants.baseUrl` từ `:80` → `:3000/api`
 - [x] **P0-2** `BookingStatus` enum đã đúng — `fromString()` dùng `toUpperCase()`, không cần fix
 - [x] **P0-3** Cập nhật `ApiConstants`: thêm 9 endpoints còn thiếu (userDetail, roomPrices, bookingCalendar, confirm, cancel...)
 - [x] **P0-4** Thêm packages: `flutter_animate 4.5.2`, `animations 2.1.1`, `lottie 3.3.2`, `google_fonts 6.3.3`

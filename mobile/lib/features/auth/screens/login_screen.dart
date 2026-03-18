@@ -134,7 +134,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
                           .fadeIn(duration: 300.ms),
                       const SizedBox(height: AppSpacing.md),
                       Text(
-                        'Homestay Manager',
+                        'Halong24h',
                         style: GoogleFonts.nunito(
                           color: Colors.white,
                           fontSize: 26,

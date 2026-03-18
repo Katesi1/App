@@ -19,9 +19,8 @@ class AuthRepository {
       await SecureStorage.saveAccessToken(data['accessToken']);
       await SecureStorage.saveRefreshToken(data['refreshToken']);
 
-      // Lấy thông tin user sau khi đăng nhập
-      final profileResponse = await _dio.get(ApiConstants.profile);
-      final user = UserModel.fromJson(profileResponse.data['data']);
+      // Login API đã trả về user object — dùng trực tiếp, không cần gọi /profile
+      final user = UserModel.fromJson(data['user']);
       await SecureStorage.saveUserData(user.toJsonString());
 
       return ApiResponse(

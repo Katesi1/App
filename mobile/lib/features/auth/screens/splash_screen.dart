@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
-import 'package:google_fonts/google_fonts.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
 
@@ -10,90 +9,36 @@ class SplashScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: Container(
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [
-              AppColors.primaryDark,
-              AppColors.primary,
-              Color(0xFF2E8B5A)
+      backgroundColor: Colors.white,
+      body: SafeArea(
+        child: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Spacer(flex: 2),
+
+              // Logo image
+              Image.asset(
+                'assets/images/logo_splash.png',
+                width: 280,
+                fit: BoxFit.contain,
+              )
+                  .animate()
+                  .scale(
+                    begin: const Offset(0.7, 0.7),
+                    end: const Offset(1.0, 1.0),
+                    duration: 600.ms,
+                    curve: Curves.elasticOut,
+                  )
+                  .fadeIn(duration: 400.ms),
+
+              const Spacer(flex: 2),
+
+              // Loading dots
+              _LoadingDots().animate(delay: 600.ms).fadeIn(duration: 300.ms),
+
+              const SizedBox(height: AppSpacing.xxl),
             ],
-            stops: [0.0, 0.5, 1.0],
-          ),
-        ),
-        child: SafeArea(
-          child: Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                const Spacer(flex: 2),
-
-                // Logo icon với glow effect
-                Container(
-                  width: 110,
-                  height: 110,
-                  decoration: BoxDecoration(
-                    color: Colors.white.withValues(alpha: 0.15),
-                    shape: BoxShape.circle,
-                    border: Border.all(
-                      color: Colors.white.withValues(alpha: 0.3),
-                      width: 2,
-                    ),
-                  ),
-                  child: const Icon(
-                    Icons.home_work_rounded,
-                    size: 60,
-                    color: Colors.white,
-                  ),
-                )
-                    .animate()
-                    .scale(
-                      begin: const Offset(0.5, 0.5),
-                      end: const Offset(1.0, 1.0),
-                      duration: 600.ms,
-                      curve: Curves.elasticOut,
-                    )
-                    .fadeIn(duration: 400.ms),
-
-                const SizedBox(height: AppSpacing.lg),
-
-                // App name
-                Text(
-                  'Homestay',
-                  style: GoogleFonts.nunito(
-                    color: Colors.white,
-                    fontSize: 36,
-                    fontWeight: FontWeight.w800,
-                    letterSpacing: 1.5,
-                  ),
-                )
-                    .animate(delay: 300.ms)
-                    .fadeIn(duration: 400.ms)
-                    .slideY(begin: 0.3, end: 0, curve: Curves.easeOut),
-
-                Text(
-                  'Manager',
-                  style: GoogleFonts.nunito(
-                    color: Colors.white.withValues(alpha: 0.85),
-                    fontSize: 22,
-                    fontWeight: FontWeight.w400,
-                    letterSpacing: 4,
-                  ),
-                )
-                    .animate(delay: 450.ms)
-                    .fadeIn(duration: 400.ms)
-                    .slideY(begin: 0.3, end: 0, curve: Curves.easeOut),
-
-                const Spacer(flex: 2),
-
-                // Loading dots
-                _LoadingDots().animate(delay: 800.ms).fadeIn(duration: 300.ms),
-
-                const SizedBox(height: AppSpacing.xxl),
-              ],
-            ),
           ),
         ),
       ),
@@ -140,7 +85,7 @@ class _LoadingDotsState extends State<_LoadingDots>
               width: 8 * scale,
               height: 8 * scale,
               decoration: BoxDecoration(
-                color: Colors.white.withValues(alpha: 0.4 + 0.6 * scale),
+                color: AppColors.primary.withValues(alpha: 0.4 + 0.6 * scale),
                 shape: BoxShape.circle,
               ),
             );

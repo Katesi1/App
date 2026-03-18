@@ -38,31 +38,38 @@ class _RoomCardState extends State<RoomCard> {
       },
       onTapCancel: () => setState(() => _pressed = false),
       child: AnimatedScale(
-        scale: _pressed ? 0.96 : 1.0,
+        scale: _pressed ? 0.97 : 1.0,
         duration: const Duration(milliseconds: 120),
         curve: Curves.easeOut,
-        child: Card(
-          clipBehavior: Clip.antiAlias,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(AppRadius.lg),
+        child: Container(
+          decoration: BoxDecoration(
+            color: colors.surface,
+            borderRadius: BorderRadius.circular(AppRadius.xl),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.06),
+                blurRadius: 20,
+                offset: const Offset(0, 6),
+              ),
+            ],
           ),
-          elevation: 2,
-          shadowColor: colors.shadow.withValues(alpha: 0.08),
+          clipBehavior: Clip.antiAlias,
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // ── Image 16:9 with price badge ──────────────────────────────
+              // ── Image with overlays ────────────────────────────────────
               Stack(
                 children: [
                   Hero(
                     tag: 'room-cover-${room.id}',
                     child: AspectRatio(
-                      aspectRatio: 16 / 9,
+                      aspectRatio: 16 / 10,
                       child: room.coverImageUrl != null
                           ? CachedNetworkImage(
                               imageUrl: room.coverImageUrl!,
                               fit: BoxFit.cover,
-                              placeholder: (_, __) => _imagePlaceholder(colors),
+                              placeholder: (_, __) =>
+                                  _imagePlaceholder(colors),
                               errorWidget: (_, __, ___) =>
                                   _imagePlaceholder(colors),
                             )
@@ -70,23 +77,44 @@ class _RoomCardState extends State<RoomCard> {
                     ),
                   ),
 
-                  // Price badge — top right
+                  // Gradient overlay at bottom
                   Positioned(
-                    top: AppSpacing.sm,
+                    bottom: 0,
+                    left: 0,
+                    right: 0,
+                    height: 60,
+                    child: DecoratedBox(
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          begin: Alignment.topCenter,
+                          end: Alignment.bottomCenter,
+                          colors: [
+                            Colors.transparent,
+                            Colors.black.withValues(alpha: 0.4),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+
+                  // Price badge — bottom right on image
+                  Positioned(
+                    bottom: AppSpacing.sm,
                     right: AppSpacing.sm,
                     child: Container(
                       padding: const EdgeInsets.symmetric(
-                          horizontal: AppSpacing.sm, vertical: 4),
+                          horizontal: AppSpacing.md, vertical: 6),
                       decoration: BoxDecoration(
-                        color: Colors.black.withValues(alpha: 0.65),
-                        borderRadius: BorderRadius.circular(AppRadius.sm),
+                        color: AppColors.primary,
+                        borderRadius:
+                            BorderRadius.circular(AppRadius.full),
                       ),
                       child: Text(
                         room.priceDisplay,
                         style: GoogleFonts.nunito(
                           color: Colors.white,
-                          fontSize: 12,
-                          fontWeight: FontWeight.w700,
+                          fontSize: 13,
+                          fontWeight: FontWeight.w800,
                         ),
                       ),
                     ),
@@ -98,41 +126,88 @@ class _RoomCardState extends State<RoomCard> {
                     left: AppSpacing.sm,
                     child: Container(
                       padding: const EdgeInsets.symmetric(
-                          horizontal: AppSpacing.sm, vertical: 3),
+                          horizontal: AppSpacing.sm, vertical: 4),
                       decoration: BoxDecoration(
                         color: room.isActive
-                            ? AppColors.success.withValues(alpha: 0.9)
-                            : Colors.grey.withValues(alpha: 0.9),
-                        borderRadius: BorderRadius.circular(AppRadius.full),
+                            ? AppColors.success
+                            : Colors.grey.shade600,
+                        borderRadius:
+                            BorderRadius.circular(AppRadius.full),
                       ),
-                      child: Text(
-                        room.isActive ? 'Hoạt động' : 'Tạm nghỉ',
-                        style: GoogleFonts.nunito(
-                          color: Colors.white,
-                          fontSize: 10,
-                          fontWeight: FontWeight.w700,
-                        ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Container(
+                            width: 6,
+                            height: 6,
+                            decoration: const BoxDecoration(
+                              color: Colors.white,
+                              shape: BoxShape.circle,
+                            ),
+                          ),
+                          const SizedBox(width: 4),
+                          Text(
+                            room.isActive ? 'Hoạt động' : 'Tạm nghỉ',
+                            style: GoogleFonts.nunito(
+                              color: Colors.white,
+                              fontSize: 10,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                        ],
                       ),
                     ),
                   ),
+
+                  // Image count badge — top right
+                  if (room.images.length > 1)
+                    Positioned(
+                      top: AppSpacing.sm,
+                      right: AppSpacing.sm,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: AppSpacing.sm, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: Colors.black.withValues(alpha: 0.55),
+                          borderRadius:
+                              BorderRadius.circular(AppRadius.full),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Icon(Icons.photo_library_outlined,
+                                color: Colors.white, size: 12),
+                            const SizedBox(width: 4),
+                            Text(
+                              '${room.images.length}',
+                              style: GoogleFonts.nunito(
+                                color: Colors.white,
+                                fontSize: 11,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
                 ],
               ),
 
-              // ── Info ──────────────────────────────────────────────────────
+              // ── Info section ───────────────────────────────────────────
               Padding(
                 padding: const EdgeInsets.all(AppSpacing.md),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // Name + code chip
+                    // Name + code
                     Row(
                       children: [
                         Expanded(
                           child: Text(
                             room.name,
                             style: GoogleFonts.nunito(
-                              fontSize: 16,
-                              fontWeight: FontWeight.w700,
+                              fontSize: 17,
+                              fontWeight: FontWeight.w800,
                               color: colors.onSurface,
                             ),
                             maxLines: 1,
@@ -144,10 +219,14 @@ class _RoomCardState extends State<RoomCard> {
                           padding: const EdgeInsets.symmetric(
                               horizontal: AppSpacing.sm, vertical: 2),
                           decoration: BoxDecoration(
-                            color: colors.primary.withValues(alpha: 0.1),
-                            borderRadius: BorderRadius.circular(AppRadius.full),
+                            color:
+                                colors.primary.withValues(alpha: 0.08),
+                            borderRadius:
+                                BorderRadius.circular(AppRadius.full),
                             border: Border.all(
-                                color: colors.primary.withValues(alpha: 0.3)),
+                              color: colors.primary
+                                  .withValues(alpha: 0.2),
+                            ),
                           ),
                           child: Text(
                             room.code,
@@ -161,21 +240,22 @@ class _RoomCardState extends State<RoomCard> {
                       ],
                     ),
 
-                    // Homestay name
+                    // Location
                     if (room.homestay != null) ...[
-                      const SizedBox(height: AppSpacing.xs),
+                      const SizedBox(height: 6),
                       Row(
                         children: [
-                          Icon(Icons.location_on_outlined,
-                              size: 13,
-                              color: colors.onSurface.withValues(alpha: 0.45)),
-                          const SizedBox(width: 3),
+                          Icon(Icons.location_on_rounded,
+                              size: 14, color: colors.primary),
+                          const SizedBox(width: 4),
                           Expanded(
                             child: Text(
                               room.homestay!.name,
                               style: GoogleFonts.nunito(
                                 fontSize: 12,
-                                color: colors.onSurface.withValues(alpha: 0.55),
+                                color: colors.onSurface
+                                    .withValues(alpha: 0.55),
+                                fontWeight: FontWeight.w500,
                               ),
                               overflow: TextOverflow.ellipsis,
                             ),
@@ -186,14 +266,18 @@ class _RoomCardState extends State<RoomCard> {
 
                     const SizedBox(height: AppSpacing.sm),
 
-                    // Info chips
+                    // Info chips row
                     Row(
                       children: [
-                        _infoChip(context, Icons.people_outline_rounded,
-                            '${room.maxGuests} khách'),
-                        const SizedBox(width: AppSpacing.sm),
-                        _infoChip(context, Icons.bed_outlined,
-                            '${room.bedrooms} phòng ngủ'),
+                        _InfoChip(
+                          icon: Icons.people_outline_rounded,
+                          label: '${room.maxGuests} khách',
+                        ),
+                        const SizedBox(width: AppSpacing.md),
+                        _InfoChip(
+                          icon: Icons.bed_outlined,
+                          label: '${room.bedrooms} phòng ngủ',
+                        ),
                       ],
                     ),
                   ],
@@ -204,32 +288,49 @@ class _RoomCardState extends State<RoomCard> {
         ),
       ),
     )
-        .animate(delay: Duration(milliseconds: widget.animationIndex * 60))
-        .fadeIn(duration: 300.ms)
-        .slideY(begin: 0.1, end: 0, curve: Curves.easeOut);
+        .animate(delay: Duration(milliseconds: widget.animationIndex * 80))
+        .fadeIn(duration: 400.ms)
+        .slideY(begin: 0.08, end: 0, curve: Curves.easeOut);
   }
 
   Widget _imagePlaceholder(ColorScheme colors) => Container(
         color: colors.surfaceContainerHighest,
         child: Center(
           child: Icon(Icons.image_outlined,
-              size: 40, color: colors.onSurface.withValues(alpha: 0.25)),
+              size: 40,
+              color: colors.onSurface.withValues(alpha: 0.2)),
         ),
       );
+}
 
-  Widget _infoChip(BuildContext context, IconData icon, String label) {
+class _InfoChip extends StatelessWidget {
+  final IconData icon;
+  final String label;
+
+  const _InfoChip({required this.icon, required this.label});
+
+  @override
+  Widget build(BuildContext context) {
     final colors = Theme.of(context).colorScheme;
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        Icon(icon, size: 14, color: colors.onSurface.withValues(alpha: 0.5)),
-        const SizedBox(width: 3),
+        Container(
+          width: 28,
+          height: 28,
+          decoration: BoxDecoration(
+            color: colors.primary.withValues(alpha: 0.08),
+            borderRadius: BorderRadius.circular(AppRadius.sm),
+          ),
+          child: Icon(icon, size: 15, color: colors.primary),
+        ),
+        const SizedBox(width: 6),
         Text(
           label,
           style: GoogleFonts.nunito(
             fontSize: 12,
             color: colors.onSurface.withValues(alpha: 0.6),
-            fontWeight: FontWeight.w500,
+            fontWeight: FontWeight.w600,
           ),
         ),
       ],
