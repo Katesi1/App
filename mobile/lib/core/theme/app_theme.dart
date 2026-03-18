@@ -9,25 +9,36 @@ export 'app_spacing.dart';
 // ─── Text Theme ────────────────────────────────────────────────────────────────
 TextTheme _buildTextTheme() {
   return TextTheme(
-    displayLarge: GoogleFonts.nunito(fontSize: 57, fontWeight: FontWeight.w400),
-    displayMedium:
-        GoogleFonts.nunito(fontSize: 45, fontWeight: FontWeight.w400),
-    displaySmall: GoogleFonts.nunito(fontSize: 36, fontWeight: FontWeight.w400),
-    headlineLarge:
-        GoogleFonts.nunito(fontSize: 32, fontWeight: FontWeight.w700),
-    headlineMedium:
-        GoogleFonts.nunito(fontSize: 28, fontWeight: FontWeight.w600),
-    headlineSmall:
-        GoogleFonts.nunito(fontSize: 24, fontWeight: FontWeight.w600),
-    titleLarge: GoogleFonts.nunito(fontSize: 22, fontWeight: FontWeight.w600),
-    titleMedium: GoogleFonts.nunito(fontSize: 16, fontWeight: FontWeight.w600),
-    titleSmall: GoogleFonts.nunito(fontSize: 14, fontWeight: FontWeight.w600),
-    bodyLarge: GoogleFonts.nunito(fontSize: 16, fontWeight: FontWeight.w400),
-    bodyMedium: GoogleFonts.nunito(fontSize: 14, fontWeight: FontWeight.w400),
-    bodySmall: GoogleFonts.nunito(fontSize: 12, fontWeight: FontWeight.w400),
-    labelLarge: GoogleFonts.nunito(fontSize: 14, fontWeight: FontWeight.w600),
-    labelMedium: GoogleFonts.nunito(fontSize: 12, fontWeight: FontWeight.w500),
-    labelSmall: GoogleFonts.nunito(fontSize: 11, fontWeight: FontWeight.w500),
+    displayLarge: GoogleFonts.beVietnamPro(
+        fontSize: 57, fontWeight: FontWeight.w400),
+    displayMedium: GoogleFonts.beVietnamPro(
+        fontSize: 45, fontWeight: FontWeight.w400),
+    displaySmall: GoogleFonts.beVietnamPro(
+        fontSize: 36, fontWeight: FontWeight.w400),
+    headlineLarge: GoogleFonts.beVietnamPro(
+        fontSize: 32, fontWeight: FontWeight.w700),
+    headlineMedium: GoogleFonts.beVietnamPro(
+        fontSize: 28, fontWeight: FontWeight.w600),
+    headlineSmall: GoogleFonts.beVietnamPro(
+        fontSize: 24, fontWeight: FontWeight.w600),
+    titleLarge: GoogleFonts.beVietnamPro(
+        fontSize: 22, fontWeight: FontWeight.w600),
+    titleMedium: GoogleFonts.beVietnamPro(
+        fontSize: 16, fontWeight: FontWeight.w600),
+    titleSmall: GoogleFonts.beVietnamPro(
+        fontSize: 14, fontWeight: FontWeight.w600),
+    bodyLarge: GoogleFonts.beVietnamPro(
+        fontSize: 16, fontWeight: FontWeight.w400),
+    bodyMedium: GoogleFonts.beVietnamPro(
+        fontSize: 14, fontWeight: FontWeight.w400),
+    bodySmall: GoogleFonts.beVietnamPro(
+        fontSize: 12, fontWeight: FontWeight.w400),
+    labelLarge: GoogleFonts.beVietnamPro(
+        fontSize: 14, fontWeight: FontWeight.w600),
+    labelMedium: GoogleFonts.beVietnamPro(
+        fontSize: 12, fontWeight: FontWeight.w500),
+    labelSmall: GoogleFonts.beVietnamPro(
+        fontSize: 11, fontWeight: FontWeight.w500),
   );
 }
 
@@ -37,21 +48,21 @@ class AppTheme {
   static ThemeData get light {
     const colorScheme = ColorScheme(
       brightness: Brightness.light,
-      primary: AppColors.primary,
+      primary: AppColors.ocean,
       onPrimary: Colors.white,
-      primaryContainer: Color(0xFFB7F0D4),
-      onPrimaryContainer: AppColors.primaryDark,
-      secondary: AppColors.secondary,
+      primaryContainer: AppColors.oceanLight,
+      onPrimaryContainer: AppColors.oceanDeep,
+      secondary: AppColors.gold,
       onSecondary: Colors.white,
-      secondaryContainer: Color(0xFFFFE0B2),
+      secondaryContainer: AppColors.goldLight,
       onSecondaryContainer: Color(0xFF3E2000),
       surface: AppColors.surface,
-      onSurface: Color(0xFF1C1B1F),
-      surfaceContainerHighest: Color(0xFFECEDF1),
-      error: AppColors.error,
+      onSurface: AppColors.ink,
+      surfaceContainerHighest: AppColors.slateLight,
+      error: AppColors.coral,
       onError: Colors.white,
-      outline: Color(0xFF79747E),
-      outlineVariant: Color(0xFFCAC4D0),
+      outline: AppColors.slate,
+      outlineVariant: AppColors.border,
     );
 
     return ThemeData(
@@ -61,26 +72,26 @@ class AppTheme {
       scaffoldBackgroundColor: AppColors.background,
       appBarTheme: AppBarTheme(
         backgroundColor: AppColors.surface,
-        foregroundColor: AppColors.primary,
+        foregroundColor: AppColors.ocean,
         elevation: 0,
         scrolledUnderElevation: 1,
         centerTitle: false,
-        titleTextStyle: GoogleFonts.nunito(
-          color: AppColors.primary,
+        titleTextStyle: GoogleFonts.beVietnamPro(
+          color: AppColors.ocean,
           fontSize: 20,
           fontWeight: FontWeight.w700,
         ),
       ),
       elevatedButtonTheme: ElevatedButtonThemeData(
         style: ElevatedButton.styleFrom(
-          backgroundColor: AppColors.primary,
+          backgroundColor: AppColors.ocean,
           foregroundColor: Colors.white,
           minimumSize: const Size(double.infinity, 52),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(AppRadius.md),
           ),
-          textStyle:
-              GoogleFonts.nunito(fontSize: 16, fontWeight: FontWeight.w600),
+          textStyle: GoogleFonts.beVietnamPro(
+              fontSize: 16, fontWeight: FontWeight.w600),
           elevation: 0,
         ),
       ),
@@ -90,60 +101,62 @@ class AppTheme {
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(AppRadius.md),
           ),
-          textStyle:
-              GoogleFonts.nunito(fontSize: 16, fontWeight: FontWeight.w600),
+          textStyle: GoogleFonts.beVietnamPro(
+              fontSize: 16, fontWeight: FontWeight.w600),
         ),
       ),
       outlinedButtonTheme: OutlinedButtonThemeData(
         style: OutlinedButton.styleFrom(
-          foregroundColor: AppColors.primary,
+          foregroundColor: AppColors.ocean,
           minimumSize: const Size(double.infinity, 52),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(AppRadius.md),
           ),
-          side: const BorderSide(color: AppColors.primary, width: 1.5),
-          textStyle:
-              GoogleFonts.nunito(fontSize: 16, fontWeight: FontWeight.w600),
+          side: const BorderSide(color: AppColors.border, width: 1.5),
+          textStyle: GoogleFonts.beVietnamPro(
+              fontSize: 16, fontWeight: FontWeight.w600),
         ),
       ),
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
-        fillColor: AppColors.surface,
+        fillColor: AppColors.background,
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(AppRadius.md),
-          borderSide: const BorderSide(color: Color(0xFFCAC4D0)),
+          borderSide: const BorderSide(color: AppColors.border),
         ),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(AppRadius.md),
-          borderSide: const BorderSide(color: Color(0xFFCAC4D0)),
+          borderSide: const BorderSide(color: AppColors.border),
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(AppRadius.md),
-          borderSide: const BorderSide(color: AppColors.primary, width: 2),
+          borderSide:
+              const BorderSide(color: AppColors.oceanMid, width: 2),
         ),
         errorBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(AppRadius.md),
-          borderSide: const BorderSide(color: AppColors.error),
+          borderSide: const BorderSide(color: AppColors.coral),
         ),
         focusedErrorBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(AppRadius.md),
-          borderSide: const BorderSide(color: AppColors.error, width: 2),
+          borderSide:
+              const BorderSide(color: AppColors.coral, width: 2),
         ),
         contentPadding: const EdgeInsets.symmetric(
           horizontal: AppSpacing.md,
           vertical: 14,
         ),
-        labelStyle: GoogleFonts.nunito(fontSize: 14),
-        hintStyle: GoogleFonts.nunito(
+        labelStyle: GoogleFonts.beVietnamPro(fontSize: 14),
+        hintStyle: GoogleFonts.beVietnamPro(
           fontSize: 14,
-          color: const Color(0xFF79747E),
+          color: AppColors.slate,
         ),
       ),
       cardTheme: CardThemeData(
         elevation: 0,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(AppRadius.lg),
-          side: const BorderSide(color: Color(0xFFE8E8E8)),
+          side: const BorderSide(color: AppColors.border),
         ),
         color: AppColors.surface,
         clipBehavior: Clip.antiAlias,
@@ -152,29 +165,32 @@ class AppTheme {
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(AppRadius.full),
         ),
-        labelStyle:
-            GoogleFonts.nunito(fontSize: 13, fontWeight: FontWeight.w500),
+        labelStyle: GoogleFonts.beVietnamPro(
+            fontSize: 13, fontWeight: FontWeight.w500),
       ),
       dividerTheme: const DividerThemeData(
-        color: Color(0xFFE8E8E8),
+        color: AppColors.border,
         thickness: 1,
         space: 1,
       ),
-      floatingActionButtonTheme: const FloatingActionButtonThemeData(
-        backgroundColor: AppColors.primary,
+      floatingActionButtonTheme: FloatingActionButtonThemeData(
+        backgroundColor: AppColors.ocean,
         foregroundColor: Colors.white,
-        elevation: 2,
-        shape: CircleBorder(),
+        elevation: 4,
+        shape: const CircleBorder(),
+        extendedTextStyle: GoogleFonts.beVietnamPro(
+          fontWeight: FontWeight.w600,
+        ),
       ),
       bottomNavigationBarTheme: BottomNavigationBarThemeData(
         backgroundColor: AppColors.surface,
-        selectedItemColor: AppColors.primary,
-        unselectedItemColor: const Color(0xFF79747E),
-        selectedLabelStyle: GoogleFonts.nunito(
-          fontSize: 12,
-          fontWeight: FontWeight.w600,
+        selectedItemColor: AppColors.ocean,
+        unselectedItemColor: AppColors.slate,
+        selectedLabelStyle: GoogleFonts.beVietnamPro(
+          fontSize: 11,
+          fontWeight: FontWeight.w700,
         ),
-        unselectedLabelStyle: GoogleFonts.nunito(fontSize: 12),
+        unselectedLabelStyle: GoogleFonts.beVietnamPro(fontSize: 11),
         type: BottomNavigationBarType.fixed,
         elevation: 8,
       ),
@@ -185,21 +201,21 @@ class AppTheme {
   static ThemeData get dark {
     const colorScheme = ColorScheme(
       brightness: Brightness.dark,
-      primary: AppColors.primaryLight,
-      onPrimary: Colors.black,
-      primaryContainer: AppColors.primaryDark,
-      onPrimaryContainer: AppColors.primaryLight,
-      secondary: AppColors.secondaryLight,
+      primary: AppColors.oceanMid,
+      onPrimary: Colors.white,
+      primaryContainer: AppColors.oceanDeep,
+      onPrimaryContainer: AppColors.tealLight,
+      secondary: AppColors.gold,
       onSecondary: Colors.black,
-      secondaryContainer: Color(0xFF3E2000),
-      onSecondaryContainer: Color(0xFFFFDDB3),
+      secondaryContainer: AppColors.darkSecondaryContainer,
+      onSecondaryContainer: AppColors.darkOnSecondaryContainer,
       surface: AppColors.surfaceDark,
-      onSurface: Color(0xFFE6E1E5),
-      surfaceContainerHighest: Color(0xFF2C2C3E),
-      error: Color(0xFFCF6679),
+      onSurface: AppColors.darkOnSurface,
+      surfaceContainerHighest: AppColors.darkContainer,
+      error: AppColors.darkError,
       onError: Colors.black,
-      outline: Color(0xFF938F99),
-      outlineVariant: Color(0xFF49454F),
+      outline: AppColors.slate,
+      outlineVariant: AppColors.darkBorder,
     );
 
     return ThemeData(
@@ -209,20 +225,20 @@ class AppTheme {
       scaffoldBackgroundColor: AppColors.backgroundDark,
       appBarTheme: AppBarTheme(
         backgroundColor: AppColors.surfaceDark,
-        foregroundColor: AppColors.primaryLight,
+        foregroundColor: AppColors.oceanMid,
         elevation: 0,
         scrolledUnderElevation: 1,
         centerTitle: false,
-        titleTextStyle: GoogleFonts.nunito(
-          color: AppColors.primaryLight,
+        titleTextStyle: GoogleFonts.beVietnamPro(
+          color: AppColors.oceanMid,
           fontSize: 20,
           fontWeight: FontWeight.w700,
         ),
       ),
       elevatedButtonTheme: ElevatedButtonThemeData(
         style: ElevatedButton.styleFrom(
-          backgroundColor: AppColors.primaryLight,
-          foregroundColor: Colors.black,
+          backgroundColor: AppColors.oceanMid,
+          foregroundColor: Colors.white,
           minimumSize: const Size(double.infinity, 52),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(AppRadius.md),
@@ -240,47 +256,49 @@ class AppTheme {
       ),
       outlinedButtonTheme: OutlinedButtonThemeData(
         style: OutlinedButton.styleFrom(
-          foregroundColor: AppColors.primaryLight,
+          foregroundColor: AppColors.oceanMid,
           minimumSize: const Size(double.infinity, 52),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(AppRadius.md),
           ),
-          side: const BorderSide(color: AppColors.primaryLight, width: 1.5),
+          side: const BorderSide(
+              color: AppColors.oceanMid, width: 1.5),
         ),
       ),
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
-        fillColor: const Color(0xFF2C2C3E),
+        fillColor: AppColors.darkContainer,
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(AppRadius.md),
-          borderSide: const BorderSide(color: Color(0xFF49454F)),
+          borderSide: const BorderSide(color: AppColors.darkBorder),
         ),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(AppRadius.md),
-          borderSide: const BorderSide(color: Color(0xFF49454F)),
+          borderSide: const BorderSide(color: AppColors.darkBorder),
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(AppRadius.md),
-          borderSide: const BorderSide(color: AppColors.primaryLight, width: 2),
+          borderSide:
+              const BorderSide(color: AppColors.oceanMid, width: 2),
         ),
         contentPadding: const EdgeInsets.symmetric(
           horizontal: AppSpacing.md,
           vertical: 14,
         ),
-        labelStyle: GoogleFonts.nunito(
+        labelStyle: GoogleFonts.beVietnamPro(
           fontSize: 14,
-          color: const Color(0xFF938F99),
+          color: AppColors.darkHint,
         ),
-        hintStyle: GoogleFonts.nunito(
+        hintStyle: GoogleFonts.beVietnamPro(
           fontSize: 14,
-          color: const Color(0xFF938F99),
+          color: AppColors.darkHint,
         ),
       ),
       cardTheme: CardThemeData(
         elevation: 0,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(AppRadius.lg),
-          side: const BorderSide(color: Color(0xFF2C2C3E)),
+          side: const BorderSide(color: AppColors.darkContainer),
         ),
         color: AppColors.surfaceDark,
         clipBehavior: Clip.antiAlias,
@@ -289,24 +307,24 @@ class AppTheme {
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(AppRadius.full),
         ),
-        labelStyle:
-            GoogleFonts.nunito(fontSize: 13, fontWeight: FontWeight.w500),
+        labelStyle: GoogleFonts.beVietnamPro(
+            fontSize: 13, fontWeight: FontWeight.w500),
       ),
       floatingActionButtonTheme: const FloatingActionButtonThemeData(
-        backgroundColor: AppColors.primaryLight,
-        foregroundColor: Colors.black,
-        elevation: 2,
+        backgroundColor: AppColors.oceanMid,
+        foregroundColor: Colors.white,
+        elevation: 4,
         shape: CircleBorder(),
       ),
       bottomNavigationBarTheme: BottomNavigationBarThemeData(
         backgroundColor: AppColors.surfaceDark,
-        selectedItemColor: AppColors.primaryLight,
-        unselectedItemColor: const Color(0xFF938F99),
-        selectedLabelStyle: GoogleFonts.nunito(
-          fontSize: 12,
-          fontWeight: FontWeight.w600,
+        selectedItemColor: AppColors.oceanMid,
+        unselectedItemColor: AppColors.darkHint,
+        selectedLabelStyle: GoogleFonts.beVietnamPro(
+          fontSize: 11,
+          fontWeight: FontWeight.w700,
         ),
-        unselectedLabelStyle: GoogleFonts.nunito(fontSize: 12),
+        unselectedLabelStyle: GoogleFonts.beVietnamPro(fontSize: 11),
         type: BottomNavigationBarType.fixed,
         elevation: 8,
       ),

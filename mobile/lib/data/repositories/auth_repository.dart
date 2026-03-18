@@ -1,4 +1,5 @@
 import 'package:dio/dio.dart';
+import 'package:google_sign_in/google_sign_in.dart';
 import '../../core/constants/api_constants.dart';
 import '../../core/network/api_client.dart';
 import '../../core/network/api_response.dart';
@@ -7,6 +8,11 @@ import '../models/user_model.dart';
 
 class AuthRepository {
   final _dio = ApiClient.instance;
+  final _googleSignIn = GoogleSignIn(
+    scopes: ['email', 'profile'],
+    serverClientId:
+        '1097115636577-r04cfgplsrd4ql3dtr1d6qcrveb4lidh.apps.googleusercontent.com',
+  );
 
   Future<ApiResponse<UserModel>> login(String phone, String password) async {
     try {
@@ -30,8 +36,79 @@ class AuthRepository {
     }
   }
 
+  Future<ApiResponse<UserModel>> loginWithGoogle() async {
+    try {
+      final googleUser = await _googleSignIn.signIn();
+      if (googleUser == null) {
+        return ApiResponse(
+            success: false, message: 'Đã huỷ đăng nhập Google');
+      }
+
+      final googleAuth = await googleUser.authentication;
+      final idToken = googleAuth.idToken;
+
+      if (idToken == null) {
+        return ApiResponse(
+            success: false, message: 'Không lấy được token từ Google');
+      }
+
+      // Gửi idToken lên backend để xác thực
+      final response = await _dio.post(
+        ApiConstants.googleLogin,
+        data: {'idToken': idToken},
+      );
+      final data = response.data['data'];
+
+      await SecureStorage.saveAccessToken(data['accessToken']);
+      await SecureStorage.saveRefreshToken(data['refreshToken']);
+
+      final user = UserModel.fromJson(data['user']);
+      await SecureStorage.saveUserData(user.toJsonString());
+
+      return ApiResponse(
+          success: true, data: user, message: 'Đăng nhập thành công');
+    } on DioException catch (e) {
+      return ApiResponse(success: false, message: parseDioError(e));
+    } catch (e) {
+      return ApiResponse(
+          success: false, message: 'Đăng nhập Google thất bại: $e');
+    }
+  }
+
+  Future<ApiResponse<void>> forgotPassword(String identifier) async {
+    try {
+      final response = await _dio.post(
+        ApiConstants.forgotPassword,
+        data: {'identifier': identifier},
+      );
+      return ApiResponse(
+        success: true,
+        message: response.data['message'] ?? 'Đã gửi mã xác nhận',
+      );
+    } on DioException catch (e) {
+      return ApiResponse(success: false, message: parseDioError(e));
+    }
+  }
+
+  Future<ApiResponse<void>> resetPassword(
+      String token, String newPassword) async {
+    try {
+      final response = await _dio.post(
+        ApiConstants.resetPassword,
+        data: {'token': token, 'newPassword': newPassword},
+      );
+      return ApiResponse(
+        success: true,
+        message: response.data['message'] ?? 'Đặt lại mật khẩu thành công',
+      );
+    } on DioException catch (e) {
+      return ApiResponse(success: false, message: parseDioError(e));
+    }
+  }
+
   Future<void> logout() async {
     try {
+      await _googleSignIn.signOut();
       await _dio.post(ApiConstants.logout);
     } catch (_) {}
     await SecureStorage.clear();

@@ -48,6 +48,12 @@ dependencies:
   # Share
   share_plus: ^10.1.4
 
+  # Splash
+  flutter_native_splash: ^2.4.0
+
+  # Auth
+  google_sign_in: ^6.2.2
+
   # Utils
   equatable: ^2.0.7
   json_annotation: ^4.9.0
@@ -66,3 +72,10 @@ flutter:
   uses-material-design: true
   assets:
     - assets/images/
+
+flutter_native_splash:
+  color: "#0C4A6E"
+  image: assets/images/icon_splash.png
+  android_12:
+    color: "#0C4A6E"
+    image: assets/images/icon_splash.png

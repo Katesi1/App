@@ -11,7 +11,7 @@ class LoadingWidget extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => const Center(
-        child: CircularProgressIndicator(color: AppColors.primary),
+        child: CircularProgressIndicator(color: AppColors.ocean),
       );
 }
 
@@ -57,21 +57,21 @@ class RoomCardSkeleton extends StatelessWidget {
   @override
   Widget build(BuildContext context) => _shimmerWrap(
         context: context,
-        child: Card(
-          clipBehavior: Clip.antiAlias,
-          shape: RoundedRectangleBorder(
+        child: Container(
+          decoration: BoxDecoration(
+            color: AppColors.surface,
             borderRadius: BorderRadius.circular(AppRadius.lg),
           ),
+          clipBehavior: Clip.antiAlias,
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Image area 16:9
               AspectRatio(
                 aspectRatio: 16 / 9,
                 child: Container(color: Colors.white),
               ),
               Padding(
-                padding: const EdgeInsets.all(AppSpacing.md),
+                padding: const EdgeInsets.all(14),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -81,9 +81,11 @@ class RoomCardSkeleton extends StatelessWidget {
                     const SizedBox(height: AppSpacing.sm),
                     Row(
                       children: [
-                        _ShimmerBox(width: 60, height: 12),
-                        const SizedBox(width: AppSpacing.sm),
-                        _ShimmerBox(width: 60, height: 12),
+                        _ShimmerBox(width: 60, height: 20, radius: 20),
+                        const SizedBox(width: 6),
+                        _ShimmerBox(width: 60, height: 20, radius: 20),
+                        const SizedBox(width: 6),
+                        _ShimmerBox(width: 60, height: 20, radius: 20),
                       ],
                     ),
                   ],
@@ -111,7 +113,6 @@ class BookingCardSkeleton extends StatelessWidget {
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Status bar
                 Container(
                   width: 4,
                   height: 80,
@@ -162,7 +163,6 @@ class HomestayCardSkeleton extends StatelessWidget {
             padding: const EdgeInsets.all(AppSpacing.md),
             child: Row(
               children: [
-                // Icon placeholder
                 Container(
                   width: 48,
                   height: 48,
@@ -218,7 +218,8 @@ class UserCardSkeleton extends StatelessWidget {
               child: _ShimmerBox(width: 100, height: 12),
             ),
           ),
-          trailing: _ShimmerBox(width: 52, height: 22, radius: AppRadius.full),
+          trailing:
+              _ShimmerBox(width: 52, height: 22, radius: AppRadius.full),
         ),
       );
 }
@@ -333,8 +334,6 @@ class EmptyStateWidget extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colors = Theme.of(context).colorScheme;
-
     return Center(
       child: Padding(
         padding: const EdgeInsets.all(AppSpacing.xxl),
@@ -345,13 +344,13 @@ class EmptyStateWidget extends StatelessWidget {
               width: 96,
               height: 96,
               decoration: BoxDecoration(
-                color: colors.primary.withValues(alpha: 0.08),
+                color: AppColors.oceanLight,
                 shape: BoxShape.circle,
               ),
               child: Icon(
                 icon,
                 size: 48,
-                color: colors.primary.withValues(alpha: 0.5),
+                color: AppColors.ocean.withValues(alpha: 0.5),
               ),
             )
                 .animate()
@@ -364,10 +363,10 @@ class EmptyStateWidget extends StatelessWidget {
             const SizedBox(height: AppSpacing.lg),
             Text(
               message,
-              style: GoogleFonts.nunito(
+              style: GoogleFonts.beVietnamPro(
                 fontSize: 16,
                 fontWeight: FontWeight.w700,
-                color: colors.onSurface,
+                color: AppColors.navy,
               ),
               textAlign: TextAlign.center,
             )
@@ -378,9 +377,9 @@ class EmptyStateWidget extends StatelessWidget {
               const SizedBox(height: AppSpacing.xs),
               Text(
                 subMessage!,
-                style: GoogleFonts.nunito(
+                style: GoogleFonts.beVietnamPro(
                   fontSize: 13,
-                  color: colors.onSurface.withValues(alpha: 0.5),
+                  color: AppColors.muted,
                 ),
                 textAlign: TextAlign.center,
               ).animate(delay: 150.ms).fadeIn(duration: 300.ms),
@@ -411,8 +410,6 @@ class ErrorStateWidget extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colors = Theme.of(context).colorScheme;
-
     return Center(
       child: Padding(
         padding: const EdgeInsets.all(AppSpacing.xxl),
@@ -423,13 +420,13 @@ class ErrorStateWidget extends StatelessWidget {
               width: 96,
               height: 96,
               decoration: BoxDecoration(
-                color: AppColors.error.withValues(alpha: 0.08),
+                color: AppColors.coralLight,
                 shape: BoxShape.circle,
               ),
               child: Icon(
                 Icons.cloud_off_rounded,
                 size: 48,
-                color: AppColors.error.withValues(alpha: 0.7),
+                color: AppColors.coral.withValues(alpha: 0.7),
               ),
             )
                 .animate()
@@ -442,19 +439,19 @@ class ErrorStateWidget extends StatelessWidget {
             const SizedBox(height: AppSpacing.lg),
             Text(
               'Có lỗi xảy ra',
-              style: GoogleFonts.nunito(
+              style: GoogleFonts.beVietnamPro(
                 fontSize: 16,
                 fontWeight: FontWeight.w700,
-                color: colors.onSurface,
+                color: AppColors.navy,
               ),
               textAlign: TextAlign.center,
             ).animate(delay: 100.ms).fadeIn(duration: 300.ms),
             const SizedBox(height: AppSpacing.xs),
             Text(
               message,
-              style: GoogleFonts.nunito(
+              style: GoogleFonts.beVietnamPro(
                 fontSize: 13,
-                color: colors.onSurface.withValues(alpha: 0.5),
+                color: AppColors.muted,
               ),
               textAlign: TextAlign.center,
             ).animate(delay: 150.ms).fadeIn(duration: 300.ms),
@@ -465,7 +462,7 @@ class ErrorStateWidget extends StatelessWidget {
                 icon: const Icon(Icons.refresh_rounded),
                 label: const Text('Thử lại'),
                 style: FilledButton.styleFrom(
-                  backgroundColor: AppColors.error,
+                  backgroundColor: AppColors.coral,
                   foregroundColor: Colors.white,
                 ),
               )
@@ -483,13 +480,16 @@ class ErrorStateWidget extends StatelessWidget {
 // ─── App SnackBar helper ──────────────────────────────────────────────────────
 class AppSnackBar {
   static void success(BuildContext context, String message) => _show(
-      context, message, AppColors.success, Icons.check_circle_outline_rounded);
+      context, message, AppColors.emerald,
+      Icons.check_circle_outline_rounded);
 
   static void error(BuildContext context, String message) =>
-      _show(context, message, AppColors.error, Icons.error_outline_rounded);
+      _show(context, message, AppColors.coral,
+          Icons.error_outline_rounded);
 
   static void info(BuildContext context, String message) =>
-      _show(context, message, AppColors.primary, Icons.info_outline_rounded);
+      _show(context, message, AppColors.ocean,
+          Icons.info_outline_rounded);
 
   static void _show(
       BuildContext context, String message, Color color, IconData icon) {
@@ -504,7 +504,7 @@ class AppSnackBar {
               Expanded(
                 child: Text(
                   message,
-                  style: GoogleFonts.nunito(
+                  style: GoogleFonts.beVietnamPro(
                     color: Colors.white,
                     fontWeight: FontWeight.w600,
                   ),
@@ -524,7 +524,7 @@ class AppSnackBar {
   }
 }
 
-// ─── Legacy aliases (backward compat) ────────────────────────────────────────
+// ─── Legacy aliases ───────────────────────────────────────────────────────────
 // ignore: camel_case_types
 typedef ErrorWidget_ = ErrorStateWidget;
 typedef EmptyWidget = EmptyStateWidget;

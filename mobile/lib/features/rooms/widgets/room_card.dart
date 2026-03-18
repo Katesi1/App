@@ -6,6 +6,11 @@ import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../data/models/room_model.dart';
 
+/// Room card matching HTML design screen 04:
+/// - Image area with gradient bg + status badge top-right
+/// - Name row: "P.101 · Standard" + price right-aligned
+/// - Subtitle: floor · capacity · area
+/// - Amenity chips row
 class RoomCard extends StatefulWidget {
   final RoomModel room;
   final VoidCallback? onTap;
@@ -27,7 +32,6 @@ class _RoomCardState extends State<RoomCard> {
 
   @override
   Widget build(BuildContext context) {
-    final colors = Theme.of(context).colorScheme;
     final room = widget.room;
 
     return GestureDetector(
@@ -43,13 +47,13 @@ class _RoomCardState extends State<RoomCard> {
         curve: Curves.easeOut,
         child: Container(
           decoration: BoxDecoration(
-            color: colors.surface,
-            borderRadius: BorderRadius.circular(AppRadius.xl),
+            color: AppColors.surface,
+            borderRadius: BorderRadius.circular(AppRadius.lg),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withValues(alpha: 0.06),
-                blurRadius: 20,
-                offset: const Offset(0, 6),
+                color: Colors.black.withValues(alpha: 0.04),
+                blurRadius: 12,
+                offset: const Offset(0, 2),
               ),
             ],
           ),
@@ -57,228 +61,107 @@ class _RoomCardState extends State<RoomCard> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // ── Image with overlays ────────────────────────────────────
+              // ── Image area ────────────────────────────────────────
               Stack(
                 children: [
                   Hero(
                     tag: 'room-cover-${room.id}',
-                    child: AspectRatio(
-                      aspectRatio: 16 / 10,
+                    child: SizedBox(
+                      height: 120,
+                      width: double.infinity,
                       child: room.coverImageUrl != null
                           ? CachedNetworkImage(
                               imageUrl: room.coverImageUrl!,
                               fit: BoxFit.cover,
                               placeholder: (_, __) =>
-                                  _imagePlaceholder(colors),
+                                  _imagePlaceholder(),
                               errorWidget: (_, __, ___) =>
-                                  _imagePlaceholder(colors),
+                                  _imagePlaceholder(),
                             )
-                          : _imagePlaceholder(colors),
+                          : _imagePlaceholder(),
                     ),
                   ),
-
-                  // Gradient overlay at bottom
+                  // Status badge top-right
                   Positioned(
-                    bottom: 0,
-                    left: 0,
-                    right: 0,
-                    height: 60,
-                    child: DecoratedBox(
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          begin: Alignment.topCenter,
-                          end: Alignment.bottomCenter,
-                          colors: [
-                            Colors.transparent,
-                            Colors.black.withValues(alpha: 0.4),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ),
-
-                  // Price badge — bottom right on image
-                  Positioned(
-                    bottom: AppSpacing.sm,
-                    right: AppSpacing.sm,
+                    top: 10,
+                    right: 10,
                     child: Container(
                       padding: const EdgeInsets.symmetric(
-                          horizontal: AppSpacing.md, vertical: 6),
-                      decoration: BoxDecoration(
-                        color: AppColors.primary,
-                        borderRadius:
-                            BorderRadius.circular(AppRadius.full),
-                      ),
-                      child: Text(
-                        room.priceDisplay,
-                        style: GoogleFonts.nunito(
-                          color: Colors.white,
-                          fontSize: 13,
-                          fontWeight: FontWeight.w800,
-                        ),
-                      ),
-                    ),
-                  ),
-
-                  // Status badge — top left
-                  Positioned(
-                    top: AppSpacing.sm,
-                    left: AppSpacing.sm,
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: AppSpacing.sm, vertical: 4),
+                          horizontal: 8, vertical: 4),
                       decoration: BoxDecoration(
                         color: room.isActive
-                            ? AppColors.success
-                            : Colors.grey.shade600,
-                        borderRadius:
-                            BorderRadius.circular(AppRadius.full),
+                            ? AppColors.emeraldLight
+                            : AppColors.amberLight,
+                        borderRadius: BorderRadius.circular(20),
                       ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Container(
-                            width: 6,
-                            height: 6,
-                            decoration: const BoxDecoration(
-                              color: Colors.white,
-                              shape: BoxShape.circle,
-                            ),
-                          ),
-                          const SizedBox(width: 4),
-                          Text(
-                            room.isActive ? 'Hoạt động' : 'Tạm nghỉ',
-                            style: GoogleFonts.nunito(
-                              color: Colors.white,
-                              fontSize: 10,
-                              fontWeight: FontWeight.w700,
-                            ),
-                          ),
-                        ],
+                      child: Text(
+                        room.isActive ? 'Trống' : 'Đang ở',
+                        style: GoogleFonts.beVietnamPro(
+                          fontSize: 10,
+                          fontWeight: FontWeight.w600,
+                          color: room.isActive
+                              ? AppColors.greenForest
+                              : AppColors.brownDark,
+                        ),
                       ),
                     ),
                   ),
-
-                  // Image count badge — top right
-                  if (room.images.length > 1)
-                    Positioned(
-                      top: AppSpacing.sm,
-                      right: AppSpacing.sm,
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: AppSpacing.sm, vertical: 4),
-                        decoration: BoxDecoration(
-                          color: Colors.black.withValues(alpha: 0.55),
-                          borderRadius:
-                              BorderRadius.circular(AppRadius.full),
-                        ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            const Icon(Icons.photo_library_outlined,
-                                color: Colors.white, size: 12),
-                            const SizedBox(width: 4),
-                            Text(
-                              '${room.images.length}',
-                              style: GoogleFonts.nunito(
-                                color: Colors.white,
-                                fontSize: 11,
-                                fontWeight: FontWeight.w700,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
                 ],
               ),
 
-              // ── Info section ───────────────────────────────────────────
+              // ── Body info ─────────────────────────────────────────
               Padding(
-                padding: const EdgeInsets.all(AppSpacing.md),
+                padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // Name + code
+                    // Name + Price
                     Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Expanded(
-                          child: Text(
-                            room.name,
-                            style: GoogleFonts.nunito(
-                              fontSize: 17,
-                              fontWeight: FontWeight.w800,
-                              color: colors.onSurface,
-                            ),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
+                          child: Column(
+                            crossAxisAlignment:
+                                CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                '${room.code} · ${room.name}',
+                                style: GoogleFonts.beVietnamPro(
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.w700,
+                                  color: AppColors.navy,
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                              const SizedBox(height: 2),
+                              Text(
+                                _buildSubtitle(room),
+                                style: GoogleFonts.beVietnamPro(
+                                  fontSize: 12,
+                                  color: AppColors.muted,
+                                ),
+                              ),
+                            ],
                           ),
                         ),
-                        const SizedBox(width: AppSpacing.sm),
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: AppSpacing.sm, vertical: 2),
-                          decoration: BoxDecoration(
-                            color:
-                                colors.primary.withValues(alpha: 0.08),
-                            borderRadius:
-                                BorderRadius.circular(AppRadius.full),
-                            border: Border.all(
-                              color: colors.primary
-                                  .withValues(alpha: 0.2),
-                            ),
-                          ),
-                          child: Text(
-                            room.code,
-                            style: GoogleFonts.nunito(
-                              color: colors.primary,
-                              fontSize: 11,
-                              fontWeight: FontWeight.w700,
-                            ),
+                        Text(
+                          room.priceDisplay,
+                          style: GoogleFonts.beVietnamPro(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w700,
+                            color: AppColors.ocean,
                           ),
                         ),
                       ],
                     ),
 
-                    // Location
-                    if (room.homestay != null) ...[
-                      const SizedBox(height: 6),
-                      Row(
-                        children: [
-                          Icon(Icons.location_on_rounded,
-                              size: 14, color: colors.primary),
-                          const SizedBox(width: 4),
-                          Expanded(
-                            child: Text(
-                              room.homestay!.name,
-                              style: GoogleFonts.nunito(
-                                fontSize: 12,
-                                color: colors.onSurface
-                                    .withValues(alpha: 0.55),
-                                fontWeight: FontWeight.w500,
-                              ),
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
-
-                    const SizedBox(height: AppSpacing.sm),
-
-                    // Info chips row
-                    Row(
-                      children: [
-                        _InfoChip(
-                          icon: Icons.people_outline_rounded,
-                          label: '${room.maxGuests} khách',
-                        ),
-                        const SizedBox(width: AppSpacing.md),
-                        _InfoChip(
-                          icon: Icons.bed_outlined,
-                          label: '${room.bedrooms} phòng ngủ',
-                        ),
-                      ],
+                    // Amenity chips
+                    const SizedBox(height: 8),
+                    Wrap(
+                      spacing: 6,
+                      runSpacing: 4,
+                      children: _buildAmenityChips(room),
                     ),
                   ],
                 ),
@@ -288,52 +171,68 @@ class _RoomCardState extends State<RoomCard> {
         ),
       ),
     )
-        .animate(delay: Duration(milliseconds: widget.animationIndex * 80))
+        .animate(
+            delay: Duration(milliseconds: widget.animationIndex * 80))
         .fadeIn(duration: 400.ms)
         .slideY(begin: 0.08, end: 0, curve: Curves.easeOut);
   }
 
-  Widget _imagePlaceholder(ColorScheme colors) => Container(
-        color: colors.surfaceContainerHighest,
-        child: Center(
-          child: Icon(Icons.image_outlined,
-              size: 40,
-              color: colors.onSurface.withValues(alpha: 0.2)),
+  String _buildSubtitle(RoomModel room) {
+    final parts = <String>[];
+    if (room.homestay != null) {
+      parts.add(room.homestay!.name);
+    }
+    parts.add('${room.maxGuests} người');
+    return parts.join(' · ');
+  }
+
+  List<Widget> _buildAmenityChips(RoomModel room) {
+    final chips = <String>[];
+    if (room.description?.toLowerCase().contains('view') == true ||
+        room.description?.toLowerCase().contains('biển') == true) {
+      chips.add('View biển');
+    }
+    chips.add('Điều hoà');
+    if (room.bedrooms >= 2) {
+      chips.add('${room.bedrooms} PN');
+    }
+    if (room.price != null && room.price!.weekdayPrice >= 1000000) {
+      chips.add('Smart TV');
+    }
+
+    return chips
+        .take(3)
+        .map((label) => Container(
+              padding: const EdgeInsets.symmetric(
+                  horizontal: 8, vertical: 3),
+              decoration: BoxDecoration(
+                color: AppColors.slateLight,
+                borderRadius: BorderRadius.circular(20),
+              ),
+              child: Text(
+                label,
+                style: GoogleFonts.beVietnamPro(
+                  fontSize: 10,
+                  color: AppColors.muted,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ))
+        .toList();
+  }
+
+  Widget _imagePlaceholder() => Container(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            colors: [
+              AppColors.oceanLight,
+              AppColors.tealLight,
+            ],
+          ),
+        ),
+        child: const Center(
+          child: Icon(Icons.home_rounded,
+              size: 36, color: AppColors.oceanMid),
         ),
       );
-}
-
-class _InfoChip extends StatelessWidget {
-  final IconData icon;
-  final String label;
-
-  const _InfoChip({required this.icon, required this.label});
-
-  @override
-  Widget build(BuildContext context) {
-    final colors = Theme.of(context).colorScheme;
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Container(
-          width: 28,
-          height: 28,
-          decoration: BoxDecoration(
-            color: colors.primary.withValues(alpha: 0.08),
-            borderRadius: BorderRadius.circular(AppRadius.sm),
-          ),
-          child: Icon(icon, size: 15, color: colors.primary),
-        ),
-        const SizedBox(width: 6),
-        Text(
-          label,
-          style: GoogleFonts.nunito(
-            fontSize: 12,
-            color: colors.onSurface.withValues(alpha: 0.6),
-            fontWeight: FontWeight.w600,
-          ),
-        ),
-      ],
-    );
-  }
 }

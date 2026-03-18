@@ -1,31 +1,36 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { IsString, IsNotEmpty, MinLength, IsEnum, IsOptional, IsEmail, Matches } from 'class-validator';
+import { IsString, IsNotEmpty, MinLength, IsEnum, IsOptional, IsEmail, Matches, IsUUID } from 'class-validator';
 import { Role } from '@prisma/client';
 
 export class CreateUserDto {
-  @ApiProperty()
+  @ApiProperty({ description: 'Ho va ten' })
   @IsString()
-  @IsNotEmpty({ message: 'Tên không được để trống' })
-  name: string;
+  @IsNotEmpty({ message: 'Ho ten khong duoc de trong' })
+  fullName: string;
 
-  @ApiProperty({ example: '0900000000', description: 'SĐT định dạng 0xxxxxxxxx hoặc +84...' })
-  @IsString()
-  @IsNotEmpty({ message: 'Số điện thoại không được để trống' })
-  @Matches(/^(0|\+84)[0-9]{9}$/, { message: 'Số điện thoại không hợp lệ' })
-  phone: string;
+  @ApiProperty({ example: 'user@halong24h.vn', description: 'Email dang nhap (unique)' })
+  @IsEmail({}, { message: 'Email khong hop le' })
+  @IsNotEmpty({ message: 'Email khong duoc de trong' })
+  email: string;
 
-  @ApiPropertyOptional()
+  @ApiPropertyOptional({ example: '0900000000', description: 'So dien thoai' })
   @IsOptional()
-  @IsEmail({}, { message: 'Email không hợp lệ' })
-  email?: string;
-
-  @ApiProperty({ minLength: 6 })
   @IsString()
-  @IsNotEmpty({ message: 'Mật khẩu không được để trống' })
-  @MinLength(6, { message: 'Mật khẩu tối thiểu 6 ký tự' })
+  @Matches(/^(0|\+84)[0-9]{9}$/, { message: 'So dien thoai khong hop le' })
+  phone?: string;
+
+  @ApiProperty({ minLength: 6, description: 'Mat khau (toi thieu 6 ky tu)' })
+  @IsString()
+  @IsNotEmpty({ message: 'Mat khau khong duoc de trong' })
+  @MinLength(6, { message: 'Mat khau toi thieu 6 ky tu' })
   password: string;
 
-  @ApiProperty({ enum: Role })
-  @IsEnum(Role, { message: 'Role không hợp lệ (ADMIN, OWNER, SALE)' })
+  @ApiProperty({ enum: Role, description: 'Vai tro' })
+  @IsEnum(Role, { message: 'Role khong hop le (OWNER, MANAGER, SALE, RECEPTIONIST)' })
   role: Role;
+
+  @ApiPropertyOptional({ description: 'ID co so luu tru (bat buoc voi MANAGER/SALE/RECEPTIONIST)' })
+  @IsOptional()
+  @IsUUID('4', { message: 'propertyId khong hop le' })
+  propertyId?: string;
 }

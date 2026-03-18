@@ -4,8 +4,11 @@ class ApiConstants {
   // Auth
   static const String login = '/auth/login';
   static const String refresh = '/auth/refresh';
+  static const String googleLogin = '/auth/google';
   static const String logout = '/auth/logout';
   static const String profile = '/auth/profile';
+  static const String forgotPassword = '/auth/forgot-password';
+  static const String resetPassword = '/auth/reset-password';
 
   // Users
   static const String users = '/users';

@@ -10,11 +10,15 @@ import { CloudinaryModule } from './config/cloudinary.module';
 
 import { AuthModule } from './modules/auth/auth.module';
 import { UsersModule } from './modules/users/users.module';
-import { HomestaysModule } from './modules/homestays/homestays.module';
+import { PropertiesModule } from './modules/properties/properties.module';
+import { RoomTypesModule } from './modules/room-types/room-types.module';
+import { AmenitiesModule } from './modules/amenities/amenities.module';
 import { RoomsModule } from './modules/rooms/rooms.module';
-import { PricesModule } from './modules/prices/prices.module';
+import { CustomersModule } from './modules/customers/customers.module';
 import { BookingsModule } from './modules/bookings/bookings.module';
-import { PartnerModule } from './modules/partner/partner.module';
+import { PaymentsModule } from './modules/payments/payments.module';
+import { NotificationsModule } from './modules/notifications/notifications.module';
+import { ReportsModule } from './modules/reports/reports.module';
 
 import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
 import { RolesGuard } from './common/guards/roles.guard';
@@ -31,11 +35,15 @@ import { ResponseInterceptor } from './common/interceptors/response.interceptor'
     CloudinaryModule,
     AuthModule,
     UsersModule,
-    HomestaysModule,
+    PropertiesModule,
+    RoomTypesModule,
+    AmenitiesModule,
     RoomsModule,
-    PricesModule,
+    CustomersModule,
     BookingsModule,
-    PartnerModule,
+    PaymentsModule,
+    NotificationsModule,
+    ReportsModule,
   ],
   providers: [
     { provide: APP_GUARD, useClass: JwtAuthGuard },

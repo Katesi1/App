@@ -1,54 +1,59 @@
 import {
   Injectable,
   NotFoundException,
-  ForbiddenException,
   BadRequestException,
+  ConflictException,
 } from '@nestjs/common';
-import { PrismaService } from '../../prisma/prisma.service';
+import { BookingsRepository } from './bookings.repository';
+import { RoomsRepository } from '../rooms/rooms.repository';
+import { CustomersService } from '../customers/customers.service';
 import { RedisService } from '../../config/redis.service';
 import { CreateBookingDto } from './dto/create-booking.dto';
 import { UpdateBookingDto } from './dto/update-booking.dto';
 import { Messages } from '../../i18n';
-import { BookingStatus, Role } from '@prisma/client';
+import { BookingStatus, Role, RoomStatus } from '@prisma/client';
 
-const HOLD_DURATION_SECONDS = 1800; // 30 phút
+const HOLD_DURATION_SECONDS = 1800;
 
 @Injectable()
 export class BookingsService {
   constructor(
-    private prisma: PrismaService,
+    private repo: BookingsRepository,
+    private roomsRepo: RoomsRepository,
+    private customersService: CustomersService,
     private redis: RedisService,
   ) {}
 
-  async findAll(user: { id: string; role: Role }, msg: Messages, roomId?: string) {
+  async findAll(
+    user: any,
+    msg: Messages,
+    query: {
+      status?: BookingStatus; roomId?: string; customerId?: string;
+      startDate?: string; endDate?: string; source?: string;
+      page?: number; limit?: number;
+    },
+  ) {
     const where: any = {};
-
-    if (roomId) where.roomId = roomId;
-
-    if (user.role === Role.SALE) {
-      where.saleId = user.id;
+    if (query.status) where.status = query.status;
+    if (query.roomId) where.roomId = query.roomId;
+    if (query.customerId) where.customerId = query.customerId;
+    if (query.source) where.source = query.source;
+    if (query.startDate || query.endDate) {
+      where.checkinDate = {};
+      if (query.startDate) where.checkinDate.gte = new Date(query.startDate);
+      if (query.endDate) where.checkinDate.lte = new Date(query.endDate);
     }
 
-    if (user.role === Role.OWNER) {
-      where.room = { homestay: { ownerId: user.id } };
+    if ([Role.SALE, Role.RECEPTIONIST, Role.MANAGER].includes(user.role)) {
+      where.room = { propertyId: user.propertyId };
+    } else if (user.role === Role.OWNER) {
+      where.room = { property: { ownerId: user.id } };
     }
 
-    const bookings = await this.prisma.booking.findMany({
-      where,
-      include: {
-        room: {
-          select: {
-            id: true, name: true, code: true,
-            homestay: { select: { id: true, name: true } },
-          },
-        },
-        sale: { select: { id: true, name: true, phone: true } },
-      },
-      orderBy: { createdAt: 'desc' },
-    });
+    const result = await this.repo.findAll(where, { page: query.page, limit: query.limit });
 
-    const bookingsWithHoldTtl = await Promise.all(
-      bookings.map(async (booking) => {
+    const data = await Promise.all(
+      result.data.map(async (booking) => {
         if (booking.status === BookingStatus.HOLD) {
           const ttl = await this.redis.getHoldTtl(booking.roomId);
           return { ...booking, holdRemainingSeconds: ttl > 0 ? ttl : 0 };
@@ -57,26 +62,12 @@ export class BookingsService {
       }),
     );
 
-    return { message: msg.bookings.listSuccess, data: bookingsWithHoldTtl };
+    return { message: msg.bookings.listSuccess, data, meta: result.meta };
   }
 
-  async findOne(id: string, user: { id: string; role: Role }, msg: Messages) {
-    const booking = await this.prisma.booking.findUnique({
-      where: { id },
-      include: {
-        room: {
-          include: {
-            homestay: true,
-            images: { orderBy: { order: 'asc' }, take: 5 },
-            price: true,
-          },
-        },
-        sale: { select: { id: true, name: true, phone: true } },
-      },
-    });
-
+  async findOne(id: string, user: any, msg: Messages) {
+    const booking = await this.repo.findById(id);
     if (!booking) throw new NotFoundException(msg.bookings.notFound);
-    this.checkBookingAccess(booking, user, msg);
 
     let holdRemainingSeconds = 0;
     if (booking.status === BookingStatus.HOLD) {
@@ -84,201 +75,220 @@ export class BookingsService {
       holdRemainingSeconds = ttl > 0 ? ttl : 0;
     }
 
-    return {
-      message: msg.bookings.getSuccess,
-      data: { ...booking, holdRemainingSeconds },
-    };
+    return { message: msg.bookings.getSuccess, data: { ...booking, holdRemainingSeconds } };
   }
 
-  async holdRoom(dto: CreateBookingDto, user: { id: string; role: Role }, msg: Messages) {
-    const { roomId, checkinDate, checkoutDate } = dto;
+  async create(dto: CreateBookingDto, user: any, msg: Messages) {
+    const checkin = new Date(dto.checkinDate);
+    const checkout = new Date(dto.checkoutDate);
+    if (checkin >= checkout) throw new BadRequestException(msg.bookings.checkoutBeforeCheckin);
 
-    const checkin = new Date(checkinDate);
-    const checkout = new Date(checkoutDate);
-    if (checkin >= checkout) {
-      throw new BadRequestException(msg.bookings.checkoutBeforeCheckin);
-    }
-    if (checkin < new Date()) {
-      throw new BadRequestException(msg.bookings.checkinInPast);
-    }
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    if (checkin < today) throw new BadRequestException(msg.bookings.checkinInPast);
 
-    const room = await this.prisma.room.findUnique({ where: { id: roomId } });
+    const room = await this.roomsRepo.findRaw(dto.roomId);
     if (!room || !room.isActive) throw new NotFoundException(msg.rooms.notFound);
+    if (dto.guestCount > room.capacity) throw new BadRequestException(msg.bookings.exceedsCapacity);
 
-    const existingHold = await this.redis.getHold(roomId);
+    const conflict = await this.repo.findConflicting(dto.roomId, checkin, checkout);
+    if (conflict) throw new ConflictException(msg.bookings.roomAlreadyBooked);
+
+    const existingHold = await this.redis.getHold(dto.roomId);
     if (existingHold) {
-      const holdBooking = await this.prisma.booking.findFirst({
-        where: { id: existingHold, status: BookingStatus.HOLD },
-        select: { saleId: true },
-      });
-      if (holdBooking && holdBooking.saleId !== user.id) {
-        const ttl = await this.redis.getHoldTtl(roomId);
-        throw new BadRequestException(msg.bookings.roomOnHold(Math.ceil(ttl / 60)));
+      const holdBooking = await this.repo.findActiveHold(existingHold);
+      if (holdBooking && holdBooking.createdBy !== user.id) {
+        const ttl = await this.redis.getHoldTtl(dto.roomId);
+        throw new ConflictException(msg.bookings.roomOnHold(Math.ceil(ttl / 60)));
       }
     }
 
-    const conflict = await this.prisma.booking.findFirst({
-      where: {
-        roomId,
-        status: { in: [BookingStatus.CONFIRMED] },
-        OR: [
-          { checkinDate: { lte: checkout }, checkoutDate: { gte: checkin } },
-        ],
-      },
-    });
-    if (conflict) {
-      throw new BadRequestException(msg.bookings.roomAlreadyBooked);
-    }
+    const customer = await this.customersService.findOrCreate(dto.customerName, dto.customerPhone);
 
-    await this.prisma.booking.updateMany({
-      where: { roomId, status: BookingStatus.HOLD },
-      data: { status: BookingStatus.CANCELLED },
-    });
+    // Calculate price
+    const nights = Math.ceil((checkout.getTime() - checkin.getTime()) / (1000 * 60 * 60 * 24));
+    const pricePerNight = Number(room.pricePerNight);
+    const weekendPrice = room.weekendPrice ? Number(room.weekendPrice) : pricePerNight;
+    let totalPrice = 0;
+    for (let i = 0; i < nights; i++) {
+      const date = new Date(checkin);
+      date.setDate(date.getDate() + i);
+      const day = date.getDay();
+      totalPrice += (day === 5 || day === 6) ? weekendPrice : pricePerNight;
+    }
+    totalPrice += (dto.extraCharges || 0) - (dto.discount || 0);
+
+    const bookingCode = await this.generateBookingCode();
+
+    await this.repo.cancelHoldsForRoom(dto.roomId);
 
     const holdExpireAt = new Date(Date.now() + HOLD_DURATION_SECONDS * 1000);
-    const booking = await this.prisma.booking.create({
-      data: {
-        roomId,
-        saleId: user.id,
-        checkinDate: checkin,
-        checkoutDate: checkout,
-        status: BookingStatus.HOLD,
-        holdExpireAt,
-        customerName: dto.customerName,
-        customerPhone: dto.customerPhone,
-        depositAmount: dto.depositAmount,
-        notes: dto.notes,
-      },
-      include: {
-        room: { select: { id: true, name: true, code: true } },
-        sale: { select: { id: true, name: true } },
-      },
+
+    const booking = await this.repo.create({
+      bookingCode,
+      room: { connect: { id: dto.roomId } },
+      customer: { connect: { id: customer.id } },
+      creator: { connect: { id: user.id } },
+      checkinDate: checkin,
+      checkoutDate: checkout,
+      guestCount: dto.guestCount,
+      status: BookingStatus.HOLD,
+      totalPrice,
+      extraCharges: dto.extraCharges || 0,
+      discount: dto.discount || 0,
+      deposit: dto.deposit || 0,
+      source: dto.source || 'DIRECT',
+      notes: dto.notes,
+      holdExpireAt,
     });
 
-    await this.redis.setHold(roomId, booking.id, HOLD_DURATION_SECONDS);
+    await this.redis.setHold(dto.roomId, booking.id, HOLD_DURATION_SECONDS);
+    await this.roomsRepo.updateStatus(dto.roomId, RoomStatus.BOOKED);
 
-    return {
-      message: msg.bookings.holdSuccess,
-      data: { ...booking, holdRemainingSeconds: HOLD_DURATION_SECONDS },
+    return { message: msg.bookings.holdSuccess, data: { ...booking, holdRemainingSeconds: HOLD_DURATION_SECONDS } };
+  }
+
+  async updateStatus(id: string, status: BookingStatus, user: any, msg: Messages, cancelReason?: string) {
+    const booking = await this.repo.findRawWithRoom(id);
+    if (!booking) throw new NotFoundException(msg.bookings.notFound);
+
+    const validTransitions: Record<string, BookingStatus[]> = {
+      HOLD: [BookingStatus.CONFIRMED, BookingStatus.CANCELLED],
+      CONFIRMED: [BookingStatus.CHECKED_IN, BookingStatus.CANCELLED],
+      CHECKED_IN: [BookingStatus.CHECKED_OUT],
+      CHECKED_OUT: [],
+      CANCELLED: [],
     };
-  }
 
-  async confirmBooking(id: string, user: { id: string; role: Role }, msg: Messages) {
-    const booking = await this.prisma.booking.findUnique({ where: { id } });
-    if (!booking) throw new NotFoundException(msg.bookings.notFound);
-
-    if (user.role === Role.OWNER) {
-      const room = await this.prisma.room.findUnique({
-        where: { id: booking.roomId },
-        include: { homestay: true },
-      });
-      if (room?.homestay.ownerId !== user.id) {
-        throw new ForbiddenException(msg.bookings.forbiddenConfirm);
-      }
+    if (!validTransitions[booking.status]?.includes(status)) {
+      throw new BadRequestException(msg.bookings.invalidStatusTransition);
     }
 
-    if (booking.status !== BookingStatus.HOLD) {
-      throw new BadRequestException(msg.bookings.onlyConfirmHold);
+    const updated = await this.repo.update(id, {
+      status,
+      holdExpireAt: status === BookingStatus.CONFIRMED ? null : undefined,
+      cancelReason: status === BookingStatus.CANCELLED ? cancelReason : undefined,
+    });
+
+    if (status === BookingStatus.CONFIRMED || status === BookingStatus.CANCELLED) {
+      await this.redis.delHold(booking.roomId);
     }
-
-    const confirmed = await this.prisma.booking.update({
-      where: { id },
-      data: { status: BookingStatus.CONFIRMED, holdExpireAt: null },
-    });
-
-    await this.redis.delHold(booking.roomId);
-
-    return { message: msg.bookings.confirmSuccess, data: confirmed };
-  }
-
-  async cancelBooking(id: string, user: { id: string; role: Role }, msg: Messages) {
-    const booking = await this.prisma.booking.findUnique({ where: { id } });
-    if (!booking) throw new NotFoundException(msg.bookings.notFound);
-
-    this.checkBookingAccess(booking, user, msg);
-
-    if (booking.status === BookingStatus.CANCELLED) {
-      throw new BadRequestException(msg.bookings.alreadyCancelled);
+    if (status === BookingStatus.CANCELLED) {
+      await this.updateRoomStatusAfterCancel(booking.roomId);
     }
-
-    await this.prisma.booking.update({
-      where: { id },
-      data: { status: BookingStatus.CANCELLED },
-    });
-
-    await this.redis.delHold(booking.roomId);
-
-    return { message: msg.bookings.cancelSuccess, data: null };
-  }
-
-  async update(id: string, dto: UpdateBookingDto, user: { id: string; role: Role }, msg: Messages) {
-    const booking = await this.prisma.booking.findUnique({ where: { id } });
-    if (!booking) throw new NotFoundException(msg.bookings.notFound);
-    this.checkBookingAccess(booking, user, msg);
-
-    const updated = await this.prisma.booking.update({
-      where: { id },
-      data: dto,
-    });
 
     return { message: msg.bookings.updateSuccess, data: updated };
   }
 
-  async getRoomCalendar(roomId: string, year: number, month: number, msg: Messages) {
-    const startDate = new Date(year, month - 1, 1);
-    const endDate = new Date(year, month, 0, 23, 59, 59);
+  async checkin(id: string, user: any, msg: Messages) {
+    const booking = await this.repo.findRaw(id);
+    if (!booking) throw new NotFoundException(msg.bookings.notFound);
+    if (booking.status !== BookingStatus.CONFIRMED) {
+      throw new BadRequestException(msg.bookings.onlyCheckinConfirmed);
+    }
 
-    const bookings = await this.prisma.booking.findMany({
-      where: {
-        roomId,
-        status: { in: [BookingStatus.HOLD, BookingStatus.CONFIRMED] },
-        OR: [
-          { checkinDate: { lte: endDate }, checkoutDate: { gte: startDate } },
-        ],
-      },
-      select: {
-        id: true, checkinDate: true, checkoutDate: true, status: true,
-        customerName: true, sale: { select: { name: true } },
-      },
-    });
+    const updated = await this.repo.update(id, { status: BookingStatus.CHECKED_IN, actualCheckin: new Date() });
+    await this.roomsRepo.updateStatus(booking.roomId, RoomStatus.OCCUPIED);
 
-    const result = await Promise.all(
-      bookings.map(async (b) => {
-        if (b.status === BookingStatus.HOLD) {
-          const ttl = await this.redis.getHoldTtl(roomId);
-          return { ...b, holdRemainingSeconds: ttl > 0 ? ttl : 0 };
+    return { message: msg.bookings.checkinSuccess, data: updated };
+  }
+
+  async checkout(id: string, user: any, msg: Messages) {
+    const booking = await this.repo.findRaw(id);
+    if (!booking) throw new NotFoundException(msg.bookings.notFound);
+    if (booking.status !== BookingStatus.CHECKED_IN) {
+      throw new BadRequestException(msg.bookings.onlyCheckoutCheckedIn);
+    }
+
+    const updated = await this.repo.update(id, { status: BookingStatus.CHECKED_OUT, actualCheckout: new Date() });
+    await this.roomsRepo.updateStatus(booking.roomId, RoomStatus.VACANT);
+    await this.customersService.updateCustomerStats(booking.customerId);
+
+    return { message: msg.bookings.checkoutSuccess, data: updated };
+  }
+
+  async cancel(id: string, user: any, msg: Messages, cancelReason?: string) {
+    const booking = await this.repo.findRaw(id);
+    if (!booking) throw new NotFoundException(msg.bookings.notFound);
+    if (booking.status === BookingStatus.CANCELLED) throw new BadRequestException(msg.bookings.alreadyCancelled);
+    if (booking.status === BookingStatus.CHECKED_OUT) throw new BadRequestException(msg.bookings.cannotCancelCompleted);
+
+    await this.repo.update(id, { status: BookingStatus.CANCELLED, cancelReason });
+    await this.redis.delHold(booking.roomId);
+    await this.updateRoomStatusAfterCancel(booking.roomId);
+
+    return { message: msg.bookings.cancelSuccess, data: null };
+  }
+
+  async update(id: string, dto: UpdateBookingDto, user: any, msg: Messages) {
+    const booking = await this.repo.findRaw(id);
+    if (!booking) throw new NotFoundException(msg.bookings.notFound);
+
+    if ([BookingStatus.CHECKED_OUT, BookingStatus.CANCELLED].includes(booking.status as any)) {
+      throw new BadRequestException(msg.bookings.cannotUpdateCompleted);
+    }
+
+    const data: any = { ...dto };
+    if (dto.checkinDate) data.checkinDate = new Date(dto.checkinDate);
+    if (dto.checkoutDate) data.checkoutDate = new Date(dto.checkoutDate);
+
+    if (dto.checkinDate || dto.checkoutDate || dto.extraCharges !== undefined || dto.discount !== undefined) {
+      const checkin = dto.checkinDate ? new Date(dto.checkinDate) : booking.checkinDate;
+      const checkout = dto.checkoutDate ? new Date(dto.checkoutDate) : booking.checkoutDate;
+      const room = await this.roomsRepo.findRaw(booking.roomId);
+      if (room) {
+        const nights = Math.ceil((checkout.getTime() - checkin.getTime()) / (1000 * 60 * 60 * 24));
+        const pricePerNight = Number(room.pricePerNight);
+        const weekendPrice = room.weekendPrice ? Number(room.weekendPrice) : pricePerNight;
+        let totalPrice = 0;
+        for (let i = 0; i < nights; i++) {
+          const d = new Date(checkin);
+          d.setDate(d.getDate() + i);
+          totalPrice += (d.getDay() === 5 || d.getDay() === 6) ? weekendPrice : pricePerNight;
         }
-        return b;
-      }),
-    );
+        data.totalPrice = totalPrice + (dto.extraCharges ?? Number(booking.extraCharges)) - (dto.discount ?? Number(booking.discount));
+      }
+    }
 
-    return { message: msg.bookings.calendarSuccess, data: result };
+    const updated = await this.repo.update(id, data);
+    return { message: msg.bookings.updateSuccess, data: updated };
+  }
+
+  async remove(id: string, user: any, msg: Messages) {
+    const booking = await this.repo.findRaw(id);
+    if (!booking) throw new NotFoundException(msg.bookings.notFound);
+    if (booking.status !== BookingStatus.HOLD) throw new BadRequestException(msg.bookings.onlyDeleteHold);
+
+    await this.repo.delete(id);
+    await this.redis.delHold(booking.roomId);
+    await this.updateRoomStatusAfterCancel(booking.roomId);
+
+    return { message: msg.bookings.deleteSuccess, data: null };
   }
 
   async expireHoldBookings() {
-    const now = new Date();
-    const expired = await this.prisma.booking.findMany({
-      where: {
-        status: BookingStatus.HOLD,
-        holdExpireAt: { lte: now },
-      },
-    });
-
+    const expired = await this.repo.findExpiredHolds();
     if (expired.length > 0) {
-      await this.prisma.booking.updateMany({
-        where: { id: { in: expired.map((b) => b.id) } },
-        data: { status: BookingStatus.CANCELLED },
-      });
-
-      await Promise.all(expired.map((b) => this.redis.delHold(b.roomId)));
+      await this.repo.cancelExpiredHolds(expired.map((b) => b.id));
+      await Promise.all(expired.map(async (b) => {
+        await this.redis.delHold(b.roomId);
+        await this.updateRoomStatusAfterCancel(b.roomId);
+      }));
     }
-
     return expired.length;
   }
 
-  private checkBookingAccess(booking: any, user: { id: string; role: Role }, msg: Messages) {
-    if (user.role === Role.SALE && booking.saleId !== user.id) {
-      throw new ForbiddenException(msg.bookings.forbiddenAccess);
+  private async generateBookingCode(): Promise<string> {
+    const now = new Date();
+    const dateStr = now.toISOString().slice(0, 10).replace(/-/g, '');
+    const count = await this.repo.countTodayBookings();
+    return `HL-${dateStr}-${String(count + 1).padStart(4, '0')}`;
+  }
+
+  private async updateRoomStatusAfterCancel(roomId: string) {
+    const active = await this.repo.countActiveForRoom(roomId);
+    if (active === 0) {
+      await this.roomsRepo.updateStatus(roomId, RoomStatus.VACANT);
     }
   }
 }

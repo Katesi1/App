@@ -7,7 +7,7 @@ import { AppModule } from './app.module';
 async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule);
 
-  // Redirect root về Swagger
+  // Redirect root to Swagger
   const expressApp = app.getHttpAdapter().getInstance();
   expressApp.get('/', (_req: any, res: any) => res.redirect('/index.html'));
 
@@ -16,37 +16,37 @@ async function bootstrap() {
 
   // CORS
   app.enableCors({
-    origin: '*', // Thay bằng domain cụ thể khi production
+    origin: '*', // Replace with specific domains in production
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization', 'X-Partner-Key'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'Accept-Language'],
+    credentials: true,
   });
 
-  // Validation pipe toàn cục
+  // Global ValidationPipe
   app.useGlobalPipes(
     new ValidationPipe({
-      whitelist: true,        // Tự loại bỏ fields không có trong DTO
+      whitelist: true,
       forbidNonWhitelisted: false,
-      transform: true,        // Auto transform types
+      transform: true,
       transformOptions: { enableImplicitConversion: true },
     }),
   );
 
   // Swagger
   const config = new DocumentBuilder()
-    .setTitle('Homestay API')
-    .setDescription('API quản lý homestay – đăng nhập, homestay, phòng, giá, đặt phòng, partner')
+    .setTitle('Halong24h API')
+    .setDescription('API He thong Quan ly Luu tru - Halong24h')
     .setVersion('1.0')
     .addBearerAuth(
       { type: 'http', scheme: 'bearer', bearerFormat: 'JWT', in: 'header' },
       'access-token',
     )
-    .addApiKey({ type: 'apiKey', in: 'header', name: 'X-Partner-Key' }, 'partner-key')
     .build();
   const document = SwaggerModule.createDocument(app, config);
   SwaggerModule.setup('index.html', app, document);
 
   const port = process.env.PORT || 3000;
   await app.listen(port);
-  console.log(`🚀 Server running at http://localhost:${port}/index.html`);
+  console.log(`Server running at http://localhost:${port}/index.html`);
 }
 bootstrap();

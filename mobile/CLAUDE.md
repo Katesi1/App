@@ -1,14 +1,15 @@
 # CLAUDE.md — Homestay Management App
 
-Tài liệu này định nghĩa conventions và standards để AI (Claude Code) luôn code nhất quán cho dự án này.
+Tài liệu này định nghĩa conventions và standards để AI (Claude Code) và dev luôn code nhất quán cho dự án này.
 
 ---
 
 ## Project Overview
 
-- **App**: Homestay Management Mobile App
+- **App**: Homestay Management Mobile App (Halong24h)
+- **Architecture**: MVC (Model - View - Controller) với Riverpod
 - **Platform**: Flutter (iOS + Android)
-- **Backend API**: `http://103.183.118.148/api`
+- **Backend API**: `http://103.183.118.148:3000`
 - **Swagger docs**: `http://103.183.118.148/index.html`
 
 ---
@@ -17,152 +18,257 @@ Tài liệu này định nghĩa conventions và standards để AI (Claude Code)
 
 | Thành phần | Package |
 |---|---|
-| UI Framework | Flutter SDK + Material Design |
+| UI Framework | Flutter SDK + Material Design 3 |
 | Language | Dart 3.5+ |
-| State Management | `flutter_riverpod ^2.6.1` + `riverpod_annotation` + `riverpod_generator` |
+| State Management | `flutter_riverpod ^2.6.1` |
 | Navigation | `go_router ^14` |
 | HTTP Client | `dio ^5` |
+| Auth | `google_sign_in ^6.2` |
 | Secure Storage | `flutter_secure_storage` |
 | Local Prefs | `shared_preferences` |
 | JSON | `json_annotation` + `json_serializable` |
 | Equality | `equatable` |
+| UI | `cached_network_image`, `image_picker`, `photo_view`, `table_calendar`, `shimmer` |
+| Animation | `flutter_animate`, `animations`, `lottie` |
+| Typography | `google_fonts` (BeVietnamPro) |
 | Linting | `flutter_lints` + `riverpod_lint` + `custom_lint` |
 
 ---
 
-## Project Structure
+## Project Structure (MVC)
 
 ```
 lib/
-  core/
-    constants/       # ApiConstants, AppConstants
-    network/         # ApiClient (Dio), ApiResponse
-    storage/         # SecureStorage
-    theme/           # AppTheme
-    utils/           # AppRouter (GoRouter provider)
-  data/
-    models/          # JSON-serializable models
-    repositories/    # Data access layer
-  features/
+  core/                          # Framework & infrastructure
+    constants/
+      api_constants.dart         # Base URL + tất cả API endpoints
+      app_constants.dart         # Enums (UserRole, BookingStatus), app config
+    network/
+      api_client.dart            # Dio singleton + AuthInterceptor (auto token, auto refresh 401)
+      api_response.dart          # ApiResponse<T> generic wrapper + parseDioError()
+    storage/
+      secure_storage.dart        # FlutterSecureStorage wrapper (token, user data)
+    theme/
+      app_colors.dart            # ← TẤT CẢ màu dùng chung (KHÔNG hardcode Color() ở nơi khác)
+      app_spacing.dart           # AppSpacing (xs..xxl) + AppRadius (xs..full)
+      app_theme.dart             # Light + Dark theme (Material 3)
+    utils/
+      app_router.dart            # GoRouter + auth redirect logic
+      app_transitions.dart       # Custom page transitions
+      helpers.dart               # ← AppHelpers: roleLabel, roleColor, formatPrice, vietnameseDayOfWeek...
+
+  data/                          # MODEL layer
+    models/
+      user_model.dart            # UserModel (role helpers: isAdmin, isOwner, canEdit)
+      room_model.dart            # RoomModel, RoomImageModel, RoomPriceModel, HomestaySimpleModel
+      homestay_model.dart        # HomestayModel
+      booking_model.dart         # BookingModel, CalendarBooking
+    repositories/
+      auth_repository.dart       # Login (phone/password + Google), logout, token management
+      user_repository.dart       # CRUD users
+      room_repository.dart       # CRUD rooms, images, prices
+      homestay_repository.dart   # CRUD homestays
+      booking_repository.dart    # CRUD bookings, calendar, hold/confirm/cancel
+
+  features/                      # Feature modules (MVC per feature)
     auth/
-      screens/
-    admin/
-      screens/
-    bookings/
-      screens/
-    homestays/
-      screens/
+      controllers/
+        auth_controller.dart     # AuthNotifier, authProvider, currentUserProvider
+      views/
+        login_screen.dart        # Login form + Google Sign-In
+        splash_screen.dart       # Splash animation + auto-redirect
+    dashboard/
+      views/
+        dashboard_screen.dart    # KPI cards, status pills, quick actions, today's bookings
     rooms/
-      providers/     # Riverpod providers
-      screens/
+      controllers/
+        room_controller.dart     # roomListProvider, roomDetailProvider
+      views/
+        room_list_screen.dart
+        room_detail_screen.dart
+        room_form_screen.dart
+        room_calendar_screen.dart
+        room_images_screen.dart
+        room_price_screen.dart
       widgets/
-  shared/
-    providers/       # authProvider, routerProvider
-    widgets/         # AppScaffold, LoadingWidget
-  main.dart
+        room_card.dart
+    bookings/
+      controllers/
+        booking_controller.dart  # bookingListProvider, calendarProvider, BookingActionsNotifier
+      views/
+        booking_list_screen.dart
+        hold_room_screen.dart
+    homestays/
+      controllers/
+        homestay_controller.dart # homestayListProvider, HomestayActionsNotifier
+      views/
+        homestay_list_screen.dart
+        homestay_form_screen.dart
+    admin/
+      controllers/
+        user_controller.dart     # userListProvider, UserActionsNotifier
+      views/
+        user_list_screen.dart
+        user_form_screen.dart
+
+  shared/                        # Code dùng chung giữa các features
+    providers/
+      theme_provider.dart        # ThemeNotifier (light/dark, persist SharedPreferences)
+    widgets/
+      app_scaffold.dart          # AppScaffold (AppBar + BottomNav + theme toggle + user menu)
+      loading_widget.dart        # LoadingWidget, Skeletons, EmptyStateWidget, ErrorStateWidget, AppSnackBar
+
+  main.dart                      # ProviderScope → MaterialApp.router
 ```
 
-**Quy tắc thư mục** (nguồn: [flutter_app_architecture](https://github.com/evanca/flutter-ai-rules/blob/main/rules/flutter_app_architecture.md)):
-- Kiến trúc phân tầng: **UI layer** → **Data layer** (không skip tầng)
-- Mỗi feature là một thư mục độc lập: `screens/`, `widgets/`, `providers/`
-- Không import chéo giữa các features — dùng `shared/` cho code dùng chung
-- Providers đặt trong `features/<feature>/providers/` hoặc `shared/providers/`
-- Repositories là single source of truth — handle caching và error management
-- Views (Screens) chứa minimal logic — chỉ UI
-- Data flow: state flows từ data layer → UI layer; events từ UI → ngược lại (unidirectional)
+### Quy tắc thư mục
+
+- **MVC per feature**: Mỗi feature có `controllers/` (state + logic), `views/` (UI screens), `widgets/` (reusable UI components)
+- **Không import chéo giữa features** — dùng `shared/` hoặc `core/` cho code dùng chung
+- **Controllers** đặt trong `features/<feature>/controllers/`
+- **Data flow**: unidirectional — UI → event → Controller → Repository → API → Controller → UI rebuild
 
 ---
 
 ## Dart / Flutter Code Style
 
-Nguồn: [Effective Dart](https://dart.dev/effective-dart) + [flutter-ai-rules/effective_dart](https://github.com/evanca/flutter-ai-rules/blob/main/rules/effective_dart.md)
-
-- **Naming**: `UpperCamelCase` cho class/type, `lowerCamelCase` cho biến/hàm, `lowercase_with_underscores` cho file/package
+- **Naming**: `UpperCamelCase` cho class/type, `lowerCamelCase` cho biến/hàm, `lowercase_with_underscores` cho file
 - **Files**: Mỗi file một class/widget chính; tên file = tên class (snake_case)
-- **Imports**: Relative imports trong cùng package; nhóm theo thứ tự: dart → flutter → packages → local; không import từ thư mục `src/` của package khác
-- **Formatting**: Luôn chạy `dart format`; line limit 80 ký tự
+- **Imports**: Relative imports; nhóm theo: dart → flutter → packages → local
+- **Formatting**: `dart format`; line limit 80 ký tự
 - **Control flow**: Luôn dùng curly braces `{}`
-- **Variables**: Ưu tiên `final` > `var`; dùng `const` khi có thể; initialize fields at declaration khi có thể
-- **Types**: Luôn annotate return type và parameter khi type không hiển nhiên; dùng `Future<void>` cho async không trả giá trị
-- **Getters/Setters**: Dùng getter cho property access, setter cho property modification
-- **Collections**: Dùng collection literals; dùng `whereType()` để filter theo type
-- **Class modifiers**: Dùng `base`, `final`, `sealed`, `interface` để kiểm soát extension (Dart 3)
-- **hashCode**: Override `hashCode` khi override `==`
-- **Exceptions**: Dùng `rethrow` để rethrow exception đã catch
+- **Variables**: Ưu tiên `final` > `var`; dùng `const` khi có thể
+- **Types**: Annotate return type và parameter khi type không hiển nhiên
+- **Async/await** thay vì `.then()` chains
 
-## Dart 3 Modern Features
+### Dart 3 Features
 
-Nguồn: [flutter-ai-rules/dart_3_updates](https://github.com/evanca/flutter-ai-rules/blob/main/rules/dart_3_updates.md)
-
-- **Records**: Dùng để return nhiều giá trị từ function: `var (name, age) = userInfo(json);`
-- **Patterns**: Dùng để destructure records, lists, objects: `var (a, [b, c]) = ('str', [1, 2]);`
-- **Switch expressions**: Dùng cho exhaustive control flow ngắn gọn
-- **Sealed classes**: Dùng với `switch` để đảm bảo exhaustiveness
-- **if-case**: Dùng để match và destructure: `if (pair case [int x, int y]) { ... }`
-- **Guard clause**: Dùng `when` trong switch/if-case để thêm điều kiện: `case pattern when condition:`
+- **Records** cho multiple return values
+- **Patterns** cho destructure
+- **Switch expressions** cho control flow ngắn gọn
+- **Sealed classes** + `switch` cho exhaustiveness
+- **if-case** + `when` guard clause
 
 ---
 
-## Riverpod — State Management
+## Colors — AppColors (QUAN TRỌNG)
 
-Nguồn: [flutter-ai-rules/riverpod](https://github.com/evanca/flutter-ai-rules/blob/main/rules/riverpod.md) + [flutter-ai-rules/combined](https://github.com/evanca/flutter-ai-rules/blob/main/combined/flutter_with_riverpod__under_6K.md)
-
-### Provider types — dùng đúng loại
-
-- `Provider` — giá trị sync không thay đổi
-- `StateProvider` — state đơn giản, UI có thể sửa trực tiếp
-- `FutureProvider` — async operation (API call)
-- `StreamProvider` — real-time data stream
-- `NotifierProvider` — state phức tạp với methods
-- `AsyncNotifierProvider` — async state phức tạp với methods
-
-### Quy tắc bắt buộc
+**KHÔNG BAO GIỜ hardcode `Color(0xFF...)` trong code.** Tất cả màu phải khai báo trong `lib/core/theme/app_colors.dart`.
 
 ```dart
-// ✅ ĐÚNG — dùng @riverpod annotation + code gen
-@riverpod
-Future<List<RoomModel>> roomList(RoomListRef ref, String? homestayId) async {
-  return ref.read(roomRepositoryProvider).getRooms(homestayId: homestayId);
-}
+// ✅ ĐÚNG
+color: AppColors.ocean
+color: AppColors.brownDark
 
-// ✅ ĐÚNG — Notifier cho state phức tạp có methods
-@riverpod
-class AuthNotifier extends _$AuthNotifier {
-  @override
-  AuthState build() => AuthState.initial();
-
-  Future<void> login(String email, String password) async { ... }
-}
-
-// ❌ TRÁNH — manual Provider khi có thể dùng @riverpod
-final someProvider = Provider<SomeClass>((ref) => SomeClass());
+// ❌ SAI — hardcode color
+color: Color(0xFF92400E)
+color: const Color(0xFF1976D2)
 ```
 
-### Sử dụng ref — quan trọng
+### Danh sách màu có sẵn
 
-- `ref.watch` — trong `build()`, reactive, tự rebuild khi thay đổi
-- `ref.read` — trong event handlers/callbacks, KHÔNG dùng trong `build()`
-- `ref.listen` — side effects (navigation, snackbar) khi provider thay đổi
-- Khi dùng `ref.watch` với async provider, dùng `.future` nếu cần await giá trị
+| Nhóm | Tên | Mô tả |
+|---|---|---|
+| **Primary** | `ocean`, `oceanMid`, `oceanDeep`, `oceanLight`, `oceanPale` | Ocean blue (Hạ Long bay) |
+| **Accent** | `teal`, `tealLight`, `gold`, `goldLight` | Teal + Gold premium |
+| **Neutral** | `navy`, `ink`, `muted`, `slate`, `slateLight`, `border`, `background`, `surface` | Text + background |
+| **Semantic** | `emerald/Light`, `amber/Light`, `coral/Light` | Success / Warning / Error |
+| **Alias** | `primary`, `primaryLight`, `primaryDark`, `secondary`, `secondaryLight`, `error`, `warning`, `success`, `info` | Semantic aliases |
+| **Booking** | `hold`, `confirmed`, `cancelled`, `completed`, `available` | Booking status |
+| **Room** | `vacant/Bg`, `booked/Bg`, `occupied/Bg`, `maintenance/Bg` | Room status |
+| **Extra** | `brownDark`, `greenDark`, `greenForest`, `purple`, `blueWeekday`, `orangeHoliday` | Accent colors |
+| **Dark theme** | `darkContainer`, `darkBorder`, `darkHint`, `darkError`, `darkOnSurface`, `darkSecondaryContainer`, `darkOnSecondaryContainer` | Dark mode only |
 
-### State updates sau side effect
+Khi cần màu mới: thêm vào `AppColors` trước, rồi dùng ở UI.
 
-Sau khi gọi API mutation, cập nhật UI bằng một trong ba cách:
-1. Set state trực tiếp nếu server trả về data mới
-2. `ref.invalidateSelf()` để re-fetch provider
-3. Cập nhật local cache thủ công nếu server không trả data
+---
 
-### Auto Dispose
+## Shared Helpers — AppHelpers (QUAN TRỌNG)
 
-- Mặc định với code gen: state bị destroy khi provider không còn được listen
-- Dùng `keepAlive: true` để giữ state
-- **Bắt buộc** enable autoDispose cho provider nhận parameter (family) để tránh memory leak
-- Dùng `ref.onDispose` để cleanup
+**KHÔNG duplicate logic.** Dùng `AppHelpers` trong `lib/core/utils/helpers.dart`:
+
+```dart
+import '../../core/utils/helpers.dart';
+
+// Role
+AppHelpers.roleLabel('ADMIN')     // → 'Admin'
+AppHelpers.roleColor('OWNER')     // → AppColors.completed
+
+// Booking status
+AppHelpers.bookingStatusColor('HOLD')  // → AppColors.hold
+
+// Price
+AppHelpers.formatPrice(1500000)        // → '1.5tr'
+AppHelpers.formatPriceTotal(500000, 3) // → '1.5tr'
+
+// Date
+AppHelpers.vietnameseDayOfWeek(1)      // → 'Thứ 2'
+```
+
+Khi thêm logic mới dùng ở >= 2 nơi: thêm vào `AppHelpers`, KHÔNG copy-paste.
+
+---
+
+## Controllers — State Management (Riverpod)
+
+Controllers đặt trong `features/<feature>/controllers/`. Dùng Riverpod providers.
+
+### Provider types
+
+| Type | Khi nào dùng |
+|---|---|
+| `Provider` | Giá trị sync không đổi (repository instance) |
+| `FutureProvider.family` | Fetch data từ API (list, detail) |
+| `StateNotifierProvider` | State phức tạp + methods (actions: create, update, delete) |
+
+### Pattern chuẩn cho Controller
+
+```dart
+// Repository provider
+final roomRepositoryProvider = Provider<RoomRepository>((ref) => RoomRepository());
+
+// List provider (FutureProvider.family cho filter)
+final roomListProvider = FutureProvider.family<List<RoomModel>, String?>((ref, homestayId) async {
+  final repo = ref.read(roomRepositoryProvider);
+  final result = await repo.getRooms(homestayId: homestayId);
+  if (result.success) return result.data!;
+  throw Exception(result.message);
+});
+
+// Actions notifier (StateNotifier cho mutations)
+class BookingActionsNotifier extends StateNotifier<AsyncValue<void>> {
+  BookingActionsNotifier(this._repo, this._ref) : super(const AsyncValue.data(null));
+
+  Future<bool> hold(Map<String, dynamic> data) async {
+    state = const AsyncValue.loading();
+    final result = await _repo.holdRoom(data);
+    if (result.success) {
+      _ref.invalidate(bookingListProvider(null)); // ← Invalidate để UI re-fetch
+      state = const AsyncValue.data(null);
+      return true;
+    }
+    state = AsyncValue.error(result.message, StackTrace.current);
+    return false;
+  }
+}
+```
+
+### ref rules
+
+- `ref.watch` — trong `build()`, reactive
+- `ref.read` — trong event handlers/callbacks, KHÔNG trong `build()`
+- `ref.listen` — side effects (navigation, snackbar)
+- Sau mutation: `ref.invalidate(provider)` để re-fetch
+
+---
+
+## Views — UI Layer
+
+Views đặt trong `features/<feature>/views/`. Chứa **minimal logic** — chỉ UI.
 
 ### Widget pattern
 
 ```dart
-// ✅ Dùng ConsumerWidget thay vì StatelessWidget khi cần provider
 class RoomListScreen extends ConsumerWidget {
   const RoomListScreen({super.key});
 
@@ -170,25 +276,34 @@ class RoomListScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final roomsAsync = ref.watch(roomListProvider(null));
     return roomsAsync.when(
-      data: (rooms) => ...,
-      loading: () => const LoadingWidget(),
-      error: (e, _) => Text('Lỗi: $e'),
+      data: (rooms) => ListView(...),
+      loading: () => SkeletonList(skeleton: const RoomCardSkeleton()),
+      error: (e, _) => ErrorStateWidget(
+        message: e.toString().replaceAll('Exception: ', ''),
+        onRetry: () => ref.invalidate(roomListProvider),
+      ),
     );
   }
 }
 ```
 
-- `ProviderScope` phải wrap toàn bộ app ở `runApp` (đã có)
-- Provider variables phải là `final` và khai báo ở top-level (global scope)
-- Chạy `dart run build_runner build --delete-conflicting-outputs` sau khi thêm `@riverpod`
-- Luôn import file `.g.dart` tương ứng
+### UI Conventions
+
+- `AppScaffold` thay vì `Scaffold` trực tiếp (có AppBar, BottomNav, theme toggle)
+- `LoadingWidget` cho loading spinner
+- `SkeletonList` + `*CardSkeleton` cho shimmer loading
+- `EmptyStateWidget` cho empty state
+- `ErrorStateWidget` cho error + retry
+- `AppSnackBar.success/error/info(context, message)` cho notifications
+- `CachedNetworkImage` cho tất cả image từ URL
+- Text tiếng Việt trực tiếp (không dùng i18n key)
+- Theme colors/styles lấy từ `AppColors` — **KHÔNG hardcode**
 
 ---
 
 ## Repositories — Data Layer
 
 ```dart
-// Pattern chuẩn cho mọi repository
 class RoomRepository {
   final Dio _dio = ApiClient.instance;
 
@@ -208,8 +323,8 @@ class RoomRepository {
 }
 ```
 
-- Repository chỉ gọi API và parse data — không chứa business logic
-- Luôn return `ApiResponse<T>` — không throw exception từ repository
+- Repository chỉ gọi API và parse data — **không chứa business logic**
+- Luôn return `ApiResponse<T>` — **không throw exception**
 - Dùng `ApiClient.instance` (Dio singleton đã có auth interceptor)
 
 ---
@@ -217,7 +332,6 @@ class RoomRepository {
 ## Models
 
 ```dart
-// ✅ Pattern chuẩn — json_serializable + equatable
 @JsonSerializable()
 class RoomModel extends Equatable {
   final String id;
@@ -226,9 +340,7 @@ class RoomModel extends Equatable {
 
   const RoomModel({required this.id, required this.name, required this.price});
 
-  factory RoomModel.fromJson(Map<String, dynamic> json) =>
-      _$RoomModelFromJson(json);
-
+  factory RoomModel.fromJson(Map<String, dynamic> json) => _$RoomModelFromJson(json);
   Map<String, dynamic> toJson() => _$RoomModelToJson(this);
 
   @override
@@ -236,111 +348,96 @@ class RoomModel extends Equatable {
 }
 ```
 
-- Luôn dùng `@JsonSerializable()` + generate `.g.dart`
-- Extend `Equatable` và implement `props`
-- Fields là `final`; dùng `const` constructor
-- Dùng `@JsonKey(name: 'snake_case')` nếu API trả về snake_case
+- `@JsonSerializable()` + generate `.g.dart`
+- Extend `Equatable` + implement `props`
+- Fields `final`; `const` constructor
+- `@JsonKey(name: 'snake_case')` nếu API trả snake_case
 
 ---
 
 ## Navigation — GoRouter
 
 ```dart
-// ✅ Navigate bằng context.go / context.push
-context.go('/rooms');
-context.push('/rooms/$id');
+context.go('/rooms');           // Replace stack (main navigation)
+context.push('/rooms/$id');     // Push (overlay/detail)
 context.push('/rooms/$id/edit');
-
-// ✅ Pass params qua pathParameters hoặc queryParameters
-GoRoute(
-  path: ':id',
-  builder: (_, state) => RoomDetailScreen(
-    roomId: state.pathParameters['id']!,
-  ),
-),
+context.pop();                  // Go back
 ```
 
-- Route paths dùng lowercase hyphen: `/admin/users`, `/rooms/:id/edit`
-- `context.go` cho navigation chính (replace stack), `context.push` cho overlay
-- Route redirect logic đặt trong `routerProvider` (đã có trong `app_router.dart`)
+- Route paths: lowercase, `/admin/users`, `/rooms/:id/edit`
+- Auth redirect logic trong `app_router.dart` — tự redirect `/login` ↔ `/dashboard`
 
 ---
 
 ## API Integration
 
-### Base URL & Endpoints
+### Endpoints
+
+Tất cả endpoints khai báo trong `lib/core/constants/api_constants.dart`:
 
 ```dart
-// Tất cả endpoints khai báo trong ApiConstants
 class ApiConstants {
-  static const String baseUrl = 'http://103.183.118.148/api';
+  static const String baseUrl = 'http://103.183.118.148:3000';
   static const String login = '/auth/login';
+  static const String googleLogin = '/auth/google';
   // ... thêm endpoint mới tại đây
 }
 ```
 
 ### Response format
 
-API trả về format chuẩn:
 ```json
-{
-  "success": true,
-  "data": { ... },
-  "message": "..."
-}
+{ "success": true, "data": { ... }, "message": "..." }
 ```
 
-Khi parse: luôn đọc `response.data['data']` cho data, `response.data['message']` cho message.
+Parse: `response.data['data']` cho data, `response.data['message']` cho message.
 
 ### Auth
 
-- Token tự động gắn vào header bởi `_AuthInterceptor` trong `ApiClient`
-- Auto-refresh token khi nhận 401 — đã xử lý trong interceptor
-- Lưu/đọc token qua `SecureStorage` (không dùng SharedPreferences cho token)
+- Token tự động gắn header bởi `_AuthInterceptor` trong `ApiClient`
+- Auto-refresh token khi 401
+- Login hỗ trợ: phone/password + Google Sign-In
+- Token lưu qua `SecureStorage` (KHÔNG dùng SharedPreferences cho token)
 
 ---
 
-## UI / Widget Conventions
+## Google Sign-In
 
-- Dùng `AppScaffold` thay vì `Scaffold` trực tiếp (wrapper chung)
-- Dùng `LoadingWidget` cho loading state thay vì tự viết `CircularProgressIndicator`
-- Dùng `CachedNetworkImage` cho tất cả image từ URL
-- Text tiếng Việt trực tiếp trong code (không dùng i18n key)
-- Theme colors/styles lấy từ `AppTheme` — không hardcode màu
+Package: `google_sign_in: ^6.2.2`
+
+- Flow: `GoogleSignIn.signIn()` → lấy `idToken` → gửi lên backend `/auth/google` → nhận tokens + user
+- Cấu hình cần thiết:
+  - **Android**: `android/app/google-services.json` + Firebase Console
+  - **iOS**: `GoogleService-Info.plist` + URL scheme trong `Info.plist`
 
 ---
 
-## Linting
-
-Dự án dùng `flutter_lints` + `riverpod_lint`. Trước khi commit:
+## Linting & Code Generation
 
 ```bash
+# Analyze
 flutter analyze
+
+# Format
 dart format .
-```
 
-Không suppress lint warning trừ khi có lý do rõ ràng và comment giải thích.
-
----
-
-## Code Generation
-
-Sau khi thêm/sửa model hoặc provider có annotation:
-
-```bash
+# Code gen (sau khi thêm/sửa model hoặc @riverpod annotation)
 dart run build_runner build --delete-conflicting-outputs
 ```
 
-Các file `.g.dart` được generate — không sửa tay.
+Không suppress lint warning trừ khi có lý do rõ ràng.
 
 ---
 
 ## Quy tắc quan trọng
 
-1. **Không hardcode Base URL** — luôn dùng `ApiConstants.baseUrl`
-2. **Không dùng `setState` trong ConsumerWidget** — dùng Riverpod state
-3. **Không throw exception từ Repository** — dùng `ApiResponse.error()`
-4. **Không import feature A từ feature B** — dùng `shared/`
-5. **Không tự tạo Dio instance** — luôn dùng `ApiClient.instance`
-6. **Đặt const ở mọi nơi có thể** — widget, constructor, giá trị cố định
-7. **Async/await** thay vì `.then()` chains
+1. **KHÔNG hardcode Color()** — luôn dùng `AppColors.*`
+2. **KHÔNG duplicate logic** — dùng `AppHelpers` cho hàm dùng chung
+3. **KHÔNG hardcode Base URL** — luôn dùng `ApiConstants.baseUrl`
+4. **KHÔNG dùng `setState` trong ConsumerWidget** — dùng Riverpod state
+5. **KHÔNG throw exception từ Repository** — dùng `ApiResponse.error()`
+6. **KHÔNG import chéo giữa features** — dùng `shared/` hoặc `core/`
+7. **KHÔNG tự tạo Dio instance** — luôn dùng `ApiClient.instance`
+8. **Đặt const ở mọi nơi có thể** — widget, constructor, giá trị cố định
+9. **Async/await** thay vì `.then()` chains
+10. **Thêm feature mới**: tạo folder trong `features/<name>/` với `controllers/`, `views/`, `widgets/` (nếu cần)
