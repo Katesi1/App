@@ -69,19 +69,19 @@ class AppHelpers {
   static String vietnameseDayOfWeek(int weekday) {
     switch (weekday) {
       case 1:
-        return 'Thứ 2';
+        return 'Thứ Hai';
       case 2:
-        return 'Thứ 3';
+        return 'Thứ Ba';
       case 3:
-        return 'Thứ 4';
+        return 'Thứ Tư';
       case 4:
-        return 'Thứ 5';
+        return 'Thứ Năm';
       case 5:
-        return 'Thứ 6';
+        return 'Thứ Sáu';
       case 6:
-        return 'Thứ 7';
+        return 'Thứ Bảy';
       case 7:
-        return 'Chủ nhật';
+        return 'Chủ Nhật';
       default:
         return '';
     }

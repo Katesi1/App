@@ -121,17 +121,19 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
                   colors: [AppColors.oceanDeep, AppColors.ocean],
                 ),
               ),
+              clipBehavior: Clip.none,
               child: Stack(
+                clipBehavior: Clip.none,
                 children: [
                   Positioned(
-                    right: -50,
-                    bottom: -60,
+                    right: -70,
+                    bottom: -100,
                     child: Container(
-                      width: 200,
-                      height: 200,
+                      width: 180,
+                      height: 180,
                       decoration: BoxDecoration(
                         shape: BoxShape.circle,
-                        color: AppColors.teal.withValues(alpha: 0.1),
+                        color: AppColors.teal.withValues(alpha: 0.08),
                       ),
                     ),
                   ),

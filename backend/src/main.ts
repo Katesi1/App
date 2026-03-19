@@ -12,7 +12,7 @@ async function bootstrap() {
   expressApp.get('/', (_req: any, res: any) => res.redirect('/index.html'));
 
   // Global prefix
-  app.setGlobalPrefix('api/v1');
+  app.setGlobalPrefix('api');
 
   // CORS
   app.enableCors({

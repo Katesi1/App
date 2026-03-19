@@ -151,6 +151,44 @@ lib/
 
 ---
 
+## Design System — Halong24h
+
+Tokens, colors, components — Flutter ready. Tất cả giá trị dưới đây là source of truth cho UI.
+
+### Brand Colors
+
+| Tên | Hex | AppColors |
+|---|---|---|
+| Ocean Deep | `#062D42` | `AppColors.oceanDeep` |
+| Ocean Primary | `#0A4F6E` | `AppColors.ocean` |
+| Ocean Mid | `#0D6E96` | `AppColors.oceanMid` |
+| Teal Accent | `#00B4D8` | `AppColors.teal` |
+| Gold Premium | `#C9A84C` | `AppColors.gold` |
+
+### Status Badges
+
+| Trạng thái | Hex | Mô tả | AppColors |
+|---|---|---|---|
+| Trống | `#22C55E` | Phòng sẵn sàng | `AppColors.emerald` |
+| Đã đặt | `#F59E0B` | Có booking tới | `AppColors.amber` |
+| Đang ở | `#0D6E96` | Khách đang ở | `AppColors.oceanMid` |
+| Bảo trì | `#94A3B8` | Đang bảo trì | `AppColors.slate` |
+| Đã huỷ | `#EF4444` | Booking huỷ | `AppColors.coral` |
+| Xác nhận | `#22C55E` | Booking OK | `AppColors.emerald` |
+
+### Typography (Be Vietnam Pro)
+
+| Style | Size | Weight | Dùng cho |
+|---|---|---|---|
+| H1 | 24px | Bold 700 | Tiêu đề lớn |
+| H2 | 18px | Bold 700 | Tiêu đề |
+| H3 | 15px | SemiBold 600 | Heading card |
+| Body | 14px | Regular 400 | Text thông thường |
+| Caption | 12px | Regular 400 | Label phụ |
+| Section Label | 11px | SemiBold 600 + Uppercase | Nhãn section |
+
+---
+
 ## Colors — AppColors (QUAN TRỌNG)
 
 **KHÔNG BAO GIỜ hardcode `Color(0xFF...)` trong code.** Tất cả màu phải khai báo trong `lib/core/theme/app_colors.dart`.
