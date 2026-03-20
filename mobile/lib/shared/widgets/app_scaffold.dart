@@ -207,7 +207,7 @@ class _BottomNavState extends ConsumerState<_BottomNav> {
       icon: Icons.calendar_month_outlined,
       activeIcon: Icons.calendar_month_rounded,
       label: 'Lịch',
-      route: '/bookings',
+      route: '/calendar',
     ),
     _NavItem(
       icon: Icons.bar_chart_outlined,

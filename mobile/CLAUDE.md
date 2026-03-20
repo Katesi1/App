@@ -337,6 +337,32 @@ class RoomListScreen extends ConsumerWidget {
 - Text tiếng Việt trực tiếp (không dùng i18n key)
 - Theme colors/styles lấy từ `AppColors` — **KHÔNG hardcode**
 
+### Shared Widgets — `lib/shared/widgets/` (QUAN TRỌNG)
+
+**Widget dùng chung PHẢI đặt trong `shared/widgets/`**, KHÔNG viết private widget (`_WidgetName`) trong file view.
+
+Nếu widget có khả năng dùng lại ở >= 2 màn hình → tách ra file riêng trong `shared/widgets/`.
+
+| Widget | File | Mô tả |
+|---|---|---|
+| `AppScaffold` | `app_scaffold.dart` | Scaffold chung (AppBar, BottomNav, theme) |
+| `LoadingWidget`, `SkeletonList`, `EmptyStateWidget`, `ErrorStateWidget`, `AppSnackBar` | `loading_widget.dart` | Loading, skeleton, empty, error, snackbar |
+| `SectionLabel` | `section_label.dart` | Nhãn section (11px, uppercase, muted) — dùng trong bottom sheet, form |
+| `FilterChipTile` | `filter_chip_tile.dart` | Chip filter có icon + check (dùng trong filter sheet) |
+| `DatePickerTile` | `date_picker_tile.dart` | Ô chọn ngày (label + value + calendar icon) |
+| `GuestCounter` | `guest_counter.dart` | Bộ đếm +/- (người lớn, trẻ em, số lượng) |
+
+```dart
+// ✅ ĐÚNG — Widget dùng chung đặt trong shared/widgets/
+import '../../../shared/widgets/section_label.dart';
+SectionLabel(label: 'VIEW')
+
+// ❌ SAI — Widget dùng chung viết private trong file view
+class _SectionLabel extends StatelessWidget { ... }
+```
+
+Khi tạo widget mới dùng chung: tạo file trong `shared/widgets/`, class **public** (không prefix `_`), có `super.key`.
+
 ---
 
 ## Repositories — Data Layer
@@ -479,3 +505,4 @@ Không suppress lint warning trừ khi có lý do rõ ràng.
 8. **Đặt const ở mọi nơi có thể** — widget, constructor, giá trị cố định
 9. **Async/await** thay vì `.then()` chains
 10. **Thêm feature mới**: tạo folder trong `features/<name>/` với `controllers/`, `views/`, `widgets/` (nếu cần)
+11. **KHÔNG viết private widget dùng chung trong file view** — tách ra `shared/widgets/` thành class public, để các màn khác có thể import và dùng lại

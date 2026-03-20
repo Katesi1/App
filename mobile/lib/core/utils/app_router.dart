@@ -6,6 +6,7 @@ import '../../features/admin/views/user_list_screen.dart';
 import '../../features/auth/controllers/auth_controller.dart';
 import '../../features/auth/views/forgot_password_screen.dart';
 import '../../features/auth/views/login_screen.dart';
+import '../../features/bookings/views/booking_calendar_screen.dart';
 import '../../features/bookings/views/booking_list_screen.dart';
 import '../../features/bookings/views/hold_room_screen.dart';
 import '../../features/dashboard/views/dashboard_screen.dart';
@@ -134,6 +135,15 @@ final routerProvider = Provider<GoRouter>((ref) {
             ),
           ),
         ],
+      ),
+
+      // ── Calendar (bottom nav "Lịch") ─────────────────────────────
+      GoRoute(
+        path: '/calendar',
+        pageBuilder: (_, state) => horizontalPage(
+          key: state.pageKey,
+          child: const BookingCalendarScreen(),
+        ),
       ),
 
       // ── Bookings ───────────────────────────────────────────────────
