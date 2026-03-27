@@ -7,7 +7,6 @@ import '../../../core/constants/app_constants.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../data/models/booking_model.dart';
-import '../../../data/repositories/booking_repository.dart';
 import '../../auth/controllers/auth_controller.dart';
 import '../../../shared/widgets/app_scaffold.dart';
 import '../../../shared/widgets/loading_widget.dart';
@@ -45,7 +44,7 @@ class _BookingListScreenState extends ConsumerState<BookingListScreen> {
       actions: [
         IconButton(
           icon: const Icon(Icons.refresh_rounded),
-          onPressed: () => ref.invalidate(bookingListProvider),
+          onPressed: () => ref.invalidate(bookingListProvider(null)),
         ),
       ],
       body: Column(
@@ -87,7 +86,7 @@ class _BookingListScreenState extends ConsumerState<BookingListScreen> {
                   SkeletonList(skeleton: const BookingCardSkeleton(), count: 5),
               error: (e, _) => ErrorStateWidget(
                 message: e.toString().replaceAll('Exception: ', ''),
-                onRetry: () => ref.invalidate(bookingListProvider),
+                onRetry: () => ref.invalidate(bookingListProvider(null)),
               ),
               data: (bookings) {
                 final filtered = _filterStatus == null
@@ -104,7 +103,7 @@ class _BookingListScreenState extends ConsumerState<BookingListScreen> {
                 }
 
                 return RefreshIndicator(
-                  onRefresh: () async => ref.invalidate(bookingListProvider),
+                  onRefresh: () async => ref.invalidate(bookingListProvider(null)),
                   child: ListView.separated(
                     padding: const EdgeInsets.fromLTRB(AppSpacing.md,
                         AppSpacing.sm, AppSpacing.md, AppSpacing.xxl),
@@ -115,7 +114,7 @@ class _BookingListScreenState extends ConsumerState<BookingListScreen> {
                       booking: filtered[i],
                       index: i,
                       canManage: user?.canEdit ?? false,
-                      onAction: () => ref.invalidate(bookingListProvider),
+                      onAction: () => ref.invalidate(bookingListProvider(null)),
                     ),
                   ),
                 );
@@ -177,14 +176,16 @@ class _BookingCardState extends ConsumerState<_BookingCard> {
 
   Future<void> _confirm() async {
     setState(() => _actionLoading = true);
-    final result = await BookingRepository().confirmBooking(widget.booking.id);
+    final success = await ref
+        .read(bookingActionsProvider.notifier)
+        .confirm(widget.booking.id);
     if (!mounted) return;
     setState(() => _actionLoading = false);
-    if (result.success) {
+    if (success) {
       AppSnackBar.success(context, 'Xác nhận booking thành công');
       widget.onAction();
     } else {
-      AppSnackBar.error(context, result.message);
+      AppSnackBar.error(context, 'Không thể xác nhận, thử lại sau');
     }
   }
 
@@ -212,14 +213,16 @@ class _BookingCardState extends ConsumerState<_BookingCard> {
     );
     if (ok != true) return;
     setState(() => _actionLoading = true);
-    final result = await BookingRepository().cancelBooking(widget.booking.id);
+    final success = await ref
+        .read(bookingActionsProvider.notifier)
+        .cancel(widget.booking.id);
     if (!mounted) return;
     setState(() => _actionLoading = false);
-    if (result.success) {
+    if (success) {
       AppSnackBar.success(context, 'Đã huỷ booking');
       widget.onAction();
     } else {
-      AppSnackBar.error(context, result.message);
+      AppSnackBar.error(context, 'Không thể huỷ, thử lại sau');
     }
   }
 

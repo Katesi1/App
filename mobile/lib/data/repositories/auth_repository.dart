@@ -14,6 +14,39 @@ class AuthRepository {
         '1097115636577-r04cfgplsrd4ql3dtr1d6qcrveb4lidh.apps.googleusercontent.com',
   );
 
+  Future<ApiResponse<UserModel>> register({
+    required String name,
+    required String phone,
+    required String password,
+    required String role,
+    String? email,
+  }) async {
+    try {
+      final response = await _dio.post(
+        ApiConstants.register,
+        data: {
+          'name': name,
+          'phone': phone,
+          'password': password,
+          'role': role,
+          if (email != null && email.isNotEmpty) 'email': email,
+        },
+      );
+      final data = response.data['data'];
+
+      await SecureStorage.saveAccessToken(data['accessToken']);
+      await SecureStorage.saveRefreshToken(data['refreshToken']);
+
+      final user = UserModel.fromJson(data['user']);
+      await SecureStorage.saveUserData(user.toJsonString());
+
+      return ApiResponse(
+          success: true, data: user, message: 'Đăng ký thành công');
+    } on DioException catch (e) {
+      return ApiResponse(success: false, message: parseDioError(e));
+    }
+  }
+
   Future<ApiResponse<UserModel>> login(String phone, String password) async {
     try {
       final response = await _dio.post(
@@ -36,7 +69,8 @@ class AuthRepository {
     }
   }
 
-  Future<ApiResponse<UserModel>> loginWithGoogle() async {
+  /// [role] chỉ cần khi user mới (đăng ký qua Google lần đầu)
+  Future<ApiResponse<UserModel>> loginWithGoogle({String? role}) async {
     try {
       final googleUser = await _googleSignIn.signIn();
       if (googleUser == null) {
@@ -52,10 +86,13 @@ class AuthRepository {
             success: false, message: 'Không lấy được token từ Google');
       }
 
-      // Gửi idToken lên backend để xác thực
+      // Gửi idToken lên backend, kèm role nếu có (cho user mới)
       final response = await _dio.post(
         ApiConstants.googleLogin,
-        data: {'idToken': idToken},
+        data: {
+          'idToken': idToken,
+          if (role != null) 'role': role,
+        },
       );
       final data = response.data['data'];
 

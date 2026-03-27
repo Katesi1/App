@@ -1,25 +1,29 @@
-# CLAUDE.md — Homestay Management App
+# CLAUDE.md — Project Operating System
 
-Tài liệu này định nghĩa conventions và standards để AI (Claude Code) và dev luôn code nhất quán cho dự án này.
+Tài liệu này là **hệ điều hành dự án** — định nghĩa conventions, execution flow, và quality gates để AI (Claude Code) và dev luôn code nhất quán, đúng trình tự.
 
 ---
 
-## Project Overview
+## 1. PROJECT CONTEXT
 
 - **App**: Homestay Management Mobile App (Halong24h)
+- **Mục tiêu**: Quản lý homestay, phòng, booking cho chủ homestay + đặt phòng cho khách hàng
 - **Architecture**: MVC (Model - View - Controller) với Riverpod
 - **Platform**: Flutter (iOS + Android)
+- **Language**: Dart 3.5+
 - **Backend API**: `http://103.183.118.148:3000`
 - **Swagger docs**: `http://103.183.118.148/index.html`
 
----
+### Phạm vi
 
-## Tech Stack
+- ✅ **Được làm**: CRUD rooms/bookings/homestays/users, auth (phone + Google), customer booking flow, dashboard KPI, role-based UI
+- ❌ **KHÔNG được làm**: Tự ý thêm dependency chưa hỏi, thay đổi architecture (MVC → MVVM, BLoC...), bỏ Riverpod sang provider khác, hardcode config/secret
+
+### Tech Stack
 
 | Thành phần | Package |
 |---|---|
 | UI Framework | Flutter SDK + Material Design 3 |
-| Language | Dart 3.5+ |
 | State Management | `flutter_riverpod ^2.6.1` |
 | Navigation | `go_router ^14` |
 | HTTP Client | `dio ^5` |
@@ -35,7 +39,28 @@ Tài liệu này định nghĩa conventions và standards để AI (Claude Code)
 
 ---
 
-## Project Structure (MVC)
+## 2. CODING RULES
+
+### Dart / Flutter Convention
+
+- **Naming**: `UpperCamelCase` cho class/type, `lowerCamelCase` cho biến/hàm, `lowercase_with_underscores` cho file
+- **Files**: Mỗi file một class/widget chính; tên file = tên class (snake_case)
+- **Imports**: Relative imports; nhóm theo: dart → flutter → packages → local
+- **Formatting**: `dart format`; line limit 80 ký tự
+- **Control flow**: Luôn dùng curly braces `{}`
+- **Variables**: Ưu tiên `final` > `var`; dùng `const` khi có thể
+- **Types**: Annotate return type và parameter khi type không hiển nhiên
+- **Async/await** thay vì `.then()` chains
+
+### Dart 3 Features (ưu tiên dùng)
+
+- **Records** cho multiple return values
+- **Patterns** cho destructure
+- **Switch expressions** cho control flow ngắn gọn
+- **Sealed classes** + `switch` cho exhaustiveness
+- **if-case** + `when` guard clause
+
+### Folder Structure (MVC)
 
 ```
 lib/
@@ -59,24 +84,34 @@ lib/
 
   data/                          # MODEL layer
     models/
-      user_model.dart            # UserModel (role helpers: isAdmin, isOwner, canEdit)
+      user_model.dart            # UserModel (role helpers: isAdmin, isStaff, isCustomer, isManagement, canEdit)
       room_model.dart            # RoomModel, RoomImageModel, RoomPriceModel, HomestaySimpleModel
       homestay_model.dart        # HomestayModel
       booking_model.dart         # BookingModel, CalendarBooking
     repositories/
-      auth_repository.dart       # Login (phone/password + Google), logout, token management
+      auth_repository.dart       # Login, register, Google sign-in, logout, token management
       user_repository.dart       # CRUD users
       room_repository.dart       # CRUD rooms, images, prices
       homestay_repository.dart   # CRUD homestays
-      booking_repository.dart    # CRUD bookings, calendar, hold/confirm/cancel
+      booking_repository.dart    # CRUD bookings, calendar, hold/confirm/cancel (staff)
+      customer_repository.dart   # Public rooms, customer-hold, my-bookings, customer-cancel
 
   features/                      # Feature modules (MVC per feature)
     auth/
       controllers/
-        auth_controller.dart     # AuthNotifier, authProvider, currentUserProvider
+        auth_controller.dart     # AuthNotifier, authProvider, currentUserProvider, isCustomerModeProvider
       views/
         login_screen.dart        # Login form + Google Sign-In
+        register_screen.dart     # Đăng ký (chọn role STAFF/CUSTOMER + form)
         splash_screen.dart       # Splash animation + auto-redirect
+    customer/
+      controllers/
+        customer_controller.dart # publicRoomsProvider, myBookingsProvider, customerBookingProvider
+      views/
+        customer_home_screen.dart  # Trang chủ khách (welcome, quick actions, phòng nổi bật)
+        search_room_screen.dart    # Tìm phòng (filter ngày, khách, giá)
+        my_bookings_screen.dart    # Booking của tôi (tabs: tất cả/hold/confirmed/cancelled)
+        account_screen.dart        # Tài khoản (profile, toggle quản lý, dark mode, logout)
     dashboard/
       views/
         dashboard_screen.dart    # KPI cards, status pills, quick actions, today's bookings
@@ -114,8 +149,9 @@ lib/
   shared/                        # Code dùng chung giữa các features
     providers/
       theme_provider.dart        # ThemeNotifier (light/dark, persist SharedPreferences)
+      view_mode_provider.dart    # ViewModeNotifier (management/customer, persist SharedPreferences)
     widgets/
-      app_scaffold.dart          # AppScaffold (AppBar + BottomNav + theme toggle + user menu)
+      app_scaffold.dart          # AppScaffold (AppBar + BottomNav dynamic theo role/viewMode + toggle + user menu)
       loading_widget.dart        # LoadingWidget, Skeletons, EmptyStateWidget, ErrorStateWidget, AppSnackBar
 
   main.dart                      # ProviderScope → MaterialApp.router
@@ -130,30 +166,185 @@ lib/
 
 ---
 
-## Dart / Flutter Code Style
+## 3. SKILLS AVAILABLE
 
-- **Naming**: `UpperCamelCase` cho class/type, `lowerCamelCase` cho biến/hàm, `lowercase_with_underscores` cho file
-- **Files**: Mỗi file một class/widget chính; tên file = tên class (snake_case)
-- **Imports**: Relative imports; nhóm theo: dart → flutter → packages → local
-- **Formatting**: `dart format`; line limit 80 ký tự
-- **Control flow**: Luôn dùng curly braces `{}`
-- **Variables**: Ưu tiên `final` > `var`; dùng `const` khi có thể
-- **Types**: Annotate return type và parameter khi type không hiển nhiên
-- **Async/await** thay vì `.then()` chains
+Các skill template giúp dev/AI thực hiện đúng quy trình cho từng loại task.
 
-### Dart 3 Features
+| Skill | File | Mô tả |
+|-------|------|-------|
+| **scaffolding** | `skills/scaffolding/SKILL.md` | Tạo cấu trúc module/feature mới đúng MVC pattern |
+| **verification** | `skills/verification/SKILL.md` | Kiểm tra code trước khi báo done (4C checklist) |
+| **review** | `skills/review/SKILL.md` | Phản biện logic, quality, performance |
 
-- **Records** cho multiple return values
-- **Patterns** cho destructure
-- **Switch expressions** cho control flow ngắn gọn
-- **Sealed classes** + `switch` cho exhaustiveness
-- **if-case** + `when` guard clause
+### Khi nào dùng skill nào
+
+| Bạn đang làm gì? | Dùng skill |
+|-------------------|------------|
+| Tạo feature mới / thêm module | `scaffolding` → `verification` |
+| Sửa bug / thêm logic | `verification` |
+| Review PR / check chất lượng | `review` |
+| Refactor code | `review` → `verification` |
 
 ---
 
-## Design System — Halong24h
+## 4. EXECUTION FLOW (mọi task đều theo)
 
-Tokens, colors, components — Flutter ready. Tất cả giá trị dưới đây là source of truth cho UI.
+```
+SCOPE → SKILL → EXECUTE → VERIFY → EVOLVE
+```
+
+### Step 1: SCOPE — Xác định rõ yêu cầu
+
+- Task cần làm gì? Output mong muốn là gì?
+- Ảnh hưởng đến file/module nào?
+- Có cần tạo mới hay sửa existing?
+- Check `lessons/gotchas.md` xem có edge case đã gặp không
+
+### Step 2: SKILL — Chọn skill phù hợp
+
+- Đọc skill tương ứng trong `skills/<skill>/SKILL.md`
+- Follow template và checklist trong skill
+- Nếu task phức tạp, kết hợp nhiều skill (VD: scaffolding → verification)
+
+### Step 3: EXECUTE — Viết code theo convention
+
+- Follow coding rules ở Section 2
+- Dùng đúng patterns (xem Section dưới: Models, Repositories, Controllers, Views)
+- Check `AppColors`, `AppHelpers`, `shared/widgets/` trước khi viết mới
+- **KHÔNG duplicate code** — check existing trước
+
+### Step 4: VERIFY — Chạy verification checklist
+
+Bắt buộc chạy trước khi báo done. Xem chi tiết Section 5.
+
+```bash
+# Analyze
+flutter analyze
+
+# Format
+dart format .
+
+# Test
+flutter test
+
+# Code gen (nếu thêm/sửa model)
+dart run build_runner build --delete-conflicting-outputs
+```
+
+### Step 5: EVOLVE — Ghi lại bài học
+
+- Gặp edge case mới? → Ghi vào `lessons/gotchas.md`
+- Pattern mới hữu ích? → Cập nhật skill liên quan
+- Bug do convention thiếu? → Cập nhật CLAUDE.md
+
+---
+
+## 5. VERIFICATION CHECKLIST (bắt buộc trước khi done)
+
+### Correctness — Logic đúng
+
+- [ ] Logic đúng với yêu cầu không?
+- [ ] Không có bug hiển nhiên?
+- [ ] Edge case đã xử lý? (null, empty list, error state, offline)
+- [ ] API response format đúng? (`response.data['data']`)
+
+### Completeness — Đủ file, đủ layer
+
+- [ ] Đủ các file cần thiết? (model → repository → controller → view)
+- [ ] Có error handling không? (`ApiResponse.error()`, `ErrorStateWidget`)
+- [ ] Có loading state không? (`LoadingWidget`, `SkeletonList`)
+- [ ] Có empty state không? (`EmptyStateWidget`)
+- [ ] Unit test cho logic mới?
+
+### Context-fit — Đúng convention dự án
+
+- [ ] Đúng tech stack? (Riverpod, GoRouter, Dio)
+- [ ] Theo đúng folder structure MVC?
+- [ ] Dùng `AppColors` thay vì hardcode `Color()`?
+- [ ] Dùng `AppHelpers` thay vì duplicate logic?
+- [ ] Dùng `shared/widgets/` cho widget dùng chung?
+- [ ] Không import chéo giữa features?
+- [ ] `const` ở mọi nơi có thể?
+
+### Consequence — Rủi ro khi deploy
+
+- [ ] Nếu deploy thật, rủi ro lớn nhất là gì?
+- [ ] Có ảnh hưởng đến flow hiện tại không?
+- [ ] Route guard có chặn đúng role không?
+- [ ] Token/auth có bị ảnh hưởng không?
+
+---
+
+## 6. SKILL TEMPLATES
+
+### Khi tạo feature/module mới
+
+1. Đọc `skills/scaffolding/SKILL.md`
+2. Tạo folder structure: `features/<name>/controllers/`, `views/`, `widgets/`
+3. Tạo theo thứ tự: **Model → Repository → Controller → View → Route**
+4. Chạy verification checklist (Section 5)
+
+### Khi review code
+
+1. Đọc `skills/review/SKILL.md`
+2. Kiểm tra **4C**: Correctness, Completeness, Context-fit, Consequence
+3. Check performance rules (Section 10)
+4. Check anti-patterns (Section 7)
+
+### Khi có lỗi/edge case mới
+
+1. Ghi vào `lessons/gotchas.md` với format: **Vấn đề → Nguyên nhân → Giải pháp**
+2. Cập nhật skill liên quan nếu cần
+3. Thêm test case reproduce bug
+
+---
+
+## 7. ANTI-PATTERNS (không được làm)
+
+### Code Quality
+
+| # | Anti-pattern | Phải làm |
+|---|-------------|---------|
+| 1 | Hardcode `Color(0xFF...)` | Dùng `AppColors.*` |
+| 2 | Duplicate logic (copy-paste helper) | Dùng `AppHelpers` |
+| 3 | Hardcode Base URL | Dùng `ApiConstants.baseUrl` |
+| 4 | `setState` trong `ConsumerWidget` | Dùng Riverpod state |
+| 5 | Throw exception từ Repository | Dùng `ApiResponse.error()` |
+| 6 | Import chéo giữa features | Dùng `shared/` hoặc `core/` |
+| 7 | Tự tạo `Dio()` instance | Dùng `ApiClient.instance` |
+| 8 | Private widget dùng chung trong view | Tách ra `shared/widgets/` |
+| 9 | `ref.read(derivedProvider)` trong GoRouter redirect | Tính trực tiếp từ `authState.user` + `ref.read(viewModeProvider)` |
+| 10 | Tạo `Repository()` trực tiếp | Dùng provider |
+| 11 | Function > 50 lines không lý do | Tách nhỏ |
+| 12 | Hardcode config/secret | Dùng constants/env |
+| 13 | Bỏ qua error handling | Luôn handle error state |
+| 14 | Tạo file mới khi chưa check existing | Kiểm tra `shared/`, `core/` trước |
+| 15 | Không `const` khi có thể | Luôn `const` widget, constructor, giá trị cố định |
+
+### Performance
+
+| # | Anti-pattern | Severity |
+|---|-------------|----------|
+| 1 | `CachedNetworkImage` không có `memCacheWidth` | **HIGH** |
+| 2 | `Column` + `map` thay vì `ListView.builder` | **HIGH** |
+| 3 | `invalidate()` không truyền param cho `.family` | **HIGH** |
+| 4 | TabBarView + ListView không có `AutomaticKeepAliveClientMixin` | **HIGH** |
+| 5 | Search input không debounce | **MEDIUM** |
+| 6 | Animation > 2 effects per item, stagger > 5 items | **MEDIUM** |
+| 7 | Không dispose controllers trong `dispose()` | **MEDIUM** |
+| 8 | `ref.watch` trong callback / `ref.read` trong `build()` | **MEDIUM** |
+| 9 | `invalidate()` trong `build()` (infinite loop) | **HIGH** |
+| 10 | Không check `mounted` trước setState trong async | **LOW** |
+
+---
+
+## 8. LESSONS LEARNED
+
+→ Xem `lessons/gotchas.md` cho danh sách edge cases và bài học từ quá trình phát triển.
+
+---
+
+## 9. DESIGN SYSTEM — Halong24h
 
 ### Brand Colors
 
@@ -187,9 +378,7 @@ Tokens, colors, components — Flutter ready. Tất cả giá trị dưới đâ
 | Caption | 12px | Regular 400 | Label phụ |
 | Section Label | 11px | SemiBold 600 + Uppercase | Nhãn section |
 
----
-
-## Colors — AppColors (QUAN TRỌNG)
+### Colors — AppColors (QUAN TRỌNG)
 
 **KHÔNG BAO GIỜ hardcode `Color(0xFF...)` trong code.** Tất cả màu phải khai báo trong `lib/core/theme/app_colors.dart`.
 
@@ -203,7 +392,7 @@ color: Color(0xFF92400E)
 color: const Color(0xFF1976D2)
 ```
 
-### Danh sách màu có sẵn
+#### Danh sách màu có sẵn
 
 | Nhóm | Tên | Mô tả |
 |---|---|---|
@@ -219,9 +408,7 @@ color: const Color(0xFF1976D2)
 
 Khi cần màu mới: thêm vào `AppColors` trước, rồi dùng ở UI.
 
----
-
-## Shared Helpers — AppHelpers (QUAN TRỌNG)
+### Shared Helpers — AppHelpers (QUAN TRỌNG)
 
 **KHÔNG duplicate logic.** Dùng `AppHelpers` trong `lib/core/utils/helpers.dart`:
 
@@ -230,7 +417,10 @@ import '../../core/utils/helpers.dart';
 
 // Role
 AppHelpers.roleLabel('ADMIN')     // → 'Admin'
-AppHelpers.roleColor('OWNER')     // → AppColors.completed
+AppHelpers.roleLabel('STAFF')     // → 'Nhân viên'
+AppHelpers.roleLabel('CUSTOMER')  // → 'Khách hàng'
+AppHelpers.roleColor('STAFF')     // → AppColors.ocean
+AppHelpers.roleColor('CUSTOMER')  // → AppColors.teal
 
 // Booking status
 AppHelpers.bookingStatusColor('HOLD')  // → AppColors.hold
@@ -240,18 +430,81 @@ AppHelpers.formatPrice(1500000)        // → '1.5tr'
 AppHelpers.formatPriceTotal(500000, 3) // → '1.5tr'
 
 // Date
-AppHelpers.vietnameseDayOfWeek(1)      // → 'Thứ 2'
+AppHelpers.vietnameseDayOfWeek(1)      // → 'Thứ Hai'
 ```
 
 Khi thêm logic mới dùng ở >= 2 nơi: thêm vào `AppHelpers`, KHÔNG copy-paste.
 
+### Shared Widgets — `lib/shared/widgets/` (QUAN TRỌNG)
+
+**Widget dùng chung PHẢI đặt trong `shared/widgets/`**, KHÔNG viết private widget (`_WidgetName`) trong file view.
+
+| Widget | File | Mô tả |
+|---|---|---|
+| `AppScaffold` | `app_scaffold.dart` | Scaffold chung (AppBar, BottomNav, theme) |
+| `LoadingWidget`, `SkeletonList`, `EmptyStateWidget`, `ErrorStateWidget`, `AppSnackBar` | `loading_widget.dart` | Loading, skeleton, empty, error, snackbar |
+| `SectionLabel` | `section_label.dart` | Nhãn section (11px, uppercase, muted) |
+| `FilterChipTile` | `filter_chip_tile.dart` | Chip filter có icon + check |
+| `DatePickerTile` | `date_picker_tile.dart` | Ô chọn ngày (label + value + calendar icon) |
+| `GuestCounter` | `guest_counter.dart` | Bộ đếm +/- (người lớn, trẻ em, số lượng) |
+
 ---
 
-## Controllers — State Management (Riverpod)
+## 10. CODE PATTERNS — Reference
 
-Controllers đặt trong `features/<feature>/controllers/`. Dùng Riverpod providers.
+### Models
 
-### Provider types
+```dart
+@JsonSerializable()
+class RoomModel extends Equatable {
+  final String id;
+  final String name;
+  final double price;
+
+  const RoomModel({required this.id, required this.name, required this.price});
+
+  factory RoomModel.fromJson(Map<String, dynamic> json) => _$RoomModelFromJson(json);
+  Map<String, dynamic> toJson() => _$RoomModelToJson(this);
+
+  @override
+  List<Object?> get props => [id, name, price];
+}
+```
+
+- `@JsonSerializable()` + generate `.g.dart`
+- Extend `Equatable` + implement `props`
+- Fields `final`; `const` constructor
+- `@JsonKey(name: 'snake_case')` nếu API trả snake_case
+
+### Repositories — Data Layer
+
+```dart
+class RoomRepository {
+  final Dio _dio = ApiClient.instance;
+
+  Future<ApiResponse<List<RoomModel>>> getRooms({String? homestayId}) async {
+    try {
+      final response = await _dio.get(ApiConstants.rooms, queryParameters: {
+        if (homestayId != null) 'homestayId': homestayId,
+      });
+      final data = (response.data['data'] as List)
+          .map((e) => RoomModel.fromJson(e))
+          .toList();
+      return ApiResponse.success(data);
+    } on DioException catch (e) {
+      return ApiResponse.error(e.response?.data['message'] ?? 'Lỗi kết nối');
+    }
+  }
+}
+```
+
+- Repository chỉ gọi API và parse data — **không chứa business logic**
+- Luôn return `ApiResponse<T>` — **không throw exception**
+- Dùng `ApiClient.instance` (Dio singleton đã có auth interceptor)
+
+### Controllers — State Management (Riverpod)
+
+#### Provider types
 
 | Type | Khi nào dùng |
 |---|---|
@@ -259,7 +512,7 @@ Controllers đặt trong `features/<feature>/controllers/`. Dùng Riverpod provi
 | `FutureProvider.family` | Fetch data từ API (list, detail) |
 | `StateNotifierProvider` | State phức tạp + methods (actions: create, update, delete) |
 
-### Pattern chuẩn cho Controller
+#### Pattern chuẩn
 
 ```dart
 // Repository provider
@@ -291,20 +544,20 @@ class BookingActionsNotifier extends StateNotifier<AsyncValue<void>> {
 }
 ```
 
-### ref rules
+#### ref rules
 
 - `ref.watch` — trong `build()`, reactive
 - `ref.read` — trong event handlers/callbacks, KHÔNG trong `build()`
 - `ref.listen` — side effects (navigation, snackbar)
 - Sau mutation: `ref.invalidate(provider)` để re-fetch
+- Dùng `select()` để giảm rebuild:
 
----
+```dart
+// ✅ Chỉ rebuild khi role thay đổi
+final isAdmin = ref.watch(currentUserProvider.select((u) => u?.isAdmin ?? false));
+```
 
-## Views — UI Layer
-
-Views đặt trong `features/<feature>/views/`. Chứa **minimal logic** — chỉ UI.
-
-### Widget pattern
+### Views — UI Layer
 
 ```dart
 class RoomListScreen extends ConsumerWidget {
@@ -325,184 +578,180 @@ class RoomListScreen extends ConsumerWidget {
 }
 ```
 
-### UI Conventions
+#### UI Conventions
 
-- `AppScaffold` thay vì `Scaffold` trực tiếp (có AppBar, BottomNav, theme toggle)
-- `LoadingWidget` cho loading spinner
-- `SkeletonList` + `*CardSkeleton` cho shimmer loading
+- `AppScaffold` thay vì `Scaffold` trực tiếp
+- `LoadingWidget` / `SkeletonList` cho loading
 - `EmptyStateWidget` cho empty state
 - `ErrorStateWidget` cho error + retry
 - `AppSnackBar.success/error/info(context, message)` cho notifications
-- `CachedNetworkImage` cho tất cả image từ URL
+- `CachedNetworkImage` cho tất cả image từ URL (luôn set `memCacheWidth`)
 - Text tiếng Việt trực tiếp (không dùng i18n key)
-- Theme colors/styles lấy từ `AppColors` — **KHÔNG hardcode**
 
-### Shared Widgets — `lib/shared/widgets/` (QUAN TRỌNG)
-
-**Widget dùng chung PHẢI đặt trong `shared/widgets/`**, KHÔNG viết private widget (`_WidgetName`) trong file view.
-
-Nếu widget có khả năng dùng lại ở >= 2 màn hình → tách ra file riêng trong `shared/widgets/`.
-
-| Widget | File | Mô tả |
-|---|---|---|
-| `AppScaffold` | `app_scaffold.dart` | Scaffold chung (AppBar, BottomNav, theme) |
-| `LoadingWidget`, `SkeletonList`, `EmptyStateWidget`, `ErrorStateWidget`, `AppSnackBar` | `loading_widget.dart` | Loading, skeleton, empty, error, snackbar |
-| `SectionLabel` | `section_label.dart` | Nhãn section (11px, uppercase, muted) — dùng trong bottom sheet, form |
-| `FilterChipTile` | `filter_chip_tile.dart` | Chip filter có icon + check (dùng trong filter sheet) |
-| `DatePickerTile` | `date_picker_tile.dart` | Ô chọn ngày (label + value + calendar icon) |
-| `GuestCounter` | `guest_counter.dart` | Bộ đếm +/- (người lớn, trẻ em, số lượng) |
-
-```dart
-// ✅ ĐÚNG — Widget dùng chung đặt trong shared/widgets/
-import '../../../shared/widgets/section_label.dart';
-SectionLabel(label: 'VIEW')
-
-// ❌ SAI — Widget dùng chung viết private trong file view
-class _SectionLabel extends StatelessWidget { ... }
-```
-
-Khi tạo widget mới dùng chung: tạo file trong `shared/widgets/`, class **public** (không prefix `_`), có `super.key`.
-
----
-
-## Repositories — Data Layer
-
-```dart
-class RoomRepository {
-  final Dio _dio = ApiClient.instance;
-
-  Future<ApiResponse<List<RoomModel>>> getRooms({String? homestayId}) async {
-    try {
-      final response = await _dio.get(ApiConstants.rooms, queryParameters: {
-        if (homestayId != null) 'homestayId': homestayId,
-      });
-      final data = (response.data['data'] as List)
-          .map((e) => RoomModel.fromJson(e))
-          .toList();
-      return ApiResponse.success(data);
-    } on DioException catch (e) {
-      return ApiResponse.error(e.response?.data['message'] ?? 'Lỗi kết nối');
-    }
-  }
-}
-```
-
-- Repository chỉ gọi API và parse data — **không chứa business logic**
-- Luôn return `ApiResponse<T>` — **không throw exception**
-- Dùng `ApiClient.instance` (Dio singleton đã có auth interceptor)
-
----
-
-## Models
-
-```dart
-@JsonSerializable()
-class RoomModel extends Equatable {
-  final String id;
-  final String name;
-  final double price;
-
-  const RoomModel({required this.id, required this.name, required this.price});
-
-  factory RoomModel.fromJson(Map<String, dynamic> json) => _$RoomModelFromJson(json);
-  Map<String, dynamic> toJson() => _$RoomModelToJson(this);
-
-  @override
-  List<Object?> get props => [id, name, price];
-}
-```
-
-- `@JsonSerializable()` + generate `.g.dart`
-- Extend `Equatable` + implement `props`
-- Fields `final`; `const` constructor
-- `@JsonKey(name: 'snake_case')` nếu API trả snake_case
-
----
-
-## Navigation — GoRouter
+### Navigation — GoRouter
 
 ```dart
 context.go('/rooms');           // Replace stack (main navigation)
 context.push('/rooms/$id');     // Push (overlay/detail)
-context.push('/rooms/$id/edit');
 context.pop();                  // Go back
 ```
 
-- Route paths: lowercase, `/admin/users`, `/rooms/:id/edit`
-- Auth redirect logic trong `app_router.dart` — tự redirect `/login` ↔ `/dashboard`
+#### Role-based routing
+
+| Role / Mode | Redirect sau login | Bottom Nav |
+|-------------|-------------------|------------|
+| CUSTOMER | `/home` | Trang chủ, Tìm phòng, Booking, Tài khoản |
+| STAFF | `/dashboard` | Tổng quan, Phòng, Lịch, Báo cáo |
+| ADMIN | `/dashboard` | Tổng quan, Phòng, Lịch, Báo cáo, Quản lý |
+| ADMIN/STAFF (mode khách) | `/home` | Giống CUSTOMER |
+
+#### Route guard
+
+```
+CUSTOMER → chặn /dashboard, /rooms, /calendar, /homestays, /admin → redirect /home
+STAFF → chặn /admin → redirect /dashboard
+ADMIN/STAFF (mode khách) → chặn management routes → redirect /home
+ADMIN/STAFF (mode quản lý) → chặn customer routes → redirect /dashboard
+```
+
+#### View Mode Toggle — QUAN TRỌNG trong GoRouter redirect
+
+```dart
+// ✅ ĐÚNG — tính trực tiếp
+final user = authState.user;
+final bool isCustomerMode;
+if (user != null && user.isCustomer) {
+  isCustomerMode = true;
+} else if (user != null && user.isManagement) {
+  isCustomerMode = ref.read(viewModeProvider) == ViewMode.customer;
+} else {
+  isCustomerMode = false;
+}
+
+// ❌ SAI — provider chain chưa kịp update
+final isCustomerMode = ref.read(isCustomerModeProvider);
+```
+
+### API Integration
+
+- Endpoints khai báo trong `lib/core/constants/api_constants.dart`
+- Response format: `{ "success": true, "data": { ... }, "message": "..." }`
+- Token tự động gắn bởi `_AuthInterceptor` trong `ApiClient`
+- Auto-refresh token khi 401
+- Token lưu qua `SecureStorage` (KHÔNG dùng SharedPreferences)
+- Role system: 3 roles — `ADMIN`, `STAFF`, `CUSTOMER` (role cũ `OWNER`/`SALE` đã gộp thành `STAFF`)
+
+### Google Sign-In
+
+- Flow: `GoogleSignIn.signIn()` → `idToken` → `/auth/google` → tokens + user
+- Android: `google-services.json` + Firebase Console
+- iOS: `GoogleService-Info.plist` + URL scheme trong `Info.plist`
 
 ---
 
-## API Integration
+## 11. PERFORMANCE & OPTIMIZATION
 
-### Endpoints
-
-Tất cả endpoints khai báo trong `lib/core/constants/api_constants.dart`:
+### Image — Giảm RAM
 
 ```dart
-class ApiConstants {
-  static const String baseUrl = 'http://103.183.118.148:3000';
-  static const String login = '/auth/login';
-  static const String googleLogin = '/auth/google';
-  // ... thêm endpoint mới tại đây
+// ✅ ĐÚNG — luôn set memCacheWidth
+CachedNetworkImage(
+  imageUrl: url,
+  fit: BoxFit.cover,
+  memCacheWidth: 400,       // thumbnail / card
+  placeholder: (_, __) => _placeholder(),
+  errorWidget: (_, __, ___) => _placeholder(),
+)
+```
+
+| Ngữ cảnh | memCacheWidth |
+|-----------|:------------:|
+| Card thumbnail | `400` |
+| Search list card | `250` |
+| Full-width detail | `800` |
+| Gallery / zoom | Không set |
+
+### ListView — Lazy loading
+
+- Dùng `ListView.builder` / `SliverList` — KHÔNG dùng `Column` + `map`
+- TabBarView + ListView → `AutomaticKeepAliveClientMixin`
+- Danh sách > 20 items → phân trang (`?page=1&limit=20`)
+
+### Search — Debounce 300ms
+
+```dart
+Timer? _debounce;
+void _onSearchChanged(String value) {
+  _debounce?.cancel();
+  _debounce = Timer(const Duration(milliseconds: 300), () {
+    if (mounted) setState(() => _query = value);
+  });
 }
 ```
 
-### Response format
+### Animation
 
-```json
-{ "success": true, "data": { ... }, "message": "..." }
+| Quy tắc | Giá trị |
+|---------|---------|
+| Max effects per item | 2 (fadeIn + slideY) |
+| Max stagger items | 5-6 |
+| Duration | 200-400ms |
+| Loading skeleton | Chỉ shimmer, không animate |
+
+### Memory — Dispose checklist
+
+```dart
+@override
+void dispose() {
+  _textController.dispose();
+  _scrollController.dispose();
+  _focusNode.dispose();
+  _animationCtrl.dispose();
+  _debounce?.cancel();
+  _timer?.cancel();
+  _sub?.cancel(); // StreamSubscription
+  super.dispose();
+}
 ```
 
-Parse: `response.data['data']` cho data, `response.data['message']` cho message.
-
-### Auth
-
-- Token tự động gắn header bởi `_AuthInterceptor` trong `ApiClient`
-- Auto-refresh token khi 401
-- Login hỗ trợ: phone/password + Google Sign-In
-- Token lưu qua `SecureStorage` (KHÔNG dùng SharedPreferences cho token)
+- Check `mounted` trước setState trong async callback
+- Không `invalidate()` trong `build()`
+- Không invalidate từ nhiều nguồn cùng lúc
 
 ---
 
-## Google Sign-In
+## 12. TESTING
 
-Package: `google_sign_in: ^6.2.2`
-
-- Flow: `GoogleSignIn.signIn()` → lấy `idToken` → gửi lên backend `/auth/google` → nhận tokens + user
-- Cấu hình cần thiết:
-  - **Android**: `android/app/google-services.json` + Firebase Console
-  - **iOS**: `GoogleService-Info.plist` + URL scheme trong `Info.plist`
-
----
-
-## Linting & Code Generation
+| Loại | Công cụ | Khi nào |
+|------|---------|--------|
+| Unit test | `flutter_test` + `mocktail` | Models, helpers, controllers, providers |
+| Widget test | `flutter_test` | Shared widgets, form validation |
+| Integration test | `integration_test` | Critical flows (login, booking) |
 
 ```bash
-# Analyze
+flutter test                                    # Tất cả
+flutter test test/models/user_model_test.dart   # 1 file
+flutter test --coverage                         # Coverage
+```
+
+```
+test/
+  models/           # Model fromJson, toJson, helpers
+  helpers/          # AppHelpers methods
+  constants/        # Enum values, fromString, labels
+  providers/        # StateNotifier logic, persistence
+  controllers/      # Business logic, filter models
+  widgets/          # Widget rendering tests
+```
+
+---
+
+## 13. LINTING & CODE GENERATION
+
+```bash
 flutter analyze
-
-# Format
 dart format .
-
-# Code gen (sau khi thêm/sửa model hoặc @riverpod annotation)
 dart run build_runner build --delete-conflicting-outputs
 ```
 
 Không suppress lint warning trừ khi có lý do rõ ràng.
-
----
-
-## Quy tắc quan trọng
-
-1. **KHÔNG hardcode Color()** — luôn dùng `AppColors.*`
-2. **KHÔNG duplicate logic** — dùng `AppHelpers` cho hàm dùng chung
-3. **KHÔNG hardcode Base URL** — luôn dùng `ApiConstants.baseUrl`
-4. **KHÔNG dùng `setState` trong ConsumerWidget** — dùng Riverpod state
-5. **KHÔNG throw exception từ Repository** — dùng `ApiResponse.error()`
-6. **KHÔNG import chéo giữa features** — dùng `shared/` hoặc `core/`
-7. **KHÔNG tự tạo Dio instance** — luôn dùng `ApiClient.instance`
-8. **Đặt const ở mọi nơi có thể** — widget, constructor, giá trị cố định
-9. **Async/await** thay vì `.then()` chains
-10. **Thêm feature mới**: tạo folder trong `features/<name>/` với `controllers/`, `views/`, `widgets/` (nếu cần)
-11. **KHÔNG viết private widget dùng chung trong file view** — tách ra `shared/widgets/` thành class public, để các màn khác có thể import và dùng lại

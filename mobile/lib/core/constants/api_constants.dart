@@ -3,6 +3,7 @@ class ApiConstants {
 
   // Auth
   static const String login = '/auth/login';
+  static const String register = '/auth/register';
   static const String refresh = '/auth/refresh';
   static const String googleLogin = '/auth/google';
   static const String logout = '/auth/logout';
@@ -35,4 +36,12 @@ class ApiConstants {
   static String bookingConfirm(String id) => '/bookings/$id/confirm';
   static String bookingCancel(String id) => '/bookings/$id/cancel';
   static String bookingCalendar(String roomId) => '/bookings/calendar/$roomId';
+
+  // Customer bookings
+  static const String customerHold = '/bookings/customer-hold';
+  static const String myBookings = '/bookings/my';
+  static String customerCancel(String id) => '/bookings/$id/customer-cancel';
+
+  // Public rooms (cho customer)
+  static const String roomsPublic = '/rooms/public';
 }

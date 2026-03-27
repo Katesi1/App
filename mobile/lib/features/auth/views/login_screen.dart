@@ -204,7 +204,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
                       ),
                       const SizedBox(height: 4),
                       Text(
-                        'Đăng nhập để tiếp tục quản lý',
+                        'Đăng nhập để tiếp tục',
                         style: GoogleFonts.beVietnamPro(
                           fontSize: 13,
                           color: AppColors.muted,
@@ -421,12 +421,28 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
 
                       const SizedBox(height: 24),
                       Center(
-                        child: Text(
-                          'Dành riêng cho nhân viên Halong24h',
-                          style: GoogleFonts.beVietnamPro(
-                            fontSize: 12,
-                            color: AppColors.muted,
-                          ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(
+                              'Chưa có tài khoản? ',
+                              style: GoogleFonts.beVietnamPro(
+                                fontSize: 13,
+                                color: AppColors.muted,
+                              ),
+                            ),
+                            GestureDetector(
+                              onTap: () => context.go('/register'),
+                              child: Text(
+                                'Đăng ký',
+                                style: GoogleFonts.beVietnamPro(
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w600,
+                                  color: AppColors.oceanMid,
+                                ),
+                              ),
+                            ),
+                          ],
                         ),
                       ),
                     ],

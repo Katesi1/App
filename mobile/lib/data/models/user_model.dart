@@ -22,7 +22,7 @@ class UserModel {
         name: json['name'] ?? '',
         phone: json['phone'] ?? '',
         email: json['email'],
-        role: json['role'] ?? 'SALE',
+        role: json['role'] ?? 'CUSTOMER',
         isActive: json['isActive'] ?? true,
       );
 
@@ -41,7 +41,12 @@ class UserModel {
       UserModel.fromJson(jsonDecode(str));
 
   bool get isAdmin => role == 'ADMIN';
-  bool get isOwner => role == 'OWNER';
-  bool get isSale => role == 'SALE';
-  bool get canEdit => isAdmin || isOwner;
+  bool get isStaff => role == 'STAFF';
+  bool get isCustomer => role == 'CUSTOMER';
+
+  /// ADMIN + STAFF = quản lý (xem dashboard, CRUD phòng/booking)
+  bool get isManagement => isAdmin || isStaff;
+
+  /// Có quyền chỉnh sửa (tạo/sửa phòng, homestay)
+  bool get canEdit => isAdmin || isStaff;
 }

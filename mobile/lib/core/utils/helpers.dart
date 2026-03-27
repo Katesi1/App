@@ -11,10 +11,15 @@ class AppHelpers {
     switch (role?.toUpperCase()) {
       case 'ADMIN':
         return 'Admin';
+      case 'STAFF':
+        return 'Nhân viên';
+      case 'CUSTOMER':
+        return 'Khách hàng';
+      // Migration: role cũ
       case 'OWNER':
-        return 'Chủ nhà';
+        return 'Nhân viên';
       case 'SALE':
-        return 'Sale';
+        return 'Nhân viên';
       default:
         return role ?? '';
     }
@@ -24,8 +29,12 @@ class AppHelpers {
     switch (role?.toUpperCase()) {
       case 'ADMIN':
         return AppColors.coral;
+      case 'STAFF':
+        return AppColors.ocean;
+      case 'CUSTOMER':
+        return AppColors.teal;
+      // Migration: role cũ
       case 'OWNER':
-        return AppColors.completed;
       case 'SALE':
         return AppColors.ocean;
       default:

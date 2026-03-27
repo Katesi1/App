@@ -2,6 +2,7 @@ import 'package:flutter_native_splash/flutter_native_splash.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../data/models/user_model.dart';
 import '../../../data/repositories/auth_repository.dart';
+import '../../../shared/providers/view_mode_provider.dart';
 
 final authRepositoryProvider =
     Provider<AuthRepository>((ref) => AuthRepository());
@@ -59,8 +60,32 @@ class AuthNotifier extends StateNotifier<AuthState> {
     }
   }
 
-  Future<String?> signInWithGoogle() async {
-    final result = await _repo.loginWithGoogle();
+  Future<String?> register({
+    required String name,
+    required String phone,
+    required String password,
+    required String role,
+    String? email,
+  }) async {
+    final result = await _repo.register(
+      name: name,
+      phone: phone,
+      password: password,
+      role: role,
+      email: email,
+    );
+    if (result.success) {
+      state = AuthState(user: result.data, isLoggedIn: true);
+      return null;
+    } else {
+      state = state.copyWith(error: result.message);
+      return result.message;
+    }
+  }
+
+  /// [role] chỉ cần khi đăng ký qua Google lần đầu
+  Future<String?> signInWithGoogle({String? role}) async {
+    final result = await _repo.loginWithGoogle(role: role);
     if (result.success) {
       state = AuthState(user: result.data, isLoggedIn: true);
       return null;
@@ -95,4 +120,16 @@ final authProvider = StateNotifierProvider<AuthNotifier, AuthState>((ref) {
 
 final currentUserProvider = Provider<UserModel?>((ref) {
   return ref.watch(authProvider).user;
+});
+
+/// User đang ở chế độ khách hàng?
+/// - CUSTOMER role → luôn true
+/// - ADMIN/STAFF → true nếu viewMode == customer
+final isCustomerModeProvider = Provider<bool>((ref) {
+  final user = ref.watch(currentUserProvider);
+  if (user == null) return false;
+  if (user.isCustomer) return true;
+  // ADMIN/STAFF: xem viewMode toggle
+  final viewMode = ref.watch(viewModeProvider);
+  return viewMode == ViewMode.customer;
 });

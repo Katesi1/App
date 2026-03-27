@@ -73,6 +73,7 @@ class _RoomCardState extends State<RoomCard> {
                           ? CachedNetworkImage(
                               imageUrl: room.coverImageUrl!,
                               fit: BoxFit.cover,
+                              memCacheWidth: 400,
                               placeholder: (_, __) =>
                                   _imagePlaceholder(),
                               errorWidget: (_, __, ___) =>

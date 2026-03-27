@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -23,11 +24,12 @@ class RoomListScreen extends ConsumerStatefulWidget {
 }
 
 class _RoomListScreenState extends ConsumerState<RoomListScreen> {
-  // Search
+  // Search (debounce 300ms)
   bool _isSearching = false;
   String _searchQuery = '';
   final _searchController = TextEditingController();
   final _searchFocusNode = FocusNode();
+  Timer? _debounce;
 
   // Filters
   final Set<String> _selectedViews = {};
@@ -80,9 +82,17 @@ class _RoomListScreenState extends ConsumerState<RoomListScreen> {
 
   @override
   void dispose() {
+    _debounce?.cancel();
     _searchController.dispose();
     _searchFocusNode.dispose();
     super.dispose();
+  }
+
+  void _onSearchChanged(String value) {
+    _debounce?.cancel();
+    _debounce = Timer(const Duration(milliseconds: 300), () {
+      if (mounted) setState(() => _searchQuery = value);
+    });
   }
 
   List<RoomModel> _filter(List<RoomModel> rooms) {
@@ -431,7 +441,7 @@ class _RoomListScreenState extends ConsumerState<RoomListScreen> {
       body: RefreshIndicator(
         color: AppColors.ocean,
         onRefresh: () async {
-          ref.invalidate(roomListProvider);
+          ref.invalidate(roomListProvider(null));
         },
         child: CustomScrollView(
           slivers: [
@@ -491,8 +501,7 @@ class _RoomListScreenState extends ConsumerState<RoomListScreen> {
                         child: TextField(
                           controller: _searchController,
                           focusNode: _searchFocusNode,
-                          onChanged: (v) =>
-                              setState(() => _searchQuery = v),
+                          onChanged: _onSearchChanged,
                           style: GoogleFonts.beVietnamPro(
                             fontSize: 14,
                             color: Colors.white,
@@ -621,7 +630,7 @@ class _RoomListScreenState extends ConsumerState<RoomListScreen> {
                 child: ErrorStateWidget(
                   message:
                       e.toString().replaceAll('Exception: ', ''),
-                  onRetry: () => ref.invalidate(roomListProvider),
+                  onRetry: () => ref.invalidate(roomListProvider(null)),
                 ),
               ),
               data: (rooms) {

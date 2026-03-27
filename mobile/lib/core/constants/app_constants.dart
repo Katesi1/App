@@ -9,28 +9,51 @@ class AppConstants {
   static const String userKey = 'user_data';
 }
 
-enum UserRole { admin, owner, sale }
+enum UserRole { admin, staff, customer }
 
 extension UserRoleExtension on UserRole {
   String get value {
     switch (this) {
       case UserRole.admin:
         return 'ADMIN';
-      case UserRole.owner:
-        return 'OWNER';
-      case UserRole.sale:
-        return 'SALE';
+      case UserRole.staff:
+        return 'STAFF';
+      case UserRole.customer:
+        return 'CUSTOMER';
     }
   }
+
+  String get label {
+    switch (this) {
+      case UserRole.admin:
+        return 'Admin';
+      case UserRole.staff:
+        return 'Nhân viên';
+      case UserRole.customer:
+        return 'Khách hàng';
+    }
+  }
+
+  /// Role cho phép đăng ký (không cho ADMIN)
+  static const registrableRoles = [UserRole.staff, UserRole.customer];
+
+  /// Có phải role quản lý không (ADMIN + STAFF)
+  bool get isManagement => this != UserRole.customer;
 
   static UserRole fromString(String role) {
     switch (role.toUpperCase()) {
       case 'ADMIN':
         return UserRole.admin;
+      case 'STAFF':
+        return UserRole.staff;
+      case 'CUSTOMER':
+        return UserRole.customer;
+      // Migration: map role cũ sang STAFF
       case 'OWNER':
-        return UserRole.owner;
+      case 'SALE':
+        return UserRole.staff;
       default:
-        return UserRole.sale;
+        return UserRole.customer;
     }
   }
 }
