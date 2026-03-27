@@ -17,6 +17,10 @@ import '../../features/bookings/views/hold_room_screen.dart';
 import '../../features/dashboard/views/dashboard_screen.dart';
 import '../../features/homestays/views/homestay_form_screen.dart';
 import '../../features/homestays/views/homestay_list_screen.dart';
+import '../../features/profile/views/change_password_screen.dart';
+import '../../features/profile/views/help_screen.dart';
+import '../../features/profile/views/personal_info_screen.dart';
+import '../../features/profile/views/profile_screen.dart';
 import '../../features/rooms/views/room_calendar_screen.dart';
 import '../../features/rooms/views/room_detail_screen.dart';
 import '../../features/rooms/views/room_form_screen.dart';
@@ -77,6 +81,7 @@ final routerProvider = Provider<GoRouter>((ref) {
         }
 
         // Route guard
+        // /profile accessible cho cả 2 mode → không nằm trong list nào
         const customerPaths = [
           '/home', '/search', '/my-bookings', '/account',
         ];
@@ -145,6 +150,38 @@ final routerProvider = Provider<GoRouter>((ref) {
           key: state.pageKey,
           child: const AccountScreen(),
         ),
+      ),
+
+      // ── Profile ──────────────────────────────────────────────────────
+      GoRoute(
+        path: '/profile',
+        pageBuilder: (_, state) => slideUpPage(
+          key: state.pageKey,
+          child: const ProfileScreen(),
+        ),
+        routes: [
+          GoRoute(
+            path: 'edit',
+            pageBuilder: (_, state) => slideUpPage(
+              key: state.pageKey,
+              child: const PersonalInfoScreen(),
+            ),
+          ),
+          GoRoute(
+            path: 'change-password',
+            pageBuilder: (_, state) => slideUpPage(
+              key: state.pageKey,
+              child: const ChangePasswordScreen(),
+            ),
+          ),
+          GoRoute(
+            path: 'help',
+            pageBuilder: (_, state) => slideUpPage(
+              key: state.pageKey,
+              child: const HelpScreen(),
+            ),
+          ),
+        ],
       ),
 
       // ── Dashboard (home) ───────────────────────────────────────────

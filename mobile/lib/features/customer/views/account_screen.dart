@@ -103,6 +103,17 @@ class AccountScreen extends ConsumerWidget {
                       color: Colors.white.withValues(alpha: 0.7),
                     ),
                   ),
+                  if (user?.email != null &&
+                      user!.email!.isNotEmpty) ...[
+                    const SizedBox(height: 4),
+                    Text(
+                      user.email!,
+                      style: GoogleFonts.beVietnamPro(
+                        fontSize: 13,
+                        color: Colors.white.withValues(alpha: 0.7),
+                      ),
+                    ),
+                  ],
                 ],
               ),
             )
@@ -155,7 +166,13 @@ class AccountScreen extends ConsumerWidget {
                   _MenuItem(
                     icon: Icons.person_outline_rounded,
                     label: 'Thông tin cá nhân',
-                    onTap: () {},
+                    onTap: () => context.push('/profile/edit'),
+                  ),
+                  _MenuItem(
+                    icon: Icons.lock_outline_rounded,
+                    label: 'Đổi mật khẩu',
+                    onTap: () =>
+                        context.push('/profile/change-password'),
                   ),
                   _MenuItem(
                     icon: Icons.book_outlined,
@@ -179,7 +196,8 @@ class AccountScreen extends ConsumerWidget {
                   _MenuItem(
                     icon: Icons.help_outline_rounded,
                     label: 'Trợ giúp',
-                    onTap: () {},
+                    onTap: () =>
+                        context.push('/profile/help'),
                   ),
                   const SizedBox(height: 8),
                   _MenuItem(

@@ -5,10 +5,8 @@ import 'package:google_fonts/google_fonts.dart';
 import '../../data/models/user_model.dart';
 import '../../features/auth/controllers/auth_controller.dart';
 import '../providers/theme_provider.dart';
-import '../providers/view_mode_provider.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_spacing.dart';
-import '../../core/utils/helpers.dart';
 
 class AppScaffold extends ConsumerWidget {
   final String title;
@@ -75,14 +73,9 @@ class AppScaffold extends ConsumerWidget {
                     Padding(
                       padding:
                           const EdgeInsets.only(right: AppSpacing.sm),
-                      child: PopupMenuButton<String>(
-                        tooltip: 'Tài khoản',
-                        offset: const Offset(0, 48),
-                        shape: RoundedRectangleBorder(
-                          borderRadius:
-                              BorderRadius.circular(AppSpacing.md),
-                        ),
-                        icon: CircleAvatar(
+                      child: GestureDetector(
+                        onTap: () => context.push('/profile'),
+                        child: CircleAvatar(
                           backgroundColor: AppColors.ocean,
                           radius: 18,
                           child: Text(
@@ -96,171 +89,6 @@ class AppScaffold extends ConsumerWidget {
                             ),
                           ),
                         ),
-                        itemBuilder: (_) {
-                          final isCustomerMode =
-                              ref.read(isCustomerModeProvider);
-                          final canToggle =
-                              user?.isManagement == true;
-
-                          return [
-                            PopupMenuItem<String>(
-                              enabled: false,
-                              child: Column(
-                                crossAxisAlignment:
-                                    CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    user?.name ?? '',
-                                    style: GoogleFonts.beVietnamPro(
-                                      fontWeight: FontWeight.w700,
-                                      fontSize: 15,
-                                      color: colors.onSurface,
-                                    ),
-                                  ),
-                                  const SizedBox(height: 2),
-                                  Container(
-                                    padding:
-                                        const EdgeInsets.symmetric(
-                                      horizontal: AppSpacing.sm,
-                                      vertical: 2,
-                                    ),
-                                    decoration: BoxDecoration(
-                                      color: AppHelpers.roleColor(
-                                              user?.role)
-                                          .withValues(alpha: 0.1),
-                                      borderRadius:
-                                          BorderRadius.circular(
-                                              AppRadius.full),
-                                    ),
-                                    child: Text(
-                                      AppHelpers.roleLabel(
-                                          user?.role),
-                                      style:
-                                          GoogleFonts.beVietnamPro(
-                                        color:
-                                            AppHelpers.roleColor(
-                                                user?.role),
-                                        fontSize: 11,
-                                        fontWeight: FontWeight.w600,
-                                      ),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                            // ── Toggle chế độ xem (chỉ ADMIN/STAFF) ──
-                            if (canToggle) ...[
-                              const PopupMenuDivider(),
-                              PopupMenuItem<String>(
-                                value: 'toggle_mode',
-                                child: Row(
-                                  children: [
-                                    Icon(
-                                      isCustomerMode
-                                          ? Icons
-                                              .admin_panel_settings_outlined
-                                          : Icons
-                                              .person_outline_rounded,
-                                      color: AppColors.ocean,
-                                      size: 20,
-                                    ),
-                                    const SizedBox(
-                                        width: AppSpacing.sm),
-                                    Expanded(
-                                      child: Text(
-                                        isCustomerMode
-                                            ? 'Chế độ quản lý'
-                                            : 'Xem như khách',
-                                        style:
-                                            GoogleFonts.beVietnamPro(
-                                          color: AppColors.ocean,
-                                          fontWeight:
-                                              FontWeight.w600,
-                                        ),
-                                      ),
-                                    ),
-                                    Container(
-                                      padding:
-                                          const EdgeInsets.symmetric(
-                                        horizontal: 6,
-                                        vertical: 2,
-                                      ),
-                                      decoration: BoxDecoration(
-                                        color: isCustomerMode
-                                            ? AppColors.teal
-                                                .withValues(
-                                                    alpha: 0.1)
-                                            : AppColors.ocean
-                                                .withValues(
-                                                    alpha: 0.1),
-                                        borderRadius:
-                                            BorderRadius.circular(
-                                                AppRadius.full),
-                                      ),
-                                      child: Text(
-                                        isCustomerMode
-                                            ? 'Khách'
-                                            : 'Quản lý',
-                                        style:
-                                            GoogleFonts.beVietnamPro(
-                                          fontSize: 9,
-                                          fontWeight:
-                                              FontWeight.w600,
-                                          color: isCustomerMode
-                                              ? AppColors.teal
-                                              : AppColors.ocean,
-                                        ),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                                onTap: () {
-                                  ref
-                                      .read(viewModeProvider
-                                          .notifier)
-                                      .toggle();
-                                  // Navigate sau khi popup đóng
-                                  Future.microtask(() {
-                                    if (context.mounted) {
-                                      context.go(isCustomerMode
-                                          ? '/dashboard'
-                                          : '/home');
-                                    }
-                                  });
-                                },
-                              ),
-                            ],
-                            const PopupMenuDivider(),
-                            PopupMenuItem<String>(
-                              value: 'logout',
-                              child: Row(
-                                children: [
-                                  const Icon(Icons.logout_rounded,
-                                      color: AppColors.coral,
-                                      size: 20),
-                                  const SizedBox(
-                                      width: AppSpacing.sm),
-                                  Text(
-                                    'Đăng xuất',
-                                    style:
-                                        GoogleFonts.beVietnamPro(
-                                      color: AppColors.coral,
-                                      fontWeight: FontWeight.w600,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                              onTap: () async {
-                                await ref
-                                    .read(authProvider.notifier)
-                                    .logout();
-                                if (context.mounted) {
-                                  context.go('/login');
-                                }
-                              },
-                            ),
-                          ];
-                        },
                       ),
                     ),
                   ],

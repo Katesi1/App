@@ -347,22 +347,25 @@ class _DashHeader extends StatelessWidget {
                     ),
                     const SizedBox(width: 8),
                     // Avatar
-                    Container(
-                      width: 38,
-                      height: 38,
-                      decoration: const BoxDecoration(
-                        shape: BoxShape.circle,
-                        gradient: LinearGradient(
-                          colors: [AppColors.teal, AppColors.gold],
+                    GestureDetector(
+                      onTap: () => context.push('/profile'),
+                      child: Container(
+                        width: 38,
+                        height: 38,
+                        decoration: const BoxDecoration(
+                          shape: BoxShape.circle,
+                          gradient: LinearGradient(
+                            colors: [AppColors.teal, AppColors.gold],
+                          ),
                         ),
-                      ),
-                      child: Center(
-                        child: Text(
-                          userName.isNotEmpty ? userName[0].toUpperCase() : 'U',
-                          style: GoogleFonts.beVietnamPro(
-                            color: Colors.white,
-                            fontWeight: FontWeight.w700,
-                            fontSize: 13,
+                        child: Center(
+                          child: Text(
+                            userName.isNotEmpty ? userName[0].toUpperCase() : 'U',
+                            style: GoogleFonts.beVietnamPro(
+                              color: Colors.white,
+                              fontWeight: FontWeight.w700,
+                              fontSize: 13,
+                            ),
                           ),
                         ),
                       ),

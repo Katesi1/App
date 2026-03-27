@@ -7,6 +7,8 @@ class UserModel {
   final String? email;
   final String role;
   final bool isActive;
+  final String? gender;
+  final String? dateOfBirth;
 
   UserModel({
     required this.id,
@@ -15,6 +17,8 @@ class UserModel {
     this.email,
     required this.role,
     this.isActive = true,
+    this.gender,
+    this.dateOfBirth,
   });
 
   factory UserModel.fromJson(Map<String, dynamic> json) => UserModel(
@@ -24,6 +28,8 @@ class UserModel {
         email: json['email'],
         role: json['role'] ?? 'CUSTOMER',
         isActive: json['isActive'] ?? true,
+        gender: json['gender'],
+        dateOfBirth: json['dateOfBirth'],
       );
 
   Map<String, dynamic> toJson() => {
@@ -33,6 +39,8 @@ class UserModel {
         'email': email,
         'role': role,
         'isActive': isActive,
+        if (gender != null) 'gender': gender,
+        if (dateOfBirth != null) 'dateOfBirth': dateOfBirth,
       };
 
   String toJsonString() => jsonEncode(toJson());

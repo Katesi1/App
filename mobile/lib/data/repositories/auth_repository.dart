@@ -143,6 +143,42 @@ class AuthRepository {
     }
   }
 
+  Future<ApiResponse<void>> changePassword(
+      String currentPassword, String newPassword) async {
+    try {
+      final response = await _dio.post(
+        ApiConstants.changePassword,
+        data: {
+          'currentPassword': currentPassword,
+          'newPassword': newPassword,
+        },
+      );
+      return ApiResponse(
+        success: true,
+        message: response.data['message'] ?? 'Đổi mật khẩu thành công',
+      );
+    } on DioException catch (e) {
+      return ApiResponse(success: false, message: parseDioError(e));
+    }
+  }
+
+  Future<ApiResponse<UserModel>> updateProfile(
+      String userId, Map<String, dynamic> data) async {
+    try {
+      final response =
+          await _dio.put(ApiConstants.userDetail(userId), data: data);
+      final user = UserModel.fromJson(response.data['data']);
+      await SecureStorage.saveUserData(user.toJsonString());
+      return ApiResponse(
+        success: true,
+        data: user,
+        message: response.data['message'] ?? 'Cập nhật thành công',
+      );
+    } on DioException catch (e) {
+      return ApiResponse(success: false, message: parseDioError(e));
+    }
+  }
+
   Future<void> logout() async {
     try {
       await _googleSignIn.signOut();
