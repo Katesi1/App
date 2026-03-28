@@ -5,12 +5,12 @@ import '../../../core/theme/app_spacing.dart';
 import '../../../data/models/homestay_model.dart';
 
 /// Card quản lý phòng (dùng HomestayModel) — có nút edit
-class RoomManagementCard extends StatelessWidget {
+class PropertyManagementCard extends StatelessWidget {
   final HomestayModel homestay;
   final VoidCallback? onTap;
   final VoidCallback? onEdit;
 
-  const RoomManagementCard({
+  const PropertyManagementCard({
     super.key,
     required this.homestay,
     this.onTap,

@@ -219,7 +219,10 @@ class _BookingTabState extends ConsumerState<_BookingTab>
           ),
         );
       },
-      loading: () => const LoadingWidget(),
+      loading: () => SkeletonList(
+        skeleton: const BookingCardSkeleton(),
+        count: 5,
+      ),
       error: (e, _) => Center(
         child: Column(
           mainAxisSize: MainAxisSize.min,

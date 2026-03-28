@@ -57,7 +57,7 @@ class _PropertyManageScreenState
               _GradientHeader(
                 onBack: () => context.pop(),
                 onEdit: () => context.push(
-                  '/properties/${widget.homestayId}/edit',
+                  '/properties/${widget.homestayId}/info',
                 ),
               ),
 

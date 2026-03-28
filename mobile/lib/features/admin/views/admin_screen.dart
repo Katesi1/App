@@ -222,7 +222,7 @@ class AdminScreen extends ConsumerWidget {
                     icon: Icons.add_home_work_rounded,
                     label: 'Thêm\nphòng',
                     color: AppColors.teal,
-                    onTap: () => context.push('/rooms/new'),
+                    onTap: () => context.push('/properties/new'),
                   ),
                 ),
               ],

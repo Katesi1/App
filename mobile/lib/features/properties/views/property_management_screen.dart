@@ -8,20 +8,20 @@ import '../../../data/models/homestay_model.dart';
 import '../../../shared/widgets/loading_widget.dart';
 import '../../auth/controllers/auth_controller.dart';
 import '../../properties/controllers/property_controller.dart';
-import '../widgets/room_management_card.dart';
+import '../widgets/property_management_card.dart';
 
 /// Trang quản lý phòng (Admin) — 3 tabs: Villa, Homestay, Khách sạn
 /// Dùng homestay data — mỗi homestay là 1 căn (villa/homestay/khách sạn).
 /// Ấn vào card → HomestayDetailScreen (Ảnh, Thông tin, Tiện ích, Bảng giá...).
-class RoomManagementScreen extends ConsumerStatefulWidget {
-  const RoomManagementScreen({super.key});
+class PropertyManagementScreen extends ConsumerStatefulWidget {
+  const PropertyManagementScreen({super.key});
 
   @override
-  ConsumerState<RoomManagementScreen> createState() =>
-      _RoomManagementScreenState();
+  ConsumerState<PropertyManagementScreen> createState() =>
+      _PropertyManagementScreenState();
 }
 
-class _RoomManagementScreenState extends ConsumerState<RoomManagementScreen>
+class _PropertyManagementScreenState extends ConsumerState<PropertyManagementScreen>
     with SingleTickerProviderStateMixin {
   late final TabController _tabController;
 
@@ -246,7 +246,10 @@ class _RoomManagementScreenState extends ConsumerState<RoomManagementScreen>
             ref.invalidate(homestayListProvider);
           },
           child: homestaysAsync.when(
-            loading: () => const Center(child: LoadingWidget()),
+            loading: () => SkeletonList(
+              skeleton: const HomestayCardSkeleton(),
+              count: 5,
+            ),
             error: (e, _) => Center(
               child: ErrorStateWidget(
                 message: e.toString().replaceAll('Exception: ', ''),
@@ -273,7 +276,7 @@ class _RoomManagementScreenState extends ConsumerState<RoomManagementScreen>
                   itemCount: filtered.length,
                   separatorBuilder: (_, __) =>
                       const SizedBox(height: 10),
-                  itemBuilder: (_, i) => RoomManagementCard(
+                  itemBuilder: (_, i) => PropertyManagementCard(
                     homestay: filtered[i],
                     onTap: () => context
                         .push('/properties/${filtered[i].id}'),

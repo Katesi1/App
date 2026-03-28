@@ -123,7 +123,7 @@ class CustomerHomeScreen extends ConsumerWidget {
                         room: rooms[i],
                         index: i,
                         onTap: () =>
-                            context.push('/room-preview/${rooms[i].id}'),
+                            context.push('/rooms/${rooms[i].id}'),
                       ),
                     ),
                   );

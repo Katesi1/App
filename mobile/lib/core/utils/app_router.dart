@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../features/admin/views/admin_screen.dart';
-import '../../features/admin/views/room_management_screen.dart';
+import '../../features/properties/views/property_management_screen.dart';
 import '../../features/admin/views/user_form_screen.dart';
 import '../../features/admin/views/user_list_screen.dart';
 import '../../features/auth/controllers/auth_controller.dart';
@@ -24,7 +24,6 @@ import '../../features/properties/views/property_manage_screen.dart';
 import '../../features/properties/views/property_add_screen.dart';
 import '../../features/properties/views/property_images_screen.dart';
 import '../../features/properties/views/property_info_screen.dart';
-import '../../features/properties/views/property_list_screen.dart';
 import '../../features/properties/views/property_location_screen.dart';
 import '../../features/properties/views/property_pricing_screen.dart';
 import '../../features/properties/views/property_rules_screen.dart';
@@ -33,13 +32,9 @@ import '../../features/profile/views/change_password_screen.dart';
 import '../../features/profile/views/help_screen.dart';
 import '../../features/profile/views/personal_info_screen.dart';
 import '../../features/profile/views/profile_screen.dart';
-import '../../features/rooms/views/room_calendar_screen.dart';
 import '../../features/rooms/views/room_detail_screen.dart';
-import '../../features/rooms/views/room_form_screen.dart';
-import '../../features/rooms/views/room_images_screen.dart';
 import '../../features/rooms/views/room_list_screen.dart';
 import '../../features/reports/views/report_screen.dart';
-import '../../features/rooms/views/room_price_screen.dart';
 import '../../shared/providers/view_mode_provider.dart';
 import 'app_transitions.dart';
 
@@ -223,16 +218,6 @@ final routerProvider = Provider<GoRouter>((ref) {
           child: const RoomListScreen(),
         ),
         routes: [
-          // 'new' PHẢI đặt trước ':id' để GoRouter match static trước param
-          GoRoute(
-            path: 'new',
-            pageBuilder: (_, state) => fadeScalePage(
-              key: state.pageKey,
-              child: RoomFormScreen(
-                homestayId: state.uri.queryParameters['homestayId'],
-              ),
-            ),
-          ),
           GoRoute(
             path: ':id',
             pageBuilder: (_, state) => slideUpPage(
@@ -242,43 +227,11 @@ final routerProvider = Provider<GoRouter>((ref) {
             ),
             routes: [
               GoRoute(
-                path: 'calendar',
-                pageBuilder: (_, state) => slideUpPage(
-                  key: state.pageKey,
-                  child: RoomCalendarScreen(
-                      roomId: state.pathParameters['id']!),
-                ),
-              ),
-              GoRoute(
                 path: 'hold',
                 pageBuilder: (_, state) => fadeScalePage(
                   key: state.pageKey,
                   child: HoldRoomScreen(
                       roomId: state.pathParameters['id']!),
-                ),
-              ),
-              GoRoute(
-                path: 'images',
-                pageBuilder: (_, state) => slideUpPage(
-                  key: state.pageKey,
-                  child: RoomImagesScreen(
-                      roomId: state.pathParameters['id']!),
-                ),
-              ),
-              GoRoute(
-                path: 'price',
-                pageBuilder: (_, state) => slideUpPage(
-                  key: state.pageKey,
-                  child: RoomPriceScreen(
-                      roomId: state.pathParameters['id']!),
-                ),
-              ),
-              GoRoute(
-                path: 'edit',
-                pageBuilder: (_, state) => fadeScalePage(
-                  key: state.pageKey,
-                  child: RoomFormScreen(
-                      roomId: state.pathParameters['id']),
                 ),
               ),
             ],
@@ -313,12 +266,12 @@ final routerProvider = Provider<GoRouter>((ref) {
         ),
       ),
 
-      // ── Homestays ──────────────────────────────────────────────────
+      // ── Properties (quản lý phòng) ─────────────────────────────────
       GoRoute(
         path: '/properties',
         pageBuilder: (_, state) => horizontalPage(
           key: state.pageKey,
-          child: const PropertyListScreen(),
+          child: const PropertyManagementScreen(),
         ),
         routes: [
           GoRoute(
@@ -419,7 +372,7 @@ final routerProvider = Provider<GoRouter>((ref) {
         path: '/admin/rooms',
         pageBuilder: (_, state) => slideUpPage(
           key: state.pageKey,
-          child: const RoomManagementScreen(),
+          child: const PropertyManagementScreen(),
         ),
       ),
 

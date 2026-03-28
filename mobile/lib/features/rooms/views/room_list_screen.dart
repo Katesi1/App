@@ -617,7 +617,10 @@ class _RoomListScreenState extends ConsumerState<RoomListScreen>
               ),
           ],
           body: roomsAsync.when(
-            loading: () => const Center(child: LoadingWidget()),
+            loading: () => SkeletonList(
+              skeleton: const RoomCardSkeleton(),
+              count: 4,
+            ),
             error: (e, _) => Center(
               child: ErrorStateWidget(
                 message:

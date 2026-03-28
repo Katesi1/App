@@ -94,7 +94,10 @@ class _NotificationScreenState extends ConsumerState<NotificationScreen> {
                   },
                 );
               },
-              loading: () => const LoadingWidget(),
+              loading: () => SkeletonList(
+                skeleton: const UserCardSkeleton(),
+                count: 6,
+              ),
               error: (e, _) => ErrorStateWidget(
                 message:
                     e.toString().replaceAll('Exception: ', ''),

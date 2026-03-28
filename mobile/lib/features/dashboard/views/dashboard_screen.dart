@@ -145,7 +145,7 @@ class DashboardScreen extends ConsumerWidget {
                         label: 'Thêm\nphòng',
                         bgColor: AppColors.emeraldLight,
                         iconColor: AppColors.emerald,
-                        onTap: () => context.push('/rooms/new'),
+                        onTap: () => context.push('/properties/new'),
                       ),
                     ],
                   ),

@@ -239,11 +239,14 @@ class _SearchRoomScreenState extends ConsumerState<SearchRoomScreen> {
                     room: rooms[i],
                     index: i,
                     onTap: () =>
-                        context.push('/room-preview/${rooms[i].id}'),
+                        context.push('/rooms/${rooms[i].id}'),
                   ),
                 );
               },
-              loading: () => const LoadingWidget(),
+              loading: () => SkeletonList(
+                skeleton: const RoomCardSkeleton(),
+                count: 4,
+              ),
               error: (e, _) => Center(
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
