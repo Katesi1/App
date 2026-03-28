@@ -142,7 +142,7 @@ class _BottomNavState extends ConsumerState<_BottomNav> {
       icon: Icons.bar_chart_outlined,
       activeIcon: Icons.bar_chart_rounded,
       label: 'Báo cáo',
-      route: '/homestays',
+      route: '/reports',
     ),
   ];
 
@@ -150,7 +150,7 @@ class _BottomNavState extends ConsumerState<_BottomNav> {
     icon: Icons.admin_panel_settings_outlined,
     activeIcon: Icons.admin_panel_settings_rounded,
     label: 'Quản lý',
-    route: '/admin/users',
+    route: '/admin',
   );
 
   static const _customerNavItems = <_NavItem>[

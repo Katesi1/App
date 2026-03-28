@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import '../../features/admin/views/admin_screen.dart';
 import '../../features/admin/views/user_form_screen.dart';
 import '../../features/admin/views/user_list_screen.dart';
 import '../../features/auth/controllers/auth_controller.dart';
@@ -15,8 +16,17 @@ import '../../features/customer/views/account_screen.dart';
 import '../../features/bookings/views/booking_list_screen.dart';
 import '../../features/bookings/views/hold_room_screen.dart';
 import '../../features/dashboard/views/dashboard_screen.dart';
+import '../../features/homestays/views/homestay_amenities_screen.dart';
+import '../../features/homestays/views/homestay_cancellation_screen.dart';
+import '../../features/homestays/views/homestay_detail_screen.dart';
 import '../../features/homestays/views/homestay_form_screen.dart';
+import '../../features/homestays/views/homestay_images_screen.dart';
+import '../../features/homestays/views/homestay_info_screen.dart';
 import '../../features/homestays/views/homestay_list_screen.dart';
+import '../../features/homestays/views/homestay_location_screen.dart';
+import '../../features/homestays/views/homestay_pricing_screen.dart';
+import '../../features/homestays/views/homestay_rules_screen.dart';
+import '../../features/homestays/views/homestay_services_screen.dart';
 import '../../features/profile/views/change_password_screen.dart';
 import '../../features/profile/views/help_screen.dart';
 import '../../features/profile/views/personal_info_screen.dart';
@@ -26,6 +36,7 @@ import '../../features/rooms/views/room_detail_screen.dart';
 import '../../features/rooms/views/room_form_screen.dart';
 import '../../features/rooms/views/room_images_screen.dart';
 import '../../features/rooms/views/room_list_screen.dart';
+import '../../features/reports/views/report_screen.dart';
 import '../../features/rooms/views/room_price_screen.dart';
 import '../../shared/providers/view_mode_provider.dart';
 import 'app_transitions.dart';
@@ -87,7 +98,7 @@ final routerProvider = Provider<GoRouter>((ref) {
         ];
         const managementPaths = [
           '/dashboard', '/rooms', '/calendar',
-          '/homestays', '/admin', '/bookings',
+          '/homestays', '/admin', '/bookings', '/reports',
         ];
 
         // Đang ở mode khách → chặn route quản lý
@@ -281,6 +292,15 @@ final routerProvider = Provider<GoRouter>((ref) {
         ),
       ),
 
+      // ── Reports ────────────────────────────────────────────────────
+      GoRoute(
+        path: '/reports',
+        pageBuilder: (_, state) => horizontalPage(
+          key: state.pageKey,
+          child: const ReportScreen(),
+        ),
+      ),
+
       // ── Homestays ──────────────────────────────────────────────────
       GoRoute(
         path: '/homestays',
@@ -297,14 +317,97 @@ final routerProvider = Provider<GoRouter>((ref) {
             ),
           ),
           GoRoute(
-            path: ':id/edit',
-            pageBuilder: (_, state) => fadeScalePage(
+            path: ':id',
+            pageBuilder: (_, state) => slideUpPage(
               key: state.pageKey,
-              child: HomestayFormScreen(
-                  homestayId: state.pathParameters['id']),
+              child: HomestayDetailScreen(
+                  homestayId: state.pathParameters['id']!),
             ),
+            routes: [
+              GoRoute(
+                path: 'edit',
+                pageBuilder: (_, state) => fadeScalePage(
+                  key: state.pageKey,
+                  child: HomestayFormScreen(
+                      homestayId: state.pathParameters['id']),
+                ),
+              ),
+              GoRoute(
+                path: 'images',
+                pageBuilder: (_, state) => slideUpPage(
+                  key: state.pageKey,
+                  child: HomestayImagesScreen(
+                      homestayId: state.pathParameters['id']!),
+                ),
+              ),
+              GoRoute(
+                path: 'info',
+                pageBuilder: (_, state) => slideUpPage(
+                  key: state.pageKey,
+                  child: HomestayInfoScreen(
+                      homestayId: state.pathParameters['id']!),
+                ),
+              ),
+              GoRoute(
+                path: 'amenities',
+                pageBuilder: (_, state) => slideUpPage(
+                  key: state.pageKey,
+                  child: HomestayAmenitiesScreen(
+                      homestayId: state.pathParameters['id']!),
+                ),
+              ),
+              GoRoute(
+                path: 'pricing',
+                pageBuilder: (_, state) => slideUpPage(
+                  key: state.pageKey,
+                  child: HomestayPricingScreen(
+                      homestayId: state.pathParameters['id']!),
+                ),
+              ),
+              GoRoute(
+                path: 'services',
+                pageBuilder: (_, state) => slideUpPage(
+                  key: state.pageKey,
+                  child: HomestayServicesScreen(
+                      homestayId: state.pathParameters['id']!),
+                ),
+              ),
+              GoRoute(
+                path: 'rules',
+                pageBuilder: (_, state) => slideUpPage(
+                  key: state.pageKey,
+                  child: HomestayRulesScreen(
+                      homestayId: state.pathParameters['id']!),
+                ),
+              ),
+              GoRoute(
+                path: 'location',
+                pageBuilder: (_, state) => slideUpPage(
+                  key: state.pageKey,
+                  child: HomestayLocationScreen(
+                      homestayId: state.pathParameters['id']!),
+                ),
+              ),
+              GoRoute(
+                path: 'cancellation',
+                pageBuilder: (_, state) => slideUpPage(
+                  key: state.pageKey,
+                  child: HomestaCancellationScreen(
+                      homestayId: state.pathParameters['id']!),
+                ),
+              ),
+            ],
           ),
         ],
+      ),
+
+      // ── Admin Hub ───────────────────────────────────────────────────
+      GoRoute(
+        path: '/admin',
+        pageBuilder: (_, state) => horizontalPage(
+          key: state.pageKey,
+          child: const AdminScreen(),
+        ),
       ),
 
       // ── Admin – Users ──────────────────────────────────────────────

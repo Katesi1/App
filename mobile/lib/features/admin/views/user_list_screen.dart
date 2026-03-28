@@ -32,7 +32,7 @@ class _UserListScreenState extends ConsumerState<UserListScreen> {
 
     return AppScaffold(
       title: 'Nhân viên',
-      selectedIndex: 3,
+      selectedIndex: 4,
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () => context.push('/admin/users/new'),
         icon: const Icon(Icons.person_add_rounded),

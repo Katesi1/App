@@ -24,13 +24,33 @@ class HomestayListScreen extends ConsumerWidget {
       title: 'Homestay',
       selectedIndex: 2,
       floatingActionButton: user?.canEdit == true
-          ? FloatingActionButton.extended(
-              onPressed: () => context.push('/homestays/new'),
-              icon: const Icon(Icons.add_rounded),
-              label: Text('Thêm mới',
-                  style: GoogleFonts.beVietnamPro(fontWeight: FontWeight.w700)),
-              backgroundColor: AppColors.primary,
-              foregroundColor: Colors.white,
+          ? Container(
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(16),
+                gradient: const LinearGradient(
+                  colors: [AppColors.oceanMid, AppColors.ocean],
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: AppColors.ocean.withValues(alpha: 0.35),
+                    blurRadius: 16,
+                    offset: const Offset(0, 6),
+                  ),
+                ],
+              ),
+              child: FloatingActionButton.extended(
+                onPressed: () => context.push('/homestays/new'),
+                icon: const Icon(Icons.add_home_work_rounded, size: 20),
+                label: Text('Thêm mới',
+                    style: GoogleFonts.beVietnamPro(
+                      fontWeight: FontWeight.w700,
+                      fontSize: 14,
+                    )),
+                backgroundColor: Colors.transparent,
+                foregroundColor: Colors.white,
+                elevation: 0,
+                highlightElevation: 0,
+              ),
             )
           : null,
       body: homestaysAsync.when(
@@ -105,8 +125,7 @@ class _HomestayCardState extends State<_HomestayCard> {
       onTapDown: (_) => setState(() => _pressed = true),
       onTapUp: (_) {
         setState(() => _pressed = false);
-        // Navigate to rooms filtered by homestay
-        context.push('/rooms?homestayId=${h.id}');
+        context.push('/homestays/${h.id}');
       },
       onTapCancel: () => setState(() => _pressed = false),
       child: AnimatedScale(
@@ -247,7 +266,7 @@ class _HomestayCardState extends State<_HomestayCard> {
                   IconButton(
                     icon: Icon(Icons.edit_outlined,
                         color: colors.primary, size: 20),
-                    onPressed: () => context.push('/homestays/${h.id}/edit'),
+                    onPressed: () => context.push('/homestays/${h.id}'),
                     tooltip: 'Chỉnh sửa',
                   ),
               ],
