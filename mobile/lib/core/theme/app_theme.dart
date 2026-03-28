@@ -71,16 +71,17 @@ class AppTheme {
       textTheme: _buildTextTheme(),
       scaffoldBackgroundColor: AppColors.background,
       appBarTheme: AppBarTheme(
-        backgroundColor: AppColors.surface,
-        foregroundColor: AppColors.ocean,
+        backgroundColor: AppColors.ocean,
+        foregroundColor: Colors.white,
         elevation: 0,
         scrolledUnderElevation: 1,
         centerTitle: false,
+        iconTheme: const IconThemeData(color: Colors.white),
         titleTextStyle: GoogleFonts.beVietnamPro(
-          color: AppColors.ocean,
+          color: Colors.white,
           fontSize: 20,
           fontWeight: FontWeight.w700,
-        ),
+        ).copyWith(inherit: false),
       ),
       elevatedButtonTheme: ElevatedButtonThemeData(
         style: ElevatedButton.styleFrom(
@@ -201,7 +202,7 @@ class AppTheme {
   static ThemeData get dark {
     const colorScheme = ColorScheme(
       brightness: Brightness.dark,
-      primary: AppColors.oceanMid,
+      primary: AppColors.oceanBright,
       onPrimary: Colors.white,
       primaryContainer: AppColors.oceanDeep,
       onPrimaryContainer: AppColors.tealLight,
@@ -209,12 +210,12 @@ class AppTheme {
       onSecondary: Colors.black,
       secondaryContainer: AppColors.darkSecondaryContainer,
       onSecondaryContainer: AppColors.darkOnSecondaryContainer,
-      surface: AppColors.surfaceDark,
+      surface: AppColors.darkSurface,
       onSurface: AppColors.darkOnSurface,
       surfaceContainerHighest: AppColors.darkContainer,
       error: AppColors.darkError,
       onError: Colors.black,
-      outline: AppColors.slate,
+      outline: AppColors.darkHint,
       outlineVariant: AppColors.darkBorder,
     );
 
@@ -222,23 +223,23 @@ class AppTheme {
       useMaterial3: true,
       colorScheme: colorScheme,
       textTheme: _buildTextTheme(),
-      scaffoldBackgroundColor: AppColors.backgroundDark,
+      scaffoldBackgroundColor: AppColors.darkBackground,
       appBarTheme: AppBarTheme(
-        backgroundColor: AppColors.surfaceDark,
-        foregroundColor: AppColors.oceanMid,
+        backgroundColor: AppColors.darkSurface,
+        foregroundColor: AppColors.oceanBright,
         elevation: 0,
         scrolledUnderElevation: 1,
         centerTitle: false,
         titleTextStyle: GoogleFonts.beVietnamPro(
-          color: AppColors.oceanMid,
+          color: AppColors.oceanBright,
           fontSize: 20,
           fontWeight: FontWeight.w700,
-        ),
+        ).copyWith(inherit: false),
       ),
       elevatedButtonTheme: ElevatedButtonThemeData(
         style: ElevatedButton.styleFrom(
-          backgroundColor: AppColors.oceanMid,
-          foregroundColor: Colors.white,
+          backgroundColor: AppColors.oceanBright,
+          foregroundColor: AppColors.darkBackground,
           minimumSize: const Size(double.infinity, 52),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(AppRadius.md),
@@ -256,13 +257,13 @@ class AppTheme {
       ),
       outlinedButtonTheme: OutlinedButtonThemeData(
         style: OutlinedButton.styleFrom(
-          foregroundColor: AppColors.oceanMid,
+          foregroundColor: AppColors.oceanBright,
           minimumSize: const Size(double.infinity, 52),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(AppRadius.md),
           ),
           side: const BorderSide(
-              color: AppColors.oceanMid, width: 1.5),
+              color: AppColors.oceanBright, width: 1.5),
         ),
       ),
       inputDecorationTheme: InputDecorationTheme(
@@ -279,7 +280,7 @@ class AppTheme {
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(AppRadius.md),
           borderSide:
-              const BorderSide(color: AppColors.oceanMid, width: 2),
+              const BorderSide(color: AppColors.oceanBright, width: 2),
         ),
         contentPadding: const EdgeInsets.symmetric(
           horizontal: AppSpacing.md,
@@ -298,9 +299,9 @@ class AppTheme {
         elevation: 0,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(AppRadius.lg),
-          side: const BorderSide(color: AppColors.darkContainer),
+          side: const BorderSide(color: AppColors.darkBorder),
         ),
-        color: AppColors.surfaceDark,
+        color: AppColors.darkSurface,
         clipBehavior: Clip.antiAlias,
       ),
       chipTheme: ChipThemeData(
@@ -311,14 +312,14 @@ class AppTheme {
             fontSize: 13, fontWeight: FontWeight.w500),
       ),
       floatingActionButtonTheme: const FloatingActionButtonThemeData(
-        backgroundColor: AppColors.oceanMid,
-        foregroundColor: Colors.white,
+        backgroundColor: AppColors.oceanBright,
+        foregroundColor: AppColors.darkBackground,
         elevation: 4,
         shape: CircleBorder(),
       ),
       bottomNavigationBarTheme: BottomNavigationBarThemeData(
-        backgroundColor: AppColors.surfaceDark,
-        selectedItemColor: AppColors.oceanMid,
+        backgroundColor: AppColors.darkSurface,
+        selectedItemColor: AppColors.oceanBright,
         unselectedItemColor: AppColors.darkHint,
         selectedLabelStyle: GoogleFonts.beVietnamPro(
           fontSize: 11,

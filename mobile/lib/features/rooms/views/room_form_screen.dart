@@ -107,10 +107,7 @@ class _RoomFormScreenState extends ConsumerState<RoomFormScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(
-          _isEdit ? 'Sửa phòng' : 'Thêm phòng mới',
-          style: GoogleFonts.beVietnamPro(fontWeight: FontWeight.w700),
-        ),
+        title: Text(_isEdit ? 'Sửa phòng' : 'Thêm phòng mới'),
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(AppSpacing.md),

@@ -106,8 +106,7 @@ class _HoldRoomScreenState extends ConsumerState<HoldRoomScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: Text('Giữ phòng',
-            style: GoogleFonts.beVietnamPro(fontWeight: FontWeight.w700)),
+        title: const Text('Giữ phòng'),
       ),
       body: roomAsync.when(
         loading: () => const LoadingWidget(),

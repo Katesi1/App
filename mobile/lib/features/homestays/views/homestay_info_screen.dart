@@ -58,16 +58,7 @@ class _HomestayInfoScreenState extends State<HomestayInfoScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text(
-          'Thông tin chi tiết',
-          style: GoogleFonts.beVietnamPro(
-            fontWeight: FontWeight.w700,
-            fontSize: 18,
-          ),
-        ),
-        backgroundColor: AppColors.oceanDeep,
-        foregroundColor: Colors.white,
-        elevation: 0,
+        title: const Text('Thông tin chi tiết'),
       ),
       body: Form(
         key: _formKey,

@@ -253,16 +253,20 @@ class _DashHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return Container(
       padding: EdgeInsets.only(
         top: MediaQuery.of(context).padding.top,
         bottom: 44,
       ),
-      decoration: const BoxDecoration(
+      decoration: BoxDecoration(
         gradient: LinearGradient(
-          begin: Alignment(-0.4, -1),
-          end: Alignment(0.4, 1),
-          colors: [AppColors.oceanDeep, AppColors.ocean],
+          begin: const Alignment(-0.4, -1),
+          end: const Alignment(0.4, 1),
+          colors: isDark
+              ? [AppColors.darkGradientStart, AppColors.darkGradientEnd]
+              : [AppColors.oceanDeep, AppColors.ocean],
         ),
       ),
       child: Stack(

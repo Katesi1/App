@@ -77,11 +77,16 @@ class AppColors {
   static const orangeHoliday = Color(0xFFE65100);
 
   // Dark theme specific colors
-  static const darkContainer = Color(0xFF2C2C3E);
-  static const darkBorder = Color(0xFF49454F);
-  static const darkHint = Color(0xFF938F99);
+  static const darkSurface = Color(0xFF162232);
+  static const darkBackground = Color(0xFF0D1B2A);
+  static const darkContainer = Color(0xFF1E2D3D);
+  static const darkBorder = Color(0xFF2A3A4A);
+  static const darkHint = Color(0xFF607D8B);
   static const darkError = Color(0xFFCF6679);
   static const darkOnSurface = Color(0xFFE6E1E5);
   static const darkSecondaryContainer = Color(0xFF3E2000);
   static const darkOnSecondaryContainer = Color(0xFFFFDDB3);
+  static const oceanBright = Color(0xFF4FC3F7);
+  static const darkGradientStart = Color(0xFF0D1B2A);
+  static const darkGradientEnd = Color(0xFF1B3A4B);
 }

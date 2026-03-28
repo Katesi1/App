@@ -126,12 +126,7 @@ class _PersonalInfoScreenState extends ConsumerState<PersonalInfoScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(
-          'Thông tin cá nhân',
-          style: GoogleFonts.beVietnamPro(fontWeight: FontWeight.w700),
-        ),
-        backgroundColor: AppColors.ocean,
-        foregroundColor: Colors.white,
+        title: const Text('Thông tin cá nhân'),
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(AppSpacing.lg),
@@ -171,7 +166,7 @@ class _PersonalInfoScreenState extends ConsumerState<PersonalInfoScreen> {
                           shape: BoxShape.circle,
                           border: Border.all(
                             color: isDark
-                                ? AppColors.surfaceDark
+                                ? AppColors.darkSurface
                                 : AppColors.surface,
                             width: 2,
                           ),

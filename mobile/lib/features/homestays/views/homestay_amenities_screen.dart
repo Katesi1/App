@@ -68,13 +68,7 @@ class _HomestayAmenitiesScreenState
         title: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Text(
-              'Tiện ích',
-              style: GoogleFonts.beVietnamPro(
-                fontWeight: FontWeight.w700,
-                fontSize: 18,
-              ),
-            ),
+            const Text('Tiện ích'),
             const SizedBox(width: AppSpacing.sm),
             Container(
               padding: const EdgeInsets.symmetric(

@@ -97,10 +97,7 @@ class _HomestayFormScreenState extends ConsumerState<HomestayFormScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(
-          _isEdit ? 'Sửa homestay' : 'Thêm homestay mới',
-          style: GoogleFonts.beVietnamPro(fontWeight: FontWeight.w700),
-        ),
+        title: Text(_isEdit ? 'Sửa homestay' : 'Thêm homestay mới'),
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(AppSpacing.md),

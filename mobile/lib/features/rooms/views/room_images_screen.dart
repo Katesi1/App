@@ -93,8 +93,7 @@ class _RoomImagesScreenState extends ConsumerState<RoomImagesScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: Text('Quản lý ảnh',
-            style: GoogleFonts.beVietnamPro(fontWeight: FontWeight.w700)),
+        title: const Text('Quản lý ảnh'),
         actions: [
           if (_isUploading)
             const Padding(

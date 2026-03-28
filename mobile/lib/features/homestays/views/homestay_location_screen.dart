@@ -64,16 +64,7 @@ class _HomestayLocationScreenState extends State<HomestayLocationScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text(
-          'Vị trí',
-          style: GoogleFonts.beVietnamPro(
-            fontWeight: FontWeight.w700,
-            fontSize: 18,
-          ),
-        ),
-        backgroundColor: AppColors.oceanDeep,
-        foregroundColor: Colors.white,
-        elevation: 0,
+        title: const Text('Vị trí'),
       ),
       body: Column(
         children: [

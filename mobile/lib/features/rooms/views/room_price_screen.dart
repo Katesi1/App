@@ -82,8 +82,7 @@ class _RoomPriceScreenState extends ConsumerState<RoomPriceScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: Text('Cập nhật giá phòng',
-            style: GoogleFonts.beVietnamPro(fontWeight: FontWeight.w700)),
+        title: const Text('Cập nhật giá phòng'),
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(AppSpacing.md),

@@ -50,16 +50,7 @@ class _HomestayPricingScreenState extends State<HomestayPricingScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text(
-          'Bảng giá',
-          style: GoogleFonts.beVietnamPro(
-            fontWeight: FontWeight.w700,
-            fontSize: 18,
-          ),
-        ),
-        backgroundColor: AppColors.oceanDeep,
-        foregroundColor: Colors.white,
-        elevation: 0,
+        title: const Text('Bảng giá'),
       ),
       body: ListView(
         padding: const EdgeInsets.all(AppSpacing.md),

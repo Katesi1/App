@@ -62,15 +62,8 @@ class _HomestayImagesScreenState extends State<HomestayImagesScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.background,
       appBar: AppBar(
-        title: Text(
-          'Anh can',
-          style: GoogleFonts.beVietnamPro(
-            fontSize: 18,
-            fontWeight: FontWeight.w700,
-          ),
-        ),
+        title: const Text('Ảnh căn'),
         actions: [
           Container(
             margin: const EdgeInsets.only(right: AppSpacing.md),

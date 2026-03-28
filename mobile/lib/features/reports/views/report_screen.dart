@@ -602,3 +602,4 @@ class _RecentBookingCard extends StatelessWidget {
     );
   }
 }
+

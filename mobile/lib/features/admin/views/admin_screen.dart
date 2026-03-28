@@ -37,24 +37,6 @@ class AdminScreen extends ConsumerWidget {
         child: ListView(
           padding: const EdgeInsets.all(20),
           children: [
-            // ── Header ──────────────────────────────────
-            Text(
-              'Bảng điều khiển',
-              style: GoogleFonts.beVietnamPro(
-                fontSize: 18,
-                fontWeight: FontWeight.w700,
-                color: AppColors.navy,
-              ),
-            ),
-            const SizedBox(height: 4),
-            Text(
-              'Quản lý toàn bộ hệ thống homestay',
-              style: GoogleFonts.beVietnamPro(
-                fontSize: 13,
-                color: AppColors.muted,
-              ),
-            ),
-            const SizedBox(height: 20),
 
             // ── Summary KPI Cards (2x2) ─────────────────
             Row(
@@ -378,6 +360,7 @@ class AdminScreen extends ConsumerWidget {
     );
   }
 }
+
 
 // ─── KPI Card ────────────────────────────────────────────────────────────────
 class _KpiCard extends StatelessWidget {

@@ -51,18 +51,8 @@ class _HomestayRulesScreenState extends State<HomestayRulesScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text(
-          'Quy định',
-          style: GoogleFonts.beVietnamPro(
-            fontWeight: FontWeight.w700,
-            fontSize: 18,
-          ),
-        ),
-        backgroundColor: AppColors.navy,
-        foregroundColor: Colors.white,
-        elevation: 0,
+        title: const Text('Quy định'),
       ),
-      backgroundColor: AppColors.background,
       body: Column(
         children: [
           Expanded(

@@ -122,13 +122,7 @@ class _HomestayServicesScreenState extends State<HomestayServicesScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text(
-          'Dịch vụ trả phí',
-          style: GoogleFonts.beVietnamPro(
-            fontWeight: FontWeight.w700,
-            fontSize: 18,
-          ),
-        ),
+        title: const Text('Dịch vụ trả phí'),
       ),
       body: Column(
         children: [

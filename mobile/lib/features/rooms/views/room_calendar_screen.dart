@@ -35,10 +35,7 @@ class _RoomCalendarScreenState extends ConsumerState<RoomCalendarScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(
-          'Lịch phòng',
-          style: GoogleFonts.beVietnamPro(fontWeight: FontWeight.w700),
-        ),
+        title: const Text('Lịch phòng'),
         actions: [
           IconButton(
             icon: const Icon(Icons.refresh_rounded),

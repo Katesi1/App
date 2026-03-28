@@ -39,16 +39,7 @@ class _HomestaCancellationScreenState
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text(
-          'Chính sách huỷ',
-          style: GoogleFonts.beVietnamPro(
-            fontWeight: FontWeight.w700,
-            fontSize: 18,
-          ),
-        ),
-        backgroundColor: AppColors.oceanDeep,
-        foregroundColor: Colors.white,
-        elevation: 0,
+        title: const Text('Chính sách huỷ'),
       ),
       body: Column(
         children: [

@@ -63,12 +63,7 @@ class _ChangePasswordScreenState
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text(
-          'Đổi mật khẩu',
-          style: GoogleFonts.beVietnamPro(fontWeight: FontWeight.w700),
-        ),
-        backgroundColor: AppColors.ocean,
-        foregroundColor: Colors.white,
+        title: const Text('Đổi mật khẩu'),
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(AppSpacing.lg),

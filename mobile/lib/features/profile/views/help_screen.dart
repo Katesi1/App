@@ -56,12 +56,7 @@ class _HelpScreenState extends State<HelpScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(
-          'Trợ giúp',
-          style: GoogleFonts.beVietnamPro(fontWeight: FontWeight.w700),
-        ),
-        backgroundColor: AppColors.ocean,
-        foregroundColor: Colors.white,
+        title: const Text('Trợ giúp'),
       ),
       body: CustomScrollView(
         slivers: [
@@ -125,7 +120,7 @@ class _HelpScreenState extends State<HelpScreen> {
                           : null,
                       filled: true,
                       fillColor:
-                          isDark ? AppColors.surfaceDark : Colors.white,
+                          isDark ? AppColors.darkSurface : Colors.white,
                       contentPadding:
                           const EdgeInsets.symmetric(vertical: 12),
                       border: OutlineInputBorder(

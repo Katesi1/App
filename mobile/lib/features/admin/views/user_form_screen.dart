@@ -103,10 +103,7 @@ class _UserFormScreenState extends ConsumerState<UserFormScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(
-          _isEdit ? 'Sửa tài khoản' : 'Tạo tài khoản mới',
-          style: GoogleFonts.beVietnamPro(fontWeight: FontWeight.w700),
-        ),
+        title: Text(_isEdit ? 'Sửa tài khoản' : 'Tạo tài khoản mới'),
       ),
       body: _isLoading && _isEdit
           ? const LoadingWidget()

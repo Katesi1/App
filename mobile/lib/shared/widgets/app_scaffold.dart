@@ -40,7 +40,6 @@ class AppScaffold extends ConsumerWidget {
     final user = ref.watch(currentUserProvider);
     final themeMode = ref.watch(themeProvider);
     final isDark = themeMode == ThemeMode.dark;
-    final colors = Theme.of(context).colorScheme;
 
     return Scaffold(
       resizeToAvoidBottomInset: resizeToAvoidBottomInset,
@@ -66,7 +65,9 @@ class AppScaffold extends ConsumerWidget {
                               ? Icons.light_mode_rounded
                               : Icons.dark_mode_rounded,
                           key: ValueKey(isDark),
-                          color: colors.primary,
+                          color: isDark
+                              ? AppColors.oceanBright
+                              : Colors.white,
                         ),
                       ),
                       onPressed: () =>
@@ -78,7 +79,9 @@ class AppScaffold extends ConsumerWidget {
                       child: GestureDetector(
                         onTap: () => context.push('/profile'),
                         child: CircleAvatar(
-                          backgroundColor: AppColors.ocean,
+                          backgroundColor: isDark
+                              ? AppColors.oceanBright
+                              : Colors.white.withValues(alpha: 0.2),
                           radius: 18,
                           child: Text(
                             user?.name.isNotEmpty == true
@@ -222,11 +225,17 @@ class _BottomNavState extends ConsumerState<_BottomNav> {
       _current = 0;
     }
 
+    final colors = Theme.of(context).colorScheme;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return Container(
-      decoration: const BoxDecoration(
-        color: AppColors.surface,
+      decoration: BoxDecoration(
+        color: colors.surface,
         border: Border(
-          top: BorderSide(color: AppColors.border, width: 1),
+          top: BorderSide(
+            color: isDark ? AppColors.darkBorder : AppColors.border,
+            width: 1,
+          ),
         ),
       ),
       child: SafeArea(
@@ -245,6 +254,11 @@ class _BottomNavState extends ConsumerState<_BottomNav> {
 
   Widget _buildNavItem(int index, _NavItem item) {
     final isSelected = _current == index;
+    final colors = Theme.of(context).colorScheme;
+    final activeColor = colors.primary;
+    final inactiveColor = Theme.of(context).brightness == Brightness.dark
+        ? AppColors.darkHint
+        : AppColors.slate;
 
     return Expanded(
       child: GestureDetector(
@@ -258,7 +272,7 @@ class _BottomNavState extends ConsumerState<_BottomNav> {
           children: [
             Icon(
               isSelected ? item.activeIcon : item.icon,
-              color: isSelected ? AppColors.ocean : AppColors.slate,
+              color: isSelected ? activeColor : inactiveColor,
               size: 24,
             ),
             const SizedBox(height: 3),
@@ -268,7 +282,7 @@ class _BottomNavState extends ConsumerState<_BottomNav> {
                 fontSize: 10,
                 fontWeight:
                     isSelected ? FontWeight.w700 : FontWeight.w500,
-                color: isSelected ? AppColors.ocean : AppColors.slate,
+                color: isSelected ? activeColor : inactiveColor,
               ),
             ),
           ],
