@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
+import '../../../shared/widgets/section_label.dart';
 
 class _NearbyPlace {
   final IconData icon;
@@ -62,6 +64,8 @@ class _HomestayLocationScreenState extends State<HomestayLocationScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final bottomPadding = MediaQuery.of(context).padding.bottom;
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('Vị trí'),
@@ -72,37 +76,28 @@ class _HomestayLocationScreenState extends State<HomestayLocationScreen> {
             child: ListView(
               padding: const EdgeInsets.all(AppSpacing.md),
               children: [
-                _buildSectionLabel('ĐỊA CHỈ'),
+                const SectionLabel(label: 'ĐỊA CHỈ'),
                 const SizedBox(height: AppSpacing.sm),
-                _buildAddressSection(),
+                _buildAddressSection(context),
                 const SizedBox(height: AppSpacing.lg),
-                _buildMapPlaceholder(),
+                _buildMapPlaceholder(context),
                 const SizedBox(height: AppSpacing.lg),
-                _buildSectionLabel('XUNG QUANH'),
+                const SectionLabel(label: 'XUNG QUANH'),
                 const SizedBox(height: AppSpacing.sm),
                 _buildNearbySection(),
               ],
             ),
           ),
-          _buildSaveButton(),
+          _buildSaveButton(bottomPadding),
         ],
       ),
     );
   }
 
-  Widget _buildSectionLabel(String text) {
-    return Text(
-      text,
-      style: GoogleFonts.beVietnamPro(
-        fontSize: 11,
-        fontWeight: FontWeight.w600,
-        color: AppColors.muted,
-        letterSpacing: 1.2,
-      ),
-    );
-  }
+  Widget _buildAddressSection(BuildContext context) {
+    final screenWidth = MediaQuery.of(context).size.width;
+    final labelWidth = screenWidth < 360 ? 50.0 : 70.0;
 
-  Widget _buildAddressSection() {
     return Container(
       decoration: BoxDecoration(
         color: AppColors.surface,
@@ -111,17 +106,21 @@ class _HomestayLocationScreenState extends State<HomestayLocationScreen> {
       ),
       child: Column(
         children: [
-          _buildAddressRow('Mã căn', _codeController),
+          _buildAddressRow('Mã căn', _codeController, labelWidth),
           const Divider(height: 1, color: AppColors.border),
-          _buildAddressRow('Khu', _zoneController),
+          _buildAddressRow('Khu', _zoneController, labelWidth),
           const Divider(height: 1, color: AppColors.border),
-          _buildAddressRow('Mô tả', _descController),
+          _buildAddressRow('Mô tả', _descController, labelWidth),
         ],
       ),
     );
   }
 
-  Widget _buildAddressRow(String label, TextEditingController controller) {
+  Widget _buildAddressRow(
+    String label,
+    TextEditingController controller,
+    double labelWidth,
+  ) {
     return Padding(
       padding: const EdgeInsets.symmetric(
         horizontal: AppSpacing.md,
@@ -131,7 +130,7 @@ class _HomestayLocationScreenState extends State<HomestayLocationScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           SizedBox(
-            width: 60,
+            width: labelWidth,
             child: Padding(
               padding: const EdgeInsets.only(top: 10),
               child: Text(
@@ -167,9 +166,12 @@ class _HomestayLocationScreenState extends State<HomestayLocationScreen> {
     );
   }
 
-  Widget _buildMapPlaceholder() {
+  Widget _buildMapPlaceholder(BuildContext context) {
+    final screenHeight = MediaQuery.of(context).size.height;
+    final mapHeight = (screenHeight * 0.2).clamp(120.0, 200.0);
+
     return Container(
-      height: 160,
+      height: mapHeight,
       decoration: BoxDecoration(
         color: AppColors.tealLight,
         borderRadius: BorderRadius.circular(AppRadius.md),
@@ -178,7 +180,7 @@ class _HomestayLocationScreenState extends State<HomestayLocationScreen> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(
+            const Icon(
               Icons.location_on,
               size: 40,
               color: AppColors.ocean,
@@ -250,7 +252,10 @@ class _HomestayLocationScreenState extends State<HomestayLocationScreen> {
             child: Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Icon(Icons.add_circle_outline, color: AppColors.ocean),
+                const Icon(
+                  Icons.add_circle_outline,
+                  color: AppColors.ocean,
+                ),
                 const SizedBox(width: AppSpacing.sm),
                 Text(
                   'Thêm địa điểm',
@@ -268,10 +273,15 @@ class _HomestayLocationScreenState extends State<HomestayLocationScreen> {
     );
   }
 
-  Widget _buildSaveButton() {
+  Widget _buildSaveButton(double bottomPadding) {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(AppSpacing.md),
+      padding: EdgeInsets.fromLTRB(
+        AppSpacing.md,
+        AppSpacing.md,
+        AppSpacing.md,
+        AppSpacing.md + bottomPadding,
+      ),
       decoration: const BoxDecoration(
         color: AppColors.surface,
         border: Border(top: BorderSide(color: AppColors.border)),
@@ -283,14 +293,18 @@ class _HomestayLocationScreenState extends State<HomestayLocationScreen> {
           ),
           borderRadius: BorderRadius.circular(AppRadius.md),
         ),
-        child: MaterialButton(
+        child: ElevatedButton(
           onPressed: () {
-            Navigator.of(context).pop();
+            context.pop();
           },
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(AppRadius.md),
+          style: ElevatedButton.styleFrom(
+            backgroundColor: Colors.transparent,
+            shadowColor: Colors.transparent,
+            padding: const EdgeInsets.symmetric(vertical: 14),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(AppRadius.md),
+            ),
           ),
-          padding: const EdgeInsets.symmetric(vertical: 14),
           child: Text(
             'Lưu',
             style: GoogleFonts.beVietnamPro(

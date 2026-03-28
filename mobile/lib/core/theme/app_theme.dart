@@ -178,7 +178,6 @@ class AppTheme {
         backgroundColor: AppColors.ocean,
         foregroundColor: Colors.white,
         elevation: 4,
-        shape: const CircleBorder(),
         extendedTextStyle: GoogleFonts.beVietnamPro(
           fontWeight: FontWeight.w600,
         ),
@@ -315,7 +314,6 @@ class AppTheme {
         backgroundColor: AppColors.oceanBright,
         foregroundColor: AppColors.darkBackground,
         elevation: 4,
-        shape: CircleBorder(),
       ),
       bottomNavigationBarTheme: BottomNavigationBarThemeData(
         backgroundColor: AppColors.darkSurface,

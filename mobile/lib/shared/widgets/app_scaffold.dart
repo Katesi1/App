@@ -298,14 +298,16 @@ class _NotificationBell extends ConsumerWidget {
     final unreadAsync = ref.watch(unreadCountProvider);
     final count = unreadAsync.valueOrNull ?? 0;
 
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return IconButton(
-      tooltip: 'Thong bao',
+      tooltip: 'Thông báo',
       icon: Stack(
         clipBehavior: Clip.none,
         children: [
           Icon(
             Icons.notifications_outlined,
-            color: Theme.of(context).colorScheme.primary,
+            color: isDark ? AppColors.oceanBright : Colors.white,
           ),
           if (count > 0)
             Positioned(

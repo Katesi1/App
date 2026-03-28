@@ -33,13 +33,33 @@ class _UserListScreenState extends ConsumerState<UserListScreen> {
     return AppScaffold(
       title: 'Nhân viên',
       selectedIndex: 4,
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () => context.push('/admin/users/new'),
-        icon: const Icon(Icons.person_add_rounded),
-        label: Text('Thêm mới',
-            style: GoogleFonts.beVietnamPro(fontWeight: FontWeight.w700)),
-        backgroundColor: AppColors.primary,
-        foregroundColor: Colors.white,
+      floatingActionButton: Container(
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(16),
+          gradient: const LinearGradient(
+            colors: [AppColors.oceanMid, AppColors.ocean],
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: AppColors.ocean.withValues(alpha: 0.35),
+              blurRadius: 16,
+              offset: const Offset(0, 6),
+            ),
+          ],
+        ),
+        child: FloatingActionButton.extended(
+          onPressed: () => context.push('/admin/users/new'),
+          icon: const Icon(Icons.person_add_rounded, size: 20),
+          label: Text('Thêm mới',
+              style: GoogleFonts.beVietnamPro(
+                fontWeight: FontWeight.w700,
+                fontSize: 14,
+              )),
+          backgroundColor: Colors.transparent,
+          foregroundColor: Colors.white,
+          elevation: 0,
+          highlightElevation: 0,
+        ),
       ),
       body: Column(
         children: [
