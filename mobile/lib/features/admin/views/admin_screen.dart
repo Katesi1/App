@@ -181,13 +181,27 @@ class AdminScreen extends ConsumerWidget {
             const SizedBox(height: 10),
 
             _MenuCard(
+              icon: Icons.calendar_month_rounded,
+              iconBg: AppColors.emeraldLight,
+              iconColor: AppColors.emerald,
+              title: 'Lịch phòng',
+              subtitle: 'Quản lý lịch lock/mở phòng của chủ nhà',
+              onTap: () => context.push('/admin/owner-calendar'),
+            ).animate(delay: 350.ms).fadeIn(duration: 300.ms).slideX(
+                  begin: 0.05,
+                  end: 0,
+                ),
+
+            const SizedBox(height: 10),
+
+            _MenuCard(
               icon: Icons.bar_chart_rounded,
               iconBg: AppColors.amberLight,
               iconColor: AppColors.amber,
               title: 'Báo cáo thống kê',
               subtitle: 'Xem báo cáo doanh thu, tỷ lệ lấp đầy',
               onTap: () => context.go('/reports'),
-            ).animate(delay: 350.ms).fadeIn(duration: 300.ms).slideX(
+            ).animate(delay: 400.ms).fadeIn(duration: 300.ms).slideX(
                   begin: 0.05,
                   end: 0,
                 ),

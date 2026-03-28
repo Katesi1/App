@@ -10,6 +10,7 @@ import '../../features/auth/views/forgot_password_screen.dart';
 import '../../features/auth/views/login_screen.dart';
 import '../../features/auth/views/register_screen.dart';
 import '../../features/bookings/views/booking_calendar_screen.dart';
+import '../../features/bookings/views/owner_calendar_screen.dart';
 import '../../features/customer/views/customer_home_screen.dart';
 import '../../features/customer/views/search_room_screen.dart';
 import '../../features/customer/views/my_bookings_screen.dart';
@@ -373,6 +374,15 @@ final routerProvider = Provider<GoRouter>((ref) {
         pageBuilder: (_, state) => slideUpPage(
           key: state.pageKey,
           child: const PropertyManagementScreen(),
+        ),
+      ),
+
+      // ── Admin – Owner Calendar ───────────────────────────────────
+      GoRoute(
+        path: '/admin/owner-calendar',
+        pageBuilder: (_, state) => slideUpPage(
+          key: state.pageKey,
+          child: const OwnerCalendarScreen(),
         ),
       ),
 

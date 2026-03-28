@@ -1,32 +1,30 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:url_launcher/url_launcher.dart';
 
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
-import '../../../shared/widgets/app_scaffold.dart';
 import '../../../shared/widgets/calendar_grid_widget.dart';
 
-/// Lịch tổng — dành cho tất cả user xem.
-/// Tap ô → mở modal liên hệ admin qua Zalo.
-class BookingCalendarScreen extends ConsumerStatefulWidget {
-  const BookingCalendarScreen({super.key});
+/// Lịch riêng cho chủ nhà — chỉ hiện các căn của chủ nhà.
+/// Tap ô = lock/mở phòng.
+class OwnerCalendarScreen extends ConsumerStatefulWidget {
+  const OwnerCalendarScreen({super.key});
 
   @override
-  ConsumerState<BookingCalendarScreen> createState() =>
-      _BookingCalendarScreenState();
+  ConsumerState<OwnerCalendarScreen> createState() =>
+      _OwnerCalendarScreenState();
 }
 
-class _BookingCalendarScreenState
-    extends ConsumerState<BookingCalendarScreen> {
+class _OwnerCalendarScreenState
+    extends ConsumerState<OwnerCalendarScreen> {
   CalendarViewMode _viewMode = CalendarViewMode.weekly;
   PropertyCategory _category = PropertyCategory.villa;
   int _selectedGroupIndex = 0;
   DateTime _weekStart = _mondayOf(DateTime.now());
   DateTime _monthStart = DateTime(DateTime.now().year, DateTime.now().month);
 
-  late final Map<PropertyCategory, List<PropertyGroup>> _mockData;
+  late Map<PropertyCategory, List<PropertyGroup>> _mockData;
 
   static DateTime _mondayOf(DateTime date) {
     final diff = date.weekday - DateTime.monday;
@@ -36,6 +34,7 @@ class _BookingCalendarScreenState
   @override
   void initState() {
     super.initState();
+    // TODO: Thay bằng API — lấy chỉ các căn của chủ nhà hiện tại
     _mockData = {
       for (final cat in PropertyCategory.values)
         cat: generateMockCalendarData(cat),
@@ -59,26 +58,21 @@ class _BookingCalendarScreenState
   }
 
   void _onCellTap(CalendarRoom room, DateTime date, DayCell cell) {
-    _showContactModal(context, room, date, cell);
+    _showLockDialog(context, room, date, cell);
   }
 
   @override
   Widget build(BuildContext context) {
-    return AppScaffold(
-      title: '',
-      selectedIndex: 2,
-      showAppBar: false,
+    return Scaffold(
       body: Column(
         children: [
           CalendarGradientHeader(
-            title: 'Lịch Booking',
-            subtitle: 'Xem lịch đặt phòng tổng hợp',
+            title: 'Lịch phòng của tôi',
+            subtitle: 'Quản lý lịch các căn của bạn',
             actions: [
               IconButton(
-                onPressed: () {
-                  // TODO: Share functionality
-                },
-                icon: const Icon(Icons.share_rounded, color: Colors.white),
+                onPressed: () => Navigator.pop(context),
+                icon: const Icon(Icons.close_rounded, color: Colors.white),
               ),
             ],
           ),
@@ -117,7 +111,7 @@ class _BookingCalendarScreenState
               weekStart: _weekStart,
               monthStart: _monthStart,
               onCellTap: _onCellTap,
-              legendTapHint: 'Tap ô = liên hệ',
+              legendTapHint: 'Tap ô = lock/mở',
             ),
           ),
         ],
@@ -125,13 +119,17 @@ class _BookingCalendarScreenState
     );
   }
 
-  // ── Contact admin modal ─────────────────────────────────
-  void _showContactModal(
+  // ── Lock / Unlock dialog ────────────────────────────────
+  void _showLockDialog(
     BuildContext context,
     CalendarRoom room,
     DateTime date,
     DayCell cell,
   ) {
+    final isAvailable = cell.status == DayCellStatus.available;
+    final isHold = cell.status == DayCellStatus.hold;
+    final isBooked = cell.status == DayCellStatus.booked;
+
     final statusLabel = switch (cell.status) {
       DayCellStatus.available => 'Trống',
       DayCellStatus.booked => 'Đã bán',
@@ -173,12 +171,16 @@ class _BookingCalendarScreenState
                   width: 48,
                   height: 48,
                   decoration: BoxDecoration(
-                    color: AppColors.oceanLight,
+                    color: statusColor.withValues(alpha: 0.12),
                     borderRadius: BorderRadius.circular(AppRadius.md),
                   ),
-                  child: const Icon(
-                    Icons.meeting_room_rounded,
-                    color: AppColors.ocean,
+                  child: Icon(
+                    isBooked
+                        ? Icons.lock_rounded
+                        : isHold
+                            ? Icons.lock_clock_rounded
+                            : Icons.lock_open_rounded,
+                    color: statusColor,
                     size: 24,
                   ),
                 ),
@@ -197,34 +199,13 @@ class _BookingCalendarScreenState
                       ),
                       const SizedBox(height: 2),
                       Text(
-                        '${date.day}/${date.month}/${date.year}',
+                        '${date.day}/${date.month}/${date.year} · $statusLabel',
                         style: GoogleFonts.beVietnamPro(
                           fontSize: 13,
                           color: AppColors.muted,
                         ),
                       ),
                     ],
-                  ),
-                ),
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 10,
-                    vertical: 4,
-                  ),
-                  decoration: BoxDecoration(
-                    color: statusColor.withValues(alpha: 0.12),
-                    borderRadius: BorderRadius.circular(AppRadius.full),
-                    border: Border.all(
-                      color: statusColor.withValues(alpha: 0.4),
-                    ),
-                  ),
-                  child: Text(
-                    statusLabel,
-                    style: GoogleFonts.beVietnamPro(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600,
-                      color: statusColor,
-                    ),
                   ),
                 ),
               ],
@@ -234,7 +215,7 @@ class _BookingCalendarScreenState
             const Divider(height: 1, color: AppColors.border),
             const SizedBox(height: 20),
 
-            // Price info
+            // Price
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
@@ -258,66 +239,123 @@ class _BookingCalendarScreenState
 
             const SizedBox(height: 24),
 
-            // Contact via Zalo
-            SizedBox(
-              width: double.infinity,
-              height: 48,
-              child: ElevatedButton.icon(
-                onPressed: () {
-                  Navigator.pop(ctx);
-                  _openZalo();
-                },
-                icon: const Icon(Icons.chat_rounded, size: 20),
-                label: Text(
-                  'Liên hệ qua Zalo',
-                  style: GoogleFonts.beVietnamPro(
-                    fontSize: 15,
-                    fontWeight: FontWeight.w600,
+            // Action buttons
+            if (isAvailable) ...[
+              // Lock room
+              SizedBox(
+                width: double.infinity,
+                height: 48,
+                child: ElevatedButton.icon(
+                  onPressed: () {
+                    Navigator.pop(ctx);
+                    _toggleLock(room, date, DayCellStatus.hold);
+                  },
+                  icon: const Icon(Icons.lock_rounded, size: 20),
+                  label: Text(
+                    'Khoá phòng (Giữ)',
+                    style: GoogleFonts.beVietnamPro(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w600,
+                    ),
                   ),
-                ),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.oceanDeep,
-                  foregroundColor: Colors.white,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(AppRadius.md),
-                  ),
-                  elevation: 0,
-                ),
-              ),
-            ),
-
-            const SizedBox(height: 10),
-
-            // Call
-            SizedBox(
-              width: double.infinity,
-              height: 48,
-              child: OutlinedButton.icon(
-                onPressed: () {
-                  Navigator.pop(ctx);
-                  _callAdmin();
-                },
-                icon: const Icon(Icons.phone_rounded, size: 20),
-                label: Text(
-                  'Gọi điện cho Admin',
-                  style: GoogleFonts.beVietnamPro(
-                    fontSize: 15,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-                style: OutlinedButton.styleFrom(
-                  foregroundColor: AppColors.ocean,
-                  side: const BorderSide(color: AppColors.ocean),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(AppRadius.md),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.amber,
+                    foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(AppRadius.md),
+                    ),
+                    elevation: 0,
                   ),
                 ),
               ),
-            ),
+            ] else if (isHold) ...[
+              // Unlock room
+              SizedBox(
+                width: double.infinity,
+                height: 48,
+                child: ElevatedButton.icon(
+                  onPressed: () {
+                    Navigator.pop(ctx);
+                    _toggleLock(room, date, DayCellStatus.available);
+                  },
+                  icon: const Icon(Icons.lock_open_rounded, size: 20),
+                  label: Text(
+                    'Mở khoá phòng',
+                    style: GoogleFonts.beVietnamPro(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.emerald,
+                    foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(AppRadius.md),
+                    ),
+                    elevation: 0,
+                  ),
+                ),
+              ),
+            ] else ...[
+              // Booked — cannot change
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(AppSpacing.md),
+                decoration: BoxDecoration(
+                  color: AppColors.coralLight,
+                  borderRadius: BorderRadius.circular(AppRadius.md),
+                ),
+                child: Row(
+                  children: [
+                    const Icon(
+                      Icons.info_outline_rounded,
+                      color: AppColors.coral,
+                      size: 20,
+                    ),
+                    const SizedBox(width: AppSpacing.sm),
+                    Expanded(
+                      child: Text(
+                        'Phòng đã bán — không thể thay đổi trạng thái',
+                        style: GoogleFonts.beVietnamPro(
+                          fontSize: 13,
+                          color: AppColors.coral,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
           ],
         ),
       ),
     );
+  }
+
+  void _toggleLock(CalendarRoom room, DateTime date, DayCellStatus newStatus) {
+    // TODO: Gọi API lock/unlock — sau đó invalidate provider để đồng bộ lịch tổng
+    final key = DateTime(date.year, date.month, date.day);
+    final oldCell = room.dayCells[key];
+    if (oldCell == null) return;
+
+    setState(() {
+      room.dayCells[key] = DayCell(price: oldCell.price, status: newStatus);
+    });
+
+    final label = newStatus == DayCellStatus.hold ? 'Đã khoá' : 'Đã mở khoá';
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('$label phòng ${room.code} ngày ${date.day}/${date.month}'),
+          backgroundColor: newStatus == DayCellStatus.hold
+              ? AppColors.amber
+              : AppColors.emerald,
+          behavior: SnackBarBehavior.floating,
+          duration: const Duration(seconds: 2),
+        ),
+      );
+    }
   }
 
   String _formatPrice(double price) {
@@ -326,21 +364,5 @@ class _BookingCalendarScreenState
       return '${tr.toStringAsFixed(1)}tr đ/đêm';
     }
     return '${(price / 1000).toInt()}k đ/đêm';
-  }
-
-  Future<void> _openZalo() async {
-    // TODO: Thay bằng số Zalo admin thật từ API
-    final uri = Uri.parse('https://zalo.me/0123456789');
-    if (await canLaunchUrl(uri)) {
-      await launchUrl(uri, mode: LaunchMode.externalApplication);
-    }
-  }
-
-  Future<void> _callAdmin() async {
-    // TODO: Thay bằng số admin thật từ API
-    final uri = Uri.parse('tel:0123456789');
-    if (await canLaunchUrl(uri)) {
-      await launchUrl(uri);
-    }
   }
 }
