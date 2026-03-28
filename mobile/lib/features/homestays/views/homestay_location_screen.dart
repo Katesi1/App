@@ -162,6 +162,9 @@ class _HomestayLocationScreenState extends State<HomestayLocationScreen> {
               ),
               decoration: const InputDecoration(
                 border: InputBorder.none,
+                enabledBorder: InputBorder.none,
+                focusedBorder: InputBorder.none,
+                filled: false,
                 isDense: true,
                 contentPadding: EdgeInsets.symmetric(vertical: 8),
               ),

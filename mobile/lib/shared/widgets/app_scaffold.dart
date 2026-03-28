@@ -7,6 +7,7 @@ import '../../features/auth/controllers/auth_controller.dart';
 import '../providers/theme_provider.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_spacing.dart';
+import '../../features/notifications/controllers/notification_controller.dart';
 
 class AppScaffold extends ConsumerWidget {
   final String title;
@@ -49,6 +50,7 @@ class AppScaffold extends ConsumerWidget {
                   title: Text(title),
                   actions: [
                     ...?actions,
+                    _NotificationBell(),
                     IconButton(
                       tooltip: isDark ? 'Chế độ sáng' : 'Chế độ tối',
                       icon: AnimatedSwitcher(
@@ -272,6 +274,53 @@ class _BottomNavState extends ConsumerState<_BottomNav> {
           ],
         ),
       ),
+    );
+  }
+}
+
+class _NotificationBell extends ConsumerWidget {
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final unreadAsync = ref.watch(unreadCountProvider);
+    final count = unreadAsync.valueOrNull ?? 0;
+
+    return IconButton(
+      tooltip: 'Thong bao',
+      icon: Stack(
+        clipBehavior: Clip.none,
+        children: [
+          Icon(
+            Icons.notifications_outlined,
+            color: Theme.of(context).colorScheme.primary,
+          ),
+          if (count > 0)
+            Positioned(
+              top: -4,
+              right: -4,
+              child: Container(
+                padding: const EdgeInsets.all(2),
+                decoration: const BoxDecoration(
+                  color: AppColors.coral,
+                  shape: BoxShape.circle,
+                ),
+                constraints: const BoxConstraints(
+                  minWidth: 16,
+                  minHeight: 16,
+                ),
+                child: Text(
+                  count > 9 ? '9+' : '$count',
+                  style: GoogleFonts.beVietnamPro(
+                    fontSize: 9,
+                    fontWeight: FontWeight.w700,
+                    color: Colors.white,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+              ),
+            ),
+        ],
+      ),
+      onPressed: () => context.push('/notifications'),
     );
   }
 }

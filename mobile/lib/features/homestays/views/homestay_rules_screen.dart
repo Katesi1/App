@@ -124,6 +124,9 @@ class _HomestayRulesScreenState extends State<HomestayRulesScreen> {
                     ),
                     decoration: const InputDecoration(
                       border: InputBorder.none,
+                      enabledBorder: InputBorder.none,
+                      focusedBorder: InputBorder.none,
+                      filled: false,
                       isDense: true,
                       contentPadding: EdgeInsets.zero,
                     ),
@@ -196,6 +199,9 @@ class _HomestayRulesScreenState extends State<HomestayRulesScreen> {
               ),
               decoration: InputDecoration(
                 border: InputBorder.none,
+                enabledBorder: InputBorder.none,
+                focusedBorder: InputBorder.none,
+                filled: false,
                 isDense: true,
                 contentPadding: EdgeInsets.zero,
                 suffixText: suffix,

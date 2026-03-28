@@ -312,38 +312,41 @@ class _DashHeader extends StatelessWidget {
                       ),
                     ),
                     // Notification bell
-                    Stack(
-                      children: [
-                        Container(
-                          width: 38,
-                          height: 38,
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            color: Colors.white.withValues(alpha: 0.12),
-                          ),
-                          child: const Icon(
-                            Icons.notifications_outlined,
-                            color: Colors.white,
-                            size: 20,
-                          ),
-                        ),
-                        Positioned(
-                          top: 8,
-                          right: 8,
-                          child: Container(
-                            width: 8,
-                            height: 8,
+                    GestureDetector(
+                      onTap: () => context.push('/notifications'),
+                      child: Stack(
+                        children: [
+                          Container(
+                            width: 38,
+                            height: 38,
                             decoration: BoxDecoration(
-                              color: AppColors.gold,
                               shape: BoxShape.circle,
-                              border: Border.all(
-                                color: AppColors.ocean,
-                                width: 2,
+                              color: Colors.white.withValues(alpha: 0.12),
+                            ),
+                            child: const Icon(
+                              Icons.notifications_outlined,
+                              color: Colors.white,
+                              size: 20,
+                            ),
+                          ),
+                          Positioned(
+                            top: 8,
+                            right: 8,
+                            child: Container(
+                              width: 8,
+                              height: 8,
+                              decoration: BoxDecoration(
+                                color: AppColors.gold,
+                                shape: BoxShape.circle,
+                                border: Border.all(
+                                  color: AppColors.ocean,
+                                  width: 2,
+                                ),
                               ),
                             ),
                           ),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
                     const SizedBox(width: 8),
                     // Avatar
