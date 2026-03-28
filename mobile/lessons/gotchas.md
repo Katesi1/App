@@ -44,4 +44,18 @@ Ghi lại các lỗi, edge case, bài học từ quá trình phát triển. Form
 
 ---
 
+## MVC thiếu Controller — Feature không đầy đủ cấu trúc
+
+**Vấn đề**: Các feature `dashboard`, `profile`, `reports` chỉ có `views/` mà không có `controllers/`. Vi phạm MVC convention, logic tính toán bị hardcode trong view, không reusable.
+
+**Nguyên nhân**: Khi tạo feature mới hoặc rà code, không kiểm tra đầy đủ cấu trúc MVC (Model → Repository → Controller → View). Chỉ tập trung vào UI mà quên tầng controller.
+
+**Giải pháp**:
+1. **Mọi feature PHẢI có `controllers/` directory** với ít nhất 1 controller file, dù logic đơn giản.
+2. Khi rà code hoặc tạo feature mới, **checklist bắt buộc**: controllers/ tồn tại? views/ tồn tại? providers đã khai báo?
+3. Logic tính toán (KPI, stats, filter) **PHẢI nằm trong controller**, KHÔNG hardcode trong view.
+4. Dùng skill `scaffolding` khi tạo feature mới để đảm bảo đầy đủ thư mục.
+
+---
+
 _(Thêm gotcha mới vào đây khi phát hiện)_

@@ -7,21 +7,21 @@ import '../../../shared/widgets/loading_widget.dart';
 
 enum _CancellationPolicy { flexible, moderate, strict }
 
-class HomestaCancellationScreen extends StatefulWidget {
+class PropertyCancellationScreen extends StatefulWidget {
   final String homestayId;
 
-  const HomestaCancellationScreen({
+  const PropertyCancellationScreen({
     super.key,
     required this.homestayId,
   });
 
   @override
-  State<HomestaCancellationScreen> createState() =>
-      _HomestaCancellationScreenState();
+  State<PropertyCancellationScreen> createState() =>
+      _PropertyCancellationScreenState();
 }
 
-class _HomestaCancellationScreenState
-    extends State<HomestaCancellationScreen> {
+class _PropertyCancellationScreenState
+    extends State<PropertyCancellationScreen> {
   _CancellationPolicy _selected = _CancellationPolicy.flexible;
   final _freeDaysController = TextEditingController();
   final _refundPercentController = TextEditingController();

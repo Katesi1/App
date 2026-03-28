@@ -9,7 +9,7 @@ import '../../../core/utils/helpers.dart';
 import '../../../shared/widgets/app_scaffold.dart';
 import '../../../shared/widgets/loading_widget.dart';
 import '../../bookings/controllers/booking_controller.dart';
-import '../../homestays/controllers/homestay_controller.dart';
+import '../../properties/controllers/property_controller.dart';
 import '../../rooms/controllers/room_controller.dart';
 import '../controllers/user_controller.dart';
 
@@ -147,43 +147,16 @@ class AdminScreen extends ConsumerWidget {
             const SizedBox(height: 10),
 
             _MenuCard(
-              icon: Icons.villa_rounded,
-              iconBg: AppColors.goldLight,
-              iconColor: AppColors.gold,
-              title: 'Quản lý Villa',
-              subtitle: 'Quản lý villa, biệt thự nghỉ dưỡng',
-              trailing: homestaysAsync.whenOrNull(
-                data: (list) {
-                  final villas = list.where(
-                    (h) => h.name.toLowerCase().contains('villa'),
-                  );
-                  return '${villas.length} villa';
-                },
-              ),
-              onTap: () => context.push('/homestays'),
-            ).animate(delay: 250.ms).fadeIn(duration: 300.ms).slideX(
-                  begin: 0.05,
-                  end: 0,
-                ),
-
-            const SizedBox(height: 10),
-
-            _MenuCard(
               icon: Icons.home_work_rounded,
               iconBg: AppColors.tealLight,
               iconColor: AppColors.teal,
-              title: 'Quản lý Homestay',
-              subtitle: 'Quản lý homestay, nhà nghỉ',
-              trailing: homestaysAsync.whenOrNull(
-                data: (list) {
-                  final homestays = list.where(
-                    (h) => !h.name.toLowerCase().contains('villa'),
-                  );
-                  return '${homestays.length} homestay';
-                },
+              title: 'Quản lý phòng',
+              subtitle: 'Villa, Homestay, Khách sạn',
+              trailing: roomsAsync.whenOrNull(
+                data: (rooms) => '${rooms.length} phòng',
               ),
-              onTap: () => context.push('/homestays'),
-            ).animate(delay: 300.ms).fadeIn(duration: 300.ms).slideX(
+              onTap: () => context.push('/admin/rooms'),
+            ).animate(delay: 250.ms).fadeIn(duration: 300.ms).slideX(
                   begin: 0.05,
                   end: 0,
                 ),
@@ -200,7 +173,7 @@ class AdminScreen extends ConsumerWidget {
                 data: (list) => '${list.length} booking',
               ),
               onTap: () => context.push('/bookings'),
-            ).animate(delay: 350.ms).fadeIn(duration: 300.ms).slideX(
+            ).animate(delay: 300.ms).fadeIn(duration: 300.ms).slideX(
                   begin: 0.05,
                   end: 0,
                 ),
@@ -214,7 +187,7 @@ class AdminScreen extends ConsumerWidget {
               title: 'Báo cáo thống kê',
               subtitle: 'Xem báo cáo doanh thu, tỷ lệ lấp đầy',
               onTap: () => context.go('/reports'),
-            ).animate(delay: 400.ms).fadeIn(duration: 300.ms).slideX(
+            ).animate(delay: 350.ms).fadeIn(duration: 300.ms).slideX(
                   begin: 0.05,
                   end: 0,
                 ),
@@ -247,17 +220,8 @@ class AdminScreen extends ConsumerWidget {
                 Expanded(
                   child: _QuickAction(
                     icon: Icons.add_home_work_rounded,
-                    label: 'Thêm\nhomestay',
-                    color: AppColors.teal,
-                    onTap: () => context.push('/homestays/new'),
-                  ),
-                ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: _QuickAction(
-                    icon: Icons.add_business_rounded,
                     label: 'Thêm\nphòng',
-                    color: AppColors.emerald,
+                    color: AppColors.teal,
                     onTap: () => context.push('/rooms/new'),
                   ),
                 ),

@@ -4,16 +4,16 @@ import 'package:google_fonts/google_fonts.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
 
-class HomestayRulesScreen extends StatefulWidget {
+class PropertyRulesScreen extends StatefulWidget {
   final String homestayId;
 
-  const HomestayRulesScreen({super.key, required this.homestayId});
+  const PropertyRulesScreen({super.key, required this.homestayId});
 
   @override
-  State<HomestayRulesScreen> createState() => _HomestayRulesScreenState();
+  State<PropertyRulesScreen> createState() => _PropertyRulesScreenState();
 }
 
-class _HomestayRulesScreenState extends State<HomestayRulesScreen> {
+class _PropertyRulesScreenState extends State<PropertyRulesScreen> {
   // Sức chứa
   final _standardCapacityCtrl = TextEditingController(text: '10 người lớn');
   final _childrenCapacityCtrl = TextEditingController(text: '4 trẻ');

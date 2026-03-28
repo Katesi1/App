@@ -90,9 +90,18 @@ class RoomModel {
   final String homestayId;
   final String name;
   final String code;
+  final String? type;
   final int bedrooms;
+  final int bathrooms;
+  final int standardGuests;
   final int maxGuests;
   final String? description;
+  final String? address;
+  final String? mapLink;
+  final List<String> amenities;
+  final String? cancellationPolicy;
+  final double? adultSurcharge;
+  final double? childSurcharge;
   final bool isActive;
   final List<RoomImageModel> images;
   final RoomPriceModel? price;
@@ -103,9 +112,18 @@ class RoomModel {
     required this.homestayId,
     required this.name,
     required this.code,
+    this.type,
     this.bedrooms = 1,
+    this.bathrooms = 1,
+    this.standardGuests = 2,
     this.maxGuests = 2,
     this.description,
+    this.address,
+    this.mapLink,
+    this.amenities = const [],
+    this.cancellationPolicy,
+    this.adultSurcharge,
+    this.childSurcharge,
     this.isActive = true,
     this.images = const [],
     this.price,
@@ -117,9 +135,21 @@ class RoomModel {
         homestayId: json['homestayId'] ?? '',
         name: json['name'] ?? '',
         code: json['code'] ?? '',
+        type: json['type'],
         bedrooms: json['bedrooms'] ?? 1,
+        bathrooms: json['bathrooms'] ?? 1,
+        standardGuests: json['standardGuests'] ?? 2,
         maxGuests: json['maxGuests'] ?? 2,
         description: json['description'],
+        address: json['address'],
+        mapLink: json['mapLink'],
+        amenities: (json['amenities'] as List<dynamic>?)
+                ?.map((e) => e.toString())
+                .toList() ??
+            [],
+        cancellationPolicy: json['cancellationPolicy'],
+        adultSurcharge: (json['adultSurcharge'] as num?)?.toDouble(),
+        childSurcharge: (json['childSurcharge'] as num?)?.toDouble(),
         isActive: json['isActive'] ?? true,
         images: (json['images'] as List<dynamic>?)
                 ?.map((e) => RoomImageModel.fromJson(e))

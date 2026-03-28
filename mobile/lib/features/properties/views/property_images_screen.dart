@@ -4,16 +4,16 @@ import 'package:google_fonts/google_fonts.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
 
-class HomestayImagesScreen extends StatefulWidget {
+class PropertyImagesScreen extends StatefulWidget {
   final String homestayId;
 
-  const HomestayImagesScreen({super.key, required this.homestayId});
+  const PropertyImagesScreen({super.key, required this.homestayId});
 
   @override
-  State<HomestayImagesScreen> createState() => _HomestayImagesScreenState();
+  State<PropertyImagesScreen> createState() => _PropertyImagesScreenState();
 }
 
-class _HomestayImagesScreenState extends State<HomestayImagesScreen> {
+class _PropertyImagesScreenState extends State<PropertyImagesScreen> {
   String _selectedCategory = 'Tất cả';
 
   final List<String> _categories = [

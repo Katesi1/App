@@ -78,19 +78,25 @@ class AppScaffold extends ConsumerWidget {
                           const EdgeInsets.only(right: AppSpacing.sm),
                       child: GestureDetector(
                         onTap: () => context.push('/profile'),
-                        child: CircleAvatar(
-                          backgroundColor: isDark
-                              ? AppColors.oceanBright
-                              : Colors.white.withValues(alpha: 0.2),
-                          radius: 18,
-                          child: Text(
-                            user?.name.isNotEmpty == true
-                                ? user!.name[0].toUpperCase()
-                                : 'U',
-                            style: GoogleFonts.beVietnamPro(
-                              color: Colors.white,
-                              fontWeight: FontWeight.w700,
-                              fontSize: 15,
+                        child: Container(
+                          width: 36,
+                          height: 36,
+                          decoration: const BoxDecoration(
+                            shape: BoxShape.circle,
+                            gradient: LinearGradient(
+                              colors: [AppColors.teal, AppColors.gold],
+                            ),
+                          ),
+                          child: Center(
+                            child: Text(
+                              user?.name.isNotEmpty == true
+                                  ? user!.name[0].toUpperCase()
+                                  : 'U',
+                              style: GoogleFonts.beVietnamPro(
+                                color: Colors.white,
+                                fontWeight: FontWeight.w700,
+                                fontSize: 13,
+                              ),
                             ),
                           ),
                         ),

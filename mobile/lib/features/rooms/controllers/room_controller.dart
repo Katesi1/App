@@ -22,3 +22,73 @@ final roomDetailProvider =
   if (result.success) return result.data!;
   throw Exception(result.message);
 });
+
+// Actions notifier cho mutations (create, update, delete, upload images, upsert price)
+final roomActionsProvider =
+    StateNotifierProvider<RoomActionsNotifier, AsyncValue<void>>((ref) {
+  return RoomActionsNotifier(ref.read(roomRepositoryProvider), ref);
+});
+
+class RoomActionsNotifier extends StateNotifier<AsyncValue<void>> {
+  final RoomRepository _repo;
+  final Ref _ref;
+
+  RoomActionsNotifier(this._repo, this._ref)
+      : super(const AsyncValue.data(null));
+
+  Future<RoomModel?> create(Map<String, dynamic> data) async {
+    state = const AsyncValue.loading();
+    final result = await _repo.createRoom(data);
+    if (result.success) {
+      _ref.invalidate(roomListProvider);
+      state = const AsyncValue.data(null);
+      return result.data;
+    }
+    state = AsyncValue.error(result.message, StackTrace.current);
+    return null;
+  }
+
+  Future<bool> update(String id, Map<String, dynamic> data) async {
+    state = const AsyncValue.loading();
+    final result = await _repo.updateRoom(id, data);
+    if (result.success) {
+      _ref.invalidate(roomListProvider);
+      _ref.invalidate(roomDetailProvider(id));
+      state = const AsyncValue.data(null);
+      return true;
+    }
+    state = AsyncValue.error(result.message, StackTrace.current);
+    return false;
+  }
+
+  Future<bool> delete(String id) async {
+    state = const AsyncValue.loading();
+    final result = await _repo.deleteRoom(id);
+    if (result.success) {
+      _ref.invalidate(roomListProvider);
+      state = const AsyncValue.data(null);
+      return true;
+    }
+    state = AsyncValue.error(result.message, StackTrace.current);
+    return false;
+  }
+
+  Future<bool> uploadImages(String roomId, List<String> filePaths) async {
+    final result = await _repo.uploadImages(roomId, filePaths);
+    if (result.success) {
+      _ref.invalidate(roomDetailProvider(roomId));
+      return true;
+    }
+    return false;
+  }
+
+  Future<bool> upsertPrice(
+      String roomId, Map<String, dynamic> data) async {
+    final result = await _repo.upsertPrice(roomId, data);
+    if (result.success) {
+      _ref.invalidate(roomDetailProvider(roomId));
+      return true;
+    }
+    return false;
+  }
+}

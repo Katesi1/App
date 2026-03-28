@@ -10,7 +10,6 @@ import 'package:share_plus/share_plus.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../data/models/room_model.dart';
-import '../../auth/controllers/auth_controller.dart';
 import '../../../shared/widgets/loading_widget.dart';
 import '../controllers/room_controller.dart';
 
@@ -21,8 +20,6 @@ class RoomDetailScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final roomAsync = ref.watch(roomDetailProvider(roomId));
-    final user = ref.watch(currentUserProvider);
-
     return roomAsync.when(
       loading: () => Scaffold(
         appBar: AppBar(),
@@ -118,42 +115,28 @@ class RoomDetailScreen extends ConsumerWidget {
                             color: AppColors.ocean,
                           ),
                         ),
-                        const Spacer(),
-                        ...List.generate(
-                            4,
-                            (_) => const Icon(Icons.star_rounded,
-                                size: 14, color: AppColors.gold)),
-                        const Icon(Icons.star_outline_rounded,
-                            size: 14, color: AppColors.border),
-                        const SizedBox(width: 4),
-                        Text(
-                          '4.2',
-                          style: GoogleFonts.beVietnamPro(
-                            fontSize: 12,
-                            color: AppColors.muted,
-                          ),
-                        ),
                       ],
                     ),
 
                     const SizedBox(height: 16),
 
                     // ── Info chips ───────────────────────────────────
-                    Row(
+                    Wrap(
+                      spacing: 10,
+                      runSpacing: 8,
                       children: [
+                        _InfoChip(
+                          icon: Icons.bed_outlined,
+                          label: '${room.bedrooms} PN',
+                        ),
+                        if (room.bathrooms > 0)
+                          _InfoChip(
+                            icon: Icons.bathtub_outlined,
+                            label: '${room.bathrooms} WC',
+                          ),
                         _InfoChip(
                           icon: Icons.people_outline_rounded,
                           label: '${room.maxGuests} người',
-                        ),
-                        const SizedBox(width: 12),
-                        _InfoChip(
-                          icon: Icons.square_foot_rounded,
-                          label: '35m²',
-                        ),
-                        const SizedBox(width: 12),
-                        _InfoChip(
-                          icon: Icons.bed_outlined,
-                          label: '${room.bedrooms} giường đôi',
                         ),
                       ],
                     )
@@ -162,120 +145,71 @@ class RoomDetailScreen extends ConsumerWidget {
 
                     const SizedBox(height: 16),
 
-                    // ── Amenities ────────────────────────────────────
-                    Wrap(
-                      spacing: 6,
-                      runSpacing: 6,
-                      children: [
-                        _AmenityChip('View vịnh'),
-                        _AmenityChip('Điều hoà'),
-                        _AmenityChip('55" Smart TV'),
-                        _AmenityChip('Bồn tắm'),
-                        _AmenityChip('Ban công'),
-                        _AmenityChip('Két sắt'),
-                      ],
-                    ),
+                    // ── Amenities (từ data) ────────────────────────
+                    if (room.amenities.isNotEmpty)
+                      Wrap(
+                        spacing: 6,
+                        runSpacing: 6,
+                        children: room.amenities
+                            .map((a) => _AmenityChip(a))
+                            .toList(),
+                      ),
 
                     const SizedBox(height: 24),
 
-                    // ── Current guest section ───────────────────────
-                    Text(
-                      'Khách hiện tại',
-                      style: GoogleFonts.beVietnamPro(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w700,
-                        color: AppColors.navy,
+                    // ── Địa chỉ ───────────────────────────────────
+                    if (room.address != null &&
+                        room.address!.isNotEmpty) ...[
+                      Text(
+                        'Địa chỉ',
+                        style: GoogleFonts.beVietnamPro(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w700,
+                          color: AppColors.navy,
+                        ),
                       ),
-                    ),
-                    const SizedBox(height: 8),
-                    Container(
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        color: AppColors.surface,
-                        borderRadius:
-                            BorderRadius.circular(AppRadius.md),
-                        boxShadow: [
-                          BoxShadow(
-                            color:
-                                Colors.black.withValues(alpha: 0.04),
-                            blurRadius: 8,
-                          ),
-                        ],
-                      ),
-                      child: Row(
+                      const SizedBox(height: 6),
+                      Row(
                         children: [
-                          // Avatar
-                          Container(
-                            width: 44,
-                            height: 44,
-                            decoration: const BoxDecoration(
-                              shape: BoxShape.circle,
-                              gradient: LinearGradient(
-                                colors: [
-                                  AppColors.oceanMid,
-                                  AppColors.teal,
-                                ],
-                              ),
-                            ),
-                            child: Center(
-                              child: Text(
-                                'TB',
-                                style: GoogleFonts.beVietnamPro(
-                                  color: Colors.white,
-                                  fontWeight: FontWeight.w700,
-                                  fontSize: 14,
-                                ),
-                              ),
-                            ),
-                          ),
-                          const SizedBox(width: 12),
+                          const Icon(Icons.location_on_outlined,
+                              size: 16, color: AppColors.muted),
+                          const SizedBox(width: 6),
                           Expanded(
-                            child: Column(
-                              crossAxisAlignment:
-                                  CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  'Trần Thị Bích',
-                                  style: GoogleFonts.beVietnamPro(
-                                    fontSize: 14,
-                                    fontWeight: FontWeight.w600,
-                                    color: AppColors.navy,
-                                  ),
-                                ),
-                                Text(
-                                  '18/03 → 21/03 · 3 đêm',
-                                  style: GoogleFonts.beVietnamPro(
-                                    fontSize: 12,
-                                    color: AppColors.muted,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 8, vertical: 3),
-                            decoration: BoxDecoration(
-                              color: AppColors.tealLight,
-                              borderRadius:
-                                  BorderRadius.circular(20),
-                            ),
                             child: Text(
-                              'Đã xác nhận',
+                              room.address!,
                               style: GoogleFonts.beVietnamPro(
-                                fontSize: 10,
-                                fontWeight: FontWeight.w600,
-                                color: AppColors.greenDark,
+                                fontSize: 13,
+                                color: AppColors.muted,
                               ),
                             ),
                           ),
                         ],
                       ),
-                    )
-                        .animate(delay: 200.ms)
-                        .fadeIn(duration: 300.ms),
+                      const SizedBox(height: 24),
+                    ],
 
-                    const SizedBox(height: 24),
+                    // ── Mô tả ─────────────────────────────────────
+                    if (room.description != null &&
+                        room.description!.isNotEmpty) ...[
+                      Text(
+                        'Mô tả',
+                        style: GoogleFonts.beVietnamPro(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w700,
+                          color: AppColors.navy,
+                        ),
+                      ),
+                      const SizedBox(height: 6),
+                      Text(
+                        room.description!,
+                        style: GoogleFonts.beVietnamPro(
+                          fontSize: 13,
+                          color: AppColors.muted,
+                          height: 1.5,
+                        ),
+                      ),
+                      const SizedBox(height: 24),
+                    ],
 
                     // ── Price grid ──────────────────────────────────
                     if (room.price != null) ...[
@@ -292,84 +226,49 @@ class RoomDetailScreen extends ConsumerWidget {
                       const SizedBox(height: 24),
                     ],
 
-                    // ── Action buttons ──────────────────────────────
-                    Row(
-                      children: [
-                        Expanded(
-                          child: Container(
-                            height: 48,
-                            decoration: BoxDecoration(
-                              color: AppColors.oceanLight,
-                              borderRadius: BorderRadius.circular(
-                                  AppRadius.md),
+                    // ── Action button — chỉ Tạo booking ──────────────
+                    SizedBox(
+                      width: double.infinity,
+                      height: 48,
+                      child: Container(
+                        decoration: BoxDecoration(
+                          gradient: const LinearGradient(
+                            colors: [
+                              AppColors.oceanMid,
+                              AppColors.ocean,
+                            ],
+                          ),
+                          borderRadius: BorderRadius.circular(
+                              AppRadius.md),
+                          boxShadow: [
+                            BoxShadow(
+                              color: AppColors.ocean
+                                  .withValues(alpha: 0.3),
+                              blurRadius: 16,
+                              offset: const Offset(0, 4),
                             ),
-                            child: Material(
-                              color: Colors.transparent,
-                              child: InkWell(
-                                onTap: user?.canEdit == true
-                                    ? () => context
-                                        .push('/rooms/$roomId/edit')
-                                    : null,
-                                borderRadius: BorderRadius.circular(
-                                    AppRadius.md),
-                                child: Center(
-                                  child: Text(
-                                    'Sửa thông tin',
-                                    style: GoogleFonts.beVietnamPro(
-                                      color: AppColors.ocean,
-                                      fontWeight: FontWeight.w600,
-                                      fontSize: 14,
-                                    ),
-                                  ),
+                          ],
+                        ),
+                        child: Material(
+                          color: Colors.transparent,
+                          child: InkWell(
+                            onTap: () => context
+                                .push('/rooms/$roomId/hold'),
+                            borderRadius: BorderRadius.circular(
+                                AppRadius.md),
+                            child: Center(
+                              child: Text(
+                                'Tạo booking',
+                                style: GoogleFonts.beVietnamPro(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.w600,
+                                  fontSize: 14,
                                 ),
                               ),
                             ),
                           ),
                         ),
-                        const SizedBox(width: 10),
-                        Expanded(
-                          child: Container(
-                            height: 48,
-                            decoration: BoxDecoration(
-                              gradient: const LinearGradient(
-                                colors: [
-                                  AppColors.oceanMid,
-                                  AppColors.ocean,
-                                ],
-                              ),
-                              borderRadius: BorderRadius.circular(
-                                  AppRadius.md),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: AppColors.ocean
-                                      .withValues(alpha: 0.3),
-                                  blurRadius: 16,
-                                  offset: const Offset(0, 4),
-                                ),
-                              ],
-                            ),
-                            child: Material(
-                              color: Colors.transparent,
-                              child: InkWell(
-                                onTap: () => context
-                                    .push('/rooms/$roomId/hold'),
-                                borderRadius: BorderRadius.circular(
-                                    AppRadius.md),
-                                child: Center(
-                                  child: Text(
-                                    'Tạo booking',
-                                    style: GoogleFonts.beVietnamPro(
-                                      color: Colors.white,
-                                      fontWeight: FontWeight.w600,
-                                      fontSize: 14,
-                                    ),
-                                  ),
-                                ),
-                              ),
-                            ),
-                          ),
-                        ),
-                      ],
+                      ),
                     ),
 
                     // ── Gallery thumbnails ──────────────────────────

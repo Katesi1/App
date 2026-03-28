@@ -13,16 +13,16 @@ class _NearbyPlace {
   const _NearbyPlace({required this.icon, required this.description});
 }
 
-class HomestayLocationScreen extends StatefulWidget {
+class PropertyLocationScreen extends StatefulWidget {
   final String homestayId;
 
-  const HomestayLocationScreen({super.key, required this.homestayId});
+  const PropertyLocationScreen({super.key, required this.homestayId});
 
   @override
-  State<HomestayLocationScreen> createState() => _HomestayLocationScreenState();
+  State<PropertyLocationScreen> createState() => _PropertyLocationScreenState();
 }
 
-class _HomestayLocationScreenState extends State<HomestayLocationScreen> {
+class _PropertyLocationScreenState extends State<PropertyLocationScreen> {
   final _codeController = TextEditingController(text: 'C3-06');
   final _zoneController = TextEditingController(
     text: 'Biệt thự Calvia Sun Grand City Feria Hạ Long',

@@ -1,11 +1,9 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
-import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../../core/theme/app_colors.dart';
-import '../../../core/theme/app_spacing.dart';
 import '../../../data/models/room_model.dart';
 import '../../../shared/widgets/app_scaffold.dart';
 import '../../../shared/widgets/date_picker_tile.dart';
@@ -23,7 +21,10 @@ class RoomListScreen extends ConsumerStatefulWidget {
   ConsumerState<RoomListScreen> createState() => _RoomListScreenState();
 }
 
-class _RoomListScreenState extends ConsumerState<RoomListScreen> {
+class _RoomListScreenState extends ConsumerState<RoomListScreen>
+    with SingleTickerProviderStateMixin {
+  late final TabController _tabController;
+
   // Search (debounce 300ms)
   bool _isSearching = false;
   String _searchQuery = '';
@@ -33,15 +34,20 @@ class _RoomListScreenState extends ConsumerState<RoomListScreen> {
 
   // Filters
   final Set<String> _selectedViews = {};
-  final Set<String> _selectedTypes = {};
   DateTime? _checkIn;
   DateTime? _checkOut;
   int _adults = 0;
   int _children = 0;
 
+  // Tabs
+  static const _tabs = [
+    (label: 'Villa', icon: Icons.villa_rounded, keyword: 'villa'),
+    (label: 'Homestay', icon: Icons.cottage_rounded, keyword: 'homestay'),
+    (label: 'Khách sạn', icon: Icons.hotel_rounded, keyword: 'hotel'),
+  ];
+
   bool get _hasActiveFilters =>
       _selectedViews.isNotEmpty ||
-      _selectedTypes.isNotEmpty ||
       _checkIn != null ||
       _checkOut != null ||
       _adults > 0 ||
@@ -52,16 +58,11 @@ class _RoomListScreenState extends ConsumerState<RoomListScreen> {
     for (final v in _selectedViews) {
       labels.add(_viewLabels[v] ?? v);
     }
-    for (final t in _selectedTypes) {
-      labels.add(_typeLabels[t] ?? t);
-    }
     if (_checkIn != null) {
-      labels.add(
-          'Check-in: ${_checkIn!.day}/${_checkIn!.month}');
+      labels.add('Check-in: ${_checkIn!.day}/${_checkIn!.month}');
     }
     if (_checkOut != null) {
-      labels.add(
-          'Check-out: ${_checkOut!.day}/${_checkOut!.month}');
+      labels.add('Check-out: ${_checkOut!.day}/${_checkOut!.month}');
     }
     if (_adults > 0) labels.add('$_adults người lớn');
     if (_children > 0) labels.add('$_children trẻ em');
@@ -74,14 +75,18 @@ class _RoomListScreenState extends ConsumerState<RoomListScreen> {
     'garden': 'View sân vườn',
   };
 
-  static const _typeLabels = {
-    'villa': 'Villa',
-    'homestay': 'Homestay',
-    'hotel': 'Khách sạn',
-  };
+  @override
+  void initState() {
+    super.initState();
+    _tabController = TabController(length: _tabs.length, vsync: this);
+    _tabController.addListener(() {
+      if (!_tabController.indexIsChanging) setState(() {});
+    });
+  }
 
   @override
   void dispose() {
+    _tabController.dispose();
     _debounce?.cancel();
     _searchController.dispose();
     _searchFocusNode.dispose();
@@ -95,10 +100,17 @@ class _RoomListScreenState extends ConsumerState<RoomListScreen> {
     });
   }
 
-  List<RoomModel> _filter(List<RoomModel> rooms) {
-    var list = rooms;
+  List<RoomModel> _filterByTab(List<RoomModel> rooms, String keyword) {
+    var list = rooms.where((r) {
+      final roomType = (r.type ?? '').toLowerCase();
+      if (roomType.isNotEmpty) return roomType == keyword;
+      // Fallback khi API chưa trả type
+      final name = r.name.toLowerCase();
+      final homestayName = r.homestay?.name.toLowerCase() ?? '';
+      return name.contains(keyword) || homestayName.contains(keyword);
+    }).toList();
 
-    // Search by name or code
+    // Search
     if (_searchQuery.isNotEmpty) {
       final query = _searchQuery.toLowerCase();
       list = list
@@ -108,7 +120,7 @@ class _RoomListScreenState extends ConsumerState<RoomListScreen> {
           .toList();
     }
 
-    // TODO: Apply view, type, date, guest filters khi API hỗ trợ
+    // TODO: Apply view, date, guest filters khi API hỗ trợ
     return list;
   }
 
@@ -129,7 +141,6 @@ class _RoomListScreenState extends ConsumerState<RoomListScreen> {
   void _resetFilters() {
     setState(() {
       _selectedViews.clear();
-      _selectedTypes.clear();
       _checkIn = null;
       _checkOut = null;
       _adults = 0;
@@ -138,9 +149,7 @@ class _RoomListScreenState extends ConsumerState<RoomListScreen> {
   }
 
   void _showFilterSheet() {
-    // Tạo bản copy để user có thể huỷ
     final tempViews = Set<String>.from(_selectedViews);
-    final tempTypes = Set<String>.from(_selectedTypes);
     var tempCheckIn = _checkIn;
     var tempCheckOut = _checkOut;
     var tempAdults = _adults;
@@ -246,7 +255,6 @@ class _RoomListScreenState extends ConsumerState<RoomListScreen> {
                         onTap: () {
                           setSheetState(() {
                             tempViews.clear();
-                            tempTypes.clear();
                             tempCheckIn = null;
                             tempCheckOut = null;
                             tempAdults = 0;
@@ -288,32 +296,6 @@ class _RoomListScreenState extends ConsumerState<RoomListScreen> {
                         isSelected: selected,
                         onTap: () =>
                             toggleSet(tempViews, e.key),
-                      );
-                    }).toList(),
-                  ),
-                ),
-
-                // ── Loại ──
-                SectionLabel(label: 'LOẠI'),
-                Padding(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 20),
-                  child: Wrap(
-                    spacing: 10,
-                    runSpacing: 8,
-                    children: _typeLabels.entries.map((e) {
-                      final selected = tempTypes.contains(e.key);
-                      return FilterChipTile(
-                        label: e.value,
-                        icon: switch (e.key) {
-                          'villa' => Icons.villa_rounded,
-                          'homestay' => Icons.cottage_rounded,
-                          'hotel' => Icons.apartment_rounded,
-                          _ => Icons.home_rounded,
-                        },
-                        isSelected: selected,
-                        onTap: () =>
-                            toggleSet(tempTypes, e.key),
                       );
                     }).toList(),
                   ),
@@ -391,9 +373,6 @@ class _RoomListScreenState extends ConsumerState<RoomListScreen> {
                           _selectedViews
                             ..clear()
                             ..addAll(tempViews);
-                          _selectedTypes
-                            ..clear()
-                            ..addAll(tempTypes);
                           _checkIn = tempCheckIn;
                           _checkOut = tempCheckOut;
                           _adults = tempAdults;
@@ -443,16 +422,15 @@ class _RoomListScreenState extends ConsumerState<RoomListScreen> {
         onRefresh: () async {
           ref.invalidate(roomListProvider(null));
         },
-        child: CustomScrollView(
-          slivers: [
-            // ── Header ─────────────────────────────────────────────
+        child: NestedScrollView(
+          headerSliverBuilder: (context, innerBoxIsScrolled) => [
+            // ── Header + TabBar ──
             SliverToBoxAdapter(
               child: Container(
                 padding: EdgeInsets.only(
                   top: MediaQuery.of(context).padding.top + 14,
                   left: 20,
                   right: 20,
-                  bottom: 16,
                 ),
                 decoration: const BoxDecoration(
                   gradient: LinearGradient(
@@ -542,12 +520,43 @@ class _RoomListScreenState extends ConsumerState<RoomListScreen> {
                         ),
                       ),
                     ],
+                    const SizedBox(height: 12),
+                    // ── TabBar ──
+                    TabBar(
+                      controller: _tabController,
+                      labelColor: Colors.white,
+                      unselectedLabelColor:
+                          Colors.white.withValues(alpha: 0.6),
+                      labelStyle: GoogleFonts.beVietnamPro(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w700,
+                      ),
+                      unselectedLabelStyle: GoogleFonts.beVietnamPro(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w500,
+                      ),
+                      indicatorColor: Colors.white,
+                      indicatorWeight: 3,
+                      dividerColor: Colors.transparent,
+                      tabs: _tabs
+                          .map((t) => Tab(
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Icon(t.icon, size: 16),
+                                    const SizedBox(width: 6),
+                                    Text(t.label),
+                                  ],
+                                ),
+                              ))
+                          .toList(),
+                    ),
                   ],
                 ),
               ),
             ),
 
-            // ── Active filter chips ───────────────────────────────────
+            // ── Active filter chips ──
             if (_hasActiveFilters)
               SliverToBoxAdapter(
                 child: Padding(
@@ -575,7 +584,6 @@ class _RoomListScreenState extends ConsumerState<RoomListScreen> {
                                 MaterialTapTargetSize.shrinkWrap,
                             visualDensity: VisualDensity.compact,
                           )),
-                      // Nút xoá tất cả
                       GestureDetector(
                         onTap: _resetFilters,
                         child: Chip(
@@ -607,61 +615,46 @@ class _RoomListScreenState extends ConsumerState<RoomListScreen> {
                   ),
                 ),
               ),
-
-            const SliverToBoxAdapter(
-                child: SizedBox(height: AppSpacing.md)),
-
-            // ── Room cards ──────────────────────────────────────────
-            roomsAsync.when(
-              loading: () => SliverPadding(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 16),
-                sliver: SliverList.separated(
-                  itemCount: 3,
-                  separatorBuilder: (_, __) =>
-                      const SizedBox(height: 12),
-                  itemBuilder: (_, i) => RoomCardSkeleton()
-                      .animate(
-                          delay: Duration(milliseconds: i * 60))
-                      .fadeIn(duration: 300.ms),
-                ),
+          ],
+          body: roomsAsync.when(
+            loading: () => const Center(child: LoadingWidget()),
+            error: (e, _) => Center(
+              child: ErrorStateWidget(
+                message:
+                    e.toString().replaceAll('Exception: ', ''),
+                onRetry: () =>
+                    ref.invalidate(roomListProvider(null)),
               ),
-              error: (e, _) => SliverFillRemaining(
-                child: ErrorStateWidget(
-                  message:
-                      e.toString().replaceAll('Exception: ', ''),
-                  onRetry: () => ref.invalidate(roomListProvider(null)),
-                ),
-              ),
-              data: (rooms) {
-                final filtered = _filter(rooms);
+            ),
+            data: (rooms) => TabBarView(
+              controller: _tabController,
+              children: _tabs.map((tab) {
+                final filtered = _filterByTab(rooms, tab.keyword);
                 if (filtered.isEmpty) {
-                  return SliverFillRemaining(
+                  return Center(
                     child: EmptyStateWidget(
-                      icon: Icons.bed_outlined,
-                      message: 'Chưa có phòng nào',
-                      subMessage: 'Nhấn + để thêm phòng mới',
+                      icon: tab.icon,
+                      message: 'Chưa có ${tab.label} nào',
+                      subMessage: 'Chưa có phòng trong danh mục này',
                     ),
                   );
                 }
-                return SliverPadding(
+                return ListView.separated(
                   padding: const EdgeInsets.fromLTRB(
-                      16, 0, 16, 100),
-                  sliver: SliverList.separated(
-                    itemCount: filtered.length,
-                    separatorBuilder: (_, __) =>
-                        const SizedBox(height: 12),
-                    itemBuilder: (_, i) => RoomCard(
-                      room: filtered[i],
-                      animationIndex: i,
-                      onTap: () => context
-                          .push('/rooms/${filtered[i].id}'),
-                    ),
+                      16, 16, 16, 100),
+                  itemCount: filtered.length,
+                  separatorBuilder: (_, __) =>
+                      const SizedBox(height: 12),
+                  itemBuilder: (_, i) => RoomCard(
+                    room: filtered[i],
+                    animationIndex: i,
+                    onTap: () => context
+                        .push('/rooms/${filtered[i].id}'),
                   ),
                 );
-              },
+              }).toList(),
             ),
-          ],
+          ),
         ),
       ),
     );

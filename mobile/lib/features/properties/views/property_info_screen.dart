@@ -5,16 +5,16 @@ import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../shared/widgets/loading_widget.dart';
 
-class HomestayInfoScreen extends StatefulWidget {
+class PropertyInfoScreen extends StatefulWidget {
   final String homestayId;
 
-  const HomestayInfoScreen({super.key, required this.homestayId});
+  const PropertyInfoScreen({super.key, required this.homestayId});
 
   @override
-  State<HomestayInfoScreen> createState() => _HomestayInfoScreenState();
+  State<PropertyInfoScreen> createState() => _PropertyInfoScreenState();
 }
 
-class _HomestayInfoScreenState extends State<HomestayInfoScreen> {
+class _PropertyInfoScreenState extends State<PropertyInfoScreen> {
   final _formKey = GlobalKey<FormState>();
   late final TextEditingController _descriptionCtrl;
   late final TextEditingController _bedroomCountCtrl;

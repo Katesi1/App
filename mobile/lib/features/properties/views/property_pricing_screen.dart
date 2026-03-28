@@ -5,16 +5,16 @@ import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../shared/widgets/loading_widget.dart';
 
-class HomestayPricingScreen extends StatefulWidget {
+class PropertyPricingScreen extends StatefulWidget {
   final String homestayId;
 
-  const HomestayPricingScreen({super.key, required this.homestayId});
+  const PropertyPricingScreen({super.key, required this.homestayId});
 
   @override
-  State<HomestayPricingScreen> createState() => _HomestayPricingScreenState();
+  State<PropertyPricingScreen> createState() => _PropertyPricingScreenState();
 }
 
-class _HomestayPricingScreenState extends State<HomestayPricingScreen> {
+class _PropertyPricingScreenState extends State<PropertyPricingScreen> {
   final _weekdayController = TextEditingController(text: '4.500.000');
   final _fridayController = TextEditingController(text: '6.500.000');
   final _saturdayController = TextEditingController(text: '6.500.000');

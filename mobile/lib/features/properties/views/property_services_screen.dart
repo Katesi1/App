@@ -5,16 +5,16 @@ import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../shared/widgets/loading_widget.dart';
 
-class HomestayServicesScreen extends StatefulWidget {
+class PropertyServicesScreen extends StatefulWidget {
   final String homestayId;
 
-  const HomestayServicesScreen({super.key, required this.homestayId});
+  const PropertyServicesScreen({super.key, required this.homestayId});
 
   @override
-  State<HomestayServicesScreen> createState() => _HomestayServicesScreenState();
+  State<PropertyServicesScreen> createState() => _PropertyServicesScreenState();
 }
 
-class _HomestayServicesScreenState extends State<HomestayServicesScreen> {
+class _PropertyServicesScreenState extends State<PropertyServicesScreen> {
   final List<String> _services = [
     'Dịch vụ thuê nấu ăn tại Villa',
     'Setup BBQ tại Villa',

@@ -9,10 +9,10 @@ import '../../../data/models/homestay_model.dart';
 import '../../auth/controllers/auth_controller.dart';
 import '../../../shared/widgets/app_scaffold.dart';
 import '../../../shared/widgets/loading_widget.dart';
-import '../controllers/homestay_controller.dart';
+import '../controllers/property_controller.dart';
 
-class HomestayListScreen extends ConsumerWidget {
-  const HomestayListScreen({super.key});
+class PropertyListScreen extends ConsumerWidget {
+  const PropertyListScreen({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -39,7 +39,7 @@ class HomestayListScreen extends ConsumerWidget {
                 ],
               ),
               child: FloatingActionButton.extended(
-                onPressed: () => context.push('/homestays/new'),
+                onPressed: () => context.push('/properties/new'),
                 icon: const Icon(Icons.add_home_work_rounded, size: 20),
                 label: Text('Thêm mới',
                     style: GoogleFonts.beVietnamPro(
@@ -68,7 +68,7 @@ class HomestayListScreen extends ConsumerWidget {
               subMessage:
                   user?.canEdit == true ? 'Nhấn + để thêm homestay' : null,
               onAction: user?.canEdit == true
-                  ? () => context.push('/homestays/new')
+                  ? () => context.push('/properties/new')
                   : null,
               actionLabel: 'Thêm homestay',
             );
@@ -82,7 +82,7 @@ class HomestayListScreen extends ConsumerWidget {
               itemCount: homestays.length,
               separatorBuilder: (_, __) =>
                   const SizedBox(height: AppSpacing.sm),
-              itemBuilder: (_, i) => _HomestayCard(
+              itemBuilder: (_, i) => _PropertyCard(
                 homestay: homestays[i],
                 index: i,
                 isAdmin: isAdmin,
@@ -96,13 +96,13 @@ class HomestayListScreen extends ConsumerWidget {
   }
 }
 
-class _HomestayCard extends StatefulWidget {
+class _PropertyCard extends StatefulWidget {
   final HomestayModel homestay;
   final int index;
   final bool isAdmin;
   final bool canEdit;
 
-  const _HomestayCard({
+  const _PropertyCard({
     required this.homestay,
     required this.index,
     required this.isAdmin,
@@ -110,10 +110,10 @@ class _HomestayCard extends StatefulWidget {
   });
 
   @override
-  State<_HomestayCard> createState() => _HomestayCardState();
+  State<_PropertyCard> createState() => _PropertyCardState();
 }
 
-class _HomestayCardState extends State<_HomestayCard> {
+class _PropertyCardState extends State<_PropertyCard> {
   bool _pressed = false;
 
   @override
@@ -125,7 +125,7 @@ class _HomestayCardState extends State<_HomestayCard> {
       onTapDown: (_) => setState(() => _pressed = true),
       onTapUp: (_) {
         setState(() => _pressed = false);
-        context.push('/homestays/${h.id}');
+        context.push('/properties/${h.id}');
       },
       onTapCancel: () => setState(() => _pressed = false),
       child: AnimatedScale(
@@ -266,7 +266,7 @@ class _HomestayCardState extends State<_HomestayCard> {
                   IconButton(
                     icon: Icon(Icons.edit_outlined,
                         color: colors.primary, size: 20),
-                    onPressed: () => context.push('/homestays/${h.id}'),
+                    onPressed: () => context.push('/properties/${h.id}'),
                     tooltip: 'Chỉnh sửa',
                   ),
               ],

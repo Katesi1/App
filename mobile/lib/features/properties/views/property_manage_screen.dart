@@ -7,19 +7,19 @@ import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../shared/widgets/loading_widget.dart';
 import '../../rooms/controllers/room_controller.dart';
-import '../controllers/homestay_controller.dart';
+import '../controllers/property_controller.dart';
 
-class HomestayDetailScreen extends ConsumerStatefulWidget {
+class PropertyManageScreen extends ConsumerStatefulWidget {
   final String homestayId;
-  const HomestayDetailScreen({super.key, required this.homestayId});
+  const PropertyManageScreen({super.key, required this.homestayId});
 
   @override
-  ConsumerState<HomestayDetailScreen> createState() =>
-      _HomestayDetailScreenState();
+  ConsumerState<PropertyManageScreen> createState() =>
+      _PropertyManageScreenState();
 }
 
-class _HomestayDetailScreenState
-    extends ConsumerState<HomestayDetailScreen> {
+class _PropertyManageScreenState
+    extends ConsumerState<PropertyManageScreen> {
   bool _togglingActive = false;
 
   @override
@@ -57,7 +57,7 @@ class _HomestayDetailScreenState
               _GradientHeader(
                 onBack: () => context.pop(),
                 onEdit: () => context.push(
-                  '/homestays/${widget.homestayId}/edit',
+                  '/properties/${widget.homestayId}/edit',
                 ),
               ),
 
@@ -201,7 +201,7 @@ class _HomestayDetailScreenState
                               label: 'Ảnh',
                               trailing: '',
                               onTap: () => context.push(
-                                '/homestays/${widget.homestayId}/images',
+                                '/properties/${widget.homestayId}/images',
                               ),
                             ),
                             const _MenuDivider(),
@@ -209,7 +209,7 @@ class _HomestayDetailScreenState
                               icon: Icons.description_outlined,
                               label: 'Thông tin chi tiết',
                               onTap: () => context.push(
-                                '/homestays/${widget.homestayId}/info',
+                                '/properties/${widget.homestayId}/info',
                               ),
                             ),
                             const _MenuDivider(),
@@ -217,7 +217,7 @@ class _HomestayDetailScreenState
                               icon: Icons.check_circle_outline_rounded,
                               label: 'Tiện ích',
                               onTap: () => context.push(
-                                '/homestays/${widget.homestayId}/amenities',
+                                '/properties/${widget.homestayId}/amenities',
                               ),
                             ),
                             const _MenuDivider(),
@@ -225,7 +225,7 @@ class _HomestayDetailScreenState
                               icon: Icons.price_change_outlined,
                               label: 'Bảng giá',
                               onTap: () => context.push(
-                                '/homestays/${widget.homestayId}/pricing',
+                                '/properties/${widget.homestayId}/pricing',
                               ),
                             ),
                             const _MenuDivider(),
@@ -233,7 +233,7 @@ class _HomestayDetailScreenState
                               icon: Icons.room_service_outlined,
                               label: 'Dịch vụ trả phí',
                               onTap: () => context.push(
-                                '/homestays/${widget.homestayId}/services',
+                                '/properties/${widget.homestayId}/services',
                               ),
                             ),
                             const _MenuDivider(),
@@ -241,7 +241,7 @@ class _HomestayDetailScreenState
                               icon: Icons.rule_rounded,
                               label: 'Quy định',
                               onTap: () => context.push(
-                                '/homestays/${widget.homestayId}/rules',
+                                '/properties/${widget.homestayId}/rules',
                               ),
                             ),
                             const _MenuDivider(),
@@ -249,7 +249,7 @@ class _HomestayDetailScreenState
                               icon: Icons.location_on_outlined,
                               label: 'Vị trí',
                               onTap: () => context.push(
-                                '/homestays/${widget.homestayId}/location',
+                                '/properties/${widget.homestayId}/location',
                               ),
                             ),
                             const _MenuDivider(),
@@ -257,7 +257,7 @@ class _HomestayDetailScreenState
                               icon: Icons.cancel_outlined,
                               label: 'Chính sách huỷ',
                               onTap: () => context.push(
-                                '/homestays/${widget.homestayId}/cancellation',
+                                '/properties/${widget.homestayId}/cancellation',
                               ),
                             ),
                           ],

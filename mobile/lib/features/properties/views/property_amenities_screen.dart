@@ -4,21 +4,21 @@ import 'package:google_fonts/google_fonts.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
 
-class HomestayAmenitiesScreen extends StatefulWidget {
+class PropertyAmenitiesScreen extends StatefulWidget {
   final String homestayId;
 
-  const HomestayAmenitiesScreen({
+  const PropertyAmenitiesScreen({
     super.key,
     required this.homestayId,
   });
 
   @override
-  State<HomestayAmenitiesScreen> createState() =>
-      _HomestayAmenitiesScreenState();
+  State<PropertyAmenitiesScreen> createState() =>
+      _PropertyAmenitiesScreenState();
 }
 
-class _HomestayAmenitiesScreenState
-    extends State<HomestayAmenitiesScreen> {
+class _PropertyAmenitiesScreenState
+    extends State<PropertyAmenitiesScreen> {
   late List<Map<String, dynamic>> _amenities;
 
   @override
