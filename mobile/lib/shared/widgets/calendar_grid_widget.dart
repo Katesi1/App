@@ -56,10 +56,10 @@ List<PropertyGroup> generateMockCalendarData(PropertyCategory category) {
   final names = switch (category) {
     PropertyCategory.villa => ['Sunferia', 'Harborbay', 'Grandbay'],
     PropertyCategory.homestay => [
-      'Hạ Long View',
-      'Bãi Cháy House',
-      'Tuần Châu Stay',
-    ],
+        'Hạ Long View',
+        'Bãi Cháy House',
+        'Tuần Châu Stay',
+      ],
     PropertyCategory.hotel => ['Grand Palace', 'Ocean Resort', 'Bay Hotel'],
   };
 
@@ -385,15 +385,20 @@ class _CalendarGridWidgetState extends State<CalendarGridWidget> {
     bool isWeekend,
   ) {
     if (cell == null) {
-      return SizedBox(width: width, height: height);
+      return _calendarCellShell(
+        width: width,
+        height: height,
+        bgColor: AppColors.slateLight.withValues(alpha: 0.25),
+        child: Text(
+          '-',
+          style: GoogleFonts.beVietnamPro(
+            fontSize: 16,
+            fontWeight: FontWeight.w600,
+            color: AppColors.muted,
+          ),
+        ),
+      );
     }
-
-    final priceLabel = _formatShortPrice(cell.price);
-    final dotColor = switch (cell.status) {
-      DayCellStatus.available => AppColors.emerald,
-      DayCellStatus.booked => AppColors.coral,
-      DayCellStatus.hold => AppColors.amber,
-    };
 
     final bgColor = switch (cell.status) {
       DayCellStatus.booked => AppColors.coralLight,
@@ -402,47 +407,80 @@ class _CalendarGridWidgetState extends State<CalendarGridWidget> {
         isWeekend ? AppColors.goldLight : Colors.transparent,
     };
 
+    final Widget statusChild = switch (cell.status) {
+      DayCellStatus.available => Column(
+          mainAxisSize: MainAxisSize.min,
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Text(
+              '-',
+              style: GoogleFonts.beVietnamPro(
+                fontSize: 16,
+                fontWeight: FontWeight.w700,
+                height: 1,
+                color: AppColors.emerald,
+              ),
+            ),
+            if (cell.price > 0) ...[
+              const SizedBox(height: 2),
+              Text(
+                _formatShortPrice(cell.price),
+                style: GoogleFonts.beVietnamPro(
+                  fontSize: 9,
+                  fontWeight: FontWeight.w500,
+                  color: AppColors.muted,
+                ),
+              ),
+            ],
+          ],
+        ),
+      DayCellStatus.hold => Icon(
+          Icons.lock_rounded,
+          size: 18,
+          color: AppColors.brownDark,
+        ),
+      DayCellStatus.booked => Text(
+          '×',
+          style: GoogleFonts.beVietnamPro(
+            fontSize: 20,
+            fontWeight: FontWeight.w800,
+            height: 1,
+            color: AppColors.coral,
+          ),
+        ),
+    };
+
     return GestureDetector(
       onTap: widget.onCellTap != null
           ? () => widget.onCellTap!(room, date, cell)
           : null,
-      child: Container(
+      child: _calendarCellShell(
         width: width,
         height: height,
-        decoration: BoxDecoration(
-          color: bgColor,
-          border: const Border(
-            bottom: BorderSide(color: AppColors.border, width: 0.5),
-            right: BorderSide(color: AppColors.border, width: 0.5),
-          ),
-        ),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Text(
-              priceLabel,
-              style: GoogleFonts.beVietnamPro(
-                fontSize: 12,
-                fontWeight: FontWeight.w600,
-                color: cell.status == DayCellStatus.booked
-                    ? AppColors.coral
-                    : cell.status == DayCellStatus.hold
-                        ? AppColors.brownDark
-                        : AppColors.ink,
-              ),
-            ),
-            const SizedBox(height: 2),
-            Container(
-              width: 7,
-              height: 7,
-              decoration: BoxDecoration(
-                color: dotColor,
-                shape: BoxShape.circle,
-              ),
-            ),
-          ],
+        bgColor: bgColor,
+        child: statusChild,
+      ),
+    );
+  }
+
+  Widget _calendarCellShell({
+    required double width,
+    required double height,
+    required Color bgColor,
+    required Widget child,
+  }) {
+    return Container(
+      width: width,
+      height: height,
+      alignment: Alignment.center,
+      decoration: BoxDecoration(
+        color: bgColor,
+        border: const Border(
+          bottom: BorderSide(color: AppColors.border, width: 0.5),
+          right: BorderSide(color: AppColors.border, width: 0.5),
         ),
       ),
+      child: child,
     );
   }
 
@@ -458,17 +496,49 @@ class _CalendarGridWidgetState extends State<CalendarGridWidget> {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          _buildLegendItem(AppColors.emerald, 'Trống'),
-          const SizedBox(width: AppSpacing.lg),
-          _buildLegendItem(AppColors.coral, 'Đã bán'),
-          const SizedBox(width: AppSpacing.lg),
-          _buildLegendItem(AppColors.amber, 'Giữ'),
-          const SizedBox(width: AppSpacing.lg),
-          Text(
-            widget.legendTapHint,
-            style: GoogleFonts.beVietnamPro(
-              fontSize: 11,
-              color: AppColors.muted,
+          _buildLegendSymbol(
+            child: Text(
+              '-',
+              style: GoogleFonts.beVietnamPro(
+                fontSize: 13,
+                fontWeight: FontWeight.w700,
+                color: AppColors.emerald,
+              ),
+            ),
+            label: 'Trống',
+          ),
+          const SizedBox(width: AppSpacing.md),
+          _buildLegendSymbol(
+            child: Icon(
+              Icons.lock_rounded,
+              size: 14,
+              color: AppColors.brownDark,
+            ),
+            label: 'Giữ chỗ',
+          ),
+          const SizedBox(width: AppSpacing.md),
+          _buildLegendSymbol(
+            child: Text(
+              '×',
+              style: GoogleFonts.beVietnamPro(
+                fontSize: 14,
+                fontWeight: FontWeight.w800,
+                color: AppColors.coral,
+              ),
+            ),
+            label: 'Đã đặt',
+          ),
+          const SizedBox(width: AppSpacing.md),
+          Flexible(
+            child: Text(
+              widget.legendTapHint,
+              style: GoogleFonts.beVietnamPro(
+                fontSize: 11,
+                color: AppColors.muted,
+              ),
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              textAlign: TextAlign.end,
             ),
           ),
         ],
@@ -476,15 +546,14 @@ class _CalendarGridWidgetState extends State<CalendarGridWidget> {
     );
   }
 
-  Widget _buildLegendItem(Color color, String label) {
+  Widget _buildLegendSymbol({
+    required Widget child,
+    required String label,
+  }) {
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        Container(
-          width: 8,
-          height: 8,
-          decoration: BoxDecoration(color: color, shape: BoxShape.circle),
-        ),
+        SizedBox(width: 18, height: 18, child: Center(child: child)),
         const SizedBox(width: 4),
         Text(
           label,
@@ -717,9 +786,8 @@ class CalendarCategoryTabs extends StatelessWidget {
                   vertical: AppSpacing.sm,
                 ),
                 decoration: BoxDecoration(
-                  color: isSelected
-                      ? AppColors.oceanDeep
-                      : AppColors.slateLight,
+                  color:
+                      isSelected ? AppColors.oceanDeep : AppColors.slateLight,
                   borderRadius: BorderRadius.circular(AppRadius.full),
                 ),
                 child: Text(
@@ -774,9 +842,8 @@ class CalendarSubCategoryChips extends StatelessWidget {
                 fontWeight: FontWeight.w600,
                 color: isSelected ? AppColors.oceanDeep : AppColors.muted,
               ),
-              backgroundColor: isSelected
-                  ? AppColors.oceanLight
-                  : AppColors.surface,
+              backgroundColor:
+                  isSelected ? AppColors.oceanLight : AppColors.surface,
               side: BorderSide(
                 color: isSelected ? AppColors.ocean : AppColors.border,
               ),
