@@ -9,84 +9,41 @@ import '../../../core/utils/helpers.dart';
 import '../../../shared/widgets/app_scaffold.dart';
 import '../../../shared/widgets/loading_widget.dart';
 import '../../../data/models/booking_model.dart';
-import '../../bookings/controllers/booking_controller.dart';
-import '../../rooms/controllers/room_controller.dart';
+import '../controllers/report_controller.dart';
 
 class ReportScreen extends ConsumerWidget {
   const ReportScreen({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final roomsAsync = ref.watch(roomListProvider(null));
-    final bookingsAsync = ref.watch(bookingListProvider(null));
+    final now = DateTime.now();
+    final reportAsync = ref.watch(reportDataProvider(null));
 
     return AppScaffold(
       title: 'Báo cáo',
       selectedIndex: 3,
-      body: roomsAsync.when(
+      body: reportAsync.when(
         loading: () => const LoadingWidget(),
         error: (e, _) => ErrorStateWidget(
           message: e.toString().replaceAll('Exception: ', ''),
-          onRetry: () {
-            ref.invalidate(roomListProvider(null));
-            ref.invalidate(bookingListProvider(null));
-          },
+          onRetry: () => ref.invalidate(reportDataProvider(null)),
         ),
-        data: (rooms) => bookingsAsync.when(
-          loading: () => const LoadingWidget(),
-          error: (e, _) => ErrorStateWidget(
-            message: e.toString().replaceAll('Exception: ', ''),
-            onRetry: () => ref.invalidate(bookingListProvider(null)),
-          ),
-          data: (bookings) {
-            // Tính toán thống kê
-            final now = DateTime.now();
-            final totalRooms = rooms.length;
-            final activeRooms =
-                rooms.where((r) => r.isActive).length;
-
-            // Booking stats
-            final holdCount = bookings
-                .where((b) => b.status == BookingStatus.hold)
-                .length;
-            final confirmedCount = bookings
-                .where((b) => b.status == BookingStatus.confirmed)
-                .length;
-            final cancelledCount = bookings
-                .where((b) => b.status == BookingStatus.cancelled)
-                .length;
-            final completedCount = bookings
-                .where((b) => b.status == BookingStatus.completed)
-                .length;
-            final totalBookings = bookings.length;
-
-            // Doanh thu ước tính từ deposit
-            final totalDeposit = bookings
-                .where((b) =>
-                    b.status == BookingStatus.confirmed ||
-                    b.status == BookingStatus.completed)
-                .fold<double>(
-                    0, (sum, b) => sum + (b.depositAmount ?? 0));
-
-            // Booking tháng này
-            final thisMonthBookings = bookings.where((b) =>
-                b.checkinDate.month == now.month &&
-                b.checkinDate.year == now.year);
-            final thisMonthCount = thisMonthBookings.length;
-
-            // Tỷ lệ lấp đầy
-            final occupancyRate = totalRooms > 0
-                ? ((confirmedCount + completedCount) /
-                        totalRooms *
-                        100)
-                    .clamp(0, 100)
-                : 0.0;
+        data: (report) {
+            final totalRooms = report.totalRooms;
+            final activeRooms = report.activeRooms;
+            final holdCount = report.holdCount;
+            final confirmedCount = report.confirmedCount;
+            final cancelledCount = report.cancelledCount;
+            final completedCount = report.completedCount;
+            final totalBookings = report.totalBookings;
+            final totalDeposit = report.totalDeposit;
+            final thisMonthCount = report.thisMonthBookings;
+            final occupancyRate = report.occupancyRate;
 
             return RefreshIndicator(
               color: AppColors.ocean,
               onRefresh: () async {
-                ref.invalidate(roomListProvider(null));
-                ref.invalidate(bookingListProvider(null));
+                ref.invalidate(reportDataProvider(null));
               },
               child: ListView(
                 padding: const EdgeInsets.all(20),
@@ -268,15 +225,13 @@ class ReportScreen extends ConsumerWidget {
                             height: 20, color: AppColors.border),
                         _InfoRow(
                           label: 'Có ảnh bìa',
-                          value:
-                              '${rooms.where((r) => r.coverImageUrl != null).length}',
+                          value: '${report.roomsWithCover}',
                         ),
                         const Divider(
                             height: 20, color: AppColors.border),
                         _InfoRow(
                           label: 'Đã cập nhật giá',
-                          value:
-                              '${rooms.where((r) => r.price != null).length}',
+                          value: '${report.roomsWithPrice}',
                         ),
                       ],
                     ),
@@ -288,13 +243,13 @@ class ReportScreen extends ConsumerWidget {
                   _SectionTitle(title: 'BOOKING GẦN ĐÂY'),
                   const SizedBox(height: 12),
 
-                  if (bookings.isEmpty)
+                  if (report.recentBookings.isEmpty)
                     const EmptyStateWidget(
                       icon: Icons.book_outlined,
                       message: 'Chưa có booking nào',
                     )
                   else
-                    ...bookings.take(5).map((b) => Padding(
+                    ...report.recentBookings.map((b) => Padding(
                           padding:
                               const EdgeInsets.only(bottom: 8),
                           child: _RecentBookingCard(booking: b),
@@ -306,10 +261,11 @@ class ReportScreen extends ConsumerWidget {
             );
           },
         ),
-      ),
     );
   }
 }
+
+
 
 // ─── Stat Card ────────────────────────────────────────────────────────────────
 class _StatCard extends StatelessWidget {

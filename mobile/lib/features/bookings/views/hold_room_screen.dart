@@ -7,9 +7,9 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart' show DateFormat;
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
-import '../../../data/repositories/booking_repository.dart';
 import '../../../shared/widgets/loading_widget.dart';
 import '../../rooms/controllers/room_controller.dart';
+import '../controllers/booking_controller.dart';
 
 class HoldRoomScreen extends ConsumerStatefulWidget {
   final String roomId;
@@ -27,7 +27,6 @@ class _HoldRoomScreenState extends ConsumerState<HoldRoomScreen> {
   final _notesCtrl = TextEditingController();
   DateTime? _checkinDate;
   DateTime? _checkoutDate;
-  bool _isLoading = false;
 
   @override
   void dispose() {
@@ -73,8 +72,7 @@ class _HoldRoomScreenState extends ConsumerState<HoldRoomScreen> {
       return;
     }
 
-    setState(() => _isLoading = true);
-    final result = await BookingRepository().holdRoom({
+    final success = await ref.read(bookingActionsProvider.notifier).hold({
       'roomId': widget.roomId,
       'checkinDate': _checkinDate!.toIso8601String(),
       'checkoutDate': _checkoutDate!.toIso8601String(),
@@ -89,19 +87,23 @@ class _HoldRoomScreenState extends ConsumerState<HoldRoomScreen> {
     });
 
     if (!mounted) return;
-    setState(() => _isLoading = false);
 
-    if (result.success) {
+    if (success) {
       AppSnackBar.success(context, 'Giữ phòng thành công! (30 phút)');
       context.pop();
     } else {
-      AppSnackBar.error(context, result.message);
+      final errState = ref.read(bookingActionsProvider);
+      AppSnackBar.error(
+        context,
+        errState.hasError ? errState.error.toString() : 'Có lỗi xảy ra',
+      );
     }
   }
 
   @override
   Widget build(BuildContext context) {
     final roomAsync = ref.watch(roomDetailProvider(widget.roomId));
+    final isLoading = ref.watch(bookingActionsProvider).isLoading;
     final colors = Theme.of(context).colorScheme;
 
     return Scaffold(
@@ -353,7 +355,7 @@ class _HoldRoomScreenState extends ConsumerState<HoldRoomScreen> {
                 // ── Submit button ──────────────────────────────────
                 AnimatedSwitcher(
                   duration: const Duration(milliseconds: 200),
-                  child: _isLoading
+                  child: isLoading
                       ? const Center(
                           child: SizedBox(
                             height: 52,

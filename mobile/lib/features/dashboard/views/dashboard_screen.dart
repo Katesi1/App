@@ -7,7 +7,9 @@ import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../core/utils/helpers.dart';
 import '../../auth/controllers/auth_controller.dart';
+import '../../dashboard/controllers/dashboard_controller.dart';
 import '../../../shared/widgets/app_scaffold.dart';
+import '../../../shared/widgets/loading_widget.dart';
 
 class DashboardScreen extends ConsumerWidget {
   const DashboardScreen({super.key});
@@ -15,6 +17,7 @@ class DashboardScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final user = ref.watch(currentUserProvider);
+    final statsAsync = ref.watch(dashboardStatsProvider);
     final now = DateTime.now();
     final dayOfWeek = AppHelpers.vietnameseDayOfWeek(now.weekday);
     final formattedDate = '$dayOfWeek, ${now.day} tháng ${now.month}';
@@ -23,218 +26,236 @@ class DashboardScreen extends ConsumerWidget {
       title: '',
       selectedIndex: 0,
       showAppBar: false,
-      body: SingleChildScrollView(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // ── Header gradient ─────────────────────────────────────
-            _DashHeader(
-              userName: user?.name ?? 'Homestay',
-              formattedDate: formattedDate,
-            ),
-
-            // ── KPI Grid (2 cols × 3 rows) ──────────────────────────
-            Transform.translate(
-              offset: const Offset(0, -20),
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 20),
-                child: Column(
-                  children: [
-                    // Row 1: Tổng phòng | Phòng trống
-                    Row(
-                      children: [
-                        Expanded(
-                          child: _KpiCard(
-                            label: 'Tổng phòng',
-                            value: '24',
-                            delta: '↑ 2 so với tháng trước',
-                            deltaUp: true,
-                          ),
-                        ),
-                        const SizedBox(width: 10),
-                        Expanded(
-                          child: _KpiCard(
-                            label: 'Phòng trống',
-                            value: '8',
-                            delta: 'Sẵn sàng check-in',
-                            deltaUp: true,
-                            valueColor: AppColors.emerald,
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 10),
-                    // Row 2: Đang có khách | Check-out hôm nay
-                    Row(
-                      children: [
-                        Expanded(
-                          child: _KpiCard(
-                            label: 'Đang có khách',
-                            value: '12',
-                            delta: '↑ 3 so với hôm qua',
-                            deltaUp: true,
-                            valueColor: AppColors.oceanMid,
-                          ),
-                        ),
-                        const SizedBox(width: 10),
-                        Expanded(
-                          child: _KpiCard(
-                            label: 'Check-out hôm nay',
-                            value: '4',
-                            delta: 'Trước 12:00',
-                            deltaUp: true,
-                            valueColor: AppColors.amber,
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 10),
-                    // Row 3: Doanh thu tháng
-                    _RevenueCard(),
-                  ],
-                ).animate().fadeIn(duration: 400.ms).slideY(begin: 0.1, end: 0),
+      body: statsAsync.when(
+        loading: () => const LoadingWidget(),
+        error: (e, _) => ErrorStateWidget(
+          message: e.toString().replaceAll('Exception: ', ''),
+          onRetry: () => ref.invalidate(dashboardStatsProvider),
+        ),
+        data: (stats) => SingleChildScrollView(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // ── Header gradient ─────────────────────────────────────
+              _DashHeader(
+                userName: user?.name ?? 'Homestay',
+                formattedDate: formattedDate,
               ),
-            ),
 
-            const SizedBox(height: 0),
-
-            // ── Quick actions ───────────────────────────────────────
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'THAO TÁC NHANH',
-                    style: GoogleFonts.beVietnamPro(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w700,
-                      color: AppColors.navy,
-                      letterSpacing: 0.8,
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  Row(
+              // ── KPI Grid (2 cols × 3 rows) ──────────────────────────
+              Transform.translate(
+                offset: const Offset(0, -20),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 20),
+                  child: Column(
                     children: [
-                      _QuickAction(
-                        icon: Icons.add_rounded,
-                        label: 'Thêm\nbooking',
-                        bgColor: AppColors.oceanLight,
-                        iconColor: AppColors.ocean,
-                        onTap: () => context.go('/bookings'),
+                      // Row 1: Tổng phòng | Phòng trống
+                      Row(
+                        children: [
+                          Expanded(
+                            child: _KpiCard(
+                              label: 'Tổng phòng',
+                              value:
+                                  AppHelpers.formatIntOrDash(stats.totalRooms),
+                              delta:
+                                  '${AppHelpers.formatIntOrDash(stats.activeRooms)} đang hoạt động',
+                              deltaUp: true,
+                            ),
+                          ),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: _KpiCard(
+                              label: 'Phòng trống',
+                              value:
+                                  AppHelpers.formatIntOrDash(stats.emptyRooms),
+                              delta: 'Sẵn sàng check-in',
+                              deltaUp: true,
+                              valueColor: AppColors.emerald,
+                            ),
+                          ),
+                        ],
                       ),
-                      const SizedBox(width: 10),
-                      _QuickAction(
-                        icon: Icons.check_circle_outline_rounded,
-                        label: 'Check-in',
-                        bgColor: AppColors.tealLight,
-                        iconColor: AppColors.oceanMid,
-                        onTap: () {},
+                      const SizedBox(height: 10),
+                      // Row 2: Đang có khách | Check-out hôm nay
+                      Row(
+                        children: [
+                          Expanded(
+                            child: _KpiCard(
+                              label: 'Đang có khách',
+                              value: AppHelpers.formatIntOrDash(
+                                  stats.occupiedRooms),
+                              delta: 'Booking đang ở',
+                              deltaUp: true,
+                              valueColor: AppColors.oceanMid,
+                            ),
+                          ),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: _KpiCard(
+                              label: 'Check-out hôm nay',
+                              value: AppHelpers.formatIntOrDash(
+                                  stats.checkoutToday),
+                              delta: 'Trước 12:00',
+                              deltaUp: true,
+                              valueColor: AppColors.amber,
+                            ),
+                          ),
+                        ],
                       ),
-                      const SizedBox(width: 10),
-                      _QuickAction(
-                        icon: Icons.logout_rounded,
-                        label: 'Check-out',
-                        bgColor: AppColors.goldLight,
-                        iconColor: AppColors.gold,
-                        onTap: () {},
-                      ),
-                      const SizedBox(width: 10),
-                      _QuickAction(
-                        icon: Icons.home_outlined,
-                        label: 'Thêm\nphòng',
-                        bgColor: AppColors.emeraldLight,
-                        iconColor: AppColors.emerald,
-                        onTap: () => context.push('/properties/new'),
+                      const SizedBox(height: 10),
+                      // Row 3: Doanh thu tháng
+                      _RevenueCard(
+                        monthlyRevenue: stats.monthlyRevenue,
+                        todayRevenue: stats.todayRevenue,
                       ),
                     ],
-                  ),
-                ],
-              ).animate(delay: 200.ms).fadeIn(duration: 400.ms),
-            ),
+                  )
+                      .animate()
+                      .fadeIn(duration: 400.ms)
+                      .slideY(begin: 0.1, end: 0),
+                ),
+              ),
 
-            const SizedBox(height: 24),
+              const SizedBox(height: 0),
 
-            // ── Hoạt động gần đây ─────────────────────────────────
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'HOẠT ĐỘNG GẦN ĐÂY',
-                    style: GoogleFonts.beVietnamPro(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w700,
-                      color: AppColors.navy,
-                      letterSpacing: 0.8,
+              // ── Quick actions ───────────────────────────────────────
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 20),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'THAO TÁC NHANH',
+                      style: GoogleFonts.beVietnamPro(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.navy,
+                        letterSpacing: 0.8,
+                      ),
                     ),
-                  ),
-                  const SizedBox(height: 12),
-                  _ActivityItem(
-                    icon: Icons.bookmark_add_outlined,
-                    iconColor: AppColors.oceanMid,
-                    iconBg: AppColors.oceanLight,
-                    title: 'Booking mới — Phòng 201',
-                    subtitle: 'Nguyễn Thị Lan · 2 đêm · 19–21/3',
-                    time: '2p',
-                  ),
-                  const SizedBox(height: 8),
-                  _ActivityItem(
-                    icon: Icons.check_circle_outline,
-                    iconColor: AppColors.emerald,
-                    iconBg: AppColors.emeraldLight,
-                    title: 'Check-in — Phòng 305',
-                    subtitle: 'Trần Văn Nam · Đã xác nhận',
-                    time: '15p',
-                  ),
-                ],
-              ).animate(delay: 300.ms).fadeIn(duration: 400.ms),
-            ),
-
-            const SizedBox(height: 24),
-
-            // ── Today's bookings ────────────────────────────────────
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'BOOKING HÔM NAY',
-                    style: GoogleFonts.beVietnamPro(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w700,
-                      color: AppColors.navy,
-                      letterSpacing: 0.8,
+                    const SizedBox(height: 12),
+                    Row(
+                      children: [
+                        _QuickAction(
+                          icon: Icons.add_rounded,
+                          label: 'Thêm\nbooking',
+                          bgColor: AppColors.oceanLight,
+                          iconColor: AppColors.ocean,
+                          onTap: () => context.go('/bookings'),
+                        ),
+                        const SizedBox(width: 10),
+                        _QuickAction(
+                          icon: Icons.check_circle_outline_rounded,
+                          label: 'Check-in',
+                          bgColor: AppColors.tealLight,
+                          iconColor: AppColors.oceanMid,
+                          onTap: () {},
+                        ),
+                        const SizedBox(width: 10),
+                        _QuickAction(
+                          icon: Icons.logout_rounded,
+                          label: 'Check-out',
+                          bgColor: AppColors.goldLight,
+                          iconColor: AppColors.gold,
+                          onTap: () {},
+                        ),
+                        const SizedBox(width: 10),
+                        _QuickAction(
+                          icon: Icons.home_outlined,
+                          label: 'Thêm\nphòng',
+                          bgColor: AppColors.emeraldLight,
+                          iconColor: AppColors.emerald,
+                          onTap: () => context.push('/properties/new'),
+                        ),
+                      ],
                     ),
-                  ),
-                  const SizedBox(height: 12),
-                  _BookingItem(
-                    initials: '🏠',
-                    name: 'Nguyễn Văn An',
-                    meta: 'P.101 · Deluxe · 2 khách',
-                    status: 'Đã xác nhận',
-                    statusColor: AppColors.emerald,
-                    statusBg: AppColors.emeraldLight,
-                    price: '1.800.000đ',
-                  ),
-                  const SizedBox(height: 8),
-                  _BookingItem(
-                    initials: '🌊',
-                    name: 'Trần Thị Bích',
-                    meta: 'P.203 · Ocean View · 3 khách',
-                    status: 'Giữ chỗ',
-                    statusColor: AppColors.brownDark,
-                    statusBg: AppColors.goldLight,
-                    price: '2.400.000đ',
-                  ),
-                ],
-              ).animate(delay: 400.ms).fadeIn(duration: 400.ms),
-            ),
+                  ],
+                ).animate(delay: 200.ms).fadeIn(duration: 400.ms),
+              ),
 
-            const SizedBox(height: 100),
-          ],
+              const SizedBox(height: 24),
+
+              // ── Hoạt động gần đây ─────────────────────────────────
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 20),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'HOẠT ĐỘNG GẦN ĐÂY',
+                      style: GoogleFonts.beVietnamPro(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.navy,
+                        letterSpacing: 0.8,
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    _ActivityItem(
+                      icon: Icons.bookmark_add_outlined,
+                      iconColor: AppColors.oceanMid,
+                      iconBg: AppColors.oceanLight,
+                      title: 'Booking mới — Phòng 201',
+                      subtitle: 'Nguyễn Thị Lan · 2 đêm · 19–21/3',
+                      time: '2p',
+                    ),
+                    const SizedBox(height: 8),
+                    _ActivityItem(
+                      icon: Icons.check_circle_outline,
+                      iconColor: AppColors.emerald,
+                      iconBg: AppColors.emeraldLight,
+                      title: 'Check-in — Phòng 305',
+                      subtitle: 'Trần Văn Nam · Đã xác nhận',
+                      time: '15p',
+                    ),
+                  ],
+                ).animate(delay: 300.ms).fadeIn(duration: 400.ms),
+              ),
+
+              const SizedBox(height: 24),
+
+              // ── Today's bookings ────────────────────────────────────
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 20),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'BOOKING HÔM NAY',
+                      style: GoogleFonts.beVietnamPro(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.navy,
+                        letterSpacing: 0.8,
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    _BookingItem(
+                      initials: '🏠',
+                      name: 'Nguyễn Văn An',
+                      meta: 'P.101 · Deluxe · 2 khách',
+                      status: 'Đã xác nhận',
+                      statusColor: AppColors.emerald,
+                      statusBg: AppColors.emeraldLight,
+                      price: '1.800.000đ',
+                    ),
+                    const SizedBox(height: 8),
+                    _BookingItem(
+                      initials: '🌊',
+                      name: 'Trần Thị Bích',
+                      meta: 'P.203 · Ocean View · 3 khách',
+                      status: 'Giữ chỗ',
+                      statusColor: AppColors.brownDark,
+                      statusBg: AppColors.goldLight,
+                      price: '2.400.000đ',
+                    ),
+                  ],
+                ).animate(delay: 400.ms).fadeIn(duration: 400.ms),
+              ),
+
+              const SizedBox(height: 100),
+            ],
+          ),
         ),
       ),
     );
@@ -367,7 +388,9 @@ class _DashHeader extends StatelessWidget {
                         ),
                         child: Center(
                           child: Text(
-                            userName.isNotEmpty ? userName[0].toUpperCase() : 'U',
+                            userName.isNotEmpty
+                                ? userName[0].toUpperCase()
+                                : 'U',
                             style: GoogleFonts.beVietnamPro(
                               color: Colors.white,
                               fontWeight: FontWeight.w700,
@@ -459,7 +482,13 @@ class _KpiCard extends StatelessWidget {
 
 // ─── Revenue Card ─────────────────────────────────────────────────────────────
 class _RevenueCard extends StatelessWidget {
-  const _RevenueCard();
+  final double monthlyRevenue;
+  final double todayRevenue;
+
+  const _RevenueCard({
+    required this.monthlyRevenue,
+    required this.todayRevenue,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -498,24 +527,16 @@ class _RevenueCard extends StatelessWidget {
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  '184.5',
+                  AppHelpers.formatPriceOrDash(monthlyRevenue),
                   style: GoogleFonts.beVietnamPro(
                     fontSize: 28,
                     fontWeight: FontWeight.w700,
                     color: AppColors.emerald,
                   ),
                 ),
-                Text(
-                  'tr',
-                  style: GoogleFonts.beVietnamPro(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w600,
-                    color: AppColors.emerald,
-                  ),
-                ),
                 const SizedBox(height: 4),
                 Text(
-                  '↑ 12.4% so với tháng ${now.month - 1}',
+                  'Tháng ${now.month}/${now.year}',
                   style: GoogleFonts.beVietnamPro(
                     fontSize: 11,
                     color: AppColors.emerald,
@@ -538,31 +559,40 @@ class _RevenueCard extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: 4),
-              Text.rich(
-                TextSpan(
-                  children: [
-                    TextSpan(
-                      text: '6.2',
+              todayRevenue == 0
+                  ? Text(
+                      AppHelpers.formatPriceOrDash(todayRevenue),
                       style: GoogleFonts.beVietnamPro(
                         fontSize: 22,
                         fontWeight: FontWeight.w700,
                         color: AppColors.oceanMid,
                       ),
-                    ),
-                    TextSpan(
-                      text: 'tr',
-                      style: GoogleFonts.beVietnamPro(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w600,
-                        color: AppColors.oceanMid,
+                    )
+                  : Text.rich(
+                      TextSpan(
+                        children: [
+                          TextSpan(
+                            text: AppHelpers.formatPrice(todayRevenue),
+                            style: GoogleFonts.beVietnamPro(
+                              fontSize: 22,
+                              fontWeight: FontWeight.w700,
+                              color: AppColors.oceanMid,
+                            ),
+                          ),
+                          TextSpan(
+                            text: 'tr',
+                            style: GoogleFonts.beVietnamPro(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w600,
+                              color: AppColors.oceanMid,
+                            ),
+                          ),
+                        ],
                       ),
                     ),
-                  ],
-                ),
-              ),
               const SizedBox(height: 4),
               Text(
-                '/ 7.8tr mục tiêu',
+                'Hôm nay',
                 style: GoogleFonts.beVietnamPro(
                   fontSize: 11,
                   color: AppColors.muted,

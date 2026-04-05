@@ -74,8 +74,7 @@ class AuthRepository {
     try {
       final googleUser = await _googleSignIn.signIn();
       if (googleUser == null) {
-        return ApiResponse(
-            success: false, message: 'Đã huỷ đăng nhập Google');
+        return ApiResponse(success: false, message: 'Đã huỷ đăng nhập Google');
       }
 
       final googleAuth = await googleUser.authentication;
@@ -110,6 +109,29 @@ class AuthRepository {
       return ApiResponse(
           success: false, message: 'Đăng nhập Google thất bại: $e');
     }
+  }
+
+  /// GET /auth/profile — đồng bộ user sau khi mở app / làm mới phiên.
+  Future<ApiResponse<UserModel>> getProfile() async {
+    try {
+      final response = await _dio.get(ApiConstants.profile);
+      final raw = response.data['data'];
+      if (raw is! Map<String, dynamic>) {
+        return ApiResponse(
+          success: false,
+          message: 'Dữ liệu profile không hợp lệ',
+        );
+      }
+      final user = UserModel.fromJson(raw);
+      await SecureStorage.saveUserData(user.toJsonString());
+      return ApiResponse(success: true, data: user, message: '');
+    } on DioException catch (e) {
+      return ApiResponse(success: false, message: parseDioError(e));
+    }
+  }
+
+  Future<void> saveUserLocal(UserModel user) async {
+    await SecureStorage.saveUserData(user.toJsonString());
   }
 
   Future<ApiResponse<void>> forgotPassword(String identifier) async {

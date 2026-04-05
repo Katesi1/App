@@ -11,7 +11,7 @@ final profileActionsProvider =
     StateNotifierProvider<ProfileActionsNotifier, AsyncValue<void>>((ref) {
   return ProfileActionsNotifier(
     ref.read(profileRepositoryProvider),
-    AuthRepository(),
+    ref.read(authRepositoryProvider),
     ref,
   );
 });
@@ -25,13 +25,12 @@ class ProfileActionsNotifier extends StateNotifier<AsyncValue<void>> {
       : super(const AsyncValue.data(null));
 
   /// Cập nhật profile (name, email, phone)
-  Future<bool> updateProfile(
-      String userId, Map<String, dynamic> data) async {
+  Future<bool> updateProfile(String userId, Map<String, dynamic> data) async {
     state = const AsyncValue.loading();
     final result = await _userRepo.updateUser(userId, data);
-    if (result.success) {
-      // Refresh current user data
-      _ref.invalidate(authProvider);
+    if (result.success && result.data != null) {
+      await _authRepo.saveUserLocal(result.data!);
+      _ref.read(authProvider.notifier).replaceUser(result.data!);
       state = const AsyncValue.data(null);
       return true;
     }
@@ -46,7 +45,8 @@ class ProfileActionsNotifier extends StateNotifier<AsyncValue<void>> {
   }) async {
     state = const AsyncValue.loading();
     final result = await _authRepo.changePassword(
-      oldPassword, newPassword,
+      oldPassword,
+      newPassword,
     );
     if (result.success) {
       state = const AsyncValue.data(null);

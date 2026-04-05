@@ -6,9 +6,13 @@ class HomestayModel {
   final double? latitude;
   final double? longitude;
   final String? mapLink;
+  final String? rules;
+  final String? services;
   final bool isActive;
   final Map<String, dynamic>? owner;
   final int? roomCount;
+  final String? createdAt;
+  final String? updatedAt;
 
   HomestayModel({
     required this.id,
@@ -18,9 +22,13 @@ class HomestayModel {
     this.latitude,
     this.longitude,
     this.mapLink,
+    this.rules,
+    this.services,
     this.isActive = true,
     this.owner,
     this.roomCount,
+    this.createdAt,
+    this.updatedAt,
   });
 
   factory HomestayModel.fromJson(Map<String, dynamic> json) => HomestayModel(
@@ -28,13 +36,18 @@ class HomestayModel {
         ownerId: json['ownerId'] ?? '',
         name: json['name'] ?? '',
         address: json['address'] ?? '',
-        latitude: json['latitude']?.toDouble(),
-        longitude: json['longitude']?.toDouble(),
+        latitude: (json['latitude'] as num?)?.toDouble(),
+        longitude: (json['longitude'] as num?)?.toDouble(),
         mapLink: json['mapLink'],
+        rules: json['rules'],
+        services: json['services'],
         isActive: json['isActive'] ?? true,
         owner: json['owner'],
         roomCount: json['_count']?['rooms'],
+        createdAt: json['createdAt'],
+        updatedAt: json['updatedAt'],
       );
 
   String get ownerName => owner?['name'] ?? 'N/A';
+  String get ownerPhone => owner?['phone'] ?? '';
 }

@@ -1,10 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:intl/intl.dart' show DateFormat;
 
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
+import '../../../data/models/calendar_model.dart';
 import '../../../shared/widgets/calendar_grid_widget.dart';
+import '../../../shared/widgets/loading_widget.dart';
+import '../../calendar/controllers/calendar_controller.dart';
 
 /// Lịch riêng cho chủ nhà — chỉ hiện các căn của chủ nhà.
 /// Tap ô = lock/mở phòng.
@@ -24,25 +28,10 @@ class _OwnerCalendarScreenState
   DateTime _weekStart = _mondayOf(DateTime.now());
   DateTime _monthStart = DateTime(DateTime.now().year, DateTime.now().month);
 
-  late Map<PropertyCategory, List<PropertyGroup>> _mockData;
-
   static DateTime _mondayOf(DateTime date) {
     final diff = date.weekday - DateTime.monday;
     return DateTime(date.year, date.month, date.day - diff);
   }
-
-  @override
-  void initState() {
-    super.initState();
-    // TODO: Thay bằng API — lấy chỉ các căn của chủ nhà hiện tại
-    _mockData = {
-      for (final cat in PropertyCategory.values)
-        cat: generateMockCalendarData(cat),
-    };
-  }
-
-  List<PropertyGroup> get _currentGroups => _mockData[_category]!;
-  PropertyGroup get _currentGroup => _currentGroups[_selectedGroupIndex];
 
   void _navigate(int direction) {
     setState(() {
@@ -57,12 +46,80 @@ class _OwnerCalendarScreenState
     });
   }
 
-  void _onCellTap(CalendarRoom room, DateTime date, DayCell cell) {
-    _showLockDialog(context, room, date, cell);
+  String get _startDate => DateFormat('yyyy-MM-dd').format(
+        _viewMode == CalendarViewMode.weekly ? _weekStart : _monthStart,
+      );
+
+  String get _endDate {
+    if (_viewMode == CalendarViewMode.weekly) {
+      return DateFormat('yyyy-MM-dd')
+          .format(_weekStart.add(const Duration(days: 6)));
+    }
+    final lastDay = DateTime(_monthStart.year, _monthStart.month + 1, 0);
+    return DateFormat('yyyy-MM-dd').format(lastDay);
   }
+
+  List<CalendarPropertyGroup> _filterGroups(
+      List<CalendarPropertyGroup> all) {
+    return all
+        .where((g) =>
+            (g.category ?? '').toLowerCase() ==
+            _category.name.toLowerCase())
+        .toList();
+  }
+
+  List<CalendarRoom> _mapRooms(List<CalendarRoomRow> rows) {
+    return rows.map((row) {
+      final cells = <DateTime, DayCell>{};
+      for (final day in row.days) {
+        final dt = DateTime.parse(day.date);
+        final key = DateTime(dt.year, dt.month, dt.day);
+        cells[key] = DayCell(
+          price: day.price,
+          status: _mapStatus(day.status),
+        );
+      }
+      return CalendarRoom(id: row.id, code: row.code, dayCells: cells);
+    }).toList();
+  }
+
+  DayCellStatus _mapStatus(CalendarDayStatus s) => switch (s) {
+        CalendarDayStatus.available => DayCellStatus.available,
+        CalendarDayStatus.hold => DayCellStatus.hold,
+        CalendarDayStatus.booked => DayCellStatus.booked,
+      };
 
   @override
   Widget build(BuildContext context) {
+    final groupsAsync = ref.watch(calendarPropertyGroupsProvider(null));
+
+    final allGroups = groupsAsync.valueOrNull ?? [];
+    final filtered = _filterGroups(allGroups);
+    final safeIndex = filtered.isEmpty
+        ? 0
+        : _selectedGroupIndex.clamp(0, filtered.length - 1);
+
+    final gridParams = filtered.isNotEmpty
+        ? CalendarGridParams(
+            propertyGroupId: filtered[safeIndex].id,
+            startDate: _startDate,
+            endDate: _endDate,
+          )
+        : null;
+
+    final gridAsync = gridParams != null
+        ? ref.watch(calendarGridProvider(gridParams))
+        : const AsyncValue<CalendarGrid>.loading();
+
+    final stubGroups = filtered
+        .map((g) => PropertyGroup(
+              id: g.id,
+              name: g.name,
+              category: PropertyCategory.villa,
+              rooms: const [],
+            ))
+        .toList();
+
     return Scaffold(
       body: Column(
         children: [
@@ -90,11 +147,12 @@ class _OwnerCalendarScreenState
             }),
           ),
 
-          CalendarSubCategoryChips(
-            groups: _currentGroups,
-            selectedIndex: _selectedGroupIndex,
-            onChanged: (i) => setState(() => _selectedGroupIndex = i),
-          ),
+          if (stubGroups.isNotEmpty)
+            CalendarSubCategoryChips(
+              groups: stubGroups,
+              selectedIndex: safeIndex,
+              onChanged: (i) => setState(() => _selectedGroupIndex = i),
+            ),
 
           CalendarDateNavigation(
             viewMode: _viewMode,
@@ -105,13 +163,35 @@ class _OwnerCalendarScreenState
           ),
 
           Expanded(
-            child: CalendarGridWidget(
-              rooms: _currentGroup.rooms,
-              viewMode: _viewMode,
-              weekStart: _weekStart,
-              monthStart: _monthStart,
-              onCellTap: _onCellTap,
-              legendTapHint: 'Tap ô = lock/mở',
+            child: groupsAsync.when(
+              loading: () => const LoadingWidget(),
+              error: (e, _) => ErrorStateWidget(
+                message: e.toString().replaceAll('Exception: ', ''),
+                onRetry: () =>
+                    ref.invalidate(calendarPropertyGroupsProvider(null)),
+              ),
+              data: (_) => filtered.isEmpty
+                  ? const EmptyStateWidget(
+                      icon: Icons.calendar_today_outlined,
+                      message: 'Không có nhóm phòng nào',
+                    )
+                  : gridAsync.when(
+                      loading: () => const LoadingWidget(),
+                      error: (e, _) => ErrorStateWidget(
+                        message: e.toString().replaceAll('Exception: ', ''),
+                        onRetry: () =>
+                            ref.invalidate(calendarGridProvider(gridParams!)),
+                      ),
+                      data: (grid) => CalendarGridWidget(
+                        rooms: _mapRooms(grid.rooms),
+                        viewMode: _viewMode,
+                        weekStart: _weekStart,
+                        monthStart: _monthStart,
+                        onCellTap: (room, date, cell) => _showLockDialog(
+                            context, room, date, cell, gridParams!),
+                        legendTapHint: 'Tap ô = lock/mở',
+                      ),
+                    ),
             ),
           ),
         ],
@@ -119,12 +199,12 @@ class _OwnerCalendarScreenState
     );
   }
 
-  // ── Lock / Unlock dialog ────────────────────────────────
   void _showLockDialog(
     BuildContext context,
     CalendarRoom room,
     DateTime date,
     DayCell cell,
+    CalendarGridParams gridParams,
   ) {
     final isAvailable = cell.status == DayCellStatus.available;
     final isHold = cell.status == DayCellStatus.hold;
@@ -153,7 +233,6 @@ class _OwnerCalendarScreenState
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            // Handle bar
             Container(
               width: 40,
               height: 4,
@@ -164,7 +243,6 @@ class _OwnerCalendarScreenState
             ),
             const SizedBox(height: 20),
 
-            // Room info
             Row(
               children: [
                 Container(
@@ -215,7 +293,6 @@ class _OwnerCalendarScreenState
             const Divider(height: 1, color: AppColors.border),
             const SizedBox(height: 20),
 
-            // Price
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
@@ -239,16 +316,14 @@ class _OwnerCalendarScreenState
 
             const SizedBox(height: 24),
 
-            // Action buttons
             if (isAvailable) ...[
-              // Lock room
               SizedBox(
                 width: double.infinity,
                 height: 48,
                 child: ElevatedButton.icon(
                   onPressed: () {
                     Navigator.pop(ctx);
-                    _toggleLock(room, date, DayCellStatus.hold);
+                    _toggleLock(room, date, DayCellStatus.hold, gridParams);
                   },
                   icon: const Icon(Icons.lock_rounded, size: 20),
                   label: Text(
@@ -269,14 +344,14 @@ class _OwnerCalendarScreenState
                 ),
               ),
             ] else if (isHold) ...[
-              // Unlock room
               SizedBox(
                 width: double.infinity,
                 height: 48,
                 child: ElevatedButton.icon(
                   onPressed: () {
                     Navigator.pop(ctx);
-                    _toggleLock(room, date, DayCellStatus.available);
+                    _toggleLock(
+                        room, date, DayCellStatus.available, gridParams);
                   },
                   icon: const Icon(Icons.lock_open_rounded, size: 20),
                   label: Text(
@@ -297,7 +372,6 @@ class _OwnerCalendarScreenState
                 ),
               ),
             ] else ...[
-              // Booked — cannot change
               Container(
                 width: double.infinity,
                 padding: const EdgeInsets.all(AppSpacing.md),
@@ -333,35 +407,46 @@ class _OwnerCalendarScreenState
     );
   }
 
-  void _toggleLock(CalendarRoom room, DateTime date, DayCellStatus newStatus) {
-    // TODO: Gọi API lock/unlock — sau đó invalidate provider để đồng bộ lịch tổng
-    final key = DateTime(date.year, date.month, date.day);
-    final oldCell = room.dayCells[key];
-    if (oldCell == null) return;
+  Future<void> _toggleLock(
+    CalendarRoom room,
+    DateTime date,
+    DayCellStatus newStatus,
+    CalendarGridParams gridParams,
+  ) async {
+    final dateStr = DateFormat('yyyy-MM-dd').format(date);
+    final actions = ref.read(calendarActionsProvider.notifier);
 
-    setState(() {
-      room.dayCells[key] = DayCell(price: oldCell.price, status: newStatus);
-    });
+    final success = newStatus == DayCellStatus.hold
+        ? await actions.lockRoom(
+            roomId: room.id, date: dateStr, gridParams: gridParams)
+        : await actions.unlockRoom(
+            roomId: room.id, date: dateStr, gridParams: gridParams);
 
-    final label = newStatus == DayCellStatus.hold ? 'Đã khoá' : 'Đã mở khoá';
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('$label phòng ${room.code} ngày ${date.day}/${date.month}'),
-          backgroundColor: newStatus == DayCellStatus.hold
-              ? AppColors.amber
-              : AppColors.emerald,
-          behavior: SnackBarBehavior.floating,
-          duration: const Duration(seconds: 2),
+    if (!mounted) return;
+
+    final label =
+        newStatus == DayCellStatus.hold ? 'Đã khoá' : 'Đã mở khoá';
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          success
+              ? '$label phòng ${room.code} ngày ${date.day}/${date.month}'
+              : 'Có lỗi xảy ra, vui lòng thử lại',
         ),
-      );
-    }
+        backgroundColor: success
+            ? (newStatus == DayCellStatus.hold
+                ? AppColors.amber
+                : AppColors.emerald)
+            : AppColors.coral,
+        behavior: SnackBarBehavior.floating,
+        duration: const Duration(seconds: 2),
+      ),
+    );
   }
 
   String _formatPrice(double price) {
     if (price >= 1000000) {
-      final tr = price / 1000000;
-      return '${tr.toStringAsFixed(1)}tr đ/đêm';
+      return '${(price / 1000000).toStringAsFixed(1)}tr đ/đêm';
     }
     return '${(price / 1000).toInt()}k đ/đêm';
   }

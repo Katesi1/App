@@ -79,14 +79,15 @@ class HomestaySimpleModel {
         id: json['id'] ?? '',
         name: json['name'] ?? '',
         address: json['address'] ?? '',
-        latitude: json['latitude']?.toDouble(),
-        longitude: json['longitude']?.toDouble(),
+        latitude: (json['latitude'] as num?)?.toDouble(),
+        longitude: (json['longitude'] as num?)?.toDouble(),
         mapLink: json['mapLink'],
       );
 }
 
 class RoomModel {
   final String id;
+  // API mới dùng propertyId, cũ dùng homestayId — giữ tên Dart để không phá UI
   final String homestayId;
   final String name;
   final String code;
@@ -132,7 +133,8 @@ class RoomModel {
 
   factory RoomModel.fromJson(Map<String, dynamic> json) => RoomModel(
         id: json['id'] ?? '',
-        homestayId: json['homestayId'] ?? '',
+        // Hỗ trợ cả propertyId (API mới) và homestayId (API cũ)
+        homestayId: json['propertyId'] ?? json['homestayId'] ?? '',
         name: json['name'] ?? '',
         code: json['code'] ?? '',
         type: json['type'],
@@ -158,8 +160,10 @@ class RoomModel {
         price: json['price'] != null
             ? RoomPriceModel.fromJson(json['price'])
             : null,
-        homestay: json['homestay'] != null
-            ? HomestaySimpleModel.fromJson(json['homestay'])
+        // Hỗ trợ cả property (API mới) và homestay (API cũ)
+        homestay: (json['property'] ?? json['homestay']) != null
+            ? HomestaySimpleModel.fromJson(
+                json['property'] ?? json['homestay'])
             : null,
       );
 

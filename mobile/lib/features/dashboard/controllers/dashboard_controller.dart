@@ -1,9 +1,5 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../../core/constants/app_constants.dart';
-import '../../../data/models/booking_model.dart';
-import '../../../data/models/room_model.dart';
-import '../../bookings/controllers/booking_controller.dart';
-import '../../rooms/controllers/room_controller.dart';
+import '../../../data/repositories/dashboard_repository.dart';
 
 /// Dashboard KPI data model
 class DashboardStats {
@@ -28,74 +24,27 @@ class DashboardStats {
     this.monthlyRevenue = 0,
     this.todayRevenue = 0,
   });
+
+  factory DashboardStats.fromJson(Map<String, dynamic> json) => DashboardStats(
+        totalRooms: json['totalRooms'] ?? 0,
+        activeRooms: json['activeRooms'] ?? 0,
+        emptyRooms: json['emptyRooms'] ?? 0,
+        occupiedRooms: json['occupiedRooms'] ?? 0,
+        checkoutToday: json['checkoutToday'] ?? 0,
+        totalBookings: json['totalBookings'] ?? 0,
+        thisMonthBookings: json['thisMonthBookings'] ?? 0,
+        monthlyRevenue: (json['monthlyRevenue'] as num?)?.toDouble() ?? 0,
+        todayRevenue: (json['todayRevenue'] as num?)?.toDouble() ?? 0,
+      );
 }
 
-/// Provider tính toán KPI dashboard từ rooms + bookings
+final dashboardRepositoryProvider =
+    Provider<DashboardRepository>((ref) => DashboardRepository());
+
+/// Provider lấy KPI dashboard từ real API /dashboard/stats
 final dashboardStatsProvider = FutureProvider<DashboardStats>((ref) async {
-  final rooms = await ref.watch(roomListProvider(null).future);
-  final bookings = await ref.watch(bookingListProvider(null).future);
-  return _computeStats(rooms, bookings);
+  final repo = ref.read(dashboardRepositoryProvider);
+  final result = await repo.getStats();
+  if (result.success) return DashboardStats.fromJson(result.data!);
+  throw Exception(result.message);
 });
-
-DashboardStats _computeStats(
-    List<RoomModel> rooms, List<BookingModel> bookings) {
-  final now = DateTime.now();
-  final today = DateTime(now.year, now.month, now.day);
-
-  final totalRooms = rooms.length;
-  final activeRooms = rooms.where((r) => r.isActive).length;
-
-  // Booking hôm nay checkout
-  final checkoutToday = bookings
-      .where((b) =>
-          b.checkoutDate.year == today.year &&
-          b.checkoutDate.month == today.month &&
-          b.checkoutDate.day == today.day)
-      .length;
-
-  // Booking đang ở (confirmed + checkin <= today <= checkout)
-  final occupiedRooms = bookings
-      .where((b) =>
-          b.status == BookingStatus.confirmed &&
-          !b.checkinDate.isAfter(today) &&
-          b.checkoutDate.isAfter(today))
-      .length;
-
-  final emptyRooms = (activeRooms - occupiedRooms).clamp(0, activeRooms);
-
-  // Booking tháng này
-  final thisMonthBookings = bookings
-      .where(
-          (b) => b.checkinDate.month == now.month && b.checkinDate.year == now.year)
-      .length;
-
-  // Doanh thu (deposit từ confirmed + completed)
-  final monthlyRevenue = bookings
-      .where((b) =>
-          (b.status == BookingStatus.confirmed ||
-              b.status == BookingStatus.completed) &&
-          b.checkinDate.month == now.month &&
-          b.checkinDate.year == now.year)
-      .fold<double>(0, (sum, b) => sum + (b.depositAmount ?? 0));
-
-  final todayRevenue = bookings
-      .where((b) =>
-          (b.status == BookingStatus.confirmed ||
-              b.status == BookingStatus.completed) &&
-          b.checkinDate.year == today.year &&
-          b.checkinDate.month == today.month &&
-          b.checkinDate.day == today.day)
-      .fold<double>(0, (sum, b) => sum + (b.depositAmount ?? 0));
-
-  return DashboardStats(
-    totalRooms: totalRooms,
-    activeRooms: activeRooms,
-    emptyRooms: emptyRooms,
-    occupiedRooms: occupiedRooms,
-    checkoutToday: checkoutToday,
-    totalBookings: bookings.length,
-    thisMonthBookings: thisMonthBookings,
-    monthlyRevenue: monthlyRevenue,
-    todayRevenue: todayRevenue,
-  );
-}

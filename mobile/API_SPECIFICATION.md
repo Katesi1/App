@@ -1,204 +1,122 @@
-# API SPECIFICATION — Halong24h Homestay Management
+# API SPECIFICATION — Halong24h Property Management
 
-> Tài liệu đặc tả toàn bộ API cần thiết để app hoạt động trơn tru.
 > Base URL: `http://103.183.118.148:3000`
+> Auth: `Authorization: Bearer {accessToken}` cho tất cả endpoint có 🔒
+> Response format chung: `{ "success": true/false, "data": ..., "message": "..." }`
 
 ---
 
 ## Mục lục
 
-1. [Authentication](#1-authentication--xác-thực)
-2. [Users](#2-users--quản-lý-người-dùng)
-3. [Homestays](#3-homestays--cơ-sở-lưu-trú)
-4. [Rooms](#4-rooms--quản-lý-phòng)
-5. [Room Images](#5-room-images--ảnh-phòng)
-6. [Room Prices](#6-room-prices--bảng-giá-phòng)
-7. [Bookings (Staff/Admin)](#7-bookings-staffadmin--đặt-phòng-quản-lý)
-8. [Bookings (Customer)](#8-bookings-customer--đặt-phòng-khách-hàng)
-9. [Calendar Grid](#9-calendar-grid--lịch-phòng-mới)
-10. [Notifications](#10-notifications--thông-báo)
-11. [Dashboard / Reports](#11-dashboard--reports--thống-kê)
-12. [Response Format](#12-response-format-chung)
-13. [Auth Flow & Token](#13-auth-flow--token)
-14. [Tổng kết endpoints](#14-tổng-kết-endpoints)
+1. [Authentication](#1-authentication)
+2. [Users — Admin quản lý](#2-users)
+3. [Properties — Quản lý cơ sở](#3-properties)
+4. [Rooms — Quản lý phòng](#4-rooms)
+5. [Room Images — Ảnh phòng](#5-room-images)
+6. [Room Prices — Bảng giá](#6-room-prices)
+7. [Bookings — Staff/Admin](#7-bookings-staffadmin)
+8. [Bookings — Customer](#8-bookings-customer)
+9. [Calendar Grid — Lịch phòng dạng lưới ⚠️ CẦN TẠO MỚI](#9-calendar-grid)
+10. [Notifications — Thông báo ⚠️ CẦN TẠO MỚI](#10-notifications)
+11. [Màn hình → Endpoint mapping](#11-màn-hình--endpoint-mapping)
+12. [Tổng kết endpoints](#12-tổng-kết-endpoints)
 
 ---
 
-## 1. Authentication — Xác thực
+## 1. Authentication
 
-### 1.1. Đăng ký
-```
-POST /auth/register
-```
-| Trường | Kiểu | Bắt buộc | Mô tả |
-|--------|-------|----------|-------|
-| `name` | string | ✅ | Họ tên |
-| `phone` | string | ✅ | Số điện thoại (unique) |
-| `password` | string | ✅ | Mật khẩu (min 6 ký tự) |
-| `role` | string | ✅ | `STAFF` hoặc `CUSTOMER` |
-| `email` | string | ❌ | Email (optional) |
-
-**Response**: `{ success, data: { user, accessToken, refreshToken }, message }`
+### Màn hình dùng: Login, Register, Forgot Password, Change Password, Profile
 
 ---
 
-### 1.2. Đăng nhập
+### 1.1 Đăng nhập
 ```
 POST /auth/login
 ```
-| Trường | Kiểu | Bắt buộc | Mô tả |
-|--------|-------|----------|-------|
-| `phone` | string | ✅ | Số điện thoại |
-| `password` | string | ✅ | Mật khẩu |
+**Body:**
+| Field | Type | Required |
+|-------|------|----------|
+| `phone` | string | ✅ |
+| `password` | string | ✅ |
 
-**Response**: `{ success, data: { user, accessToken, refreshToken }, message }`
+**Response:** `{ data: { user: UserObject, accessToken, refreshToken } }`
 
 ---
 
-### 1.3. Đăng nhập Google
+### 1.2 Đăng ký
+```
+POST /auth/register
+```
+**Body:**
+| Field | Type | Required |
+|-------|------|----------|
+| `name` | string | ✅ |
+| `phone` | string | ✅ |
+| `password` | string | ✅ (min 6) |
+| `role` | string | ✅ `STAFF` hoặc `CUSTOMER` |
+| `email` | string | ❌ |
+
+**Response:** `{ data: { user: UserObject, accessToken, refreshToken } }`
+
+---
+
+### 1.3 Đăng nhập Google
 ```
 POST /auth/google
 ```
-| Trường | Kiểu | Bắt buộc | Mô tả |
-|--------|-------|----------|-------|
-| `idToken` | string | ✅ | Google ID token |
-| `role` | string | ❌ | Role nếu tạo user mới |
-
-**Response**: Giống login
+**Body:**
+| Field | Type | Required |
+|-------|------|----------|
+| `idToken` | string | ✅ |
+| `role` | string | ❌ (chỉ cần khi tạo user mới) |
 
 ---
 
-### 1.4. Refresh Token
+### 1.4 Refresh Token
 ```
 POST /auth/refresh
 ```
-| Trường | Kiểu | Bắt buộc | Mô tả |
-|--------|-------|----------|-------|
-| `refreshToken` | string | ✅ | Refresh token hiện tại |
+**Body:** `{ refreshToken: string }` *(không cần Authorization header)*
 
-**Response**: `{ success, data: { accessToken, refreshToken }, message }`
+**Response:** `{ data: { accessToken, refreshToken } }`
+
+**Lưu ý:** App tự động gọi khi nhận lỗi 401.
 
 ---
 
-### 1.5. Đăng xuất
+### 1.5 Đăng xuất
 ```
-POST /auth/logout
-Header: Authorization: Bearer {accessToken}
+POST /auth/logout   🔒
 ```
 Không có body.
 
 ---
 
-### 1.6. Lấy Profile
-```
-GET /auth/profile
-Header: Authorization: Bearer {accessToken}
-```
-**Response**: `{ success, data: UserObject, message }`
-
----
-
-### 1.7. Quên mật khẩu
+### 1.6 Quên mật khẩu
 ```
 POST /auth/forgot-password
 ```
-| Trường | Kiểu | Bắt buộc | Mô tả |
-|--------|-------|----------|-------|
-| `identifier` | string | ✅ | SĐT hoặc email |
+**Body:** `{ identifier: string }` (SĐT hoặc email)
 
 ---
 
-### 1.8. Reset mật khẩu
+### 1.7 Reset mật khẩu
 ```
 POST /auth/reset-password
 ```
-| Trường | Kiểu | Bắt buộc | Mô tả |
-|--------|-------|----------|-------|
-| `token` | string | ✅ | Token từ email/SMS |
-| `newPassword` | string | ✅ | Mật khẩu mới |
+**Body:** `{ token: string, newPassword: string }`
 
 ---
 
-### 1.9. Đổi mật khẩu
+### 1.8 Đổi mật khẩu
 ```
-PATCH /auth/change-password
-Header: Authorization: Bearer {accessToken}
+POST /auth/change-password   🔒
 ```
-| Trường | Kiểu | Bắt buộc | Mô tả |
-|--------|-------|----------|-------|
-| `currentPassword` | string | ✅ | Mật khẩu hiện tại |
-| `newPassword` | string | ✅ | Mật khẩu mới |
+**Body:** `{ currentPassword: string, newPassword: string }`
 
 ---
 
-## 2. Users — Quản lý người dùng
-
-> Chỉ ADMIN mới có quyền CRUD users.
-
-### 2.1. Danh sách users
-```
-GET /users?role={ADMIN|STAFF|CUSTOMER}
-Header: Authorization: Bearer {accessToken}
-```
-| Query Param | Kiểu | Bắt buộc | Mô tả |
-|-------------|-------|----------|-------|
-| `role` | string | ❌ | Filter theo role |
-
-**Response**: `{ success, data: [UserObject], message }`
-
----
-
-### 2.2. Chi tiết user
-```
-GET /users/:id
-Header: Authorization: Bearer {accessToken}
-```
-
----
-
-### 2.3. Tạo user
-```
-POST /users
-Header: Authorization: Bearer {accessToken}
-```
-| Trường | Kiểu | Bắt buộc | Mô tả |
-|--------|-------|----------|-------|
-| `name` | string | ✅ | Họ tên |
-| `phone` | string | ✅ | SĐT (unique) |
-| `password` | string | ✅ | Mật khẩu (min 6) |
-| `role` | string | ✅ | `ADMIN`, `STAFF`, `CUSTOMER` |
-| `email` | string | ❌ | Email |
-| `isActive` | boolean | ❌ | Default: true |
-
----
-
-### 2.4. Cập nhật user
-```
-PUT /users/:id
-Header: Authorization: Bearer {accessToken}
-```
-| Trường | Kiểu | Bắt buộc | Mô tả |
-|--------|-------|----------|-------|
-| `name` | string | ❌ | Họ tên |
-| `phone` | string | ❌ | SĐT |
-| `email` | string | ❌ | Email |
-| `password` | string | ❌ | Mật khẩu mới |
-| `role` | string | ❌ | Role |
-| `isActive` | boolean | ❌ | Kích hoạt/vô hiệu hoá |
-| `gender` | string | ❌ | Giới tính |
-| `dateOfBirth` | string | ❌ | Ngày sinh |
-
----
-
-### 2.5. Xoá (vô hiệu hoá) user
-```
-DELETE /users/:id
-Header: Authorization: Bearer {accessToken}
-```
-
----
-
-### User Object (9 trường)
+### User Object
 ```json
 {
   "id": "uuid",
@@ -215,60 +133,137 @@ Header: Authorization: Bearer {accessToken}
 
 ---
 
-## 3. Homestays — Cơ sở lưu trú
+## 2. Users
 
-### 3.1. Danh sách homestays
-```
-GET /homestays
-Header: Authorization: Bearer {accessToken}
-```
-**Response**: `{ success, data: [HomestayObject], message }`
+### Màn hình dùng: `/admin/users` (UserListScreen), `/admin/users/new`, `/admin/users/:id/edit` (UserFormScreen), `/profile/edit` (PersonalInfoScreen)
+
+> Chỉ ADMIN mới có quyền CRUD users.
+> `PUT /users/:id` cũng được dùng bởi chính user để update profile của mình.
 
 ---
 
-### 3.2. Chi tiết homestay
+### 2.1 Danh sách users
 ```
-GET /homestays/:id
-Header: Authorization: Bearer {accessToken}
+GET /users   🔒
 ```
+| Query | Type | Required | Dùng ở đâu |
+|-------|------|----------|------------|
+| `role` | string | ❌ | AdminScreen filter theo ADMIN/STAFF/CUSTOMER |
 
 ---
 
-### 3.3. Tạo homestay
+### 2.2 Chi tiết user
 ```
-POST /homestays
-Header: Authorization: Bearer {accessToken}
+GET /users/:id   🔒
 ```
-| Trường | Kiểu | Bắt buộc | Mô tả |
-|--------|-------|----------|-------|
-| `name` | string | ✅ | Tên cơ sở |
-| `address` | string | ✅ | Địa chỉ |
-| `ownerId` | string | ✅ | ID chủ nhà |
-| `latitude` | double | ❌ | Vĩ độ |
-| `longitude` | double | ❌ | Kinh độ |
-| `mapLink` | string | ❌ | Link Google Maps |
-| `isActive` | boolean | ❌ | Default: true |
+Dùng ở: UserFormScreen (edit mode)
 
 ---
 
-### 3.4. Cập nhật homestay
+### 2.3 Tạo user
 ```
-PUT /homestays/:id
-Header: Authorization: Bearer {accessToken}
+POST /users   🔒
 ```
-Giống body tạo, tất cả optional.
+**Body:**
+| Field | Type | Required |
+|-------|------|----------|
+| `name` | string | ✅ |
+| `phone` | string | ✅ |
+| `password` | string | ✅ |
+| `role` | string | ✅ `ADMIN` / `STAFF` / `CUSTOMER` |
+| `email` | string | ❌ |
+| `isActive` | boolean | ❌ |
 
 ---
 
-### 3.5. Xoá homestay
+### 2.4 Cập nhật user
 ```
-DELETE /homestays/:id
-Header: Authorization: Bearer {accessToken}
+PUT /users/:id   🔒
 ```
+**Body (tất cả optional):**
+| Field | Type | Dùng ở đâu |
+|-------|------|------------|
+| `name` | string | PersonalInfoScreen, UserFormScreen |
+| `phone` | string | UserFormScreen |
+| `email` | string | PersonalInfoScreen, UserFormScreen |
+| `password` | string | UserFormScreen |
+| `role` | string | UserFormScreen |
+| `isActive` | boolean | UserFormScreen |
+| `gender` | string | PersonalInfoScreen |
+| `dateOfBirth` | string | PersonalInfoScreen |
 
 ---
 
-### Homestay Object (9 trường)
+### 2.5 Xoá (vô hiệu hoá) user
+```
+DELETE /users/:id   🔒
+```
+Dùng ở: UserListScreen (swipe to delete)
+
+---
+
+## 3. Properties
+
+### Màn hình dùng: `/properties` (PropertyManagementScreen), `/properties/new` (PropertyAddScreen), `/properties/:id` (PropertyManageScreen + sub-screens)
+
+---
+
+### 3.1 Danh sách properties
+```
+GET /properties   🔒
+```
+Dùng ở: PropertyManagementScreen (list tất cả cơ sở), DashboardScreen
+
+---
+
+### 3.2 Chi tiết property
+```
+GET /properties/:id   🔒
+```
+Dùng ở: PropertyInfoScreen, PropertyManageScreen
+
+---
+
+### 3.3 Tạo property
+```
+POST /properties   🔒
+```
+**Body:**
+| Field | Type | Required | Màn hình |
+|-------|------|----------|----------|
+| `name` | string | ✅ | PropertyAddScreen |
+| `address` | string | ✅ | PropertyAddScreen |
+| `ownerId` | string | ✅ | PropertyAddScreen |
+| `latitude` | double | ❌ | PropertyLocationScreen |
+| `longitude` | double | ❌ | PropertyLocationScreen |
+| `mapLink` | string | ❌ | PropertyLocationScreen |
+| `isActive` | boolean | ❌ | PropertyInfoScreen |
+
+---
+
+### 3.4 Cập nhật property
+```
+PUT /properties/:id   🔒
+```
+**Dùng ở các màn hình con:**
+- `PropertyInfoScreen` → cập nhật `name`, `address`, `isActive`
+- `PropertyLocationScreen` → cập nhật `latitude`, `longitude`, `mapLink`
+- `PropertyRulesScreen` → cập nhật `rules` *(backend cần thêm field này vào Property model)*
+- `PropertyServicesScreen` → cập nhật `services` *(backend cần thêm field này vào Property model)*
+
+> ⚠️ **Lưu ý:** `PropertyAmenitiesScreen` và `PropertyCancellationScreen` gọi `PUT /rooms/:id`, không phải endpoint này. Xem section 4.5.
+
+---
+
+### 3.5 Xoá property
+```
+DELETE /properties/:id   🔒
+```
+Dùng ở: PropertyManagementScreen
+
+---
+
+### Property Object
 ```json
 {
   "id": "uuid",
@@ -279,6 +274,8 @@ Header: Authorization: Bearer {accessToken}
   "longitude": 107.0483,
   "mapLink": "https://maps.google.com/...",
   "isActive": true,
+  "rules": "Không hút thuốc trong phòng...",
+  "services": "Dọn phòng hàng ngày, đưa đón sân bay...",
   "owner": { "id": "uuid", "name": "Chủ nhà A" },
   "_count": { "rooms": 12 }
 }
@@ -286,91 +283,102 @@ Header: Authorization: Bearer {accessToken}
 
 ---
 
-## 4. Rooms — Quản lý phòng
+## 4. Rooms
 
-### 4.1. Danh sách phòng
-```
-GET /rooms?homestayId={id}
-Header: Authorization: Bearer {accessToken}
-```
-| Query Param | Kiểu | Bắt buộc | Mô tả |
-|-------------|-------|----------|-------|
-| `homestayId` | string | ❌ | Filter theo homestay |
+### Màn hình dùng: `/rooms` (RoomListScreen), `/rooms/:id` (RoomDetailScreen), `/properties/:id` (PropertyManageScreen — list phòng theo property)
 
 ---
 
-### 4.2. Danh sách phòng công khai (Customer)
+### 4.1 Danh sách phòng (Staff/Admin)
 ```
-GET /rooms/public?checkinDate=&checkoutDate=&guests=&minPrice=&maxPrice=
+GET /rooms   🔒
 ```
-| Query Param | Kiểu | Bắt buộc | Mô tả |
-|-------------|-------|----------|-------|
-| `checkinDate` | string (ISO) | ❌ | Ngày nhận phòng |
-| `checkoutDate` | string (ISO) | ❌ | Ngày trả phòng |
-| `guests` | int | ❌ | Số khách |
-| `minPrice` | double | ❌ | Giá tối thiểu |
-| `maxPrice` | double | ❌ | Giá tối đa |
+> ⚠️ **Backend lưu ý:** Query param hiện tại là `homestayId` — yêu cầu đổi thành `propertyId`.
+
+| Query | Type | Required | Dùng ở đâu |
+|-------|------|----------|------------|
+| `propertyId` | string | ❌ | PropertyManageScreen (lọc theo cơ sở) |
+
+Dùng ở: RoomListScreen (toàn bộ), DashboardScreen (tính KPI), ReportScreen (tính báo cáo)
 
 ---
 
-### 4.3. Chi tiết phòng
+### 4.2 Danh sách phòng công khai (Customer)
 ```
-GET /rooms/:id
-Header: Authorization: Bearer {accessToken}
+GET /rooms/public
 ```
+| Query | Type | Required | Dùng ở đâu |
+|-------|------|----------|------------|
+| `checkinDate` | string (YYYY-MM-DD) | ❌ | SearchRoomScreen |
+| `checkoutDate` | string (YYYY-MM-DD) | ❌ | SearchRoomScreen |
+| `guests` | int | ❌ | SearchRoomScreen |
+| `minPrice` | double | ❌ | SearchRoomScreen |
+| `maxPrice` | double | ❌ | SearchRoomScreen |
+
+Dùng ở: CustomerHomeScreen (load danh sách nổi bật), SearchRoomScreen (có filter)
 
 ---
 
-### 4.4. Tạo phòng
+### 4.3 Chi tiết phòng
 ```
-POST /rooms
-Header: Authorization: Bearer {accessToken}
+GET /rooms/:id   🔒
 ```
-| Trường | Kiểu | Bắt buộc | Mô tả |
-|--------|-------|----------|-------|
-| `homestayId` | string | ✅ | ID homestay chứa phòng |
-| `name` | string | ✅ | Tên hiển thị |
-| `code` | string | ✅ | Mã phòng (VD: C3-06) |
-| `type` | string | ❌ | VILLA, HOMESTAY, APARTMENT, HOTEL |
-| `bedrooms` | int | ❌ | Số phòng ngủ (default: 1) |
-| `bathrooms` | int | ❌ | Số WC (default: 1) |
-| `standardGuests` | int | ❌ | Sức chứa tiêu chuẩn (default: 2) |
-| `maxGuests` | int | ❌ | Sức chứa tối đa (default: 2) |
-| `description` | string | ❌ | Mô tả |
-| `address` | string | ❌ | Địa chỉ riêng |
-| `mapLink` | string | ❌ | Link Google Maps |
-| `amenities` | string[] | ❌ | Danh sách tiện nghi |
-| `cancellationPolicy` | string | ❌ | FLEXIBLE / MODERATE / STRICT |
-| `adultSurcharge` | double | ❌ | Phụ thu người lớn |
-| `childSurcharge` | double | ❌ | Phụ thu trẻ em |
-| `isActive` | boolean | ❌ | Default: true |
-
-**Tổng: 16 trường (3 bắt buộc, 13 optional)**
+Dùng ở: RoomDetailScreen, HoldRoomScreen (Staff)
 
 ---
 
-### 4.5. Cập nhật phòng
+### 4.4 Tạo phòng
 ```
-PUT /rooms/:id
-Header: Authorization: Bearer {accessToken}
+POST /rooms   🔒
 ```
-Giống body tạo, tất cả optional.
+> ⚠️ **Backend lưu ý:** Field hiện tại là `homestayId` — yêu cầu đổi thành `propertyId` để đồng nhất.
+
+**Body:**
+| Field | Type | Required |
+|-------|------|----------|
+| `propertyId` | string | ✅ |
+| `name` | string | ✅ |
+| `code` | string | ✅ |
+| `type` | string | ❌ `VILLA` / `HOMESTAY` / `APARTMENT` / `HOTEL` |
+| `bedrooms` | int | ❌ |
+| `bathrooms` | int | ❌ |
+| `standardGuests` | int | ❌ |
+| `maxGuests` | int | ❌ |
+| `description` | string | ❌ |
+| `address` | string | ❌ |
+| `mapLink` | string | ❌ |
+| `amenities` | string[] | ❌ |
+| `cancellationPolicy` | string | ❌ `FLEXIBLE` / `MODERATE` / `STRICT` |
+| `adultSurcharge` | double | ❌ |
+| `childSurcharge` | double | ❌ |
+| `isActive` | boolean | ❌ |
+
+Dùng ở: PropertyManageScreen (nút thêm phòng mới)
 
 ---
 
-### 4.6. Xoá phòng
+### 4.5 Cập nhật phòng
 ```
-DELETE /rooms/:id
-Header: Authorization: Bearer {accessToken}
+PUT /rooms/:id   🔒
 ```
+Body giống tạo, tất cả optional.
+Dùng ở: RoomDetailScreen (edit inline), PropertyAmenitiesScreen, PropertyCancellationScreen
 
 ---
 
-### Room Object (20 trường)
+### 4.6 Xoá phòng
+```
+DELETE /rooms/:id   🔒
+```
+Dùng ở: RoomListScreen, PropertyManageScreen
+
+---
+
+### Room Object
 ```json
 {
   "id": "uuid",
-  "homestayId": "uuid",
+  "propertyId": "uuid",
   "name": "Villa Sunferia C3",
   "code": "C3-06",
   "type": "VILLA",
@@ -388,50 +396,45 @@ Header: Authorization: Bearer {accessToken}
   "isActive": true,
   "images": [RoomImageObject],
   "price": RoomPriceObject,
-  "homestay": {
-    "id": "uuid",
-    "name": "Sunferia",
-    "address": "Bãi Cháy"
-  }
+  "property": { "id": "uuid", "name": "Sunferia", "address": "Bãi Cháy" }
 }
 ```
 
 ---
 
-## 5. Room Images — Ảnh phòng
+## 5. Room Images
 
-### 5.1. Upload ảnh
+### Màn hình dùng: `/properties/:id/images` (PropertyImagesScreen)
+
+---
+
+### 5.1 Upload ảnh
 ```
-POST /rooms/:roomId/images
-Header: Authorization: Bearer {accessToken}
+POST /rooms/:roomId/images   🔒
 Content-Type: multipart/form-data
 ```
-| Trường | Kiểu | Bắt buộc | Mô tả |
-|--------|-------|----------|-------|
-| `images` | File[] | ✅ | Tối đa 20 ảnh |
+**Body:** `images` (File[], tối đa 20 ảnh)
 
-**Response**: `{ success, data: [RoomImageObject], message }`
+**Response:** `{ data: [RoomImageObject] }`
 
 ---
 
-### 5.2. Xoá ảnh
+### 5.2 Xoá ảnh
 ```
-DELETE /rooms/:roomId/images/:imageId
-Header: Authorization: Bearer {accessToken}
+DELETE /rooms/:roomId/images/:imageId   🔒
 ```
 
 ---
 
-### 5.3. Set ảnh bìa
+### 5.3 Set ảnh bìa
 ```
-PATCH /rooms/:roomId/images/:imageId/cover
-Header: Authorization: Bearer {accessToken}
+PATCH /rooms/:roomId/images/:imageId/cover   🔒
 ```
 Không có body.
 
 ---
 
-### Room Image Object (6 trường)
+### Room Image Object
 ```json
 {
   "id": "uuid",
@@ -445,25 +448,27 @@ Không có body.
 
 ---
 
-## 6. Room Prices — Bảng giá phòng
+## 6. Room Prices
 
-### 6.1. Upsert giá phòng
+### Màn hình dùng: `/properties/:id/pricing` (PropertyPricingScreen)
+
+---
+
+### 6.1 Upsert giá phòng (tạo mới hoặc cập nhật)
 ```
-PUT /rooms/:roomId/prices
-Header: Authorization: Bearer {accessToken}
+PUT /rooms/:roomId/prices   🔒
 ```
-| Trường | Kiểu | Bắt buộc | Mô tả |
-|--------|-------|----------|-------|
-| `weekdayPrice` | double | ✅ | Giá ngày thường (T2-T5) |
+**Body:**
+| Field | Type | Required | Mô tả |
+|-------|------|----------|-------|
+| `weekdayPrice` | double | ✅ | Giá T2–T5 |
 | `fridayPrice` | double | ✅ | Giá thứ 6 |
 | `saturdayPrice` | double | ✅ | Giá thứ 7 |
 | `holidayPrice` | double | ✅ | Giá ngày lễ / cao điểm |
 
-**Tổng: 4 trường, tất cả bắt buộc**
-
 ---
 
-### Room Price Object (6 trường)
+### Room Price Object
 ```json
 {
   "id": "uuid",
@@ -477,90 +482,114 @@ Header: Authorization: Bearer {accessToken}
 
 ---
 
-## 7. Bookings (Staff/Admin) — Đặt phòng quản lý
+## 7. Bookings (Staff/Admin)
 
-### 7.1. Danh sách bookings
-```
-GET /bookings?roomId={id}
-Header: Authorization: Bearer {accessToken}
-```
-| Query Param | Kiểu | Bắt buộc | Mô tả |
-|-------------|-------|----------|-------|
-| `roomId` | string | ❌ | Filter theo phòng |
+### Màn hình dùng: `/bookings` (BookingListScreen), `/rooms/:id/hold` (HoldRoomScreen), `/calendar` (BookingCalendarScreen)
 
 ---
 
-### 7.2. Giữ phòng (Hold)
+### 7.1 Danh sách bookings
 ```
-POST /bookings/hold
-Header: Authorization: Bearer {accessToken}
+GET /bookings   🔒
 ```
-| Trường | Kiểu | Bắt buộc | Mô tả |
-|--------|-------|----------|-------|
-| `roomId` | string | ✅ | ID phòng |
-| `checkinDate` | string (ISO) | ✅ | Ngày nhận phòng |
-| `checkoutDate` | string (ISO) | ✅ | Ngày trả phòng |
-| `customerName` | string | ❌ | Tên khách |
-| `customerPhone` | string | ❌ | SĐT khách |
-| `depositAmount` | double | ❌ | Tiền cọc |
-| `notes` | string | ❌ | Ghi chú |
+| Query | Type | Required | Dùng ở đâu |
+|-------|------|----------|------------|
+| `roomId` | string | ❌ | Filter khi xem booking của 1 phòng |
 
-**Tổng: 7 trường (3 bắt buộc, 4 optional)**
-
-**Logic**: Giữ phòng 30 phút → tự động huỷ nếu chưa confirm.
+Dùng ở: BookingListScreen (toàn bộ), DashboardScreen (tính KPI), ReportScreen
 
 ---
 
-### 7.3. Xác nhận booking
+### 7.2 Giữ phòng (Hold)
 ```
-PATCH /bookings/:id/confirm
-Header: Authorization: Bearer {accessToken}
+POST /bookings/hold   🔒
 ```
-Không có body. Chuyển status `HOLD` → `CONFIRMED`.
+**Body:**
+| Field | Type | Required |
+|-------|------|----------|
+| `roomId` | string | ✅ |
+| `checkinDate` | string (ISO) | ✅ |
+| `checkoutDate` | string (ISO) | ✅ |
+| `customerName` | string | ❌ |
+| `customerPhone` | string | ❌ |
+| `depositAmount` | double | ❌ |
+| `notes` | string | ❌ |
+
+**Logic:** Giữ phòng 30 phút, tự động huỷ nếu chưa confirm.
+
+Dùng ở: HoldRoomScreen (Staff tạo booking mới)
 
 ---
 
-### 7.4. Huỷ booking
+### 7.3 Xác nhận booking
 ```
-PATCH /bookings/:id/cancel
-Header: Authorization: Bearer {accessToken}
+PATCH /bookings/:id/confirm   🔒
 ```
-Không có body. Chuyển status → `CANCELLED`.
+Không có body. `HOLD` → `CONFIRMED`
+
+Dùng ở: BookingListScreen (nút Xác nhận)
 
 ---
 
-### 7.5. Cập nhật booking
+### 7.4 Huỷ booking
 ```
-PUT /bookings/:id
-Header: Authorization: Bearer {accessToken}
+PATCH /bookings/:id/cancel   🔒
 ```
-| Trường | Kiểu | Bắt buộc | Mô tả |
-|--------|-------|----------|-------|
-| `checkinDate` | string (ISO) | ❌ | Ngày nhận phòng |
-| `checkoutDate` | string (ISO) | ❌ | Ngày trả phòng |
-| `customerName` | string | ❌ | Tên khách |
-| `customerPhone` | string | ❌ | SĐT khách |
-| `depositAmount` | double | ❌ | Tiền cọc |
-| `notes` | string | ❌ | Ghi chú |
-| `status` | string | ❌ | HOLD/CONFIRMED/CANCELLED/COMPLETED |
+Không có body. → `CANCELLED`
+
+Dùng ở: BookingListScreen (nút Huỷ)
 
 ---
 
-### 7.6. Lịch booking theo phòng
+### 7.5 Cập nhật booking
 ```
-GET /bookings/calendar/:roomId?year={year}&month={month}
-Header: Authorization: Bearer {accessToken}
+PUT /bookings/:id   🔒
 ```
-| Query Param | Kiểu | Bắt buộc | Mô tả |
-|-------------|-------|----------|-------|
-| `year` | int | ✅ | Năm |
-| `month` | int | ✅ | Tháng |
+**Body (tất cả optional):**
+| Field | Type |
+|-------|------|
+| `checkinDate` | string (ISO) |
+| `checkoutDate` | string (ISO) |
+| `customerName` | string |
+| `customerPhone` | string |
+| `depositAmount` | double |
+| `notes` | string |
+| `status` | string `HOLD`/`CONFIRMED`/`CANCELLED`/`COMPLETED` |
 
-**Response**: `{ success, data: [CalendarBookingObject], message }`
+Dùng ở: BookingListScreen (edit inline)
 
 ---
 
-### Booking Object (14 trường)
+### 7.6 Lịch booking theo phòng
+```
+GET /bookings/calendar/:roomId   🔒
+```
+| Query | Type | Required |
+|-------|------|----------|
+| `year` | int | ✅ |
+| `month` | int | ✅ |
+
+**Response:** `{ data: [CalendarBookingObject] }`
+
+Dùng ở: RoomDetailScreen (xem lịch 1 phòng cụ thể)
+
+---
+
+### CalendarBooking Object
+```json
+{
+  "id": "uuid",
+  "checkinDate": "2026-04-20T14:00:00Z",
+  "checkoutDate": "2026-04-22T12:00:00Z",
+  "status": "CONFIRMED",
+  "customerName": "Nguyễn Văn B",
+  "holdRemainingSeconds": 0
+}
+```
+
+---
+
+### Booking Object
 ```json
 {
   "id": "uuid",
@@ -579,149 +608,116 @@ Header: Authorization: Bearer {accessToken}
     "id": "uuid",
     "name": "C3-06",
     "code": "C3-06",
-    "homestay": { "name": "Sunferia" }
+    "property": { "name": "Sunferia" }
   },
-  "sale": {
-    "id": "uuid",
-    "name": "Nhân viên A"
-  }
-}
-```
-
-### Calendar Booking Object (5 trường)
-```json
-{
-  "id": "uuid",
-  "checkinDate": "2026-04-20T14:00:00Z",
-  "checkoutDate": "2026-04-22T12:00:00Z",
-  "status": "CONFIRMED",
-  "customerName": "Nguyễn Văn B",
-  "holdRemainingSeconds": 0
+  "sale": { "id": "uuid", "name": "Nhân viên A" }
 }
 ```
 
 ---
 
-## 8. Bookings (Customer) — Đặt phòng khách hàng
+## 8. Bookings (Customer)
 
-### 8.1. Khách giữ phòng
-```
-POST /bookings/customer-hold
-Header: Authorization: Bearer {accessToken}
-```
-| Trường | Kiểu | Bắt buộc | Mô tả |
-|--------|-------|----------|-------|
-| `roomId` | string | ✅ | ID phòng |
-| `checkinDate` | string (ISO) | ✅ | Ngày nhận phòng |
-| `checkoutDate` | string (ISO) | ✅ | Ngày trả phòng |
-| `customerName` | string | ❌ | Tên khách |
-| `customerPhone` | string | ❌ | SĐT khách |
-| `notes` | string | ❌ | Ghi chú |
+### Màn hình dùng: `/my-bookings` (MyBookingsScreen), `/search` (SearchRoomScreen — khi customer bấm đặt phòng)
 
 ---
 
-### 8.2. Booking của tôi
+### 8.1 Khách giữ phòng
 ```
-GET /bookings/my?status={status}
-Header: Authorization: Bearer {accessToken}
+POST /bookings/customer-hold   🔒
 ```
-| Query Param | Kiểu | Bắt buộc | Mô tả |
-|-------------|-------|----------|-------|
-| `status` | string | ❌ | HOLD, CONFIRMED, CANCELLED |
+**Body:**
+| Field | Type | Required |
+|-------|------|----------|
+| `roomId` | string | ✅ |
+| `checkinDate` | string (ISO) | ✅ |
+| `checkoutDate` | string (ISO) | ✅ |
+| `customerName` | string | ❌ |
+| `customerPhone` | string | ❌ |
+| `notes` | string | ❌ |
+
+Dùng ở: SearchRoomScreen (customer chọn phòng và đặt)
 
 ---
 
-### 8.3. Khách huỷ booking
+### 8.2 Booking của tôi
 ```
-PATCH /bookings/:id/customer-cancel
-Header: Authorization: Bearer {accessToken}
+GET /bookings/my   🔒
+```
+| Query | Type | Required | Dùng ở đâu |
+|-------|------|----------|------------|
+| `status` | string | ❌ | MyBookingsScreen (tab filter: HOLD/CONFIRMED/CANCELLED) |
+
+Dùng ở: MyBookingsScreen
+
+---
+
+### 8.3 Khách huỷ booking
+```
+PATCH /bookings/:id/customer-cancel   🔒
 ```
 Chỉ huỷ được booking có status `HOLD`.
 
+Dùng ở: MyBookingsScreen (nút Huỷ)
+
 ---
 
-## 9. Calendar Grid — Lịch phòng (MỚI)
+## 9. Calendar Grid
 
-> API mới cần tạo cho tính năng lịch grid (rooms × dates).
-> Dùng chung cho cả **lịch tổng** (BookingCalendarScreen) và **lịch chủ nhà** (OwnerCalendarScreen).
+> ⚠️ **CẦN TẠO MỚI — Ưu tiên CAO**
+> Dùng cho 2 màn hình: `/calendar` (BookingCalendarScreen) và `/admin/owner-calendar` (OwnerCalendarScreen)
+> Hiện tại cả 2 màn hình đang dùng **mock data** — cần API thật để hoạt động.
 
-### 9.1. Lấy danh sách property groups
+---
+
+### 9.1 Danh sách property groups (cho tab filter)
 ```
-GET /calendar/property-groups?category={VILLA|HOMESTAY|HOTEL}&ownerId={id}
-Header: Authorization: Bearer {accessToken}
+GET /calendar/property-groups   🔒
 ```
-| Query Param | Kiểu | Bắt buộc | Mô tả |
-|-------------|-------|----------|-------|
-| `category` | string | ❌ | VILLA, HOMESTAY, HOTEL |
-| `ownerId` | string | ❌ | Filter theo chủ nhà (cho lịch riêng) |
+| Query | Type | Required | Dùng ở đâu |
+|-------|------|----------|------------|
+| `category` | string | ❌ | `VILLA`/`HOMESTAY`/`HOTEL` — BookingCalendarScreen tab filter |
+| `ownerId` | string | ❌ | OwnerCalendarScreen (chủ nhà chỉ thấy cơ sở của mình) |
 
-**Response**:
+**Response:**
 ```json
 {
-  "success": true,
   "data": [
-    {
-      "id": "uuid",
-      "name": "Sunferia",
-      "category": "VILLA",
-      "roomCount": 12
-    }
+    { "id": "uuid", "name": "Sunferia", "category": "VILLA", "roomCount": 12 }
   ]
 }
 ```
 
-### PropertyGroup Object (4 trường)
-```json
-{
-  "id": "uuid",
-  "name": "Sunferia",
-  "category": "VILLA",
-  "roomCount": 12
-}
-```
+Dùng ở: BookingCalendarScreen (tabs: Tất cả / Villa / Homestay / Hotel), OwnerCalendarScreen
 
 ---
 
-### 9.2. Lấy calendar grid data
+### 9.2 Calendar grid data
 ```
-GET /calendar/grid?propertyGroupId={id}&startDate={ISO}&endDate={ISO}
-Header: Authorization: Bearer {accessToken}
+GET /calendar/grid   🔒
 ```
-| Query Param | Kiểu | Bắt buộc | Mô tả |
-|-------------|-------|----------|-------|
-| `propertyGroupId` | string | ✅ | ID nhóm property |
-| `startDate` | string (ISO) | ✅ | Ngày bắt đầu |
-| `endDate` | string (ISO) | ✅ | Ngày kết thúc |
+> ⚠️ **Lưu ý:** `propertyGroupId` ở đây là **ID của một property** (tức `/properties/:id`). Backend dùng tên `propertyGroupId` để nhóm các phòng thuộc cùng một cơ sở lại với nhau trong grid.
 
-**Response**:
+| Query | Type | Required | Mô tả |
+|-------|------|----------|-------|
+| `propertyGroupId` | string | ✅ | ID của property (từ `GET /properties`) |
+| `startDate` | string (YYYY-MM-DD) | ✅ | Ngày bắt đầu hiển thị |
+| `endDate` | string (YYYY-MM-DD) | ✅ | Ngày kết thúc hiển thị |
+
+**Response:**
 ```json
 {
-  "success": true,
   "data": {
-    "propertyGroup": {
-      "id": "uuid",
-      "name": "Sunferia"
-    },
+    "propertyGroup": { "id": "uuid", "name": "Sunferia" },
     "rooms": [
       {
         "id": "uuid",
         "code": "C3-06",
+        "name": "Villa C3",
         "days": [
-          {
-            "date": "2026-04-21",
-            "price": 5000000,
-            "status": "AVAILABLE"
-          },
-          {
-            "date": "2026-04-22",
-            "price": 5000000,
-            "status": "BOOKED"
-          },
-          {
-            "date": "2026-04-23",
-            "price": 8000000,
-            "status": "HOLD"
-          }
+          { "date": "2026-04-21", "price": 5000000, "status": "AVAILABLE" },
+          { "date": "2026-04-22", "price": 5000000, "status": "BOOKED", "bookingId": "uuid", "customerName": "Nguyễn Văn B" },
+          { "date": "2026-04-23", "price": 8000000, "status": "HOLD" }
         ]
       }
     ]
@@ -729,51 +725,53 @@ Header: Authorization: Bearer {accessToken}
 }
 ```
 
-### CalendarDay Object (3 trường)
-| Trường | Kiểu | Mô tả |
-|--------|-------|-------|
-| `date` | string (YYYY-MM-DD) | Ngày |
-| `price` | double | Giá phòng ngày đó |
-| `status` | string | `AVAILABLE`, `BOOKED`, `HOLD` |
+**CalendarDay status:** `AVAILABLE` | `BOOKED` | `HOLD`
+
+Dùng ở: BookingCalendarScreen (grid chính), OwnerCalendarScreen (grid với khả năng lock/unlock)
 
 ---
 
-### 9.3. Lock phòng (chủ nhà)
+### 9.3 Lock phòng (Owner tự khoá ngày)
 ```
-POST /calendar/lock
-Header: Authorization: Bearer {accessToken}
+POST /calendar/lock   🔒
 ```
-| Trường | Kiểu | Bắt buộc | Mô tả |
-|--------|-------|----------|-------|
+**Body:**
+| Field | Type | Required | Mô tả |
+|-------|------|----------|-------|
+| `roomId` | string | ✅ | ID phòng cần khoá |
+| `date` | string (YYYY-MM-DD) | ✅ | Ngày cần khoá |
+
+**Logic:** Chuyển status ngày đó → `HOLD` (không nhận đặt phòng)
+
+Dùng ở: OwnerCalendarScreen (owner tap vào ô AVAILABLE → khoá)
+
+---
+
+### 9.4 Unlock phòng (Owner mở lại)
+```
+POST /calendar/unlock   🔒
+```
+**Body:**
+| Field | Type | Required | Mô tả |
+|-------|------|----------|-------|
 | `roomId` | string | ✅ | ID phòng |
-| `date` | string (ISO) | ✅ | Ngày cần lock |
+| `date` | string (YYYY-MM-DD) | ✅ | Ngày cần mở |
 
-**Logic**: Chuyển ngày đó thành status `HOLD` cho phòng đó.
+**Logic:** `HOLD` → `AVAILABLE`. **Không thể unlock ngày đã `BOOKED`.**
 
----
-
-### 9.4. Unlock phòng (chủ nhà)
-```
-POST /calendar/unlock
-Header: Authorization: Bearer {accessToken}
-```
-| Trường | Kiểu | Bắt buộc | Mô tả |
-|--------|-------|----------|-------|
-| `roomId` | string | ✅ | ID phòng |
-| `date` | string (ISO) | ✅ | Ngày cần unlock |
-
-**Logic**: Chuyển ngày đó thành status `AVAILABLE`. Chỉ unlock được `HOLD`, không unlock được `BOOKED`.
+Dùng ở: OwnerCalendarScreen (owner tap vào ô HOLD → mở)
 
 ---
 
-### 9.5. Lấy thông tin liên hệ admin (cho lịch tổng)
+### 9.5 Thông tin liên hệ admin (BookingCalendarScreen)
 ```
 GET /calendar/admin-contact
 ```
-**Response**:
+Không cần auth.
+
+**Response:**
 ```json
 {
-  "success": true,
   "data": {
     "name": "Admin Halong24h",
     "phone": "0912345678",
@@ -782,47 +780,54 @@ GET /calendar/admin-contact
 }
 ```
 
-### AdminContact Object (3 trường)
-```json
-{
-  "name": "Admin Halong24h",
-  "phone": "0912345678",
-  "zaloUrl": "https://zalo.me/0912345678"
-}
-```
+Dùng ở: BookingCalendarScreen — khi customer tap vào ngày BOOKED/HOLD → popup "Liên hệ Zalo để đặt"
 
 ---
 
-## 10. Notifications — Thông báo
+## 10. Notifications
 
-> Hiện tại app dùng mock data. Cần API thật.
+> ⚠️ **CẦN TẠO MỚI — Ưu tiên TRUNG BÌNH**
+> Hiện tại `/notifications` đang dùng **mock data** trong `notification_repository.dart`
 
-### 10.1. Danh sách thông báo
-```
-GET /notifications
-Header: Authorization: Bearer {accessToken}
-```
+### Màn hình dùng: `/notifications` (NotificationScreen), AppScaffold (badge số chưa đọc)
 
-### 10.2. Số thông báo chưa đọc
-```
-GET /notifications/unread-count
-Header: Authorization: Bearer {accessToken}
-```
-**Response**: `{ success, data: { count: 5 }, message }`
+---
 
-### 10.3. Đánh dấu đã đọc
+### 10.1 Danh sách thông báo
 ```
-PATCH /notifications/:id/read
-Header: Authorization: Bearer {accessToken}
+GET /notifications   🔒
 ```
+**Response:** `{ data: [NotificationObject] }`
 
-### 10.4. Đánh dấu tất cả đã đọc
-```
-PATCH /notifications/read-all
-Header: Authorization: Bearer {accessToken}
-```
+---
 
-### Notification Object (8 trường)
+### 10.2 Số thông báo chưa đọc
+```
+GET /notifications/unread-count   🔒
+```
+**Response:** `{ data: { count: 5 } }`
+
+Dùng ở: AppScaffold (badge icon chuông)
+
+---
+
+### 10.3 Đánh dấu đã đọc
+```
+PATCH /notifications/:id/read   🔒
+```
+Dùng ở: NotificationScreen (tap vào thông báo)
+
+---
+
+### 10.4 Đánh dấu tất cả đã đọc
+```
+PATCH /notifications/read-all   🔒
+```
+Dùng ở: NotificationScreen (nút "Đọc tất cả")
+
+---
+
+### Notification Object
 ```json
 {
   "id": "uuid",
@@ -838,243 +843,183 @@ Header: Authorization: Bearer {accessToken}
 
 | type | Mô tả |
 |------|-------|
-| `BOOKING` | Thông báo về booking |
-| `PAYMENT` | Thông báo thanh toán |
-| `SYSTEM` | Thông báo hệ thống |
+| `BOOKING` | Booking mới / thay đổi trạng thái |
+| `PAYMENT` | Thanh toán |
+| `SYSTEM` | Hệ thống |
 
 ---
 
-## 11. Dashboard / Reports — Thống kê
+## 11. Màn hình → Endpoint Mapping
 
-> Hiện tại app tự tính KPI từ rooms + bookings list.
-> Nên có API riêng để tối ưu performance.
+> Bảng tham chiếu nhanh: màn hình nào gọi API nào.
 
-### 11.1. Dashboard KPIs
-```
-GET /dashboard/stats
-Header: Authorization: Bearer {accessToken}
-```
-**Response**:
-```json
-{
-  "success": true,
-  "data": {
-    "totalRooms": 24,
-    "activeRooms": 22,
-    "emptyRooms": 8,
-    "occupiedRooms": 12,
-    "checkoutToday": 4,
-    "totalBookings": 156,
-    "thisMonthBookings": 23,
-    "monthlyRevenue": 184500000,
-    "todayRevenue": 6200000
-  }
-}
-```
+### 11.1 Authentication Flow
 
-### DashboardStats Object (9 trường)
-| Trường | Kiểu | Mô tả |
-|--------|-------|-------|
-| `totalRooms` | int | Tổng số phòng |
-| `activeRooms` | int | Phòng đang hoạt động |
-| `emptyRooms` | int | Phòng trống hôm nay |
-| `occupiedRooms` | int | Phòng đang có khách |
-| `checkoutToday` | int | Checkout hôm nay |
-| `totalBookings` | int | Tổng booking |
-| `thisMonthBookings` | int | Booking tháng này |
-| `monthlyRevenue` | double | Doanh thu tháng (VNĐ) |
-| `todayRevenue` | double | Doanh thu hôm nay (VNĐ) |
+| Màn hình | Route | API Calls |
+|----------|-------|-----------|
+| SplashScreen | `/` | — (check local token) |
+| LoginScreen | `/login` | `POST /auth/login`, `POST /auth/google` |
+| RegisterScreen | `/register` | `POST /auth/register` |
+| ForgotPasswordScreen | `/forgot-password` | `POST /auth/forgot-password`, `POST /auth/reset-password` |
 
 ---
 
-### 11.2. Report Data
-```
-GET /reports?month={month}&year={year}
-Header: Authorization: Bearer {accessToken}
-```
-**Response**:
-```json
-{
-  "success": true,
-  "data": {
-    "totalRooms": 24,
-    "activeRooms": 22,
-    "totalBookings": 156,
-    "thisMonthBookings": 23,
-    "holdCount": 5,
-    "confirmedCount": 15,
-    "cancelledCount": 3,
-    "completedCount": 133,
-    "totalDeposit": 45000000,
-    "occupancyRate": 75.5,
-    "roomsWithCover": 20,
-    "roomsWithPrice": 22,
-    "recentBookings": [BookingObject]
-  }
-}
-```
+### 11.2 Customer Flow
 
-### ReportData Object (13 trường)
-| Trường | Kiểu | Mô tả |
-|--------|-------|-------|
-| `totalRooms` | int | Tổng phòng |
-| `activeRooms` | int | Phòng hoạt động |
-| `totalBookings` | int | Tổng booking |
-| `thisMonthBookings` | int | Booking tháng này |
-| `holdCount` | int | Số booking đang giữ |
-| `confirmedCount` | int | Số booking đã xác nhận |
-| `cancelledCount` | int | Số booking đã huỷ |
-| `completedCount` | int | Số booking hoàn thành |
-| `totalDeposit` | double | Tổng tiền cọc (VNĐ) |
-| `occupancyRate` | double | Tỷ lệ lấp đầy (%) |
-| `roomsWithCover` | int | Phòng có ảnh bìa |
-| `roomsWithPrice` | int | Phòng có giá |
-| `recentBookings` | BookingObject[] | Booking gần đây |
+| Màn hình | Route | API Calls |
+|----------|-------|-----------|
+| CustomerHomeScreen | `/home` | `GET /rooms/public` (featured rooms, không filter) |
+| SearchRoomScreen | `/search` | `GET /rooms/public` (với filter ngày/khách/giá), `POST /bookings/customer-hold` |
+| MyBookingsScreen | `/my-bookings` | `GET /bookings/my`, `PATCH /bookings/:id/customer-cancel` |
+| AccountScreen | `/account` | — (đọc local state) |
 
 ---
 
-## 12. Response Format chung
+### 11.3 Staff/Admin Management Flow
 
-### Success
-```json
-{
-  "success": true,
-  "data": { ... },
-  "message": "Thành công"
-}
-```
-
-### Error
-```json
-{
-  "success": false,
-  "data": null,
-  "message": "Mô tả lỗi"
-}
-```
-
-### HTTP Status Codes
-| Code | Ý nghĩa |
-|------|---------|
-| 200 | Thành công |
-| 201 | Tạo mới thành công |
-| 400 | Bad Request (thiếu/sai trường) |
-| 401 | Unauthorized (token hết hạn) |
-| 403 | Forbidden (không đủ quyền) |
-| 404 | Not Found |
-| 409 | Conflict (duplicate phone, phòng đã bán) |
-| 500 | Server Error |
+| Màn hình | Route | API Calls |
+|----------|-------|-----------|
+| DashboardScreen | `/dashboard` | `GET /rooms`, `GET /bookings` (tính KPI client-side) |
+| RoomListScreen | `/rooms` | `GET /rooms`, `DELETE /rooms/:id` |
+| RoomDetailScreen | `/rooms/:id` | `GET /rooms/:id`, `PUT /rooms/:id`, `GET /bookings/calendar/:roomId` |
+| HoldRoomScreen | `/rooms/:id/hold` | `POST /bookings/hold` |
+| BookingListScreen | `/bookings` | `GET /bookings`, `PATCH /bookings/:id/confirm`, `PATCH /bookings/:id/cancel`, `PUT /bookings/:id` |
+| BookingCalendarScreen | `/calendar` | `GET /calendar/property-groups`, `GET /calendar/grid`, `GET /calendar/admin-contact` |
+| ReportScreen | `/reports` | `GET /rooms`, `GET /bookings` (tính báo cáo client-side) |
 
 ---
 
-## 13. Auth Flow & Token
+### 11.4 Property Management Flow
 
-### Flow
+| Màn hình | Route | API Calls |
+|----------|-------|-----------|
+| PropertyManagementScreen | `/properties` | `GET /properties`, `DELETE /properties/:id` |
+| PropertyAddScreen | `/properties/new` | `POST /properties` |
+| PropertyManageScreen | `/properties/:id` | `GET /properties/:id`, `GET /rooms?propertyId=`, `DELETE /rooms/:id` |
+| PropertyInfoScreen | `/properties/:id/info` | `PUT /properties/:id` (name, address, isActive) |
+| PropertyImagesScreen | `/properties/:id/images` | `POST /rooms/:roomId/images`, `DELETE /rooms/:roomId/images/:imageId`, `PATCH /rooms/:roomId/images/:imageId/cover` |
+| PropertyPricingScreen | `/properties/:id/pricing` | `PUT /rooms/:roomId/prices` |
+| PropertyAmenitiesScreen | `/properties/:id/amenities` | `PUT /rooms/:id` (amenities field) |
+| PropertyLocationScreen | `/properties/:id/location` | `PUT /properties/:id` (latitude, longitude, mapLink) |
+| PropertyCancellationScreen | `/properties/:id/cancellation` | `PUT /rooms/:id` (cancellationPolicy) |
+| PropertyRulesScreen | `/properties/:id/rules` | `PUT /properties/:id` |
+| PropertyServicesScreen | `/properties/:id/services` | `PUT /properties/:id` |
+
+---
+
+### 11.5 Admin Flow
+
+| Màn hình | Route | API Calls |
+|----------|-------|-----------|
+| AdminScreen | `/admin` | — (hub screen) |
+| UserListScreen | `/admin/users` | `GET /users`, `DELETE /users/:id` |
+| UserFormScreen (new) | `/admin/users/new` | `POST /users` |
+| UserFormScreen (edit) | `/admin/users/:id/edit` | `GET /users/:id`, `PUT /users/:id` |
+| OwnerCalendarScreen | `/admin/owner-calendar` | `GET /calendar/property-groups?ownerId=`, `GET /calendar/grid`, `POST /calendar/lock`, `POST /calendar/unlock` |
+
+---
+
+### 11.6 Profile & Settings Flow
+
+| Màn hình | Route | API Calls |
+|----------|-------|-----------|
+| ProfileScreen | `/profile` | — (đọc local user state) |
+| PersonalInfoScreen | `/profile/edit` | `PUT /users/:id` (name, email, gender, dateOfBirth) |
+| ChangePasswordScreen | `/profile/change-password` | `POST /auth/change-password` |
+| HelpScreen | `/profile/help` | — (static content) |
+| NotificationScreen | `/notifications` | `GET /notifications`, `PATCH /notifications/:id/read`, `PATCH /notifications/read-all` |
+
+---
+
+## 12. Tổng kết endpoints
+
+### ✅ Đã có (37 endpoints)
+
+| # | Method | Endpoint | Màn hình chính |
+|---|--------|----------|----------------|
+| 1 | POST | `/auth/login` | LoginScreen |
+| 2 | POST | `/auth/register` | RegisterScreen |
+| 3 | POST | `/auth/google` | LoginScreen |
+| 4 | POST | `/auth/refresh` | Auto (interceptor) |
+| 5 | POST | `/auth/logout` | AccountScreen / ProfileScreen |
+| 6 | POST | `/auth/forgot-password` | ForgotPasswordScreen |
+| 7 | POST | `/auth/reset-password` | ForgotPasswordScreen |
+| 8 | POST | `/auth/change-password` | ChangePasswordScreen |
+| 9 | GET | `/users` | UserListScreen |
+| 10 | GET | `/users/:id` | UserFormScreen (edit) |
+| 11 | POST | `/users` | UserFormScreen (new) |
+| 12 | PUT | `/users/:id` | UserFormScreen, PersonalInfoScreen |
+| 13 | DELETE | `/users/:id` | UserListScreen |
+| 14 | GET | `/properties` | PropertyManagementScreen |
+| 15 | GET | `/properties/:id` | PropertyInfoScreen |
+| 16 | POST | `/properties` | PropertyAddScreen |
+| 17 | PUT | `/properties/:id` | PropertyInfo/Location/Rules/ServicesScreen |
+| 18 | DELETE | `/properties/:id` | PropertyManagementScreen |
+| 19 | GET | `/rooms` | RoomListScreen, DashboardScreen |
+| 20 | GET | `/rooms/public` | CustomerHomeScreen, SearchRoomScreen |
+| 21 | GET | `/rooms/:id` | RoomDetailScreen |
+| 22 | POST | `/rooms` | PropertyManageScreen (thêm phòng) |
+| 23 | PUT | `/rooms/:id` | RoomDetailScreen, PropertyAmenitiesScreen, PropertyCancellationScreen |
+| 24 | DELETE | `/rooms/:id` | PropertyManageScreen, RoomListScreen |
+| 25 | POST | `/rooms/:roomId/images` | PropertyImagesScreen |
+| 26 | DELETE | `/rooms/:roomId/images/:imageId` | PropertyImagesScreen |
+| 27 | PATCH | `/rooms/:roomId/images/:imageId/cover` | PropertyImagesScreen |
+| 28 | PUT | `/rooms/:roomId/prices` | PropertyPricingScreen |
+| 29 | GET | `/bookings` | BookingListScreen, DashboardScreen |
+| 30 | POST | `/bookings/hold` | HoldRoomScreen |
+| 31 | PATCH | `/bookings/:id/confirm` | BookingListScreen |
+| 32 | PATCH | `/bookings/:id/cancel` | BookingListScreen |
+| 33 | PUT | `/bookings/:id` | BookingListScreen (edit) |
+| 34 | GET | `/bookings/calendar/:roomId` | RoomDetailScreen |
+| 35 | POST | `/bookings/customer-hold` | SearchRoomScreen |
+| 36 | GET | `/bookings/my` | MyBookingsScreen |
+| 37 | PATCH | `/bookings/:id/customer-cancel` | MyBookingsScreen |
+
+### ⚠️ Cần tạo mới (9 endpoints — App đang dùng mock data)
+
+| # | Method | Endpoint | Màn hình | Ưu tiên |
+|---|--------|----------|----------|---------|
+| 38 | GET | `/calendar/property-groups` | BookingCalendarScreen, OwnerCalendarScreen | 🔴 CAO |
+| 39 | GET | `/calendar/grid` | BookingCalendarScreen, OwnerCalendarScreen | 🔴 CAO |
+| 40 | POST | `/calendar/lock` | OwnerCalendarScreen | 🔴 CAO |
+| 41 | POST | `/calendar/unlock` | OwnerCalendarScreen | 🔴 CAO |
+| 42 | GET | `/calendar/admin-contact` | BookingCalendarScreen | 🟡 TRUNG BÌNH |
+| 43 | GET | `/notifications` | NotificationScreen | 🟡 TRUNG BÌNH |
+| 44 | GET | `/notifications/unread-count` | AppScaffold (badge) | 🟡 TRUNG BÌNH |
+| 45 | PATCH | `/notifications/:id/read` | NotificationScreen | 🟡 TRUNG BÌNH |
+| 46 | PATCH | `/notifications/read-all` | NotificationScreen | 🟡 TRUNG BÌNH |
+
+### ❌ Đã loại bỏ (so với API_SPECIFICATION cũ)
+
+| Endpoint cũ | Lý do loại |
+|-------------|------------|
+| `GET /auth/profile` | App không gọi endpoint này — user data được lưu local sau login |
+| `GET /dashboard/stats` | App tự tính từ `/rooms` + `/bookings` (dashboard_controller.dart) |
+| `GET /reports` | App tự tính từ `/rooms` + `/bookings` (report_controller.dart) |
+
+**Tổng: 46 endpoints (37 đã có + 9 cần tạo mới)**
+
+---
+
+## Auth Flow & Token
+
 ```
 Login/Register → { accessToken (15min), refreshToken }
     ↓
-Mỗi request gắn Header: Authorization: Bearer {accessToken}
+Mỗi request → Header: Authorization: Bearer {accessToken}
     ↓
 Khi 401 → POST /auth/refresh { refreshToken }
     ↓
-Nhận accessToken mới → retry request
+Nhận accessToken mới → retry request tự động
     ↓
 Nếu refresh cũng fail → logout, redirect /login
 ```
 
-### Token Storage
-| Key | Nơi lưu | Mô tả |
-|-----|---------|-------|
-| `access_token` | FlutterSecureStorage | JWT access token |
-| `refresh_token` | FlutterSecureStorage | JWT refresh token |
-| `user_data` | FlutterSecureStorage | User JSON string |
+**Token Storage (FlutterSecureStorage):**
+| Key | Nội dung |
+|-----|----------|
+| `access_token` | JWT access token |
+| `refresh_token` | JWT refresh token |
+| `user_data` | User JSON string |
 
-### Timeout
-- Connection: 30s
-- Receive: 30s
-
----
-
-## 14. Tổng kết endpoints
-
-### Đã có (đang hoạt động) — 28 endpoints
-
-| # | Method | Endpoint | Mô tả |
-|---|--------|----------|-------|
-| 1 | POST | `/auth/register` | Đăng ký |
-| 2 | POST | `/auth/login` | Đăng nhập |
-| 3 | POST | `/auth/google` | Đăng nhập Google |
-| 4 | POST | `/auth/refresh` | Refresh token |
-| 5 | POST | `/auth/logout` | Đăng xuất |
-| 6 | GET | `/auth/profile` | Lấy profile |
-| 7 | POST | `/auth/forgot-password` | Quên mật khẩu |
-| 8 | POST | `/auth/reset-password` | Reset mật khẩu |
-| 9 | PATCH | `/auth/change-password` | Đổi mật khẩu |
-| 10 | GET | `/users` | DS users |
-| 11 | GET | `/users/:id` | Chi tiết user |
-| 12 | POST | `/users` | Tạo user |
-| 13 | PUT | `/users/:id` | Sửa user |
-| 14 | DELETE | `/users/:id` | Xoá user |
-| 15 | GET | `/homestays` | DS homestays |
-| 16 | GET | `/homestays/:id` | Chi tiết homestay |
-| 17 | POST | `/homestays` | Tạo homestay |
-| 18 | PUT | `/homestays/:id` | Sửa homestay |
-| 19 | DELETE | `/homestays/:id` | Xoá homestay |
-| 20 | GET | `/rooms` | DS phòng |
-| 21 | GET | `/rooms/:id` | Chi tiết phòng |
-| 22 | GET | `/rooms/public` | DS phòng công khai |
-| 23 | POST | `/rooms` | Tạo phòng |
-| 24 | PUT | `/rooms/:id` | Sửa phòng |
-| 25 | DELETE | `/rooms/:id` | Xoá phòng |
-| 26 | POST | `/rooms/:roomId/images` | Upload ảnh |
-| 27 | DELETE | `/rooms/:roomId/images/:imageId` | Xoá ảnh |
-| 28 | PATCH | `/rooms/:roomId/images/:imageId/cover` | Set ảnh bìa |
-| 29 | PUT | `/rooms/:roomId/prices` | Upsert giá |
-| 30 | GET | `/bookings` | DS bookings |
-| 31 | POST | `/bookings/hold` | Giữ phòng |
-| 32 | GET | `/bookings/calendar/:roomId` | Lịch phòng |
-| 33 | PATCH | `/bookings/:id/confirm` | Xác nhận |
-| 34 | PATCH | `/bookings/:id/cancel` | Huỷ booking |
-| 35 | PUT | `/bookings/:id` | Sửa booking |
-| 36 | POST | `/bookings/customer-hold` | Khách giữ phòng |
-| 37 | GET | `/bookings/my` | Booking của tôi |
-| 38 | PATCH | `/bookings/:id/customer-cancel` | Khách huỷ |
-
-### Cần tạo mới — 9 endpoints
-
-| # | Method | Endpoint | Mô tả | Ưu tiên |
-|---|--------|----------|-------|---------|
-| 39 | GET | `/calendar/property-groups` | DS nhóm property | **CAO** |
-| 40 | GET | `/calendar/grid` | Data lịch grid | **CAO** |
-| 41 | POST | `/calendar/lock` | Khoá phòng | **CAO** |
-| 42 | POST | `/calendar/unlock` | Mở khoá phòng | **CAO** |
-| 43 | GET | `/calendar/admin-contact` | Thông tin liên hệ | TRUNG BÌNH |
-| 44 | GET | `/notifications` | DS thông báo | TRUNG BÌNH |
-| 45 | GET | `/notifications/unread-count` | Số chưa đọc | TRUNG BÌNH |
-| 46 | PATCH | `/notifications/:id/read` | Đánh dấu đã đọc | TRUNG BÌNH |
-| 47 | PATCH | `/notifications/read-all` | Đọc tất cả | TRUNG BÌNH |
-| 48 | GET | `/dashboard/stats` | KPI dashboard | THẤP (app tự tính) |
-| 49 | GET | `/reports` | Báo cáo | THẤP (app tự tính) |
-
-### Tổng: 49 endpoints (38 đã có + 11 cần tạo mới)
-
----
-
-## Phụ lục: Tổng số trường theo Object
-
-| Object | Số trường | Ghi chú |
-|--------|-----------|---------|
-| User | 9 | 5 bắt buộc khi tạo |
-| Homestay | 9 | 3 bắt buộc khi tạo |
-| Room | 20 | 3 bắt buộc khi tạo, 13 optional |
-| RoomImage | 6 | Upload qua multipart |
-| RoomPrice | 6 | 4 giá bắt buộc |
-| Booking | 14 | 3 bắt buộc khi hold |
-| CalendarBooking | 5 | Lightweight cho calendar |
-| CalendarDay | 3 | Cho grid calendar |
-| PropertyGroup | 4 | Cho category tabs |
-| AdminContact | 3 | Cho liên hệ Zalo |
-| Notification | 8 | Cho push notification |
-| DashboardStats | 9 | Cho trang tổng quan |
-| ReportData | 13 | Cho trang báo cáo |
-| **Tổng** | **109 trường** | |
+**Timeout:** Connection 30s, Receive 30s

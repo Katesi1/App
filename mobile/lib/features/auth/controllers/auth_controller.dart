@@ -47,6 +47,13 @@ class AuthNotifier extends StateNotifier<AuthState> {
     final isLoggedIn = await _repo.isLoggedIn();
     state = AuthState(user: user, isLoggedIn: isLoggedIn);
     FlutterNativeSplash.remove();
+    if (isLoggedIn) {
+      final fresh = await _repo.getProfile();
+      if (fresh.success && fresh.data != null) {
+        state = state.copyWith(user: fresh.data);
+      }
+    }
+    state = state.copyWith(isLoading: false);
   }
 
   Future<String?> login(String phone, String password) async {
@@ -100,8 +107,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
     return (result.success, result.message);
   }
 
-  Future<(bool, String)> resetPassword(
-      String token, String newPassword) async {
+  Future<(bool, String)> resetPassword(String token, String newPassword) async {
     final result = await _repo.resetPassword(token, newPassword);
     return (result.success, result.message);
   }
@@ -125,6 +131,21 @@ class AuthNotifier extends StateNotifier<AuthState> {
   Future<void> logout() async {
     await _repo.logout();
     state = AuthState();
+  }
+
+  /// Gọi GET /auth/profile và cập nhật state + bộ nhớ cục bộ.
+  Future<(bool success, String message)> refreshProfile() async {
+    final result = await _repo.getProfile();
+    if (result.success && result.data != null) {
+      state = state.copyWith(user: result.data);
+      return (true, '');
+    }
+    return (false, result.message);
+  }
+
+  /// Cập nhật user trong state (đã lưu [SecureStorage] ở repo nếu cần).
+  void replaceUser(UserModel user) {
+    state = state.copyWith(user: user);
   }
 
   UserModel? get currentUser => state.user;

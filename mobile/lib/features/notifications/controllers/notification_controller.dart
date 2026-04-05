@@ -8,12 +8,16 @@ final notificationRepositoryProvider =
 final notificationListProvider =
     FutureProvider<List<NotificationModel>>((ref) async {
   final repo = ref.read(notificationRepositoryProvider);
-  return repo.getNotifications();
+  final result = await repo.getNotifications();
+  if (result.success) return result.data!;
+  throw Exception(result.message);
 });
 
 final unreadCountProvider = FutureProvider<int>((ref) async {
   final repo = ref.read(notificationRepositoryProvider);
-  return repo.getUnreadCount();
+  final result = await repo.getUnreadCount();
+  if (result.success) return result.data!;
+  return 0;
 });
 
 class NotificationActionsNotifier extends StateNotifier<AsyncValue<void>> {

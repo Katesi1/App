@@ -9,7 +9,7 @@ class HomestayRepository {
 
   Future<ApiResponse<List<HomestayModel>>> getHomestays() async {
     try {
-      final response = await _dio.get(ApiConstants.homestays);
+      final response = await _dio.get(ApiConstants.properties);
       final list = (response.data['data'] as List)
           .map((e) => HomestayModel.fromJson(e))
           .toList();
@@ -21,7 +21,7 @@ class HomestayRepository {
 
   Future<ApiResponse<HomestayModel>> getHomestay(String id) async {
     try {
-      final response = await _dio.get('${ApiConstants.homestays}/$id');
+      final response = await _dio.get(ApiConstants.propertyDetail(id));
       return ApiResponse(
         success: true,
         data: HomestayModel.fromJson(response.data['data']),
@@ -35,7 +35,7 @@ class HomestayRepository {
   Future<ApiResponse<HomestayModel>> createHomestay(
       Map<String, dynamic> data) async {
     try {
-      final response = await _dio.post(ApiConstants.homestays, data: data);
+      final response = await _dio.post(ApiConstants.properties, data: data);
       return ApiResponse(
         success: true,
         data: HomestayModel.fromJson(response.data['data']),
@@ -50,7 +50,7 @@ class HomestayRepository {
       String id, Map<String, dynamic> data) async {
     try {
       final response =
-          await _dio.put('${ApiConstants.homestays}/$id', data: data);
+          await _dio.put(ApiConstants.propertyDetail(id), data: data);
       return ApiResponse(
         success: true,
         data: HomestayModel.fromJson(response.data['data']),
@@ -63,8 +63,8 @@ class HomestayRepository {
 
   Future<ApiResponse<void>> deleteHomestay(String id) async {
     try {
-      await _dio.delete('${ApiConstants.homestays}/$id');
-      return ApiResponse(success: true, message: 'Xoá homestay thành công');
+      await _dio.delete(ApiConstants.propertyDetail(id));
+      return ApiResponse(success: true, message: 'Xoá cơ sở thành công');
     } on DioException catch (e) {
       return ApiResponse(success: false, message: parseDioError(e));
     }

@@ -30,6 +30,15 @@ class CalendarParams {
   int get hashCode => Object.hash(roomId, year, month);
 }
 
+// ─── Detail provider ─────────────────────────────────────────────────────────
+final bookingDetailProvider =
+    FutureProvider.family<BookingModel, String>((ref, id) async {
+  final repo = ref.read(bookingRepositoryProvider);
+  final result = await repo.getBookingDetail(id);
+  if (result.success) return result.data!;
+  throw Exception(result.message);
+});
+
 // ─── List provider (optional roomId filter) ───────────────────────────────────
 final bookingListProvider =
     FutureProvider.family<List<BookingModel>, String?>((ref, roomId) async {
@@ -76,6 +85,7 @@ class BookingActionsNotifier extends StateNotifier<AsyncValue<void>> {
     if (result.success) {
       _ref.invalidate(bookingListProvider(null));
       if (roomId != null) _ref.invalidate(bookingListProvider(roomId));
+      _ref.invalidate(calendarProvider);
       state = const AsyncValue.data(null);
       return true;
     }
@@ -89,6 +99,7 @@ class BookingActionsNotifier extends StateNotifier<AsyncValue<void>> {
     if (result.success) {
       _ref.invalidate(bookingListProvider(null));
       if (roomId != null) _ref.invalidate(bookingListProvider(roomId));
+      _ref.invalidate(calendarProvider);
       state = const AsyncValue.data(null);
       return true;
     }
@@ -101,6 +112,7 @@ class BookingActionsNotifier extends StateNotifier<AsyncValue<void>> {
     final result = await _repo.updateBooking(id, data);
     if (result.success) {
       _ref.invalidate(bookingListProvider(null));
+      _ref.invalidate(calendarProvider);
       state = const AsyncValue.data(null);
       return true;
     }

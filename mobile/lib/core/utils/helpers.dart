@@ -73,6 +73,12 @@ class AppHelpers {
     return formatPrice(total);
   }
 
+  /// Hiển thị số KPI; 0 → "-" (tránh "0k" nhầm thành "Ok").
+  static String formatIntOrDash(int value) => value == 0 ? '-' : '$value';
+
+  static String formatPriceOrDash(double price) =>
+      price == 0 ? '-' : formatPrice(price);
+
   // ── Vietnamese day of week ────────────────────────────────────────────────
 
   static String vietnameseDayOfWeek(int weekday) {
