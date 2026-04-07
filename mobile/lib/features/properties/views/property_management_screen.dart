@@ -76,12 +76,15 @@ class _PropertyManagementScreenState extends ConsumerState<PropertyManagementScr
     });
   }
 
-  /// Lọc homestay theo tab — dựa trên tên
+  /// Lọc homestay theo tab — ưu tiên field type, fallback về name
   List<HomestayModel> _filterByTab(
       List<HomestayModel> homestays, String keyword) {
     var filtered = homestays.where((h) {
-      final name = h.name.toLowerCase();
-      return name.contains(keyword);
+      // Ưu tiên match theo type field từ API (VILLA, HOMESTAY, HOTEL, APARTMENT)
+      final type = (h.type ?? '').toLowerCase();
+      if (type.isNotEmpty) return type.contains(keyword);
+      // Fallback: match theo tên nếu API chưa trả type
+      return h.name.toLowerCase().contains(keyword);
     }).toList();
 
     if (_searchQuery.isNotEmpty) {

@@ -3,6 +3,7 @@ class HomestayModel {
   final String ownerId;
   final String name;
   final String address;
+  final String? type; // VILLA | HOMESTAY | APARTMENT | HOTEL
   final double? latitude;
   final double? longitude;
   final String? mapLink;
@@ -19,6 +20,7 @@ class HomestayModel {
     required this.ownerId,
     required this.name,
     required this.address,
+    this.type,
     this.latitude,
     this.longitude,
     this.mapLink,
@@ -36,6 +38,7 @@ class HomestayModel {
         ownerId: json['ownerId'] ?? '',
         name: json['name'] ?? '',
         address: json['address'] ?? '',
+        type: json['type'] as String?,
         latitude: (json['latitude'] as num?)?.toDouble(),
         longitude: (json['longitude'] as num?)?.toDouble(),
         mapLink: json['mapLink'],
