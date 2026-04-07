@@ -77,16 +77,23 @@ class AppColors {
   static const orangeHoliday = Color(0xFFE65100);
 
   // Dark theme specific colors
-  static const darkSurface = Color(0xFF162232);
-  static const darkBackground = Color(0xFF0D1B2A);
-  static const darkContainer = Color(0xFF1E2D3D);
-  static const darkBorder = Color(0xFF2A3A4A);
-  static const darkHint = Color(0xFF607D8B);
-  static const darkError = Color(0xFFCF6679);
-  static const darkOnSurface = Color(0xFFE6E1E5);
+  static const darkSurface = Color(0xFF152231);       // card/surface
+  static const darkBackground = Color(0xFF0C1823);    // scaffold bg
+  static const darkContainer = Color(0xFF1C2E3F);     // elevated container
+  static const darkElevated = Color(0xFF223347);      // modal/sheet
+  static const darkBorder = Color(0xFF2B3F52);        // subtle borders
+  static const darkDivider = Color(0xFF1F3245);       // dividers
+  static const darkHint = Color(0xFF8FA8BC);          // placeholder/hint
+  static const darkSubtext = Color(0xFF6B8BA4);       // secondary text
+  static const darkTextPrimary = Color(0xFFE8F1F8);   // primary text on dark
+  static const darkTextSecondary = Color(0xFFAAC0D2); // secondary text on dark
+  static const darkError = Color(0xFFFF6B7A);
+  static const darkOnSurface = Color(0xFFE8F1F8);
   static const darkSecondaryContainer = Color(0xFF3E2000);
   static const darkOnSecondaryContainer = Color(0xFFFFDDB3);
-  static const oceanBright = Color(0xFF4FC3F7);
-  static const darkGradientStart = Color(0xFF0D1B2A);
+  static const oceanBright = Color(0xFF48C9F0);       // primary accent dark
+  static const tealBright = Color(0xFF26D9C8);        // teal on dark
+  static const goldBright = Color(0xFFD4AE5C);        // gold on dark
+  static const darkGradientStart = Color(0xFF0C1823);
   static const darkGradientEnd = Color(0xFF1B3A4B);
 }

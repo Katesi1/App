@@ -6,9 +6,9 @@ import 'app_spacing.dart';
 export 'app_colors.dart';
 export 'app_spacing.dart';
 
-// ─── Text Theme ────────────────────────────────────────────────────────────────
-TextTheme _buildTextTheme() {
-  return TextTheme(
+// ─── Text Themes ───────────────────────────────────────────────────────────────
+TextTheme _buildTextTheme({Color? bodyColor, Color? displayColor}) {
+  final base = TextTheme(
     displayLarge: GoogleFonts.beVietnamPro(
         fontSize: 57, fontWeight: FontWeight.w400),
     displayMedium: GoogleFonts.beVietnamPro(
@@ -39,6 +39,11 @@ TextTheme _buildTextTheme() {
         fontSize: 12, fontWeight: FontWeight.w500),
     labelSmall: GoogleFonts.beVietnamPro(
         fontSize: 11, fontWeight: FontWeight.w500),
+  );
+  if (bodyColor == null && displayColor == null) return base;
+  return base.apply(
+    bodyColor: bodyColor,
+    displayColor: displayColor ?? bodyColor,
   );
 }
 
@@ -81,7 +86,7 @@ class AppTheme {
           color: Colors.white,
           fontSize: 20,
           fontWeight: FontWeight.w700,
-        ).copyWith(inherit: false),
+        ),
       ),
       elevatedButtonTheme: ElevatedButtonThemeData(
         style: ElevatedButton.styleFrom(
@@ -147,7 +152,8 @@ class AppTheme {
           horizontal: AppSpacing.md,
           vertical: 14,
         ),
-        labelStyle: GoogleFonts.beVietnamPro(fontSize: 14),
+        labelStyle: GoogleFonts.beVietnamPro(
+            fontSize: 14, color: AppColors.muted),
         hintStyle: GoogleFonts.beVietnamPro(
           fontSize: 14,
           color: AppColors.slate,
@@ -163,11 +169,16 @@ class AppTheme {
         clipBehavior: Clip.antiAlias,
       ),
       chipTheme: ChipThemeData(
+        backgroundColor: AppColors.slateLight,
+        selectedColor: AppColors.oceanLight,
+        checkmarkColor: AppColors.ocean,
+        side: const BorderSide(color: AppColors.border),
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(AppRadius.full),
         ),
         labelStyle: GoogleFonts.beVietnamPro(
-            fontSize: 13, fontWeight: FontWeight.w500),
+            fontSize: 13, fontWeight: FontWeight.w500,
+            color: AppColors.ink),
       ),
       dividerTheme: const DividerThemeData(
         color: AppColors.border,
@@ -194,6 +205,28 @@ class AppTheme {
         type: BottomNavigationBarType.fixed,
         elevation: 8,
       ),
+      switchTheme: SwitchThemeData(
+        thumbColor: WidgetStateProperty.resolveWith((s) =>
+            s.contains(WidgetState.selected)
+                ? AppColors.ocean
+                : AppColors.slate),
+        trackColor: WidgetStateProperty.resolveWith((s) =>
+            s.contains(WidgetState.selected)
+                ? AppColors.oceanLight
+                : AppColors.slateLight),
+      ),
+      dialogTheme: DialogThemeData(
+        backgroundColor: AppColors.surface,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(AppRadius.xl),
+        ),
+        titleTextStyle: GoogleFonts.beVietnamPro(
+            fontSize: 18,
+            fontWeight: FontWeight.w700,
+            color: AppColors.navy),
+        contentTextStyle: GoogleFonts.beVietnamPro(
+            fontSize: 14, color: AppColors.muted),
+      ),
     );
   }
 
@@ -202,39 +235,49 @@ class AppTheme {
     const colorScheme = ColorScheme(
       brightness: Brightness.dark,
       primary: AppColors.oceanBright,
-      onPrimary: Colors.white,
-      primaryContainer: AppColors.oceanDeep,
+      onPrimary: AppColors.darkBackground,
+      primaryContainer: Color(0xFF0D3348),
       onPrimaryContainer: AppColors.tealLight,
-      secondary: AppColors.gold,
-      onSecondary: Colors.black,
-      secondaryContainer: AppColors.darkSecondaryContainer,
-      onSecondaryContainer: AppColors.darkOnSecondaryContainer,
+      secondary: AppColors.goldBright,
+      onSecondary: AppColors.darkBackground,
+      secondaryContainer: Color(0xFF3D2A00),
+      onSecondaryContainer: Color(0xFFFFDDB3),
       surface: AppColors.darkSurface,
-      onSurface: AppColors.darkOnSurface,
+      onSurface: AppColors.darkTextPrimary,
       surfaceContainerHighest: AppColors.darkContainer,
+      surfaceContainerHigh: AppColors.darkElevated,
       error: AppColors.darkError,
-      onError: Colors.black,
-      outline: AppColors.darkHint,
+      onError: AppColors.darkBackground,
+      outline: AppColors.darkSubtext,
       outlineVariant: AppColors.darkBorder,
     );
 
     return ThemeData(
       useMaterial3: true,
       colorScheme: colorScheme,
-      textTheme: _buildTextTheme(),
+      textTheme: _buildTextTheme(
+        bodyColor: AppColors.darkTextPrimary,
+        displayColor: AppColors.darkTextPrimary,
+      ),
       scaffoldBackgroundColor: AppColors.darkBackground,
+
+      // ── AppBar ──────────────────────────────────────────────────────────
       appBarTheme: AppBarTheme(
         backgroundColor: AppColors.darkSurface,
-        foregroundColor: AppColors.oceanBright,
+        foregroundColor: AppColors.darkTextPrimary,
         elevation: 0,
-        scrolledUnderElevation: 1,
+        scrolledUnderElevation: 0,
         centerTitle: false,
+        iconTheme: const IconThemeData(color: AppColors.darkTextPrimary),
         titleTextStyle: GoogleFonts.beVietnamPro(
-          color: AppColors.oceanBright,
+          color: AppColors.darkTextPrimary,
           fontSize: 20,
           fontWeight: FontWeight.w700,
-        ).copyWith(inherit: false),
+        ),
+        surfaceTintColor: Colors.transparent,
       ),
+
+      // ── Buttons ─────────────────────────────────────────────────────────
       elevatedButtonTheme: ElevatedButtonThemeData(
         style: ElevatedButton.styleFrom(
           backgroundColor: AppColors.oceanBright,
@@ -243,15 +286,21 @@ class AppTheme {
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(AppRadius.md),
           ),
+          textStyle: GoogleFonts.beVietnamPro(
+              fontSize: 16, fontWeight: FontWeight.w600),
           elevation: 0,
         ),
       ),
       filledButtonTheme: FilledButtonThemeData(
         style: FilledButton.styleFrom(
+          backgroundColor: AppColors.oceanBright,
+          foregroundColor: AppColors.darkBackground,
           minimumSize: const Size(double.infinity, 52),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(AppRadius.md),
           ),
+          textStyle: GoogleFonts.beVietnamPro(
+              fontSize: 16, fontWeight: FontWeight.w600),
         ),
       ),
       outlinedButtonTheme: OutlinedButtonThemeData(
@@ -261,10 +310,20 @@ class AppTheme {
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(AppRadius.md),
           ),
-          side: const BorderSide(
-              color: AppColors.oceanBright, width: 1.5),
+          side: const BorderSide(color: AppColors.darkBorder, width: 1.5),
+          textStyle: GoogleFonts.beVietnamPro(
+              fontSize: 16, fontWeight: FontWeight.w600),
         ),
       ),
+      textButtonTheme: TextButtonThemeData(
+        style: TextButton.styleFrom(
+          foregroundColor: AppColors.oceanBright,
+          textStyle: GoogleFonts.beVietnamPro(
+              fontSize: 14, fontWeight: FontWeight.w600),
+        ),
+      ),
+
+      // ── Input ───────────────────────────────────────────────────────────
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
         fillColor: AppColors.darkContainer,
@@ -281,19 +340,28 @@ class AppTheme {
           borderSide:
               const BorderSide(color: AppColors.oceanBright, width: 2),
         ),
+        errorBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(AppRadius.md),
+          borderSide: const BorderSide(color: AppColors.darkError),
+        ),
+        focusedErrorBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(AppRadius.md),
+          borderSide:
+              const BorderSide(color: AppColors.darkError, width: 2),
+        ),
         contentPadding: const EdgeInsets.symmetric(
           horizontal: AppSpacing.md,
           vertical: 14,
         ),
         labelStyle: GoogleFonts.beVietnamPro(
-          fontSize: 14,
-          color: AppColors.darkHint,
-        ),
+            fontSize: 14, color: AppColors.darkTextSecondary),
         hintStyle: GoogleFonts.beVietnamPro(
-          fontSize: 14,
-          color: AppColors.darkHint,
-        ),
+            fontSize: 14, color: AppColors.darkHint),
+        prefixIconColor: AppColors.darkHint,
+        suffixIconColor: AppColors.darkHint,
       ),
+
+      // ── Card ────────────────────────────────────────────────────────────
       cardTheme: CardThemeData(
         elevation: 0,
         shape: RoundedRectangleBorder(
@@ -301,31 +369,112 @@ class AppTheme {
           side: const BorderSide(color: AppColors.darkBorder),
         ),
         color: AppColors.darkSurface,
+        surfaceTintColor: Colors.transparent,
         clipBehavior: Clip.antiAlias,
       ),
+
+      // ── Chip ────────────────────────────────────────────────────────────
       chipTheme: ChipThemeData(
+        backgroundColor: AppColors.darkContainer,
+        selectedColor: const Color(0xFF0D3348),
+        checkmarkColor: AppColors.oceanBright,
+        side: const BorderSide(color: AppColors.darkBorder),
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(AppRadius.full),
         ),
         labelStyle: GoogleFonts.beVietnamPro(
-            fontSize: 13, fontWeight: FontWeight.w500),
+            fontSize: 13,
+            fontWeight: FontWeight.w500,
+            color: AppColors.darkTextPrimary),
       ),
-      floatingActionButtonTheme: const FloatingActionButtonThemeData(
+
+      // ── Divider ─────────────────────────────────────────────────────────
+      dividerTheme: const DividerThemeData(
+        color: AppColors.darkDivider,
+        thickness: 1,
+        space: 1,
+      ),
+
+      // ── FAB ─────────────────────────────────────────────────────────────
+      floatingActionButtonTheme: FloatingActionButtonThemeData(
         backgroundColor: AppColors.oceanBright,
         foregroundColor: AppColors.darkBackground,
         elevation: 4,
+        extendedTextStyle: GoogleFonts.beVietnamPro(
+          fontWeight: FontWeight.w600,
+          color: AppColors.darkBackground,
+        ),
       ),
+
+      // ── Bottom Nav ──────────────────────────────────────────────────────
       bottomNavigationBarTheme: BottomNavigationBarThemeData(
         backgroundColor: AppColors.darkSurface,
         selectedItemColor: AppColors.oceanBright,
-        unselectedItemColor: AppColors.darkHint,
+        unselectedItemColor: AppColors.darkSubtext,
         selectedLabelStyle: GoogleFonts.beVietnamPro(
           fontSize: 11,
           fontWeight: FontWeight.w700,
         ),
         unselectedLabelStyle: GoogleFonts.beVietnamPro(fontSize: 11),
         type: BottomNavigationBarType.fixed,
-        elevation: 8,
+        elevation: 0,
+      ),
+
+      // ── Switch ──────────────────────────────────────────────────────────
+      switchTheme: SwitchThemeData(
+        thumbColor: WidgetStateProperty.resolveWith((s) =>
+            s.contains(WidgetState.selected)
+                ? AppColors.oceanBright
+                : AppColors.darkSubtext),
+        trackColor: WidgetStateProperty.resolveWith((s) =>
+            s.contains(WidgetState.selected)
+                ? const Color(0xFF0D3348)
+                : AppColors.darkContainer),
+        trackOutlineColor: WidgetStateProperty.all(Colors.transparent),
+      ),
+
+      // ── Dialog ──────────────────────────────────────────────────────────
+      dialogTheme: DialogThemeData(
+        backgroundColor: AppColors.darkElevated,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(AppRadius.xl),
+        ),
+        titleTextStyle: GoogleFonts.beVietnamPro(
+            fontSize: 18,
+            fontWeight: FontWeight.w700,
+            color: AppColors.darkTextPrimary),
+        contentTextStyle: GoogleFonts.beVietnamPro(
+            fontSize: 14, color: AppColors.darkTextSecondary),
+      ),
+
+      // ── BottomSheet ─────────────────────────────────────────────────────
+      bottomSheetTheme: const BottomSheetThemeData(
+        backgroundColor: AppColors.darkElevated,
+        modalBackgroundColor: AppColors.darkElevated,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+        ),
+        dragHandleColor: AppColors.darkBorder,
+      ),
+
+      // ── IconTheme ───────────────────────────────────────────────────────
+      iconTheme: const IconThemeData(color: AppColors.darkTextPrimary),
+
+      // ── ListTile ────────────────────────────────────────────────────────
+      listTileTheme: const ListTileThemeData(
+        textColor: AppColors.darkTextPrimary,
+        iconColor: AppColors.darkTextSecondary,
+      ),
+
+      // ── Popup Menu ──────────────────────────────────────────────────────
+      popupMenuTheme: PopupMenuThemeData(
+        color: AppColors.darkElevated,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(AppRadius.md),
+          side: const BorderSide(color: AppColors.darkBorder),
+        ),
+        textStyle: GoogleFonts.beVietnamPro(
+            fontSize: 14, color: AppColors.darkTextPrimary),
       ),
     );
   }
