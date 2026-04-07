@@ -40,7 +40,7 @@ class _BookingListScreenState extends ConsumerState<BookingListScreen> {
 
     return AppScaffold(
       title: '',
-      selectedIndex: 1,
+      selectedIndex: 4,
       showAppBar: false,
       body: Column(
         children: [
@@ -89,6 +89,22 @@ class _BookingListScreenState extends ConsumerState<BookingListScreen> {
                 ),
                 Row(
                   children: [
+                    GestureDetector(
+                      onTap: () => context.pop(),
+                      child: Container(
+                        width: 36,
+                        height: 36,
+                        margin: const EdgeInsets.only(right: 12),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withValues(alpha: 0.12),
+                          shape: BoxShape.circle,
+                          border: Border.all(
+                              color: Colors.white.withValues(alpha: 0.18)),
+                        ),
+                        child: const Icon(Icons.arrow_back_rounded,
+                            color: Colors.white, size: 18),
+                      ),
+                    ),
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
@@ -233,6 +249,14 @@ class _BookingCard extends ConsumerStatefulWidget {
 
 class _BookingCardState extends ConsumerState<_BookingCard> {
   bool _actionLoading = false;
+
+  String _formatPrice(double amount) {
+    final formatted = amount.toInt().toString().replaceAllMapped(
+          RegExp(r'(\d)(?=(\d{3})+(?!\d))'),
+          (m) => '${m[1]}.',
+        );
+    return '$formatted đ';
+  }
 
   Color get _statusColor {
     switch (widget.booking.status) {
@@ -427,6 +451,40 @@ class _BookingCardState extends ConsumerState<_BookingCard> {
                         ],
                       ),
                     ],
+
+                    // Price + guest count row
+                    const SizedBox(height: AppSpacing.sm),
+                    Row(
+                      children: [
+                        if (booking.depositAmount != null &&
+                            booking.depositAmount! > 0) ...[
+                          Icon(Icons.payments_outlined,
+                              size: 14,
+                              color: colors.onSurface.withValues(alpha: 0.45)),
+                          const SizedBox(width: 4),
+                          Text(
+                            _formatPrice(booking.depositAmount!),
+                            style: GoogleFonts.beVietnamPro(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w600,
+                              color: AppColors.ocean,
+                            ),
+                          ),
+                          const SizedBox(width: AppSpacing.md),
+                        ],
+                        Icon(Icons.people_outline_rounded,
+                            size: 14,
+                            color: colors.onSurface.withValues(alpha: 0.45)),
+                        const SizedBox(width: 4),
+                        Text(
+                          '${booking.guestCount} khách',
+                          style: GoogleFonts.beVietnamPro(
+                            fontSize: 13,
+                            color: colors.onSurface.withValues(alpha: 0.7),
+                          ),
+                        ),
+                      ],
+                    ),
 
                     // Countdown for HOLD
                     if (isHold && booking.holdRemainingSeconds > 0) ...[

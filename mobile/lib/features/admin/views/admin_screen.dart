@@ -257,16 +257,6 @@ class AdminScreen extends ConsumerWidget {
                     onTap: () => context.push('/admin/owner-calendar'),
                   ),
 
-                  const SizedBox(height: 10),
-
-                  _MenuCard(
-                    icon: Icons.bar_chart_rounded,
-                    iconBg: AppColors.amberLight,
-                    iconColor: AppColors.amber,
-                    title: 'Báo cáo thống kê',
-                    subtitle: 'Xem báo cáo doanh thu, tỷ lệ lấp đầy',
-                    onTap: () => context.go('/reports'),
-                  ),
 
                   const SizedBox(height: 28),
 

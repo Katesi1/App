@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -10,6 +9,7 @@ import '../../../data/models/user_model.dart';
 import '../../../data/repositories/user_repository.dart';
 import '../../../shared/widgets/app_scaffold.dart';
 import '../../../shared/widgets/loading_widget.dart';
+import '../../auth/controllers/auth_controller.dart';
 import '../controllers/user_controller.dart';
 
 class UserListScreen extends ConsumerStatefulWidget {
@@ -22,17 +22,20 @@ class UserListScreen extends ConsumerStatefulWidget {
 class _UserListScreenState extends ConsumerState<UserListScreen> {
   String? _roleFilter; // null = all
 
-  static const _roles = <String?>['ADMIN', 'OWNER', 'SALE'];
-  static const _roleLabels = ['Admin', 'Chủ nhà', 'Sale'];
+  static const _roles = <String?>['ADMIN', 'STAFF'];
+  static const _roleLabels = ['Admin', 'Quản lý'];
 
   @override
   Widget build(BuildContext context) {
     final usersAsync = ref.watch(userListProvider(_roleFilter));
+    final user = ref.watch(currentUserProvider);
     final colors = Theme.of(context).colorScheme;
+    final userName = user?.name ?? user?.phone ?? '';
 
     return AppScaffold(
       title: 'Nhân viên',
       selectedIndex: 4,
+      showAppBar: false,
       floatingActionButton: Container(
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(16),
@@ -50,11 +53,13 @@ class _UserListScreenState extends ConsumerState<UserListScreen> {
         child: FloatingActionButton.extended(
           onPressed: () => context.push('/admin/users/new'),
           icon: const Icon(Icons.person_add_rounded, size: 20),
-          label: Text('Thêm mới',
-              style: GoogleFonts.beVietnamPro(
-                fontWeight: FontWeight.w700,
-                fontSize: 14,
-              )),
+          label: Text(
+            'Thêm mới',
+            style: GoogleFonts.beVietnamPro(
+              fontWeight: FontWeight.w700,
+              fontSize: 14,
+            ),
+          ),
           backgroundColor: Colors.transparent,
           foregroundColor: Colors.white,
           elevation: 0,
@@ -63,6 +68,125 @@ class _UserListScreenState extends ConsumerState<UserListScreen> {
       ),
       body: Column(
         children: [
+          // ── Gradient header ──────────────────────────────────────────
+          Container(
+            width: double.infinity,
+            padding: EdgeInsets.only(
+              top: MediaQuery.of(context).padding.top + 8,
+              left: 20,
+              right: 20,
+              bottom: 24,
+            ),
+            decoration: const BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [AppColors.oceanDeep, AppColors.ocean],
+              ),
+            ),
+            child: Stack(
+              clipBehavior: Clip.none,
+              children: [
+                Positioned(
+                  right: -50,
+                  top: -40,
+                  child: Container(
+                    width: 160,
+                    height: 160,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: AppColors.teal.withValues(alpha: 0.10),
+                    ),
+                  ),
+                ),
+                Positioned(
+                  left: -30,
+                  bottom: -40,
+                  child: Container(
+                    width: 100,
+                    height: 100,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: AppColors.gold.withValues(alpha: 0.08),
+                    ),
+                  ),
+                ),
+                Row(
+                  children: [
+                    GestureDetector(
+                      onTap: () => context.pop(),
+                      child: Container(
+                        width: 36,
+                        height: 36,
+                        margin: const EdgeInsets.only(right: 12),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withValues(alpha: 0.12),
+                          shape: BoxShape.circle,
+                          border: Border.all(
+                              color: Colors.white.withValues(alpha: 0.18)),
+                        ),
+                        child: const Icon(Icons.arrow_back_rounded,
+                            color: Colors.white, size: 18),
+                      ),
+                    ),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Nhân viên',
+                            style: GoogleFonts.beVietnamPro(
+                              fontSize: 20,
+                              fontWeight: FontWeight.w700,
+                              color: Colors.white,
+                            ),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            'Quản lý tài khoản hệ thống',
+                            style: GoogleFonts.beVietnamPro(
+                              fontSize: 12,
+                              color: Colors.white.withValues(alpha: 0.65),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    GestureDetector(
+                      onTap: () => context.push('/profile'),
+                      child: Container(
+                        width: 40,
+                        height: 40,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          gradient: const LinearGradient(
+                            colors: [AppColors.teal, AppColors.gold],
+                          ),
+                          border: Border.all(
+                            color: Colors.white.withValues(alpha: 0.3),
+                            width: 1.5,
+                          ),
+                        ),
+                        child: Center(
+                          child: Text(
+                            userName.isNotEmpty
+                                ? userName[0].toUpperCase()
+                                : 'U',
+                            style: GoogleFonts.beVietnamPro(
+                              color: Colors.white,
+                              fontWeight: FontWeight.w700,
+                              fontSize: 15,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+
           // ── Role filter chips ─────────────────────────────────────
           SizedBox(
             height: 48,
@@ -147,7 +271,6 @@ class _UserListScreenState extends ConsumerState<UserListScreen> {
                         const SizedBox(height: AppSpacing.sm),
                     itemBuilder: (_, i) => _UserCard(
                       user: users[i],
-                      index: i,
                       onEdit: () =>
                           context.push('/admin/users/${users[i].id}/edit'),
                       onDelete: () => _deleteUser(context, ref, users[i]),
@@ -196,19 +319,16 @@ class _UserListScreenState extends ConsumerState<UserListScreen> {
       AppSnackBar.error(context, result.message);
     }
   }
-
 }
 
 // ─── User Card ────────────────────────────────────────────────────────────────
 class _UserCard extends StatelessWidget {
   final UserModel user;
-  final int index;
   final VoidCallback onEdit;
   final VoidCallback onDelete;
 
   const _UserCard({
     required this.user,
-    required this.index,
     required this.onEdit,
     required this.onDelete,
   });
@@ -219,28 +339,39 @@ class _UserCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colors = Theme.of(context).colorScheme;
-
-    return Card(
-      clipBehavior: Clip.antiAlias,
-      shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(AppRadius.lg)),
-      elevation: 1,
+    return Container(
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(AppRadius.lg),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.05),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
       child: Padding(
         padding: const EdgeInsets.symmetric(
             horizontal: AppSpacing.md, vertical: AppSpacing.sm),
         child: Row(
           children: [
             // Avatar
-            CircleAvatar(
-              radius: 22,
-              backgroundColor: _roleColor.withValues(alpha: 0.12),
-              child: Text(
-                user.name.isNotEmpty ? user.name[0].toUpperCase() : 'U',
-                style: GoogleFonts.beVietnamPro(
-                  color: _roleColor,
-                  fontWeight: FontWeight.w800,
-                  fontSize: 16,
+            Container(
+              width: 44,
+              height: 44,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: _roleColor.withValues(alpha: 0.12),
+              ),
+              child: Center(
+                child: Text(
+                  user.name.isNotEmpty ? user.name[0].toUpperCase() : 'U',
+                  style: GoogleFonts.beVietnamPro(
+                    color: _roleColor,
+                    fontWeight: FontWeight.w800,
+                    fontSize: 16,
+                  ),
                 ),
               ),
             ),
@@ -261,7 +392,7 @@ class _UserCard extends StatelessWidget {
                           style: GoogleFonts.beVietnamPro(
                             fontWeight: FontWeight.w700,
                             fontSize: 14,
-                            color: colors.onSurface,
+                            color: AppColors.navy,
                           ),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
@@ -289,20 +420,20 @@ class _UserCard extends StatelessWidget {
                     ],
                   ),
 
-                  const SizedBox(height: 2),
+                  const SizedBox(height: 3),
 
-                  // Phone
+                  // Phone + inactive badge
                   Row(
                     children: [
                       Icon(Icons.phone_outlined,
                           size: 12,
-                          color: colors.onSurface.withValues(alpha: 0.4)),
+                          color: AppColors.muted.withValues(alpha: 0.7)),
                       const SizedBox(width: 3),
                       Text(
                         user.phone,
                         style: GoogleFonts.beVietnamPro(
                           fontSize: 12,
-                          color: colors.onSurface.withValues(alpha: 0.55),
+                          color: AppColors.muted,
                         ),
                       ),
 
@@ -314,7 +445,8 @@ class _UserCard extends StatelessWidget {
                               horizontal: 5, vertical: 1),
                           decoration: BoxDecoration(
                             color: AppColors.error.withValues(alpha: 0.1),
-                            borderRadius: BorderRadius.circular(AppRadius.full),
+                            borderRadius:
+                                BorderRadius.circular(AppRadius.full),
                           ),
                           child: Text(
                             'Vô hiệu',
@@ -337,8 +469,8 @@ class _UserCard extends StatelessWidget {
               mainAxisSize: MainAxisSize.min,
               children: [
                 IconButton(
-                  icon: Icon(Icons.edit_outlined,
-                      color: colors.primary, size: 20),
+                  icon: const Icon(Icons.edit_outlined,
+                      color: AppColors.ocean, size: 20),
                   onPressed: onEdit,
                   tooltip: 'Chỉnh sửa',
                   visualDensity: VisualDensity.compact,
@@ -355,9 +487,6 @@ class _UserCard extends StatelessWidget {
           ],
         ),
       ),
-    )
-        .animate(delay: Duration(milliseconds: index * 50))
-        .fadeIn(duration: 250.ms)
-        .slideY(begin: 0.05, end: 0);
+    );
   }
 }

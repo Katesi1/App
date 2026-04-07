@@ -27,7 +27,7 @@ enum CalendarDayStatus { available, hold, booked }
 extension CalendarDayStatusX on CalendarDayStatus {
   static CalendarDayStatus fromString(String? value) => switch (value) {
         'HOLD' => CalendarDayStatus.hold,
-        'BOOKED' => CalendarDayStatus.booked,
+        'BOOKED' || 'CONFIRMED' => CalendarDayStatus.booked,
         _ => CalendarDayStatus.available,
       };
 }
