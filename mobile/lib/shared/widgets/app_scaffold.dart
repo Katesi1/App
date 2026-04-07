@@ -231,27 +231,41 @@ class _BottomNavState extends ConsumerState<_BottomNav> {
       _current = 0;
     }
 
-    final colors = Theme.of(context).colorScheme;
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Container(
-      decoration: BoxDecoration(
-        color: colors.surface,
-        border: Border(
-          top: BorderSide(
-            color: isDark ? AppColors.darkBorder : AppColors.border,
-            width: 1,
-          ),
-        ),
-      ),
+      color: isDark ? AppColors.darkBackground : AppColors.background,
       child: SafeArea(
         top: false,
         child: Padding(
-          padding: const EdgeInsets.only(top: 10, bottom: 20),
-          child: Row(
-            children: List.generate(navItems.length, (i) {
-              return _buildNavItem(i, navItems[i]);
-            }),
+          padding: const EdgeInsets.fromLTRB(14, 8, 14, 12),
+          child: Container(
+            padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 4),
+            decoration: BoxDecoration(
+              color: isDark ? AppColors.darkSurface : Colors.white,
+              borderRadius: BorderRadius.circular(28),
+              boxShadow: [
+                BoxShadow(
+                  color: isDark
+                      ? Colors.black.withValues(alpha: 0.4)
+                      : AppColors.ink.withValues(alpha: 0.1),
+                  blurRadius: 24,
+                  offset: const Offset(0, 6),
+                ),
+                BoxShadow(
+                  color: isDark
+                      ? Colors.black.withValues(alpha: 0.15)
+                      : AppColors.ocean.withValues(alpha: 0.06),
+                  blurRadius: 8,
+                  offset: const Offset(0, 2),
+                ),
+              ],
+            ),
+            child: Row(
+              children: List.generate(navItems.length, (i) {
+                return _buildNavItem(i, navItems[i]);
+              }),
+            ),
           ),
         ),
       ),
@@ -260,11 +274,9 @@ class _BottomNavState extends ConsumerState<_BottomNav> {
 
   Widget _buildNavItem(int index, _NavItem item) {
     final isSelected = _current == index;
-    final colors = Theme.of(context).colorScheme;
-    final activeColor = colors.primary;
-    final inactiveColor = Theme.of(context).brightness == Brightness.dark
-        ? AppColors.darkHint
-        : AppColors.slate;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final activeColor = isDark ? AppColors.oceanBright : AppColors.ocean;
+    final inactiveColor = isDark ? AppColors.darkHint : AppColors.slate;
 
     return Expanded(
       child: GestureDetector(
@@ -276,10 +288,23 @@ class _BottomNavState extends ConsumerState<_BottomNav> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(
-              isSelected ? item.activeIcon : item.icon,
-              color: isSelected ? activeColor : inactiveColor,
-              size: 24,
+            AnimatedContainer(
+              duration: const Duration(milliseconds: 200),
+              curve: Curves.easeOut,
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+              decoration: BoxDecoration(
+                color: isSelected
+                    ? isDark
+                        ? AppColors.oceanBright.withValues(alpha: 0.15)
+                        : AppColors.oceanLight
+                    : Colors.transparent,
+                borderRadius: BorderRadius.circular(14),
+              ),
+              child: Icon(
+                isSelected ? item.activeIcon : item.icon,
+                color: isSelected ? activeColor : inactiveColor,
+                size: 22,
+              ),
             ),
             const SizedBox(height: 3),
             Text(
