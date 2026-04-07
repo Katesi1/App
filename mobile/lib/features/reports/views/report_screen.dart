@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../../core/constants/app_constants.dart';
@@ -14,253 +13,325 @@ import '../controllers/report_controller.dart';
 class ReportScreen extends ConsumerWidget {
   const ReportScreen({super.key});
 
+  Widget _header(BuildContext context, DateTime now) {
+    return Container(
+      width: double.infinity,
+      padding: EdgeInsets.only(
+        top: MediaQuery.of(context).padding.top + 8,
+        left: 20,
+        right: 20,
+        bottom: 24,
+      ),
+      decoration: const BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [AppColors.oceanDeep, AppColors.ocean],
+        ),
+      ),
+      child: Stack(
+        clipBehavior: Clip.none,
+        children: [
+          Positioned(
+            right: -50,
+            top: -40,
+            child: Container(
+              width: 160,
+              height: 160,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: AppColors.teal.withValues(alpha: 0.10),
+              ),
+            ),
+          ),
+          Positioned(
+            left: -30,
+            bottom: -40,
+            child: Container(
+              width: 100,
+              height: 100,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: AppColors.gold.withValues(alpha: 0.08),
+              ),
+            ),
+          ),
+          Row(
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Báo cáo',
+                      style: GoogleFonts.beVietnamPro(
+                        fontSize: 20,
+                        fontWeight: FontWeight.w700,
+                        color: Colors.white,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      'Thống kê tháng ${now.month}/${now.year}',
+                      style: GoogleFonts.beVietnamPro(
+                        fontSize: 12,
+                        color: Colors.white.withValues(alpha: 0.65),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              // Month badge
+              Container(
+                padding: const EdgeInsets.symmetric(
+                    horizontal: 10, vertical: 5),
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(
+                      color: Colors.white.withValues(alpha: 0.2)),
+                ),
+                child: Text(
+                  'T${now.month}',
+                  style: GoogleFonts.beVietnamPro(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w700,
+                    color: Colors.white,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final now = DateTime.now();
     final reportAsync = ref.watch(reportDataProvider(null));
 
     return AppScaffold(
-      title: 'Báo cáo',
+      title: '',
       selectedIndex: 3,
-      body: reportAsync.when(
-        loading: () => const LoadingWidget(),
-        error: (e, _) => ErrorStateWidget(
-          message: e.toString().replaceAll('Exception: ', ''),
-          onRetry: () => ref.invalidate(reportDataProvider(null)),
-        ),
-        data: (report) {
-            final totalRooms = report.totalRooms;
-            final activeRooms = report.activeRooms;
-            final holdCount = report.holdCount;
-            final confirmedCount = report.confirmedCount;
-            final cancelledCount = report.cancelledCount;
-            final completedCount = report.completedCount;
-            final totalBookings = report.totalBookings;
-            final totalDeposit = report.totalDeposit;
-            final thisMonthCount = report.thisMonthBookings;
-            final occupancyRate = report.occupancyRate;
-
-            return RefreshIndicator(
-              color: AppColors.ocean,
-              onRefresh: () async {
-                ref.invalidate(reportDataProvider(null));
-              },
-              child: ListView(
-                padding: const EdgeInsets.all(20),
-                children: [
-                  // ── Header ─────────────────────────
-                  Text(
-                    'Tổng quan tháng ${now.month}/${now.year}',
-                    style: GoogleFonts.beVietnamPro(
-                      fontSize: 18,
-                      fontWeight: FontWeight.w700,
-                      color: AppColors.navy,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    'Thống kê hoạt động kinh doanh',
-                    style: GoogleFonts.beVietnamPro(
-                      fontSize: 13,
-                      color: AppColors.muted,
-                    ),
-                  ),
-                  const SizedBox(height: 20),
-
-                  // ── KPI Cards (2x2) ────────────────
-                  Row(
-                    children: [
-                      Expanded(
-                        child: _StatCard(
-                          icon: Icons.apartment_rounded,
-                          iconBg: AppColors.oceanLight,
-                          iconColor: AppColors.ocean,
-                          label: 'Tổng phòng',
-                          value: '$totalRooms',
-                          sub: '$activeRooms đang hoạt động',
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: _StatCard(
-                          icon: Icons.percent_rounded,
-                          iconBg: AppColors.emeraldLight,
-                          iconColor: AppColors.emerald,
-                          label: 'Tỷ lệ lấp đầy',
-                          value:
-                              '${occupancyRate.toStringAsFixed(0)}%',
-                          sub: 'Phòng có booking',
-                        ),
-                      ),
-                    ],
-                  ).animate().fadeIn(duration: 300.ms).slideY(
-                      begin: 0.1, end: 0),
-
-                  const SizedBox(height: 12),
-
-                  Row(
-                    children: [
-                      Expanded(
-                        child: _StatCard(
-                          icon: Icons.book_rounded,
-                          iconBg: AppColors.tealLight,
-                          iconColor: AppColors.teal,
-                          label: 'Tổng booking',
-                          value: '$totalBookings',
-                          sub: '$thisMonthCount tháng này',
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: _StatCard(
-                          icon: Icons.payments_rounded,
-                          iconBg: AppColors.goldLight,
-                          iconColor: AppColors.gold,
-                          label: 'Tiền cọc thu',
-                          value: AppHelpers.formatPrice(totalDeposit),
-                          sub: 'Đã xác nhận + hoàn thành',
-                        ),
-                      ),
-                    ],
-                  ).animate(delay: 100.ms).fadeIn(duration: 300.ms)
-                      .slideY(begin: 0.1, end: 0),
-
-                  const SizedBox(height: 24),
-
-                  // ── Booking Status Breakdown ───────
-                  _SectionTitle(title: 'TRẠNG THÁI BOOKING'),
-                  const SizedBox(height: 12),
-
-                  Container(
-                    padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      color: AppColors.surface,
-                      borderRadius:
-                          BorderRadius.circular(AppRadius.lg),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black
-                              .withValues(alpha: 0.04),
-                          blurRadius: 8,
-                          offset: const Offset(0, 2),
-                        ),
-                      ],
-                    ),
-                    child: Column(
-                      children: [
-                        _StatusRow(
-                          label: 'Đang giữ',
-                          count: holdCount,
-                          total: totalBookings,
-                          color: AppColors.hold,
-                        ),
-                        const SizedBox(height: 12),
-                        _StatusRow(
-                          label: 'Đã xác nhận',
-                          count: confirmedCount,
-                          total: totalBookings,
-                          color: AppColors.confirmed,
-                        ),
-                        const SizedBox(height: 12),
-                        _StatusRow(
-                          label: 'Hoàn thành',
-                          count: completedCount,
-                          total: totalBookings,
-                          color: AppColors.completed,
-                        ),
-                        const SizedBox(height: 12),
-                        _StatusRow(
-                          label: 'Đã huỷ',
-                          count: cancelledCount,
-                          total: totalBookings,
-                          color: AppColors.cancelled,
-                        ),
-                      ],
-                    ),
-                  ).animate(delay: 200.ms).fadeIn(duration: 300.ms),
-
-                  const SizedBox(height: 24),
-
-                  // ── Phòng theo homestay ────────────
-                  _SectionTitle(title: 'THÔNG TIN PHÒNG'),
-                  const SizedBox(height: 12),
-
-                  Container(
-                    padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      color: AppColors.surface,
-                      borderRadius:
-                          BorderRadius.circular(AppRadius.lg),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black
-                              .withValues(alpha: 0.04),
-                          blurRadius: 8,
-                          offset: const Offset(0, 2),
-                        ),
-                      ],
-                    ),
-                    child: Column(
-                      children: [
-                        _InfoRow(
-                          label: 'Tổng số phòng',
-                          value: '$totalRooms',
-                        ),
-                        const Divider(
-                            height: 20, color: AppColors.border),
-                        _InfoRow(
-                          label: 'Phòng hoạt động',
-                          value: '$activeRooms',
-                          valueColor: AppColors.emerald,
-                        ),
-                        const Divider(
-                            height: 20, color: AppColors.border),
-                        _InfoRow(
-                          label: 'Phòng tạm ngưng',
-                          value:
-                              '${totalRooms - activeRooms}',
-                          valueColor: AppColors.slate,
-                        ),
-                        const Divider(
-                            height: 20, color: AppColors.border),
-                        _InfoRow(
-                          label: 'Có ảnh bìa',
-                          value: '${report.roomsWithCover}',
-                        ),
-                        const Divider(
-                            height: 20, color: AppColors.border),
-                        _InfoRow(
-                          label: 'Đã cập nhật giá',
-                          value: '${report.roomsWithPrice}',
-                        ),
-                      ],
-                    ),
-                  ).animate(delay: 300.ms).fadeIn(duration: 300.ms),
-
-                  const SizedBox(height: 24),
-
-                  // ── Booking gần đây ────────────────
-                  _SectionTitle(title: 'BOOKING GẦN ĐÂY'),
-                  const SizedBox(height: 12),
-
-                  if (report.recentBookings.isEmpty)
-                    const EmptyStateWidget(
-                      icon: Icons.book_outlined,
-                      message: 'Chưa có booking nào',
-                    )
-                  else
-                    ...report.recentBookings.map((b) => Padding(
-                          padding:
-                              const EdgeInsets.only(bottom: 8),
-                          child: _RecentBookingCard(booking: b),
-                        )),
-
-                  const SizedBox(height: 80),
-                ],
+      showAppBar: false,
+      body: Column(
+        children: [
+          _header(context, now),
+          Expanded(
+            child: reportAsync.when(
+              loading: () => const LoadingWidget(),
+              error: (e, _) => ErrorStateWidget(
+                message: e.toString().replaceAll('Exception: ', ''),
+                onRetry: () => ref.invalidate(reportDataProvider(null)),
               ),
-            );
-          },
-        ),
+              data: (report) {
+                final totalRooms = report.totalRooms;
+                final activeRooms = report.activeRooms;
+                final holdCount = report.holdCount;
+                final confirmedCount = report.confirmedCount;
+                final cancelledCount = report.cancelledCount;
+                final completedCount = report.completedCount;
+                final totalBookings = report.totalBookings;
+                final totalDeposit = report.totalDeposit;
+                final thisMonthCount = report.thisMonthBookings;
+                final occupancyRate = report.occupancyRate;
+
+                return RefreshIndicator(
+                  color: AppColors.ocean,
+                  onRefresh: () async {
+                    ref.invalidate(reportDataProvider(null));
+                  },
+                  child: ListView(
+                    padding: const EdgeInsets.all(20),
+                    children: [
+                      // ── KPI Cards (2x2) ────────────────
+                      Row(
+                        children: [
+                          Expanded(
+                            child: _StatCard(
+                              icon: Icons.apartment_rounded,
+                              iconBg: AppColors.oceanLight,
+                              iconColor: AppColors.ocean,
+                              label: 'Tổng phòng',
+                              value: '$totalRooms',
+                              sub: '$activeRooms đang hoạt động',
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: _StatCard(
+                              icon: Icons.percent_rounded,
+                              iconBg: AppColors.emeraldLight,
+                              iconColor: AppColors.emerald,
+                              label: 'Tỷ lệ lấp đầy',
+                              value: '${occupancyRate.toStringAsFixed(0)}%',
+                              sub: 'Phòng có booking',
+                            ),
+                          ),
+                        ],
+                      ),
+
+                      const SizedBox(height: 12),
+
+                      Row(
+                        children: [
+                          Expanded(
+                            child: _StatCard(
+                              icon: Icons.book_rounded,
+                              iconBg: AppColors.tealLight,
+                              iconColor: AppColors.teal,
+                              label: 'Tổng booking',
+                              value: '$totalBookings',
+                              sub: '$thisMonthCount tháng này',
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: _StatCard(
+                              icon: Icons.payments_rounded,
+                              iconBg: AppColors.goldLight,
+                              iconColor: AppColors.gold,
+                              label: 'Tiền cọc thu',
+                              value: AppHelpers.formatPrice(totalDeposit),
+                              sub: 'Đã xác nhận + hoàn thành',
+                            ),
+                          ),
+                        ],
+                      ),
+
+                      const SizedBox(height: 24),
+
+                      // ── Booking Status Breakdown ───────
+                      _SectionTitle(title: 'TRẠNG THÁI BOOKING'),
+                      const SizedBox(height: 12),
+
+                      Container(
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          color: AppColors.surface,
+                          borderRadius: BorderRadius.circular(AppRadius.lg),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withValues(alpha: 0.04),
+                              blurRadius: 8,
+                              offset: const Offset(0, 2),
+                            ),
+                          ],
+                        ),
+                        child: Column(
+                          children: [
+                            _StatusRow(
+                              label: 'Đang giữ',
+                              count: holdCount,
+                              total: totalBookings,
+                              color: AppColors.hold,
+                            ),
+                            const SizedBox(height: 12),
+                            _StatusRow(
+                              label: 'Đã xác nhận',
+                              count: confirmedCount,
+                              total: totalBookings,
+                              color: AppColors.confirmed,
+                            ),
+                            const SizedBox(height: 12),
+                            _StatusRow(
+                              label: 'Hoàn thành',
+                              count: completedCount,
+                              total: totalBookings,
+                              color: AppColors.completed,
+                            ),
+                            const SizedBox(height: 12),
+                            _StatusRow(
+                              label: 'Đã huỷ',
+                              count: cancelledCount,
+                              total: totalBookings,
+                              color: AppColors.cancelled,
+                            ),
+                          ],
+                        ),
+                      ),
+
+                      const SizedBox(height: 24),
+
+                      // ── Phòng theo homestay ────────────
+                      _SectionTitle(title: 'THÔNG TIN PHÒNG'),
+                      const SizedBox(height: 12),
+
+                      Container(
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          color: AppColors.surface,
+                          borderRadius: BorderRadius.circular(AppRadius.lg),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withValues(alpha: 0.04),
+                              blurRadius: 8,
+                              offset: const Offset(0, 2),
+                            ),
+                          ],
+                        ),
+                        child: Column(
+                          children: [
+                            _InfoRow(
+                              label: 'Tổng số phòng',
+                              value: '$totalRooms',
+                            ),
+                            const Divider(height: 20, color: AppColors.border),
+                            _InfoRow(
+                              label: 'Phòng hoạt động',
+                              value: '$activeRooms',
+                              valueColor: AppColors.emerald,
+                            ),
+                            const Divider(height: 20, color: AppColors.border),
+                            _InfoRow(
+                              label: 'Phòng tạm ngưng',
+                              value: '${totalRooms - activeRooms}',
+                              valueColor: AppColors.slate,
+                            ),
+                            const Divider(height: 20, color: AppColors.border),
+                            _InfoRow(
+                              label: 'Có ảnh bìa',
+                              value: '${report.roomsWithCover}',
+                            ),
+                            const Divider(height: 20, color: AppColors.border),
+                            _InfoRow(
+                              label: 'Đã cập nhật giá',
+                              value: '${report.roomsWithPrice}',
+                            ),
+                          ],
+                        ),
+                      ),
+
+                      const SizedBox(height: 24),
+
+                      // ── Booking gần đây ────────────────
+                      _SectionTitle(title: 'BOOKING GẦN ĐÂY'),
+                      const SizedBox(height: 12),
+
+                      if (report.recentBookings.isEmpty)
+                        const EmptyStateWidget(
+                          icon: Icons.book_outlined,
+                          message: 'Chưa có booking nào',
+                        )
+                      else
+                        ...report.recentBookings.map(
+                          (b) => Padding(
+                            padding: const EdgeInsets.only(bottom: 8),
+                            child: _RecentBookingCard(booking: b),
+                          ),
+                        ),
+
+                      const SizedBox(height: 80),
+                    ],
+                  ),
+                );
+              },
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

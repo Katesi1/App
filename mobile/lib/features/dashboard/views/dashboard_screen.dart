@@ -1,10 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../../core/theme/app_colors.dart';
-import '../../../core/theme/app_spacing.dart';
 import '../../../core/utils/helpers.dart';
 import '../../auth/controllers/auth_controller.dart';
 import '../../dashboard/controllers/dashboard_controller.dart';
@@ -32,231 +30,244 @@ class DashboardScreen extends ConsumerWidget {
           message: e.toString().replaceAll('Exception: ', ''),
           onRetry: () => ref.invalidate(dashboardStatsProvider),
         ),
-        data: (stats) => SingleChildScrollView(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // ── Header gradient ─────────────────────────────────────
-              _DashHeader(
-                userName: user?.name ?? 'Homestay',
-                formattedDate: formattedDate,
-              ),
-
-              // ── KPI Grid (2 cols × 3 rows) ──────────────────────────
-              Transform.translate(
-                offset: const Offset(0, -20),
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 20),
-                  child: Column(
-                    children: [
-                      // Row 1: Tổng phòng | Phòng trống
-                      Row(
-                        children: [
-                          Expanded(
-                            child: _KpiCard(
-                              label: 'Tổng phòng',
-                              value:
-                                  AppHelpers.formatIntOrDash(stats.totalRooms),
-                              delta:
-                                  '${AppHelpers.formatIntOrDash(stats.activeRooms)} đang hoạt động',
-                              deltaUp: true,
-                            ),
-                          ),
-                          const SizedBox(width: 10),
-                          Expanded(
-                            child: _KpiCard(
-                              label: 'Phòng trống',
-                              value:
-                                  AppHelpers.formatIntOrDash(stats.emptyRooms),
-                              delta: 'Sẵn sàng check-in',
-                              deltaUp: true,
-                              valueColor: AppColors.emerald,
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 10),
-                      // Row 2: Đang có khách | Check-out hôm nay
-                      Row(
-                        children: [
-                          Expanded(
-                            child: _KpiCard(
-                              label: 'Đang có khách',
-                              value: AppHelpers.formatIntOrDash(
-                                  stats.occupiedRooms),
-                              delta: 'Booking đang ở',
-                              deltaUp: true,
-                              valueColor: AppColors.oceanMid,
-                            ),
-                          ),
-                          const SizedBox(width: 10),
-                          Expanded(
-                            child: _KpiCard(
-                              label: 'Check-out hôm nay',
-                              value: AppHelpers.formatIntOrDash(
-                                  stats.checkoutToday),
-                              delta: 'Trước 12:00',
-                              deltaUp: true,
-                              valueColor: AppColors.amber,
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 10),
-                      // Row 3: Doanh thu tháng
-                      _RevenueCard(
-                        monthlyRevenue: stats.monthlyRevenue,
-                        todayRevenue: stats.todayRevenue,
-                      ),
-                    ],
-                  )
-                      .animate()
-                      .fadeIn(duration: 400.ms)
-                      .slideY(begin: 0.1, end: 0),
+        data: (stats) => RefreshIndicator(
+          color: AppColors.ocean,
+          onRefresh: () async => ref.invalidate(dashboardStatsProvider),
+          child: SingleChildScrollView(
+            physics: const AlwaysScrollableScrollPhysics(),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // ── Header ─────────────────────────────────────────────
+                _DashHeader(
+                  userName: user?.name ?? 'Homestay',
+                  formattedDate: formattedDate,
                 ),
-              ),
 
-              const SizedBox(height: 0),
-
-              // ── Quick actions ───────────────────────────────────────
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 20),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'THAO TÁC NHANH',
-                      style: GoogleFonts.beVietnamPro(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w700,
-                        color: AppColors.navy,
-                        letterSpacing: 0.8,
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    Row(
+                // ── KPI Grid — overlaps header by 16px ─────────────────
+                Transform.translate(
+                  offset: const Offset(0, -16),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    child: Column(
                       children: [
-                        _QuickAction(
-                          icon: Icons.add_rounded,
-                          label: 'Thêm\nbooking',
-                          bgColor: AppColors.oceanLight,
-                          iconColor: AppColors.ocean,
-                          onTap: () => context.go('/bookings'),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: _KpiCard(
+                                label: 'Tổng phòng',
+                                value: AppHelpers.formatIntOrDash(
+                                    stats.totalRooms),
+                                sub: '${AppHelpers.formatIntOrDash(stats.activeRooms)} hoạt động',
+                                accentColor: AppColors.ocean,
+                                icon: Icons.apartment_rounded,
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: _KpiCard(
+                                label: 'Phòng trống',
+                                value: AppHelpers.formatIntOrDash(
+                                    stats.emptyRooms),
+                                sub: 'Sẵn sàng check-in',
+                                accentColor: AppColors.emerald,
+                                icon: Icons.check_circle_outline_rounded,
+                              ),
+                            ),
+                          ],
                         ),
-                        const SizedBox(width: 10),
-                        _QuickAction(
-                          icon: Icons.check_circle_outline_rounded,
-                          label: 'Check-in',
-                          bgColor: AppColors.tealLight,
-                          iconColor: AppColors.oceanMid,
-                          onTap: () {},
-                        ),
-                        const SizedBox(width: 10),
-                        _QuickAction(
-                          icon: Icons.logout_rounded,
-                          label: 'Check-out',
-                          bgColor: AppColors.goldLight,
-                          iconColor: AppColors.gold,
-                          onTap: () {},
-                        ),
-                        const SizedBox(width: 10),
-                        _QuickAction(
-                          icon: Icons.home_outlined,
-                          label: 'Thêm\nphòng',
-                          bgColor: AppColors.emeraldLight,
-                          iconColor: AppColors.emerald,
-                          onTap: () => context.push('/properties/new'),
+                        const SizedBox(height: 12),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: _KpiCard(
+                                label: 'Đang có khách',
+                                value: AppHelpers.formatIntOrDash(
+                                    stats.occupiedRooms),
+                                sub: 'Đang lưu trú',
+                                accentColor: AppColors.teal,
+                                icon: Icons.people_rounded,
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: _KpiCard(
+                                label: 'Check-out hôm nay',
+                                value: AppHelpers.formatIntOrDash(
+                                    stats.checkoutToday),
+                                sub: 'Trước 12:00',
+                                accentColor: AppColors.amber,
+                                icon: Icons.logout_rounded,
+                              ),
+                            ),
+                          ],
                         ),
                       ],
                     ),
-                  ],
-                ).animate(delay: 200.ms).fadeIn(duration: 400.ms),
-              ),
+                  ),
+                ),
 
-              const SizedBox(height: 24),
+                // ── Revenue card ────────────────────────────────────────
+                Padding(
+                  padding:
+                      const EdgeInsets.fromLTRB(16, 0, 16, 0),
+                  child: _RevenueCard(
+                    monthlyRevenue: stats.monthlyRevenue,
+                    todayRevenue: stats.todayRevenue,
+                    now: now,
+                  ),
+                ),
 
-              // ── Hoạt động gần đây ─────────────────────────────────
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 20),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'HOẠT ĐỘNG GẦN ĐÂY',
-                      style: GoogleFonts.beVietnamPro(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w700,
-                        color: AppColors.navy,
-                        letterSpacing: 0.8,
+                const SizedBox(height: 28),
+
+                // ── Quick actions ───────────────────────────────────────
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      _SectionLabel('THAO TÁC NHANH'),
+                      const SizedBox(height: 12),
+                      Row(
+                        children: [
+                          _QuickAction(
+                            icon: Icons.add_rounded,
+                            label: 'Booking',
+                            color: AppColors.ocean,
+                            onTap: () => context.go('/bookings'),
+                          ),
+                          const SizedBox(width: 10),
+                          _QuickAction(
+                            icon: Icons.login_rounded,
+                            label: 'Check-in',
+                            color: AppColors.teal,
+                            onTap: () {},
+                          ),
+                          const SizedBox(width: 10),
+                          _QuickAction(
+                            icon: Icons.logout_rounded,
+                            label: 'Check-out',
+                            color: AppColors.gold,
+                            onTap: () {},
+                          ),
+                          const SizedBox(width: 10),
+                          _QuickAction(
+                            icon: Icons.add_home_rounded,
+                            label: 'Thêm phòng',
+                            color: AppColors.emerald,
+                            onTap: () =>
+                                context.push('/properties/new'),
+                          ),
+                        ],
                       ),
-                    ),
-                    const SizedBox(height: 12),
-                    _ActivityItem(
-                      icon: Icons.bookmark_add_outlined,
-                      iconColor: AppColors.oceanMid,
-                      iconBg: AppColors.oceanLight,
-                      title: 'Booking mới — Phòng 201',
-                      subtitle: 'Nguyễn Thị Lan · 2 đêm · 19–21/3',
-                      time: '2p',
-                    ),
-                    const SizedBox(height: 8),
-                    _ActivityItem(
-                      icon: Icons.check_circle_outline,
-                      iconColor: AppColors.emerald,
-                      iconBg: AppColors.emeraldLight,
-                      title: 'Check-in — Phòng 305',
-                      subtitle: 'Trần Văn Nam · Đã xác nhận',
-                      time: '15p',
-                    ),
-                  ],
-                ).animate(delay: 300.ms).fadeIn(duration: 400.ms),
-              ),
+                    ],
+                  ),
+                ),
 
-              const SizedBox(height: 24),
+                const SizedBox(height: 28),
 
-              // ── Today's bookings ────────────────────────────────────
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 20),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'BOOKING HÔM NAY',
-                      style: GoogleFonts.beVietnamPro(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w700,
-                        color: AppColors.navy,
-                        letterSpacing: 0.8,
+                // ── Booking hôm nay ─────────────────────────────────────
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Expanded(
+                              child: _SectionLabel('BOOKING HÔM NAY')),
+                          GestureDetector(
+                            onTap: () => context.go('/bookings'),
+                            child: Text(
+                              'Xem tất cả →',
+                              style: GoogleFonts.beVietnamPro(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w600,
+                                color: AppColors.oceanMid,
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
-                    ),
-                    const SizedBox(height: 12),
-                    _BookingItem(
-                      initials: '🏠',
-                      name: 'Nguyễn Văn An',
-                      meta: 'P.101 · Deluxe · 2 khách',
-                      status: 'Đã xác nhận',
-                      statusColor: AppColors.emerald,
-                      statusBg: AppColors.emeraldLight,
-                      price: '1.800.000đ',
-                    ),
-                    const SizedBox(height: 8),
-                    _BookingItem(
-                      initials: '🌊',
-                      name: 'Trần Thị Bích',
-                      meta: 'P.203 · Ocean View · 3 khách',
-                      status: 'Giữ chỗ',
-                      statusColor: AppColors.brownDark,
-                      statusBg: AppColors.goldLight,
-                      price: '2.400.000đ',
-                    ),
-                  ],
-                ).animate(delay: 400.ms).fadeIn(duration: 400.ms),
-              ),
+                      const SizedBox(height: 12),
+                      _BookingItem(
+                        initials: '🏠',
+                        name: 'Nguyễn Văn An',
+                        meta: 'P.101 · Deluxe · 2 khách',
+                        status: 'Đã xác nhận',
+                        statusColor: AppColors.emerald,
+                        statusBg: AppColors.emeraldLight,
+                        price: '1.800.000đ',
+                      ),
+                      const SizedBox(height: 10),
+                      _BookingItem(
+                        initials: '🌊',
+                        name: 'Trần Thị Bích',
+                        meta: 'P.203 · Ocean View · 3 khách',
+                        status: 'Giữ chỗ',
+                        statusColor: AppColors.brownDark,
+                        statusBg: AppColors.goldLight,
+                        price: '2.400.000đ',
+                      ),
+                    ],
+                  ),
+                ),
 
-              const SizedBox(height: 100),
-            ],
+                const SizedBox(height: 28),
+
+                // ── Hoạt động gần đây ─────────────────────────────────
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      _SectionLabel('HOẠT ĐỘNG GẦN ĐÂY'),
+                      const SizedBox(height: 12),
+                      _ActivityItem(
+                        icon: Icons.bookmark_add_outlined,
+                        iconColor: AppColors.oceanMid,
+                        iconBg: AppColors.oceanLight,
+                        title: 'Booking mới — Phòng 201',
+                        subtitle: 'Nguyễn Thị Lan · 2 đêm · 19–21/3',
+                        time: '2 phút trước',
+                      ),
+                      _ActivityItem(
+                        icon: Icons.check_circle_outline,
+                        iconColor: AppColors.emerald,
+                        iconBg: AppColors.emeraldLight,
+                        title: 'Check-in — Phòng 305',
+                        subtitle: 'Trần Văn Nam · Đã xác nhận',
+                        time: '15 phút trước',
+                        isLast: true,
+                      ),
+                    ],
+                  ),
+                ),
+
+                const SizedBox(height: 100),
+              ],
+            ),
           ),
         ),
+      ),
+    );
+  }
+}
+
+// ─── Section Label ─────────────────────────────────────────────────────────────
+class _SectionLabel extends StatelessWidget {
+  final String text;
+  const _SectionLabel(this.text);
+
+  @override
+  Widget build(BuildContext context) {
+    return Text(
+      text,
+      style: GoogleFonts.beVietnamPro(
+        fontSize: 11,
+        fontWeight: FontWeight.w600,
+        color: AppColors.muted,
+        letterSpacing: 1.2,
       ),
     );
   }
@@ -278,132 +289,137 @@ class _DashHeader extends StatelessWidget {
 
     return Container(
       padding: EdgeInsets.only(
-        top: MediaQuery.of(context).padding.top,
-        bottom: 44,
+        top: MediaQuery.of(context).padding.top + 8,
+        left: 20,
+        right: 20,
+        bottom: 32,
       ),
       decoration: BoxDecoration(
         gradient: LinearGradient(
-          begin: const Alignment(-0.4, -1),
-          end: const Alignment(0.4, 1),
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
           colors: isDark
               ? [AppColors.darkGradientStart, AppColors.darkGradientEnd]
               : [AppColors.oceanDeep, AppColors.ocean],
         ),
       ),
       child: Stack(
+        clipBehavior: Clip.none,
         children: [
-          // Decorative circle
           Positioned(
-            right: -40,
-            top: -60,
+            right: -50,
+            top: -40,
             child: Container(
-              width: 200,
-              height: 200,
+              width: 180,
+              height: 180,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                color: AppColors.teal.withValues(alpha: 0.12),
+                color: AppColors.teal.withValues(alpha: 0.10),
               ),
             ),
           ),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 20),
-            child: Column(
-              children: [
-                const SizedBox(height: 12),
-                // Date + Notification + Avatar
-                Row(
+          Positioned(
+            left: -30,
+            bottom: -40,
+            child: Container(
+              width: 110,
+              height: 110,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: AppColors.gold.withValues(alpha: 0.08),
+              ),
+            ),
+          ),
+          Row(
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            formattedDate,
-                            style: GoogleFonts.beVietnamPro(
-                              fontSize: 12,
-                              color: Colors.white.withValues(alpha: 0.7),
-                            ),
-                          ),
-                          const SizedBox(height: 4),
-                          Text(
-                            'Xin chào, $userName 👋',
-                            style: GoogleFonts.beVietnamPro(
-                              fontSize: 16,
-                              fontWeight: FontWeight.w700,
-                              color: Colors.white,
-                            ),
-                          ),
-                        ],
+                    Text(
+                      formattedDate,
+                      style: GoogleFonts.beVietnamPro(
+                        fontSize: 11,
+                        color: Colors.white.withValues(alpha: 0.6),
+                        letterSpacing: 0.3,
                       ),
                     ),
-                    // Notification bell
-                    GestureDetector(
-                      onTap: () => context.push('/notifications'),
-                      child: Stack(
-                        children: [
-                          Container(
-                            width: 38,
-                            height: 38,
-                            decoration: BoxDecoration(
-                              shape: BoxShape.circle,
-                              color: Colors.white.withValues(alpha: 0.12),
-                            ),
-                            child: const Icon(
-                              Icons.notifications_outlined,
-                              color: Colors.white,
-                              size: 20,
-                            ),
-                          ),
-                          Positioned(
-                            top: 8,
-                            right: 8,
-                            child: Container(
-                              width: 8,
-                              height: 8,
-                              decoration: BoxDecoration(
-                                color: AppColors.gold,
-                                shape: BoxShape.circle,
-                                border: Border.all(
-                                  color: AppColors.ocean,
-                                  width: 2,
-                                ),
-                              ),
-                            ),
-                          ),
-                        ],
+                    const SizedBox(height: 3),
+                    Text(
+                      'Xin chào, $userName 👋',
+                      style: GoogleFonts.beVietnamPro(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w700,
+                        color: Colors.white,
                       ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                     ),
-                    const SizedBox(width: 8),
-                    // Avatar
-                    GestureDetector(
-                      onTap: () => context.push('/profile'),
+                  ],
+                ),
+              ),
+              // Notification
+              GestureDetector(
+                onTap: () => context.push('/notifications'),
+                child: Stack(
+                  children: [
+                    Container(
+                      width: 40,
+                      height: 40,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: Colors.white.withValues(alpha: 0.12),
+                        border: Border.all(
+                            color: Colors.white.withValues(alpha: 0.15)),
+                      ),
+                      child: const Icon(Icons.notifications_outlined,
+                          color: Colors.white, size: 20),
+                    ),
+                    Positioned(
+                      top: 7,
+                      right: 7,
                       child: Container(
-                        width: 38,
-                        height: 38,
-                        decoration: const BoxDecoration(
+                        width: 8,
+                        height: 8,
+                        decoration: BoxDecoration(
+                          color: AppColors.gold,
                           shape: BoxShape.circle,
-                          gradient: LinearGradient(
-                            colors: [AppColors.teal, AppColors.gold],
-                          ),
-                        ),
-                        child: Center(
-                          child: Text(
-                            userName.isNotEmpty
-                                ? userName[0].toUpperCase()
-                                : 'U',
-                            style: GoogleFonts.beVietnamPro(
-                              color: Colors.white,
-                              fontWeight: FontWeight.w700,
-                              fontSize: 13,
-                            ),
-                          ),
+                          border:
+                              Border.all(color: AppColors.ocean, width: 1.5),
                         ),
                       ),
                     ),
                   ],
                 ),
-              ],
-            ),
+              ),
+              const SizedBox(width: 10),
+              // Avatar
+              GestureDetector(
+                onTap: () => context.push('/profile'),
+                child: Container(
+                  width: 40,
+                  height: 40,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    gradient: const LinearGradient(
+                        colors: [AppColors.teal, AppColors.gold]),
+                    border: Border.all(
+                        color: Colors.white.withValues(alpha: 0.3),
+                        width: 1.5),
+                  ),
+                  child: Center(
+                    child: Text(
+                      userName.isNotEmpty ? userName[0].toUpperCase() : 'U',
+                      style: GoogleFonts.beVietnamPro(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w700,
+                        fontSize: 15,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ],
           ),
         ],
       ),
@@ -415,63 +431,85 @@ class _DashHeader extends StatelessWidget {
 class _KpiCard extends StatelessWidget {
   final String label;
   final String value;
-  final String delta;
-  final bool deltaUp;
-  final Color? valueColor;
+  final String sub;
+  final Color accentColor;
+  final IconData icon;
 
   const _KpiCard({
     required this.label,
     required this.value,
-    required this.delta,
-    required this.deltaUp,
-    this.valueColor,
+    required this.sub,
+    required this.accentColor,
+    required this.icon,
   });
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(AppRadius.lg),
+        color: isDark ? AppColors.darkContainer : Colors.white,
+        borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: AppColors.ocean.withValues(alpha: 0.1),
-            blurRadius: 16,
+            color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.06),
+            blurRadius: 12,
             offset: const Offset(0, 4),
           ),
         ],
-        border: Border.all(
-          color: Colors.white.withValues(alpha: 0.8),
-        ),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            label,
-            style: GoogleFonts.beVietnamPro(
-              fontSize: 11,
-              color: AppColors.muted,
-              fontWeight: FontWeight.w500,
-              letterSpacing: 0.5,
-            ),
+          Row(
+            children: [
+              Container(
+                width: 32,
+                height: 32,
+                decoration: BoxDecoration(
+                  color: accentColor.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Icon(icon, color: accentColor, size: 17),
+              ),
+              const Spacer(),
+              Container(
+                width: 4,
+                height: 24,
+                decoration: BoxDecoration(
+                  color: accentColor.withValues(alpha: 0.3),
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+            ],
           ),
-          const SizedBox(height: 4),
+          const SizedBox(height: 12),
           Text(
             value,
             style: GoogleFonts.beVietnamPro(
-              fontSize: 22,
-              fontWeight: FontWeight.w700,
-              color: valueColor ?? AppColors.navy,
+              fontSize: 26,
+              fontWeight: FontWeight.w800,
+              color: accentColor,
+              height: 1,
             ),
           ),
           const SizedBox(height: 4),
           Text(
-            delta,
+            label,
+            style: GoogleFonts.beVietnamPro(
+              fontSize: 13,
+              fontWeight: FontWeight.w500,
+              color: isDark ? AppColors.darkOnSurface : AppColors.navy,
+            ),
+          ),
+          const SizedBox(height: 2),
+          Text(
+            sub,
             style: GoogleFonts.beVietnamPro(
               fontSize: 11,
-              color: deltaUp ? AppColors.emerald : AppColors.coral,
+              color: AppColors.slate,
             ),
           ),
         ],
@@ -484,123 +522,138 @@ class _KpiCard extends StatelessWidget {
 class _RevenueCard extends StatelessWidget {
   final double monthlyRevenue;
   final double todayRevenue;
+  final DateTime now;
 
   const _RevenueCard({
     required this.monthlyRevenue,
     required this.todayRevenue,
+    required this.now,
   });
 
   @override
   Widget build(BuildContext context) {
-    final now = DateTime.now();
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return Container(
-      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(AppRadius.lg),
+        borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: AppColors.ocean.withValues(alpha: 0.1),
+            color: AppColors.emerald.withValues(alpha: isDark ? 0.15 : 0.12),
             blurRadius: 16,
             offset: const Offset(0, 4),
           ),
         ],
-        border: Border.all(
-          color: Colors.white.withValues(alpha: 0.8),
-        ),
       ),
-      child: Row(
-        children: [
-          // Doanh thu tháng
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'DOANH THU THÁNG ${now.month}',
-                  style: GoogleFonts.beVietnamPro(
-                    fontSize: 11,
-                    color: AppColors.muted,
-                    fontWeight: FontWeight.w500,
-                    letterSpacing: 0.5,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  AppHelpers.formatPriceOrDash(monthlyRevenue),
-                  style: GoogleFonts.beVietnamPro(
-                    fontSize: 28,
-                    fontWeight: FontWeight.w700,
-                    color: AppColors.emerald,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  'Tháng ${now.month}/${now.year}',
-                  style: GoogleFonts.beVietnamPro(
-                    fontSize: 11,
-                    color: AppColors.emerald,
-                  ),
-                ),
-              ],
-            ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(16),
+        child: Container(
+          decoration: BoxDecoration(
+            color: isDark ? AppColors.darkContainer : Colors.white,
           ),
-          // Hôm nay
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.end,
+          child: Stack(
             children: [
-              Text(
-                'HÔM NAY',
-                style: GoogleFonts.beVietnamPro(
-                  fontSize: 11,
-                  color: AppColors.muted,
-                  fontWeight: FontWeight.w500,
-                  letterSpacing: 0.5,
+              // Green accent left strip
+              Positioned(
+                left: 0,
+                top: 0,
+                bottom: 0,
+                child: Container(
+                  width: 4,
+                  decoration: const BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                      colors: [AppColors.emerald, AppColors.teal],
+                    ),
+                  ),
                 ),
               ),
-              const SizedBox(height: 4),
-              todayRevenue == 0
-                  ? Text(
-                      AppHelpers.formatPriceOrDash(todayRevenue),
-                      style: GoogleFonts.beVietnamPro(
-                        fontSize: 22,
-                        fontWeight: FontWeight.w700,
-                        color: AppColors.oceanMid,
-                      ),
-                    )
-                  : Text.rich(
-                      TextSpan(
+              Padding(
+                padding: const EdgeInsets.fromLTRB(20, 16, 16, 16),
+                child: Row(
+                  children: [
+                    // Monthly revenue
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          TextSpan(
-                            text: AppHelpers.formatPrice(todayRevenue),
+                          Text(
+                            'DOANH THU THÁNG ${now.month}',
                             style: GoogleFonts.beVietnamPro(
-                              fontSize: 22,
-                              fontWeight: FontWeight.w700,
-                              color: AppColors.oceanMid,
+                              fontSize: 10,
+                              fontWeight: FontWeight.w600,
+                              color: AppColors.muted,
+                              letterSpacing: 1.0,
                             ),
                           ),
-                          TextSpan(
-                            text: 'tr',
+                          const SizedBox(height: 6),
+                          Text(
+                            AppHelpers.formatPriceOrDash(monthlyRevenue),
                             style: GoogleFonts.beVietnamPro(
-                              fontSize: 13,
-                              fontWeight: FontWeight.w600,
-                              color: AppColors.oceanMid,
+                              fontSize: 28,
+                              fontWeight: FontWeight.w800,
+                              color: AppColors.emerald,
+                              height: 1,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            'Tháng ${now.month}/${now.year}',
+                            style: GoogleFonts.beVietnamPro(
+                              fontSize: 11,
+                              color: AppColors.slate,
                             ),
                           ),
                         ],
                       ),
                     ),
-              const SizedBox(height: 4),
-              Text(
-                'Hôm nay',
-                style: GoogleFonts.beVietnamPro(
-                  fontSize: 11,
-                  color: AppColors.muted,
+                    // Divider
+                    Container(
+                      width: 1,
+                      height: 52,
+                      color: AppColors.border,
+                      margin: const EdgeInsets.symmetric(horizontal: 16),
+                    ),
+                    // Today revenue
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.end,
+                      children: [
+                        Text(
+                          'HÔM NAY',
+                          style: GoogleFonts.beVietnamPro(
+                            fontSize: 10,
+                            fontWeight: FontWeight.w600,
+                            color: AppColors.muted,
+                            letterSpacing: 1.0,
+                          ),
+                        ),
+                        const SizedBox(height: 6),
+                        Text(
+                          AppHelpers.formatPriceOrDash(todayRevenue),
+                          style: GoogleFonts.beVietnamPro(
+                            fontSize: 22,
+                            fontWeight: FontWeight.w700,
+                            color: AppColors.oceanMid,
+                            height: 1,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          'Thu hôm nay',
+                          style: GoogleFonts.beVietnamPro(
+                            fontSize: 11,
+                            color: AppColors.slate,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
                 ),
               ),
             ],
           ),
-        ],
+        ),
       ),
     );
   }
@@ -610,46 +663,67 @@ class _RevenueCard extends StatelessWidget {
 class _QuickAction extends StatelessWidget {
   final IconData icon;
   final String label;
-  final Color bgColor;
-  final Color iconColor;
+  final Color color;
   final VoidCallback onTap;
 
   const _QuickAction({
     required this.icon,
     required this.label,
-    required this.bgColor,
-    required this.iconColor,
+    required this.color,
     required this.onTap,
   });
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return Expanded(
       child: GestureDetector(
         onTap: onTap,
-        child: Column(
-          children: [
-            Container(
-              width: 52,
-              height: 52,
-              decoration: BoxDecoration(
-                color: bgColor,
-                borderRadius: BorderRadius.circular(AppRadius.md),
-              ),
-              child: Icon(icon, color: iconColor, size: 22),
+        child: Container(
+          padding: const EdgeInsets.symmetric(vertical: 14),
+          decoration: BoxDecoration(
+            color: isDark ? AppColors.darkContainer : Colors.white,
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(
+              color: isDark
+                  ? AppColors.darkBorder
+                  : color.withValues(alpha: 0.15),
             ),
-            const SizedBox(height: 6),
-            Text(
-              label,
-              style: GoogleFonts.beVietnamPro(
-                fontSize: 11,
-                color: AppColors.muted,
-                fontWeight: FontWeight.w500,
+            boxShadow: [
+              BoxShadow(
+                color: color.withValues(alpha: isDark ? 0.08 : 0.08),
+                blurRadius: 8,
+                offset: const Offset(0, 3),
               ),
-              textAlign: TextAlign.center,
-              maxLines: 2,
-            ),
-          ],
+            ],
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 44,
+                height: 44,
+                decoration: BoxDecoration(
+                  color: color.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Icon(icon, color: color, size: 22),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                label,
+                style: GoogleFonts.beVietnamPro(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w600,
+                  color: isDark ? AppColors.darkOnSurface : AppColors.navy,
+                  height: 1.2,
+                ),
+                textAlign: TextAlign.center,
+                maxLines: 2,
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -664,6 +738,7 @@ class _ActivityItem extends StatelessWidget {
   final String title;
   final String subtitle;
   final String time;
+  final bool isLast;
 
   const _ActivityItem({
     required this.icon,
@@ -672,63 +747,76 @@ class _ActivityItem extends StatelessWidget {
     required this.title,
     required this.subtitle,
     required this.time,
+    this.isLast = false,
   });
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(AppRadius.md),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.04),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    return IntrinsicHeight(
       child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Container(
-            width: 40,
-            height: 40,
-            decoration: BoxDecoration(
-              color: iconBg,
-              borderRadius: BorderRadius.circular(AppRadius.sm),
-            ),
-            child: Icon(icon, color: iconColor, size: 20),
+          // Timeline
+          Column(
+            children: [
+              Container(
+                width: 36,
+                height: 36,
+                decoration: BoxDecoration(
+                  color: iconBg,
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Icon(icon, color: iconColor, size: 18),
+              ),
+              if (!isLast)
+                Expanded(
+                  child: Container(
+                    width: 1.5,
+                    margin: const EdgeInsets.symmetric(vertical: 4),
+                    color: AppColors.border,
+                  ),
+                ),
+            ],
           ),
           const SizedBox(width: 12),
+          // Content
           Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  title,
-                  style: GoogleFonts.beVietnamPro(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w600,
-                    color: AppColors.navy,
+            child: Padding(
+              padding: EdgeInsets.only(bottom: isLast ? 0 : 14),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const SizedBox(height: 2),
+                  Text(
+                    title,
+                    style: GoogleFonts.beVietnamPro(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      color: isDark
+                          ? AppColors.darkOnSurface
+                          : AppColors.navy,
+                    ),
                   ),
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  subtitle,
-                  style: GoogleFonts.beVietnamPro(
-                    fontSize: 12,
-                    color: AppColors.muted,
+                  const SizedBox(height: 2),
+                  Text(
+                    subtitle,
+                    style: GoogleFonts.beVietnamPro(
+                      fontSize: 12,
+                      color: AppColors.muted,
+                    ),
                   ),
-                ),
-              ],
-            ),
-          ),
-          Text(
-            time,
-            style: GoogleFonts.beVietnamPro(
-              fontSize: 12,
-              color: AppColors.muted,
+                  const SizedBox(height: 4),
+                  Text(
+                    time,
+                    style: GoogleFonts.beVietnamPro(
+                      fontSize: 11,
+                      color: AppColors.slate,
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
         ],
@@ -759,90 +847,111 @@ class _BookingItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return Container(
-      padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(AppRadius.md),
+        color: isDark ? AppColors.darkContainer : Colors.white,
+        borderRadius: BorderRadius.circular(14),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.04),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
+            color: Colors.black.withValues(alpha: isDark ? 0.15 : 0.05),
+            blurRadius: 10,
+            offset: const Offset(0, 3),
           ),
         ],
       ),
-      child: Row(
-        children: [
-          // Room thumbnail
-          Container(
-            width: 44,
-            height: 44,
-            decoration: BoxDecoration(
-              color: AppColors.oceanLight,
-              borderRadius: BorderRadius.circular(AppRadius.sm),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(14),
+        child: Row(
+          children: [
+            // Left status stripe
+            Container(
+              width: 4,
+              height: 64,
+              color: statusColor,
             ),
-            child: Center(
-              child: Text(initials, style: const TextStyle(fontSize: 18)),
+            const SizedBox(width: 12),
+            // Emoji avatar
+            Container(
+              width: 42,
+              height: 42,
+              decoration: BoxDecoration(
+                color: statusBg,
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Center(
+                child: Text(initials,
+                    style: const TextStyle(fontSize: 20)),
+              ),
             ),
-          ),
-          const SizedBox(width: 12),
-          // Info
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  name,
-                  style: GoogleFonts.beVietnamPro(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w600,
-                    color: AppColors.navy,
-                  ),
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  meta,
-                  style: GoogleFonts.beVietnamPro(
-                    fontSize: 12,
-                    color: AppColors.muted,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          // Status + Price
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.end,
-            children: [
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                decoration: BoxDecoration(
-                  color: statusBg,
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                child: Text(
-                  status,
-                  style: GoogleFonts.beVietnamPro(
-                    fontSize: 10,
-                    fontWeight: FontWeight.w600,
-                    color: statusColor,
-                    letterSpacing: 0.3,
-                  ),
+            const SizedBox(width: 12),
+            // Info
+            Expanded(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(vertical: 12),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      name,
+                      style: GoogleFonts.beVietnamPro(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                        color: isDark
+                            ? AppColors.darkOnSurface
+                            : AppColors.navy,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      meta,
+                      style: GoogleFonts.beVietnamPro(
+                        fontSize: 12,
+                        color: AppColors.muted,
+                      ),
+                    ),
+                  ],
                 ),
               ),
-              const SizedBox(height: 4),
-              Text(
-                price,
-                style: GoogleFonts.beVietnamPro(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w700,
-                  color: AppColors.ocean,
-                ),
+            ),
+            // Status + price
+            Padding(
+              padding: const EdgeInsets.only(right: 14),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 8, vertical: 3),
+                    decoration: BoxDecoration(
+                      color: statusBg,
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: Text(
+                      status,
+                      style: GoogleFonts.beVietnamPro(
+                        fontSize: 10,
+                        fontWeight: FontWeight.w700,
+                        color: statusColor,
+                        letterSpacing: 0.2,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 5),
+                  Text(
+                    price,
+                    style: GoogleFonts.beVietnamPro(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.ocean,
+                    ),
+                  ),
+                ],
               ),
-            ],
-          ),
-        ],
+            ),
+          ],
+        ),
       ),
     );
   }

@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
@@ -39,16 +38,103 @@ class _BookingListScreenState extends ConsumerState<BookingListScreen> {
     final colors = Theme.of(context).colorScheme;
 
     return AppScaffold(
-      title: 'Quản lý Booking',
+      title: '',
       selectedIndex: 1,
-      actions: [
-        IconButton(
-          icon: const Icon(Icons.refresh_rounded),
-          onPressed: () => ref.invalidate(bookingListProvider(null)),
-        ),
-      ],
+      showAppBar: false,
       body: Column(
         children: [
+          // ── Gradient header ──────────────────────────────────────────
+          Container(
+            width: double.infinity,
+            padding: EdgeInsets.only(
+              top: MediaQuery.of(context).padding.top + 8,
+              left: 20,
+              right: 20,
+              bottom: 24,
+            ),
+            decoration: const BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [AppColors.oceanDeep, AppColors.ocean],
+              ),
+            ),
+            child: Stack(
+              clipBehavior: Clip.none,
+              children: [
+                Positioned(
+                  right: -50,
+                  top: -40,
+                  child: Container(
+                    width: 160,
+                    height: 160,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: AppColors.teal.withValues(alpha: 0.10),
+                    ),
+                  ),
+                ),
+                Positioned(
+                  left: -30,
+                  bottom: -40,
+                  child: Container(
+                    width: 100,
+                    height: 100,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: AppColors.gold.withValues(alpha: 0.08),
+                    ),
+                  ),
+                ),
+                Row(
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Quản lý Booking',
+                            style: GoogleFonts.beVietnamPro(
+                              fontSize: 20,
+                              fontWeight: FontWeight.w700,
+                              color: Colors.white,
+                            ),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            'Theo dõi và xử lý đặt phòng',
+                            style: GoogleFonts.beVietnamPro(
+                              fontSize: 12,
+                              color: Colors.white.withValues(alpha: 0.65),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    GestureDetector(
+                      onTap: () => ref.invalidate(bookingListProvider(null)),
+                      child: Container(
+                        width: 38,
+                        height: 38,
+                        decoration: BoxDecoration(
+                          color: Colors.white.withValues(alpha: 0.12),
+                          shape: BoxShape.circle,
+                          border: Border.all(
+                              color: Colors.white.withValues(alpha: 0.15)),
+                        ),
+                        child: const Icon(
+                          Icons.refresh_rounded,
+                          color: Colors.white,
+                          size: 18,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+
           // ── Status filter chips ──────────────────────────────────────
           SizedBox(
             height: 48,
@@ -442,9 +528,6 @@ class _BookingCardState extends ConsumerState<_BookingCard> {
           ],
         ),
       ),
-    )
-        .animate(delay: Duration(milliseconds: widget.index * 60))
-        .fadeIn(duration: 300.ms)
-        .slideY(begin: 0.05, end: 0);
+    );
   }
 }

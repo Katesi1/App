@@ -428,42 +428,85 @@ class _RoomListScreenState extends ConsumerState<RoomListScreen>
             SliverToBoxAdapter(
               child: Container(
                 padding: EdgeInsets.only(
-                  top: MediaQuery.of(context).padding.top + 14,
+                  top: MediaQuery.of(context).padding.top + 8,
                   left: 20,
                   right: 20,
+                  bottom: 4,
                 ),
                 decoration: const BoxDecoration(
                   gradient: LinearGradient(
-                    begin: Alignment(-0.4, -1),
-                    end: Alignment(0.4, 1),
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
                     colors: [AppColors.oceanDeep, AppColors.ocean],
                   ),
                 ),
                 child: Column(
                   children: [
-                    Row(
+                    Stack(
+                      clipBehavior: Clip.none,
                       children: [
-                        Expanded(
-                          child: Text(
-                            'Danh sách phòng',
-                            style: GoogleFonts.beVietnamPro(
-                              fontSize: 17,
-                              fontWeight: FontWeight.w700,
-                              color: Colors.white,
+                        Positioned(
+                          right: -50,
+                          top: -40,
+                          child: Container(
+                            width: 140,
+                            height: 140,
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              color: AppColors.teal.withValues(alpha: 0.10),
                             ),
                           ),
                         ),
-                        _HeaderIconBtn(
-                          icon: _isSearching
-                              ? Icons.close_rounded
-                              : Icons.search_rounded,
-                          onTap: _toggleSearch,
+                        Positioned(
+                          left: -30,
+                          bottom: -30,
+                          child: Container(
+                            width: 90,
+                            height: 90,
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              color: AppColors.gold.withValues(alpha: 0.08),
+                            ),
+                          ),
                         ),
-                        const SizedBox(width: 8),
-                        _HeaderIconBtn(
-                          icon: Icons.filter_list_rounded,
-                          badge: _hasActiveFilters,
-                          onTap: _showFilterSheet,
+                        Row(
+                          children: [
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    'Danh sách phòng',
+                                    style: GoogleFonts.beVietnamPro(
+                                      fontSize: 20,
+                                      fontWeight: FontWeight.w700,
+                                      color: Colors.white,
+                                    ),
+                                  ),
+                                  Text(
+                                    'Villa · Homestay · Khách sạn',
+                                    style: GoogleFonts.beVietnamPro(
+                                      fontSize: 12,
+                                      color: Colors.white
+                                          .withValues(alpha: 0.65),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            _HeaderIconBtn(
+                              icon: _isSearching
+                                  ? Icons.close_rounded
+                                  : Icons.search_rounded,
+                              onTap: _toggleSearch,
+                            ),
+                            const SizedBox(width: 8),
+                            _HeaderIconBtn(
+                              icon: Icons.filter_list_rounded,
+                              badge: _hasActiveFilters,
+                              onTap: _showFilterSheet,
+                            ),
+                          ],
                         ),
                       ],
                     ),

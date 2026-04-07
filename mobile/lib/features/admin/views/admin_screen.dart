@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -24,316 +23,394 @@ class AdminScreen extends ConsumerWidget {
     final bookingsAsync = ref.watch(bookingListProvider(null));
 
     return AppScaffold(
-      title: 'Quản lý',
+      title: '',
       selectedIndex: 4,
-      body: RefreshIndicator(
-        color: AppColors.ocean,
-        onRefresh: () async {
-          ref.invalidate(userListProvider(null));
-          ref.invalidate(homestayListProvider);
-          ref.invalidate(roomListProvider(null));
-          ref.invalidate(bookingListProvider(null));
-        },
-        child: ListView(
-          padding: const EdgeInsets.all(20),
-          children: [
-
-            // ── Summary KPI Cards (2x2) ─────────────────
-            Row(
-              children: [
-                Expanded(
-                  child: _KpiCard(
-                    icon: Icons.people_rounded,
-                    iconBg: AppColors.oceanLight,
-                    iconColor: AppColors.ocean,
-                    label: 'Nhân viên',
-                    asyncValue: usersAsync.whenData(
-                      (users) => '${users.length}',
-                    ),
-                    sub: usersAsync.whenOrNull(
-                          data: (users) =>
-                              '${users.where((u) => u.isActive).length} hoạt động',
-                        ) ??
-                        '',
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: _KpiCard(
-                    icon: Icons.home_work_rounded,
-                    iconBg: AppColors.tealLight,
-                    iconColor: AppColors.teal,
-                    label: 'Homestay',
-                    asyncValue: homestaysAsync.whenData(
-                      (list) => '${list.length}',
-                    ),
-                    sub: 'Cơ sở lưu trú',
-                  ),
-                ),
-              ],
-            ).animate().fadeIn(duration: 300.ms).slideY(
-                  begin: 0.1,
-                  end: 0,
-                ),
-
-            const SizedBox(height: 12),
-
-            Row(
-              children: [
-                Expanded(
-                  child: _KpiCard(
-                    icon: Icons.apartment_rounded,
-                    iconBg: AppColors.emeraldLight,
-                    iconColor: AppColors.emerald,
-                    label: 'Phòng',
-                    asyncValue: roomsAsync.whenData(
-                      (rooms) => '${rooms.length}',
-                    ),
-                    sub: roomsAsync.whenOrNull(
-                          data: (rooms) =>
-                              '${rooms.where((r) => r.isActive).length} hoạt động',
-                        ) ??
-                        '',
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: _KpiCard(
-                    icon: Icons.book_rounded,
-                    iconBg: AppColors.goldLight,
-                    iconColor: AppColors.gold,
-                    label: 'Booking',
-                    asyncValue: bookingsAsync.whenData(
-                      (list) => '${list.length}',
-                    ),
-                    sub: 'Tổng đặt phòng',
-                  ),
-                ),
-              ],
-            ).animate(delay: 100.ms).fadeIn(duration: 300.ms).slideY(
-                  begin: 0.1,
-                  end: 0,
-                ),
-
-            const SizedBox(height: 28),
-
-            // ── Quản lý Section ─────────────────────────
-            Text(
-              'QUẢN LÝ HỆ THỐNG',
-              style: GoogleFonts.beVietnamPro(
-                fontSize: 11,
-                fontWeight: FontWeight.w600,
-                color: AppColors.muted,
-                letterSpacing: 1.2,
+      showAppBar: false,
+      body: Column(
+        children: [
+          // ── Gradient header ──────────────────────────────────────
+          Container(
+            width: double.infinity,
+            padding: EdgeInsets.only(
+              top: MediaQuery.of(context).padding.top + 8,
+              left: 20,
+              right: 20,
+              bottom: 24,
+            ),
+            decoration: const BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [AppColors.oceanDeep, AppColors.ocean],
               ),
             ),
-            const SizedBox(height: 12),
-
-            _MenuCard(
-              icon: Icons.people_rounded,
-              iconBg: AppColors.oceanLight,
-              iconColor: AppColors.ocean,
-              title: 'Quản lý nhân viên',
-              subtitle: 'Thêm, sửa, vô hiệu hoá tài khoản',
-              trailing: usersAsync.whenOrNull(
-                data: (users) => '${users.length} người',
-              ),
-              onTap: () => context.push('/admin/users'),
-            ).animate(delay: 200.ms).fadeIn(duration: 300.ms).slideX(
-                  begin: 0.05,
-                  end: 0,
-                ),
-
-            const SizedBox(height: 10),
-
-            _MenuCard(
-              icon: Icons.home_work_rounded,
-              iconBg: AppColors.tealLight,
-              iconColor: AppColors.teal,
-              title: 'Quản lý phòng',
-              subtitle: 'Villa, Homestay, Khách sạn',
-              trailing: roomsAsync.whenOrNull(
-                data: (rooms) => '${rooms.length} phòng',
-              ),
-              onTap: () => context.push('/admin/rooms'),
-            ).animate(delay: 250.ms).fadeIn(duration: 300.ms).slideX(
-                  begin: 0.05,
-                  end: 0,
-                ),
-
-            const SizedBox(height: 10),
-
-            _MenuCard(
-              icon: Icons.book_rounded,
-              iconBg: AppColors.goldLight,
-              iconColor: AppColors.gold,
-              title: 'Quản lý booking',
-              subtitle: 'Xem, xác nhận, huỷ đặt phòng',
-              trailing: bookingsAsync.whenOrNull(
-                data: (list) => '${list.length} booking',
-              ),
-              onTap: () => context.push('/bookings'),
-            ).animate(delay: 300.ms).fadeIn(duration: 300.ms).slideX(
-                  begin: 0.05,
-                  end: 0,
-                ),
-
-            const SizedBox(height: 10),
-
-            _MenuCard(
-              icon: Icons.calendar_month_rounded,
-              iconBg: AppColors.emeraldLight,
-              iconColor: AppColors.emerald,
-              title: 'Lịch phòng',
-              subtitle: 'Quản lý lịch lock/mở phòng của chủ nhà',
-              onTap: () => context.push('/admin/owner-calendar'),
-            ).animate(delay: 350.ms).fadeIn(duration: 300.ms).slideX(
-                  begin: 0.05,
-                  end: 0,
-                ),
-
-            const SizedBox(height: 10),
-
-            _MenuCard(
-              icon: Icons.bar_chart_rounded,
-              iconBg: AppColors.amberLight,
-              iconColor: AppColors.amber,
-              title: 'Báo cáo thống kê',
-              subtitle: 'Xem báo cáo doanh thu, tỷ lệ lấp đầy',
-              onTap: () => context.go('/reports'),
-            ).animate(delay: 400.ms).fadeIn(duration: 300.ms).slideX(
-                  begin: 0.05,
-                  end: 0,
-                ),
-
-            const SizedBox(height: 28),
-
-            // ── Quick Actions ───────────────────────────
-            Text(
-              'THAO TÁC NHANH',
-              style: GoogleFonts.beVietnamPro(
-                fontSize: 11,
-                fontWeight: FontWeight.w600,
-                color: AppColors.muted,
-                letterSpacing: 1.2,
-              ),
-            ),
-            const SizedBox(height: 12),
-
-            Row(
+            child: Stack(
+              clipBehavior: Clip.none,
               children: [
-                Expanded(
-                  child: _QuickAction(
-                    icon: Icons.person_add_rounded,
-                    label: 'Thêm\nnhân viên',
-                    color: AppColors.ocean,
-                    onTap: () => context.push('/admin/users/new'),
+                Positioned(
+                  right: -50,
+                  top: -40,
+                  child: Container(
+                    width: 160,
+                    height: 160,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: AppColors.teal.withValues(alpha: 0.10),
+                    ),
                   ),
                 ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: _QuickAction(
-                    icon: Icons.add_home_work_rounded,
-                    label: 'Thêm\nphòng',
-                    color: AppColors.teal,
-                    onTap: () => context.push('/properties/new'),
+                Positioned(
+                  left: -30,
+                  bottom: -40,
+                  child: Container(
+                    width: 100,
+                    height: 100,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: AppColors.gold.withValues(alpha: 0.08),
+                    ),
                   ),
+                ),
+                Row(
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Quản lý hệ thống',
+                            style: GoogleFonts.beVietnamPro(
+                              fontSize: 20,
+                              fontWeight: FontWeight.w700,
+                              color: Colors.white,
+                            ),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            'Toàn quyền quản trị',
+                            style: GoogleFonts.beVietnamPro(
+                              fontSize: 12,
+                              color: Colors.white.withValues(alpha: 0.65),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    GestureDetector(
+                      onTap: () async {
+                        ref.invalidate(userListProvider(null));
+                        ref.invalidate(homestayListProvider);
+                        ref.invalidate(roomListProvider(null));
+                        ref.invalidate(bookingListProvider(null));
+                      },
+                      child: Container(
+                        width: 38,
+                        height: 38,
+                        decoration: BoxDecoration(
+                          color: Colors.white.withValues(alpha: 0.12),
+                          shape: BoxShape.circle,
+                          border: Border.all(
+                              color: Colors.white.withValues(alpha: 0.15)),
+                        ),
+                        child: const Icon(Icons.refresh_rounded,
+                            color: Colors.white, size: 18),
+                      ),
+                    ),
+                  ],
                 ),
               ],
-            ).animate(delay: 450.ms).fadeIn(duration: 300.ms),
-
-            const SizedBox(height: 28),
-
-            // ── Nhân viên gần đây ───────────────────────
-            Text(
-              'NHÂN VIÊN GẦN ĐÂY',
-              style: GoogleFonts.beVietnamPro(
-                fontSize: 11,
-                fontWeight: FontWeight.w600,
-                color: AppColors.muted,
-                letterSpacing: 1.2,
-              ),
             ),
-            const SizedBox(height: 12),
+          ),
 
-            usersAsync.when(
-              loading: () => const SizedBox(
-                height: 80,
-                child: Center(child: LoadingWidget()),
-              ),
-              error: (e, _) => ErrorStateWidget(
-                message: e.toString().replaceAll('Exception: ', ''),
-                onRetry: () => ref.invalidate(userListProvider(null)),
-              ),
-              data: (users) {
-                if (users.isEmpty) {
-                  return const EmptyStateWidget(
-                    icon: Icons.people_outline_rounded,
-                    message: 'Chưa có nhân viên',
-                  );
-                }
-                final recent = users.take(5).toList();
-                return Container(
-                  decoration: BoxDecoration(
-                    color: AppColors.surface,
-                    borderRadius:
-                        BorderRadius.circular(AppRadius.lg),
-                    boxShadow: [
-                      BoxShadow(
-                        color:
-                            Colors.black.withValues(alpha: 0.04),
-                        blurRadius: 8,
-                        offset: const Offset(0, 2),
+          // ── Content ──────────────────────────────────────────────
+          Expanded(
+            child: RefreshIndicator(
+              color: AppColors.ocean,
+              onRefresh: () async {
+                ref.invalidate(userListProvider(null));
+                ref.invalidate(homestayListProvider);
+                ref.invalidate(roomListProvider(null));
+                ref.invalidate(bookingListProvider(null));
+              },
+              child: ListView(
+                padding: const EdgeInsets.all(20),
+                children: [
+                  // ── Summary KPI Cards (2x2) ─────────────────
+                  Row(
+                    children: [
+                      Expanded(
+                        child: _KpiCard(
+                          icon: Icons.people_rounded,
+                          iconBg: AppColors.oceanLight,
+                          iconColor: AppColors.ocean,
+                          label: 'Nhân viên',
+                          asyncValue: usersAsync.whenData(
+                            (users) => '${users.length}',
+                          ),
+                          sub: usersAsync.whenOrNull(
+                                data: (users) =>
+                                    '${users.where((u) => u.isActive).length} hoạt động',
+                              ) ??
+                              '',
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: _KpiCard(
+                          icon: Icons.home_work_rounded,
+                          iconBg: AppColors.tealLight,
+                          iconColor: AppColors.teal,
+                          label: 'Homestay',
+                          asyncValue: homestaysAsync.whenData(
+                            (list) => '${list.length}',
+                          ),
+                          sub: 'Cơ sở lưu trú',
+                        ),
                       ),
                     ],
                   ),
-                  child: Column(
+
+                  const SizedBox(height: 12),
+
+                  Row(
                     children: [
-                      for (int i = 0; i < recent.length; i++) ...[
-                        if (i > 0)
-                          const Divider(
-                            height: 1,
-                            color: AppColors.border,
-                            indent: 60,
+                      Expanded(
+                        child: _KpiCard(
+                          icon: Icons.apartment_rounded,
+                          iconBg: AppColors.emeraldLight,
+                          iconColor: AppColors.emerald,
+                          label: 'Phòng',
+                          asyncValue: roomsAsync.whenData(
+                            (rooms) => '${rooms.length}',
                           ),
-                        _UserRow(
-                          user: recent[i],
-                          onTap: () => context.push(
-                            '/admin/users/${recent[i].id}/edit',
-                          ),
+                          sub: roomsAsync.whenOrNull(
+                                data: (rooms) =>
+                                    '${rooms.where((r) => r.isActive).length} hoạt động',
+                              ) ??
+                              '',
                         ),
-                      ],
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: _KpiCard(
+                          icon: Icons.book_rounded,
+                          iconBg: AppColors.goldLight,
+                          iconColor: AppColors.gold,
+                          label: 'Booking',
+                          asyncValue: bookingsAsync.whenData(
+                            (list) => '${list.length}',
+                          ),
+                          sub: 'Tổng đặt phòng',
+                        ),
+                      ),
                     ],
                   ),
-                );
-              },
-            ),
 
-            // ── View all button ─────────────────────────
-            usersAsync.whenOrNull(
-                  data: (users) => users.length > 5
-                      ? Padding(
-                          padding: const EdgeInsets.only(top: 8),
-                          child: TextButton(
-                            onPressed: () =>
-                                context.push('/admin/users'),
-                            child: Text(
-                              'Xem tất cả ${users.length} nhân viên →',
-                              style: GoogleFonts.beVietnamPro(
-                                fontSize: 13,
-                                fontWeight: FontWeight.w600,
-                                color: AppColors.ocean,
-                              ),
+                  const SizedBox(height: 28),
+
+                  // ── Quản lý Section ─────────────────────────
+                  Text(
+                    'QUẢN LÝ HỆ THỐNG',
+                    style: GoogleFonts.beVietnamPro(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.muted,
+                      letterSpacing: 1.2,
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+
+                  _MenuCard(
+                    icon: Icons.people_rounded,
+                    iconBg: AppColors.oceanLight,
+                    iconColor: AppColors.ocean,
+                    title: 'Quản lý nhân viên',
+                    subtitle: 'Thêm, sửa, vô hiệu hoá tài khoản',
+                    trailing: usersAsync.whenOrNull(
+                      data: (users) => '${users.length} người',
+                    ),
+                    onTap: () => context.push('/admin/users'),
+                  ),
+
+                  const SizedBox(height: 10),
+
+                  _MenuCard(
+                    icon: Icons.home_work_rounded,
+                    iconBg: AppColors.tealLight,
+                    iconColor: AppColors.teal,
+                    title: 'Quản lý phòng',
+                    subtitle: 'Villa, Homestay, Khách sạn',
+                    trailing: roomsAsync.whenOrNull(
+                      data: (rooms) => '${rooms.length} phòng',
+                    ),
+                    onTap: () => context.push('/admin/rooms'),
+                  ),
+
+                  const SizedBox(height: 10),
+
+                  _MenuCard(
+                    icon: Icons.book_rounded,
+                    iconBg: AppColors.goldLight,
+                    iconColor: AppColors.gold,
+                    title: 'Quản lý booking',
+                    subtitle: 'Xem, xác nhận, huỷ đặt phòng',
+                    trailing: bookingsAsync.whenOrNull(
+                      data: (list) => '${list.length} booking',
+                    ),
+                    onTap: () => context.push('/bookings'),
+                  ),
+
+                  const SizedBox(height: 10),
+
+                  _MenuCard(
+                    icon: Icons.calendar_month_rounded,
+                    iconBg: AppColors.emeraldLight,
+                    iconColor: AppColors.emerald,
+                    title: 'Lịch phòng',
+                    subtitle: 'Quản lý lịch lock/mở phòng của chủ nhà',
+                    onTap: () => context.push('/admin/owner-calendar'),
+                  ),
+
+                  const SizedBox(height: 10),
+
+                  _MenuCard(
+                    icon: Icons.bar_chart_rounded,
+                    iconBg: AppColors.amberLight,
+                    iconColor: AppColors.amber,
+                    title: 'Báo cáo thống kê',
+                    subtitle: 'Xem báo cáo doanh thu, tỷ lệ lấp đầy',
+                    onTap: () => context.go('/reports'),
+                  ),
+
+                  const SizedBox(height: 28),
+
+                  // ── Quick Actions ───────────────────────────
+                  Text(
+                    'THAO TÁC NHANH',
+                    style: GoogleFonts.beVietnamPro(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.muted,
+                      letterSpacing: 1.2,
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+
+                  Row(
+                    children: [
+                      Expanded(
+                        child: _QuickAction(
+                          icon: Icons.person_add_rounded,
+                          label: 'Thêm\nnhân viên',
+                          color: AppColors.ocean,
+                          onTap: () => context.push('/admin/users/new'),
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: _QuickAction(
+                          icon: Icons.add_home_work_rounded,
+                          label: 'Thêm\nphòng',
+                          color: AppColors.teal,
+                          onTap: () => context.push('/properties/new'),
+                        ),
+                      ),
+                    ],
+                  ),
+
+                  const SizedBox(height: 28),
+
+                  // ── Nhân viên gần đây ───────────────────────
+                  Text(
+                    'NHÂN VIÊN GẦN ĐÂY',
+                    style: GoogleFonts.beVietnamPro(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.muted,
+                      letterSpacing: 1.2,
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+
+                  usersAsync.when(
+                    loading: () => const SizedBox(
+                      height: 80,
+                      child: Center(child: LoadingWidget()),
+                    ),
+                    error: (e, _) => ErrorStateWidget(
+                      message: e.toString().replaceAll('Exception: ', ''),
+                      onRetry: () => ref.invalidate(userListProvider(null)),
+                    ),
+                    data: (users) {
+                      if (users.isEmpty) {
+                        return const EmptyStateWidget(
+                          icon: Icons.people_outline_rounded,
+                          message: 'Chưa có nhân viên',
+                        );
+                      }
+                      final recent = users.take(5).toList();
+                      return Container(
+                        decoration: BoxDecoration(
+                          color: AppColors.surface,
+                          borderRadius: BorderRadius.circular(AppRadius.lg),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withValues(alpha: 0.04),
+                              blurRadius: 8,
+                              offset: const Offset(0, 2),
                             ),
-                          ),
-                        )
-                      : const SizedBox.shrink(),
-                ) ??
-                const SizedBox.shrink(),
+                          ],
+                        ),
+                        child: Column(
+                          children: [
+                            for (int i = 0; i < recent.length; i++) ...[
+                              if (i > 0)
+                                const Divider(
+                                  height: 1,
+                                  color: AppColors.border,
+                                  indent: 60,
+                                ),
+                              _UserRow(
+                                user: recent[i],
+                                onTap: () => context.push(
+                                  '/admin/users/${recent[i].id}/edit',
+                                ),
+                              ),
+                            ],
+                          ],
+                        ),
+                      );
+                    },
+                  ),
 
-            const SizedBox(height: 80),
-          ],
-        ),
+                  // ── View all button ─────────────────────────
+                  usersAsync.whenOrNull(
+                        data: (users) => users.length > 5
+                            ? Padding(
+                                padding: const EdgeInsets.only(top: 8),
+                                child: TextButton(
+                                  onPressed: () =>
+                                      context.push('/admin/users'),
+                                  child: Text(
+                                    'Xem tất cả ${users.length} nhân viên →',
+                                    style: GoogleFonts.beVietnamPro(
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.w600,
+                                      color: AppColors.ocean,
+                                    ),
+                                  ),
+                                ),
+                              )
+                            : const SizedBox.shrink(),
+                      ) ??
+                      const SizedBox.shrink(),
+
+                  const SizedBox(height: 80),
+                ],
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
