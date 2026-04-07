@@ -1,9 +1,15 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart' show DateFormat;
+import 'package:path_provider/path_provider.dart';
+import 'package:screenshot/screenshot.dart';
+import 'package:share_plus/share_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../../../core/constants/app_constants.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../data/models/calendar_model.dart';
@@ -24,6 +30,9 @@ class BookingCalendarScreen extends ConsumerStatefulWidget {
 
 class _BookingCalendarScreenState
     extends ConsumerState<BookingCalendarScreen> {
+  final _screenshotController = ScreenshotController();
+  bool _isSharing = false;
+
   CalendarViewMode _viewMode = CalendarViewMode.weekly;
   PropertyCategory _category = PropertyCategory.villa;
   int _selectedGroupIndex = 0;
@@ -133,10 +142,26 @@ class _BookingCalendarScreenState
             title: 'Lịch Booking',
             subtitle: 'Xem lịch đặt phòng tổng hợp',
             actions: [
-              IconButton(
-                onPressed: () {},
-                icon: const Icon(Icons.share_rounded, color: Colors.white),
-              ),
+              _isSharing
+                  ? const Padding(
+                      padding: EdgeInsets.all(12),
+                      child: SizedBox(
+                        width: 20,
+                        height: 20,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: Colors.white,
+                        ),
+                      ),
+                    )
+                  : IconButton(
+                      onPressed: _shareCalendar,
+                      icon: const Icon(
+                        Icons.ios_share_rounded,
+                        color: Colors.white,
+                      ),
+                      tooltip: 'Chia sẻ lịch',
+                    ),
             ],
           ),
 
@@ -188,15 +213,18 @@ class _BookingCalendarScreenState
                         onRetry: () =>
                             ref.invalidate(calendarGridProvider(gridParams!)),
                       ),
-                      data: (grid) => CalendarGridWidget(
-                        rooms: _mapRooms(grid.rooms),
-                        viewMode: _viewMode,
-                        weekStart: _weekStart,
-                        monthStart: _monthStart,
-                        onCellTap: (room, date, cell) =>
-                            _showContactModal(
-                                context, room, date, cell, adminContact),
-                        legendTapHint: 'Tap ô = liên hệ',
+                      data: (grid) => Screenshot(
+                        controller: _screenshotController,
+                        child: CalendarGridWidget(
+                          rooms: _mapRooms(grid.rooms),
+                          viewMode: _viewMode,
+                          weekStart: _weekStart,
+                          monthStart: _monthStart,
+                          onCellTap: (room, date, cell) =>
+                              _showContactModal(
+                                  context, room, date, cell, adminContact),
+                          legendTapHint: 'Tap ô = liên hệ',
+                        ),
                       ),
                     ),
             ),
@@ -445,5 +473,218 @@ class _BookingCalendarScreenState
     if (await canLaunchUrl(uri)) {
       await launchUrl(uri);
     }
+  }
+
+  String get _rangeLabel {
+    if (_viewMode == CalendarViewMode.weekly) {
+      final end = _weekStart.add(const Duration(days: 6));
+      return '${_weekStart.day}/${_weekStart.month} – ${end.day}/${end.month}/${end.year}';
+    }
+    return 'Tháng ${_monthStart.month}/${_monthStart.year}';
+  }
+
+  void _shareCalendar() {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final bgColor = isDark ? AppColors.darkSurface : Colors.white;
+    final titleColor = isDark ? AppColors.darkTextPrimary : AppColors.navy;
+    final subColor = isDark ? AppColors.darkHint : AppColors.muted;
+    final divColor = isDark ? AppColors.darkBorder : AppColors.border;
+
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(AppRadius.xl)),
+      ),
+      builder: (ctx) => Container(
+        decoration: BoxDecoration(
+          color: bgColor,
+          borderRadius: const BorderRadius.vertical(
+            top: Radius.circular(AppRadius.xl),
+          ),
+        ),
+        padding: const EdgeInsets.fromLTRB(24, 16, 24, 36),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // drag handle
+            Center(
+              child: Container(
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: divColor,
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+            ),
+            const SizedBox(height: 20),
+            Text(
+              'Chia sẻ lịch booking',
+              style: GoogleFonts.beVietnamPro(
+                fontSize: 17,
+                fontWeight: FontWeight.w700,
+                color: titleColor,
+              ),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              _rangeLabel,
+              style: GoogleFonts.beVietnamPro(
+                fontSize: 13,
+                color: subColor,
+              ),
+            ),
+            const SizedBox(height: 20),
+            Divider(height: 1, color: divColor),
+            const SizedBox(height: 16),
+            _ShareOption(
+              icon: Icons.image_rounded,
+              iconColor: AppColors.teal,
+              iconBg: isDark
+                  ? AppColors.teal.withValues(alpha: 0.15)
+                  : AppColors.tealLight,
+              title: 'Chia sẻ ảnh chụp lịch',
+              subtitle: 'Gửi ngay qua Zalo, nhắn tin — ai cũng xem được',
+              isDark: isDark,
+              onTap: () {
+                Navigator.pop(ctx);
+                _doShareImage();
+              },
+            ),
+            const SizedBox(height: 12),
+            _ShareOption(
+              icon: Icons.download_rounded,
+              iconColor: AppColors.ocean,
+              iconBg: isDark
+                  ? AppColors.ocean.withValues(alpha: 0.2)
+                  : AppColors.oceanLight,
+              title: 'Gửi link app & lịch',
+              subtitle: 'Nhân viên mở link để tải app và xem lịch realtime',
+              isDark: isDark,
+              onTap: () {
+                Navigator.pop(ctx);
+                _doShareAppLink();
+              },
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _doShareImage() async {
+    setState(() => _isSharing = true);
+    try {
+      final imageBytes = await _screenshotController.capture(pixelRatio: 2.0);
+      if (imageBytes == null) return;
+
+      final dir = await getTemporaryDirectory();
+      final file = File('${dir.path}/lich_booking.png');
+      await file.writeAsBytes(imageBytes);
+
+      await Share.shareXFiles(
+        [XFile(file.path, mimeType: 'image/png')],
+        subject: 'Lịch Booking Halong24h',
+        text: '📅 Lịch đặt phòng $_rangeLabel – Halong24h',
+      );
+    } finally {
+      if (mounted) setState(() => _isSharing = false);
+    }
+  }
+
+  Future<void> _doShareAppLink() async {
+    final message =
+        '📅 Halong24h — Quản lý phòng & lịch booking\n\n'
+        'Tải ứng dụng để xem lịch đặt phòng, nhận thông báo và quản lý homestay:\n\n'
+        '🤖 Android: ${AppConstants.playStoreUrl}\n'
+        '🍎 iOS: ${AppConstants.appStoreUrl}';
+
+    await Share.share(
+      message,
+      subject: 'Tải ứng dụng Halong24h',
+    );
+  }
+}
+
+// ─── Share option tile ───────────────────────────────────────────────────────
+
+class _ShareOption extends StatelessWidget {
+  final IconData icon;
+  final Color iconColor;
+  final Color iconBg;
+  final String title;
+  final String subtitle;
+  final bool isDark;
+  final VoidCallback onTap;
+
+  const _ShareOption({
+    required this.icon,
+    required this.iconColor,
+    required this.iconBg,
+    required this.title,
+    required this.subtitle,
+    required this.isDark,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: isDark ? AppColors.darkContainer : AppColors.slateLight,
+      borderRadius: BorderRadius.circular(AppRadius.md),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(AppRadius.md),
+        child: Padding(
+          padding: const EdgeInsets.all(14),
+          child: Row(
+            children: [
+              Container(
+                width: 44,
+                height: 44,
+                decoration: BoxDecoration(
+                  color: iconBg,
+                  borderRadius: BorderRadius.circular(AppRadius.sm),
+                ),
+                child: Icon(icon, color: iconColor, size: 22),
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      style: GoogleFonts.beVietnamPro(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                        color: isDark
+                            ? AppColors.darkTextPrimary
+                            : AppColors.navy,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      subtitle,
+                      style: GoogleFonts.beVietnamPro(
+                        fontSize: 12,
+                        color: isDark ? AppColors.darkHint : AppColors.muted,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Icon(
+                Icons.chevron_right_rounded,
+                color: isDark ? AppColors.darkHint : AppColors.slate,
+                size: 20,
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 }

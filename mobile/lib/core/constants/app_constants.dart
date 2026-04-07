@@ -1,5 +1,5 @@
 class AppConstants {
-  static const String appName = 'Homestay Manager';
+  static const String appName = 'Halong24h';
   static const int holdDurationMinutes = 30;
   static const int accessTokenKey = 900; // 15 phút
 
@@ -7,6 +7,16 @@ class AppConstants {
   static const String accessTokenKey_ = 'access_token';
   static const String refreshTokenKey = 'refresh_token';
   static const String userKey = 'user_data';
+
+  // TODO: Cập nhật các link bên dưới khi app được publish lên store.
+  // playStoreUrl: lấy từ Google Play Console → trang app → "Xem trên Google Play"
+  // appStoreUrl: lấy từ App Store Connect → trang app → "App URL"
+  // appDownloadPage: trang web riêng (nếu có) để redirect theo platform
+  static const String playStoreUrl =
+      'https://play.google.com/store/apps/details?id=com.halong24h.app';
+  static const String appStoreUrl =
+      'https://apps.apple.com/app/halong24h/id000000000';
+  static const String appDownloadPage = 'https://halong24h.vn/download';
 }
 
 enum UserRole { admin, staff, customer }
