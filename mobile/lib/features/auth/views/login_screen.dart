@@ -564,37 +564,40 @@ class _WavePainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     final paint = Paint()..style = PaintingStyle.fill;
+    final t = progress * math.pi * 2;
 
-    // Large circle top-right
+    // Large circle top-right — tần số 1 (1 vòng đầy đủ)
     paint.color = const Color(0x0DFFFFFF);
     canvas.drawCircle(
-      Offset(size.width + 40 - progress * 20, -60 + progress * 30),
+      Offset(size.width + 40 + math.sin(t) * 20,
+          -60 + math.cos(t) * 30),
       180,
       paint,
     );
 
-    // Medium circle bottom-left
+    // Medium circle bottom-left — tần số 1, phase +π (ngược chiều)
     paint.color = const Color(0x08FFFFFF);
     canvas.drawCircle(
-      Offset(-60 + progress * 40, size.height * 0.35 - progress * 20),
+      Offset(-60 + math.sin(t + math.pi) * 40,
+          size.height * 0.35 + math.cos(t + math.pi) * 20),
       140,
       paint,
     );
 
-    // Small teal accent
+    // Small teal accent — tần số 2 (2 vòng, nhanh hơn)
     paint.color = const Color(0x1200B4D8);
     canvas.drawCircle(
-      Offset(size.width * 0.7 + math.sin(progress * math.pi * 2) * 20,
-          size.height * 0.25 + math.cos(progress * math.pi * 2) * 15),
+      Offset(size.width * 0.7 + math.sin(t * 2) * 18,
+          size.height * 0.25 + math.cos(t * 2) * 14),
       80,
       paint,
     );
 
-    // Gold accent dot
+    // Gold accent dot — tần số 1, phase +π/2
     paint.color = const Color(0x15C9A84C);
     canvas.drawCircle(
-      Offset(size.width * 0.15 + math.cos(progress * math.pi * 2) * 10,
-          size.height * 0.2 + math.sin(progress * math.pi * 2) * 10),
+      Offset(size.width * 0.15 + math.cos(t + math.pi / 2) * 10,
+          size.height * 0.2 + math.sin(t + math.pi / 2) * 10),
       50,
       paint,
     );

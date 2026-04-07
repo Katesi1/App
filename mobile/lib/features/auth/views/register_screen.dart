@@ -837,22 +837,29 @@ class _RegisterWavePainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     final paint = Paint()..style = PaintingStyle.fill;
+    final t = progress * math.pi * 2;
 
+    // Tần số 1
     paint.color = const Color(0x0AFFFFFF);
     canvas.drawCircle(
-        Offset(size.width * 0.9, size.height * 0.08 + progress * 20),
+        Offset(size.width * 0.9 + math.sin(t) * 20,
+            size.height * 0.08 + math.cos(t) * 20),
         150,
         paint);
 
+    // Tần số 1, phase +π
     paint.color = const Color(0x08FFFFFF);
     canvas.drawCircle(
-        Offset(-40, size.height * 0.25 - progress * 15), 120, paint);
+        Offset(-40 + math.sin(t + math.pi) * 25,
+            size.height * 0.25 + math.cos(t + math.pi) * 15),
+        120,
+        paint);
 
+    // Tần số 2
     paint.color = const Color(0x0D00B4D8);
     canvas.drawCircle(
-        Offset(
-            size.width * 0.5 + math.sin(progress * math.pi * 2) * 20,
-            size.height * 0.18 + math.cos(progress * math.pi * 2) * 10),
+        Offset(size.width * 0.5 + math.sin(t * 2) * 20,
+            size.height * 0.18 + math.cos(t * 2) * 10),
         70,
         paint);
   }

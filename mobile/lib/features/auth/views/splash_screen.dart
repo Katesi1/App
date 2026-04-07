@@ -280,22 +280,29 @@ class _SplashWavePainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     final paint = Paint()..style = PaintingStyle.fill;
+    final t = progress * math.pi * 2;
 
+    // Tần số 1
     paint.color = const Color(0x0AFFFFFF);
     canvas.drawCircle(
-        Offset(size.width * 0.85, size.height * 0.12 + progress * 30), 160,
+        Offset(size.width * 0.85 + math.sin(t) * 25,
+            size.height * 0.12 + math.cos(t) * 30),
+        160,
         paint);
 
+    // Tần số 1, phase +π (ngược chiều → trông tự nhiên hơn)
     paint.color = const Color(0x07FFFFFF);
     canvas.drawCircle(
-        Offset(size.width * 0.1, size.height * 0.8 - progress * 20), 180,
+        Offset(size.width * 0.1 + math.sin(t + math.pi) * 20,
+            size.height * 0.8 + math.cos(t + math.pi) * 20),
+        180,
         paint);
 
+    // Tần số 2, phase +π/2
     paint.color = const Color(0x1000B4D8);
     canvas.drawCircle(
-        Offset(
-            size.width * 0.6 + math.sin(progress * math.pi * 2) * 25,
-            size.height * 0.75 + math.cos(progress * math.pi * 2) * 15),
+        Offset(size.width * 0.6 + math.sin(t * 2 + math.pi / 2) * 25,
+            size.height * 0.75 + math.cos(t * 2 + math.pi / 2) * 15),
         90,
         paint);
   }
