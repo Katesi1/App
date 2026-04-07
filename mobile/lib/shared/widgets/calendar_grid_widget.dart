@@ -176,15 +176,16 @@ class _CalendarGridWidgetState extends State<CalendarGridWidget> {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Column(
       children: [
-        Expanded(child: _buildGrid()),
-        _buildLegend(),
+        Expanded(child: _buildGrid(isDark)),
+        _buildLegend(isDark),
       ],
     );
   }
 
-  Widget _buildGrid() {
+  Widget _buildGrid(bool isDark) {
     final dates = _visibleDates;
     final rooms = widget.rooms;
 
@@ -194,22 +195,25 @@ class _CalendarGridWidgetState extends State<CalendarGridWidget> {
     const headerHeight = 44.0;
     final gridWidth = dates.length * cellWidth;
 
+    final borderColor = isDark ? AppColors.darkBorder : AppColors.border;
+
     Widget dateHeaders() {
       return Row(
         children: dates.map((date) {
           final isWeekend = date.weekday == 6 || date.weekday == 7;
           final isSaturday = date.weekday == 6;
           final dowLabel = _dowLabel(date.weekday);
+          final weekendBg = isDark
+              ? AppColors.gold.withValues(alpha: 0.12)
+              : AppColors.goldLight.withValues(alpha: 0.5);
           return Container(
             width: cellWidth,
             height: headerHeight,
             alignment: Alignment.center,
             decoration: BoxDecoration(
-              color: isWeekend
-                  ? AppColors.goldLight.withValues(alpha: 0.5)
-                  : Colors.transparent,
-              border: const Border(
-                bottom: BorderSide(color: AppColors.border, width: 1.5),
+              color: isWeekend ? weekendBg : Colors.transparent,
+              border: Border(
+                bottom: BorderSide(color: borderColor, width: 1.5),
               ),
             ),
             child: Column(
@@ -224,7 +228,9 @@ class _CalendarGridWidgetState extends State<CalendarGridWidget> {
                         ? AppColors.oceanMid
                         : isWeekend
                             ? AppColors.coral
-                            : AppColors.muted,
+                            : isDark
+                                ? AppColors.darkTextSecondary
+                                : AppColors.muted,
                   ),
                 ),
                 const SizedBox(height: 1),
@@ -237,7 +243,9 @@ class _CalendarGridWidgetState extends State<CalendarGridWidget> {
                         ? AppColors.oceanMid
                         : isWeekend
                             ? AppColors.coral
-                            : AppColors.ink,
+                            : isDark
+                                ? AppColors.darkTextPrimary
+                                : AppColors.ink,
                   ),
                 ),
               ],
@@ -259,6 +267,7 @@ class _CalendarGridWidgetState extends State<CalendarGridWidget> {
             cellWidth,
             cellHeight,
             date.weekday == 6 || date.weekday == 7,
+            isDark,
           );
         }).toList(),
       );
@@ -273,11 +282,11 @@ class _CalendarGridWidgetState extends State<CalendarGridWidget> {
               width: roomColWidth,
               height: headerHeight,
               alignment: Alignment.center,
-              decoration: const BoxDecoration(
-                color: AppColors.oceanPale,
+              decoration: BoxDecoration(
+                color: isDark ? AppColors.darkContainer : AppColors.oceanPale,
                 border: Border(
-                  bottom: BorderSide(color: AppColors.border, width: 1.5),
-                  right: BorderSide(color: AppColors.border),
+                  bottom: BorderSide(color: borderColor, width: 1.5),
+                  right: BorderSide(color: borderColor),
                 ),
               ),
               child: Text(
@@ -285,7 +294,7 @@ class _CalendarGridWidgetState extends State<CalendarGridWidget> {
                 style: GoogleFonts.beVietnamPro(
                   fontSize: 12,
                   fontWeight: FontWeight.w700,
-                  color: AppColors.oceanDeep,
+                  color: isDark ? AppColors.oceanBright : AppColors.oceanDeep,
                 ),
               ),
             ),
@@ -317,13 +326,12 @@ class _CalendarGridWidgetState extends State<CalendarGridWidget> {
                     decoration: BoxDecoration(
                       color: i.isEven
                           ? Colors.transparent
-                          : AppColors.slateLight.withValues(alpha: 0.3),
-                      border: const Border(
-                        bottom: BorderSide(
-                          color: AppColors.border,
-                          width: 0.5,
-                        ),
-                        right: BorderSide(color: AppColors.border),
+                          : isDark
+                              ? AppColors.darkContainer.withValues(alpha: 0.4)
+                              : AppColors.slateLight.withValues(alpha: 0.3),
+                      border: Border(
+                        bottom: BorderSide(color: borderColor, width: 0.5),
+                        right: BorderSide(color: borderColor),
                       ),
                     ),
                     child: Text(
@@ -331,7 +339,7 @@ class _CalendarGridWidgetState extends State<CalendarGridWidget> {
                       style: GoogleFonts.beVietnamPro(
                         fontSize: 12,
                         fontWeight: FontWeight.w700,
-                        color: AppColors.ocean,
+                        color: isDark ? AppColors.oceanBright : AppColors.ocean,
                       ),
                     ),
                   ),
@@ -383,28 +391,41 @@ class _CalendarGridWidgetState extends State<CalendarGridWidget> {
     double width,
     double height,
     bool isWeekend,
+    bool isDark,
   ) {
+    final borderColor = isDark ? AppColors.darkBorder : AppColors.border;
+
     if (cell == null) {
       return _calendarCellShell(
         width: width,
         height: height,
-        bgColor: AppColors.slateLight.withValues(alpha: 0.25),
+        bgColor: isDark
+            ? AppColors.darkContainer.withValues(alpha: 0.2)
+            : AppColors.slateLight.withValues(alpha: 0.25),
+        borderColor: borderColor,
         child: Text(
           '-',
           style: GoogleFonts.beVietnamPro(
             fontSize: 16,
             fontWeight: FontWeight.w600,
-            color: AppColors.muted,
+            color: isDark ? AppColors.darkHint : AppColors.muted,
           ),
         ),
       );
     }
 
     final bgColor = switch (cell.status) {
-      DayCellStatus.booked => AppColors.coralLight,
-      DayCellStatus.hold => AppColors.amberLight,
-      DayCellStatus.available =>
-        isWeekend ? AppColors.goldLight : Colors.transparent,
+      DayCellStatus.booked => isDark
+          ? AppColors.coral.withValues(alpha: 0.2)
+          : AppColors.coralLight,
+      DayCellStatus.hold => isDark
+          ? AppColors.amber.withValues(alpha: 0.18)
+          : AppColors.amberLight,
+      DayCellStatus.available => isWeekend
+          ? isDark
+              ? AppColors.gold.withValues(alpha: 0.1)
+              : AppColors.goldLight
+          : Colors.transparent,
     };
 
     final Widget statusChild = switch (cell.status) {
@@ -428,7 +449,7 @@ class _CalendarGridWidgetState extends State<CalendarGridWidget> {
                 style: GoogleFonts.beVietnamPro(
                   fontSize: 9,
                   fontWeight: FontWeight.w500,
-                  color: AppColors.muted,
+                  color: isDark ? AppColors.darkHint : AppColors.muted,
                 ),
               ),
             ],
@@ -437,7 +458,7 @@ class _CalendarGridWidgetState extends State<CalendarGridWidget> {
       DayCellStatus.hold => Icon(
           Icons.lock_rounded,
           size: 18,
-          color: AppColors.brownDark,
+          color: isDark ? AppColors.amber : AppColors.brownDark,
         ),
       DayCellStatus.booked => Text(
           '×',
@@ -458,6 +479,7 @@ class _CalendarGridWidgetState extends State<CalendarGridWidget> {
         width: width,
         height: height,
         bgColor: bgColor,
+        borderColor: borderColor,
         child: statusChild,
       ),
     );
@@ -467,6 +489,7 @@ class _CalendarGridWidgetState extends State<CalendarGridWidget> {
     required double width,
     required double height,
     required Color bgColor,
+    required Color borderColor,
     required Widget child,
   }) {
     return Container(
@@ -475,23 +498,29 @@ class _CalendarGridWidgetState extends State<CalendarGridWidget> {
       alignment: Alignment.center,
       decoration: BoxDecoration(
         color: bgColor,
-        border: const Border(
-          bottom: BorderSide(color: AppColors.border, width: 0.5),
-          right: BorderSide(color: AppColors.border, width: 0.5),
+        border: Border(
+          bottom: BorderSide(color: borderColor, width: 0.5),
+          right: BorderSide(color: borderColor, width: 0.5),
         ),
       ),
       child: child,
     );
   }
 
-  Widget _buildLegend() {
+  Widget _buildLegend(bool isDark) {
+    final borderColor = isDark ? AppColors.darkBorder : AppColors.border;
+    final hintColor = isDark ? AppColors.darkHint : AppColors.muted;
+    final labelColor = isDark ? AppColors.darkTextSecondary : AppColors.muted;
+    final lockColor = isDark ? AppColors.amber : AppColors.brownDark;
+
     return Container(
       padding: const EdgeInsets.symmetric(
         horizontal: AppSpacing.md,
         vertical: AppSpacing.sm,
       ),
-      decoration: const BoxDecoration(
-        border: Border(top: BorderSide(color: AppColors.border)),
+      decoration: BoxDecoration(
+        color: isDark ? AppColors.darkSurface : null,
+        border: Border(top: BorderSide(color: borderColor)),
       ),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.center,
@@ -506,15 +535,13 @@ class _CalendarGridWidgetState extends State<CalendarGridWidget> {
               ),
             ),
             label: 'Trống',
+            labelColor: labelColor,
           ),
           const SizedBox(width: AppSpacing.md),
           _buildLegendSymbol(
-            child: Icon(
-              Icons.lock_rounded,
-              size: 14,
-              color: AppColors.brownDark,
-            ),
+            child: Icon(Icons.lock_rounded, size: 14, color: lockColor),
             label: 'Giữ chỗ',
+            labelColor: labelColor,
           ),
           const SizedBox(width: AppSpacing.md),
           _buildLegendSymbol(
@@ -527,6 +554,7 @@ class _CalendarGridWidgetState extends State<CalendarGridWidget> {
               ),
             ),
             label: 'Đã đặt',
+            labelColor: labelColor,
           ),
           const SizedBox(width: AppSpacing.md),
           Flexible(
@@ -534,7 +562,7 @@ class _CalendarGridWidgetState extends State<CalendarGridWidget> {
               widget.legendTapHint,
               style: GoogleFonts.beVietnamPro(
                 fontSize: 11,
-                color: AppColors.muted,
+                color: hintColor,
               ),
               maxLines: 2,
               overflow: TextOverflow.ellipsis,
@@ -549,6 +577,7 @@ class _CalendarGridWidgetState extends State<CalendarGridWidget> {
   Widget _buildLegendSymbol({
     required Widget child,
     required String label,
+    required Color labelColor,
   }) {
     return Row(
       mainAxisSize: MainAxisSize.min,
@@ -560,7 +589,7 @@ class _CalendarGridWidgetState extends State<CalendarGridWidget> {
           style: GoogleFonts.beVietnamPro(
             fontSize: 11,
             fontWeight: FontWeight.w500,
-            color: AppColors.muted,
+            color: labelColor,
           ),
         ),
       ],
@@ -604,6 +633,7 @@ class CalendarViewModeToggle extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Padding(
       padding: const EdgeInsets.fromLTRB(
         AppSpacing.md,
@@ -614,20 +644,20 @@ class CalendarViewModeToggle extends StatelessWidget {
       child: Container(
         height: 44,
         decoration: BoxDecoration(
-          color: AppColors.slateLight,
+          color: isDark ? AppColors.darkContainer : AppColors.slateLight,
           borderRadius: BorderRadius.circular(AppRadius.full),
         ),
         child: Row(
           children: [
-            _button('Theo tuần', CalendarViewMode.weekly),
-            _button('Theo tháng', CalendarViewMode.monthly),
+            _button('Theo tuần', CalendarViewMode.weekly, isDark),
+            _button('Theo tháng', CalendarViewMode.monthly, isDark),
           ],
         ),
       ),
     );
   }
 
-  Widget _button(String label, CalendarViewMode mode) {
+  Widget _button(String label, CalendarViewMode mode, bool isDark) {
     final isSelected = viewMode == mode;
     return Expanded(
       child: GestureDetector(
@@ -636,7 +666,11 @@ class CalendarViewModeToggle extends StatelessWidget {
           alignment: Alignment.center,
           margin: const EdgeInsets.all(3),
           decoration: BoxDecoration(
-            color: isSelected ? AppColors.oceanDeep : Colors.transparent,
+            color: isSelected
+                ? isDark
+                    ? AppColors.oceanMid
+                    : AppColors.oceanDeep
+                : Colors.transparent,
             borderRadius: BorderRadius.circular(AppRadius.full),
           ),
           child: Text(
@@ -644,7 +678,11 @@ class CalendarViewModeToggle extends StatelessWidget {
             style: GoogleFonts.beVietnamPro(
               fontSize: 14,
               fontWeight: FontWeight.w600,
-              color: isSelected ? Colors.white : AppColors.muted,
+              color: isSelected
+                  ? Colors.white
+                  : isDark
+                      ? AppColors.darkHint
+                      : AppColors.muted,
             ),
           ),
         ),
@@ -671,6 +709,7 @@ class CalendarDateNavigation extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     final isWeekly = viewMode == CalendarViewMode.weekly;
     final dates = isWeekly
         ? [weekStart, weekStart.add(const Duration(days: 6))]
@@ -689,14 +728,16 @@ class CalendarDateNavigation extends StatelessWidget {
         vertical: AppSpacing.xs,
       ),
       decoration: BoxDecoration(
-        color: AppColors.oceanPale,
+        color: isDark ? AppColors.darkContainer : AppColors.oceanPale,
         borderRadius: BorderRadius.circular(AppRadius.md),
-        border: Border.all(color: AppColors.border),
+        border: Border.all(
+          color: isDark ? AppColors.darkBorder : AppColors.border,
+        ),
       ),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          _navButton(Icons.chevron_left_rounded, onPrevious),
+          _navButton(Icons.chevron_left_rounded, onPrevious, isDark),
           Column(
             children: [
               Text(
@@ -704,7 +745,7 @@ class CalendarDateNavigation extends StatelessWidget {
                 style: GoogleFonts.beVietnamPro(
                   fontSize: 16,
                   fontWeight: FontWeight.w700,
-                  color: AppColors.oceanDeep,
+                  color: isDark ? AppColors.darkTextPrimary : AppColors.oceanDeep,
                 ),
               ),
               if (isWeekly)
@@ -712,18 +753,18 @@ class CalendarDateNavigation extends StatelessWidget {
                   'Năm ${weekStart.year}',
                   style: GoogleFonts.beVietnamPro(
                     fontSize: 11,
-                    color: AppColors.muted,
+                    color: isDark ? AppColors.darkHint : AppColors.muted,
                   ),
                 ),
             ],
           ),
-          _navButton(Icons.chevron_right_rounded, onNext),
+          _navButton(Icons.chevron_right_rounded, onNext, isDark),
         ],
       ),
     );
   }
 
-  Widget _navButton(IconData icon, VoidCallback onTap) {
+  Widget _navButton(IconData icon, VoidCallback onTap, bool isDark) {
     return Material(
       color: Colors.transparent,
       child: InkWell(
@@ -732,17 +773,23 @@ class CalendarDateNavigation extends StatelessWidget {
         child: Container(
           padding: const EdgeInsets.all(6),
           decoration: BoxDecoration(
-            color: AppColors.surface,
+            color: isDark ? AppColors.darkElevated : AppColors.surface,
             borderRadius: BorderRadius.circular(AppRadius.sm),
-            boxShadow: [
-              BoxShadow(
-                color: AppColors.ink.withValues(alpha: 0.06),
-                blurRadius: 4,
-                offset: const Offset(0, 1),
-              ),
-            ],
+            boxShadow: isDark
+                ? null
+                : [
+                    BoxShadow(
+                      color: AppColors.ink.withValues(alpha: 0.06),
+                      blurRadius: 4,
+                      offset: const Offset(0, 1),
+                    ),
+                  ],
           ),
-          child: Icon(icon, color: AppColors.oceanDeep, size: 22),
+          child: Icon(
+            icon,
+            color: isDark ? AppColors.oceanBright : AppColors.oceanDeep,
+            size: 22,
+          ),
         ),
       ),
     );
@@ -761,6 +808,7 @@ class CalendarCategoryTabs extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Padding(
       padding: const EdgeInsets.fromLTRB(
         AppSpacing.md,
@@ -786,16 +834,32 @@ class CalendarCategoryTabs extends StatelessWidget {
                   vertical: AppSpacing.sm,
                 ),
                 decoration: BoxDecoration(
-                  color:
-                      isSelected ? AppColors.oceanDeep : AppColors.slateLight,
+                  color: isSelected
+                      ? isDark
+                          ? AppColors.oceanMid
+                          : AppColors.oceanDeep
+                      : isDark
+                          ? AppColors.darkContainer
+                          : AppColors.slateLight,
                   borderRadius: BorderRadius.circular(AppRadius.full),
+                  border: isSelected
+                      ? null
+                      : Border.all(
+                          color: isDark
+                              ? AppColors.darkBorder
+                              : Colors.transparent,
+                        ),
                 ),
                 child: Text(
                   label,
                   style: GoogleFonts.beVietnamPro(
                     fontSize: 13,
                     fontWeight: FontWeight.w600,
-                    color: isSelected ? Colors.white : AppColors.muted,
+                    color: isSelected
+                        ? Colors.white
+                        : isDark
+                            ? AppColors.darkHint
+                            : AppColors.muted,
                   ),
                 ),
               ),
@@ -821,6 +885,7 @@ class CalendarSubCategoryChips extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return SizedBox(
       height: 44,
       child: ListView.separated(
@@ -840,12 +905,29 @@ class CalendarSubCategoryChips extends StatelessWidget {
               labelStyle: GoogleFonts.beVietnamPro(
                 fontSize: 12,
                 fontWeight: FontWeight.w600,
-                color: isSelected ? AppColors.oceanDeep : AppColors.muted,
+                color: isSelected
+                    ? isDark
+                        ? AppColors.oceanBright
+                        : AppColors.oceanDeep
+                    : isDark
+                        ? AppColors.darkHint
+                        : AppColors.muted,
               ),
-              backgroundColor:
-                  isSelected ? AppColors.oceanLight : AppColors.surface,
+              backgroundColor: isSelected
+                  ? isDark
+                      ? AppColors.ocean.withValues(alpha: 0.25)
+                      : AppColors.oceanLight
+                  : isDark
+                      ? AppColors.darkContainer
+                      : AppColors.surface,
               side: BorderSide(
-                color: isSelected ? AppColors.ocean : AppColors.border,
+                color: isSelected
+                    ? isDark
+                        ? AppColors.oceanBright
+                        : AppColors.ocean
+                    : isDark
+                        ? AppColors.darkBorder
+                        : AppColors.border,
               ),
               visualDensity: VisualDensity.compact,
               padding: const EdgeInsets.symmetric(horizontal: 4),
