@@ -74,6 +74,26 @@ class CalendarRepository {
     }
   }
 
+  /// POST /calendar/lock — đánh dấu đã bán (status = BOOKED)
+  Future<ApiResponse<Map<String, dynamic>>> markAsSold({
+    required String roomId,
+    required String date,
+  }) async {
+    try {
+      final response = await _dio.post(
+        ApiConstants.calendarLock,
+        data: {'roomId': roomId, 'date': date, 'status': 'BOOKED'},
+      );
+      return ApiResponse(
+        success: true,
+        data: response.data['data'],
+        message: response.data['message'] ?? '',
+      );
+    } on DioException catch (e) {
+      return ApiResponse(success: false, message: parseDioError(e));
+    }
+  }
+
   /// POST /calendar/unlock — mở khoá phòng
   Future<ApiResponse<void>> unlockRoom({
     required String roomId,

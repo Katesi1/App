@@ -861,12 +861,14 @@ class CalendarGradientHeader extends StatelessWidget {
   final String title;
   final String? subtitle;
   final List<Widget>? actions;
+  final bool showBack;
 
   const CalendarGradientHeader({
     super.key,
     required this.title,
     this.subtitle,
     this.actions,
+    this.showBack = false,
   });
 
   @override
@@ -877,7 +879,7 @@ class CalendarGradientHeader extends StatelessWidget {
       padding: EdgeInsets.only(
         top: MediaQuery.of(context).padding.top + 12,
         bottom: 16,
-        left: 20,
+        left: 8,
         right: 12,
       ),
       decoration: BoxDecoration(
@@ -891,6 +893,25 @@ class CalendarGradientHeader extends StatelessWidget {
       ),
       child: Row(
         children: [
+          if (showBack)
+            GestureDetector(
+              onTap: () => Navigator.maybePop(context),
+              child: Container(
+                width: 36,
+                height: 36,
+                margin: const EdgeInsets.only(left: 8, right: 10),
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: 0.12),
+                  shape: BoxShape.circle,
+                  border: Border.all(
+                      color: Colors.white.withValues(alpha: 0.18)),
+                ),
+                child: const Icon(Icons.arrow_back_rounded,
+                    color: Colors.white, size: 18),
+              ),
+            )
+          else
+            const SizedBox(width: 12),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,

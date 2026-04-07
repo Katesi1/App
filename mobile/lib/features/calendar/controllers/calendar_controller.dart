@@ -120,6 +120,22 @@ class CalendarActionsNotifier extends StateNotifier<AsyncValue<void>> {
     state = AsyncValue.error(result.message, StackTrace.current);
     return false;
   }
+
+  Future<bool> markAsSold({
+    required String roomId,
+    required String date,
+    required CalendarGridParams gridParams,
+  }) async {
+    state = const AsyncValue.loading();
+    final result = await _repo.markAsSold(roomId: roomId, date: date);
+    if (result.success) {
+      _ref.invalidate(calendarGridProvider(gridParams));
+      state = const AsyncValue.data(null);
+      return true;
+    }
+    state = AsyncValue.error(result.message, StackTrace.current);
+    return false;
+  }
 }
 
 final calendarActionsProvider =

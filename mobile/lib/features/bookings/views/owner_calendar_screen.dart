@@ -28,6 +28,9 @@ class _OwnerCalendarScreenState
   DateTime _weekStart = _mondayOf(DateTime.now());
   DateTime _monthStart = DateTime(DateTime.now().year, DateTime.now().month);
 
+  // Local override: key = "${roomId}_${yyyy-MM-dd}" → đã bán thủ công
+  final Set<String> _manualSoldKeys = {};
+
   static DateTime _mondayOf(DateTime date) {
     final diff = date.weekday - DateTime.monday;
     return DateTime(date.year, date.month, date.day - diff);
@@ -74,9 +77,13 @@ class _OwnerCalendarScreenState
       for (final day in row.days) {
         final dt = DateTime.parse(day.date);
         final key = DateTime(dt.year, dt.month, dt.day);
+        final soldKey = '${row.id}_${day.date}';
+        final apiStatus = _mapStatus(day.status);
         cells[key] = DayCell(
           price: day.price,
-          status: _mapStatus(day.status),
+          status: _manualSoldKeys.contains(soldKey)
+              ? DayCellStatus.booked
+              : apiStatus,
         );
       }
       return CalendarRoom(id: row.id, code: row.code, dayCells: cells);
@@ -126,12 +133,7 @@ class _OwnerCalendarScreenState
           CalendarGradientHeader(
             title: 'Lịch phòng của tôi',
             subtitle: 'Quản lý lịch các căn của bạn',
-            actions: [
-              IconButton(
-                onPressed: () => Navigator.pop(context),
-                icon: const Icon(Icons.close_rounded, color: Colors.white),
-              ),
-            ],
+            showBack: true,
           ),
 
           CalendarViewModeToggle(
@@ -317,88 +319,95 @@ class _OwnerCalendarScreenState
             const SizedBox(height: 24),
 
             if (isAvailable) ...[
-              SizedBox(
-                width: double.infinity,
-                height: 48,
-                child: ElevatedButton.icon(
-                  onPressed: () {
-                    Navigator.pop(ctx);
-                    _toggleLock(room, date, DayCellStatus.hold, gridParams);
-                  },
-                  icon: const Icon(Icons.lock_rounded, size: 20),
-                  label: Text(
-                    'Khoá phòng (Giữ)',
-                    style: GoogleFonts.beVietnamPro(
-                      fontSize: 15,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.amber,
-                    foregroundColor: Colors.white,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(AppRadius.md),
-                    ),
-                    elevation: 0,
-                  ),
-                ),
+              // Khoá giữ chỗ
+              _ActionBtn(
+                icon: Icons.lock_clock_rounded,
+                label: 'Giữ chỗ',
+                sub: 'Tạm khoá, chưa xác nhận',
+                color: AppColors.amber,
+                onTap: () {
+                  Navigator.pop(ctx);
+                  _toggleLock(room, date, DayCellStatus.hold, gridParams);
+                },
+              ),
+              const SizedBox(height: 10),
+              // Đánh dấu đã bán
+              _ActionBtn(
+                icon: Icons.sell_rounded,
+                label: 'Đánh dấu đã bán',
+                sub: 'Xác nhận phòng đã có khách',
+                color: AppColors.coral,
+                onTap: () {
+                  Navigator.pop(ctx);
+                  _markSold(room, date, gridParams);
+                },
               ),
             ] else if (isHold) ...[
-              SizedBox(
-                width: double.infinity,
-                height: 48,
-                child: ElevatedButton.icon(
-                  onPressed: () {
-                    Navigator.pop(ctx);
-                    _toggleLock(
-                        room, date, DayCellStatus.available, gridParams);
-                  },
-                  icon: const Icon(Icons.lock_open_rounded, size: 20),
-                  label: Text(
-                    'Mở khoá phòng',
-                    style: GoogleFonts.beVietnamPro(
-                      fontSize: 15,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.emerald,
-                    foregroundColor: Colors.white,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(AppRadius.md),
-                    ),
-                    elevation: 0,
-                  ),
-                ),
+              // Mở khoá
+              _ActionBtn(
+                icon: Icons.lock_open_rounded,
+                label: 'Mở khoá phòng',
+                sub: 'Trả về trạng thái trống',
+                color: AppColors.emerald,
+                onTap: () {
+                  Navigator.pop(ctx);
+                  _toggleLock(
+                      room, date, DayCellStatus.available, gridParams);
+                },
+              ),
+              const SizedBox(height: 10),
+              // Chuyển sang đã bán
+              _ActionBtn(
+                icon: Icons.sell_rounded,
+                label: 'Đánh dấu đã bán',
+                sub: 'Xác nhận phòng đã có khách',
+                color: AppColors.coral,
+                onTap: () {
+                  Navigator.pop(ctx);
+                  _markSold(room, date, gridParams);
+                },
               ),
             ] else ...[
+              // Đã bán — chỉ có thể mở lại
               Container(
                 width: double.infinity,
-                padding: const EdgeInsets.all(AppSpacing.md),
+                padding: const EdgeInsets.symmetric(
+                    horizontal: 14, vertical: 12),
                 decoration: BoxDecoration(
                   color: AppColors.coralLight,
                   borderRadius: BorderRadius.circular(AppRadius.md),
+                  border: Border.all(
+                      color: AppColors.coral.withValues(alpha: 0.3)),
                 ),
                 child: Row(
                   children: [
-                    const Icon(
-                      Icons.info_outline_rounded,
-                      color: AppColors.coral,
-                      size: 20,
-                    ),
-                    const SizedBox(width: AppSpacing.sm),
+                    const Icon(Icons.sell_rounded,
+                        color: AppColors.coral, size: 18),
+                    const SizedBox(width: 10),
                     Expanded(
                       child: Text(
-                        'Phòng đã bán — không thể thay đổi trạng thái',
+                        'Phòng đã bán',
                         style: GoogleFonts.beVietnamPro(
                           fontSize: 13,
                           color: AppColors.coral,
-                          fontWeight: FontWeight.w500,
+                          fontWeight: FontWeight.w600,
                         ),
                       ),
                     ),
                   ],
                 ),
+              ),
+              const SizedBox(height: 10),
+              _ActionBtn(
+                icon: Icons.lock_open_rounded,
+                label: 'Mở khoá phòng',
+                sub: 'Trả về trạng thái trống',
+                color: AppColors.emerald,
+                onTap: () {
+                  Navigator.pop(ctx);
+                  _toggleLock(
+                      room, date, DayCellStatus.available, gridParams);
+                },
               ),
             ],
           ],
@@ -444,10 +453,113 @@ class _OwnerCalendarScreenState
     );
   }
 
+  Future<void> _markSold(
+    CalendarRoom room,
+    DateTime date,
+    CalendarGridParams gridParams,
+  ) async {
+    final dateStr = DateFormat('yyyy-MM-dd').format(date);
+    final success = await ref
+        .read(calendarActionsProvider.notifier)
+        .markAsSold(roomId: room.id, date: dateStr, gridParams: gridParams);
+
+    if (!mounted) return;
+    if (success) {
+      setState(() => _manualSoldKeys.add('${room.id}_$dateStr'));
+    }
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          success
+              ? 'Đã đánh dấu đã bán phòng ${room.code} ngày ${date.day}/${date.month}'
+              : 'Có lỗi xảy ra, vui lòng thử lại',
+        ),
+        backgroundColor: success ? AppColors.coral : AppColors.muted,
+        behavior: SnackBarBehavior.floating,
+        duration: const Duration(seconds: 2),
+      ),
+    );
+  }
+
   String _formatPrice(double price) {
     if (price >= 1000000) {
       return '${(price / 1000000).toStringAsFixed(1)}tr đ/đêm';
     }
     return '${(price / 1000).toInt()}k đ/đêm';
+  }
+}
+
+// ─── Action Button ─────────────────────────────────────────────────────────────
+class _ActionBtn extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final String sub;
+  final Color color;
+  final VoidCallback onTap;
+
+  const _ActionBtn({
+    required this.icon,
+    required this.label,
+    required this.sub,
+    required this.color,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: color.withValues(alpha: 0.08),
+      borderRadius: BorderRadius.circular(AppRadius.md),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(AppRadius.md),
+        child: Container(
+          width: double.infinity,
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(AppRadius.md),
+            border: Border.all(color: color.withValues(alpha: 0.25)),
+          ),
+          child: Row(
+            children: [
+              Container(
+                width: 40,
+                height: 40,
+                decoration: BoxDecoration(
+                  color: color.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(AppRadius.sm),
+                ),
+                child: Icon(icon, color: color, size: 20),
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      label,
+                      style: GoogleFonts.beVietnamPro(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                        color: color,
+                      ),
+                    ),
+                    Text(
+                      sub,
+                      style: GoogleFonts.beVietnamPro(
+                        fontSize: 12,
+                        color: AppColors.muted,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Icon(Icons.chevron_right_rounded,
+                  color: color.withValues(alpha: 0.5), size: 20),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 }
