@@ -192,6 +192,15 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
                               child: Image.asset(
                                 'assets/images/logohalong24h.png',
                                 fit: BoxFit.contain,
+                                errorBuilder: (_, __, ___) => Text(
+                                  'HALONG24h',
+                                  style: GoogleFonts.playfairDisplay(
+                                    fontSize: 12,
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.w700,
+                                  ),
+                                  textAlign: TextAlign.center,
+                                ),
                               ),
                             ).animate().scale(
                                   begin: const Offset(0.5, 0.5),

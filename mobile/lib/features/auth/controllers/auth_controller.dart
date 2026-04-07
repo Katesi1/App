@@ -1,4 +1,3 @@
-import 'package:flutter_native_splash/flutter_native_splash.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../data/models/user_model.dart';
 import '../../../data/repositories/auth_repository.dart';
@@ -46,7 +45,6 @@ class AuthNotifier extends StateNotifier<AuthState> {
     final user = await _repo.getStoredUser();
     final isLoggedIn = await _repo.isLoggedIn();
     state = AuthState(user: user, isLoggedIn: isLoggedIn);
-    FlutterNativeSplash.remove();
     if (isLoggedIn) {
       final fresh = await _repo.getProfile();
       if (fresh.success && fresh.data != null) {

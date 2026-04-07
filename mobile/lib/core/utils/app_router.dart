@@ -9,6 +9,7 @@ import '../../features/auth/controllers/auth_controller.dart';
 import '../../features/auth/views/forgot_password_screen.dart';
 import '../../features/auth/views/login_screen.dart';
 import '../../features/auth/views/register_screen.dart';
+import '../../features/auth/views/splash_screen.dart';
 import '../../features/bookings/views/booking_calendar_screen.dart';
 import '../../features/bookings/views/owner_calendar_screen.dart';
 import '../../features/customer/views/customer_home_screen.dart';
@@ -51,7 +52,7 @@ final routerProvider = Provider<GoRouter>((ref) {
   ref.onDispose(notifier.dispose);
 
   return GoRouter(
-    initialLocation: '/login',
+    initialLocation: '/splash',
     refreshListenable: notifier,
     redirect: (context, state) {
       final authState = ref.read(authProvider);
@@ -63,7 +64,7 @@ final routerProvider = Provider<GoRouter>((ref) {
       if (isLoading) return null;
 
       // Các trang public (không cần login)
-      const publicPaths = ['/login', '/register', '/forgot-password'];
+      const publicPaths = ['/splash', '/login', '/register', '/forgot-password'];
       final isPublic = publicPaths.contains(path);
 
       // Chưa login → redirect về login
@@ -122,6 +123,8 @@ final routerProvider = Provider<GoRouter>((ref) {
       return null;
     },
     routes: [
+      GoRoute(
+          path: '/splash', builder: (_, __) => const SplashScreen()),
       GoRoute(
           path: '/login', builder: (_, __) => const LoginScreen()),
       GoRoute(
