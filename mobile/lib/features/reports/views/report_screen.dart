@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:go_router/go_router.dart';
 import '../../../core/constants/app_constants.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
@@ -8,12 +9,15 @@ import '../../../core/utils/helpers.dart';
 import '../../../shared/widgets/app_scaffold.dart';
 import '../../../shared/widgets/loading_widget.dart';
 import '../../../data/models/booking_model.dart';
+import '../../auth/controllers/auth_controller.dart';
 import '../controllers/report_controller.dart';
 
 class ReportScreen extends ConsumerWidget {
   const ReportScreen({super.key});
 
-  Widget _header(BuildContext context, DateTime now) {
+  Widget _header(BuildContext context, WidgetRef ref, DateTime now) {
+    final user = ref.watch(currentUserProvider);
+    final userName = user?.name ?? user?.phone ?? '';
     return Container(
       width: double.infinity,
       padding: EdgeInsets.only(
@@ -81,22 +85,28 @@ class ReportScreen extends ConsumerWidget {
                   ],
                 ),
               ),
-              // Month badge
-              Container(
-                padding: const EdgeInsets.symmetric(
-                    horizontal: 10, vertical: 5),
-                decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.12),
-                  borderRadius: BorderRadius.circular(20),
-                  border: Border.all(
-                      color: Colors.white.withValues(alpha: 0.2)),
-                ),
-                child: Text(
-                  'T${now.month}',
-                  style: GoogleFonts.beVietnamPro(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w700,
-                    color: Colors.white,
+              GestureDetector(
+                onTap: () => context.push('/profile'),
+                child: Container(
+                  width: 40,
+                  height: 40,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    gradient: const LinearGradient(
+                        colors: [AppColors.teal, AppColors.gold]),
+                    border: Border.all(
+                        color: Colors.white.withValues(alpha: 0.3),
+                        width: 1.5),
+                  ),
+                  child: Center(
+                    child: Text(
+                      userName.isNotEmpty ? userName[0].toUpperCase() : 'U',
+                      style: GoogleFonts.beVietnamPro(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w700,
+                        fontSize: 15,
+                      ),
+                    ),
                   ),
                 ),
               ),
@@ -118,7 +128,7 @@ class ReportScreen extends ConsumerWidget {
       showAppBar: false,
       body: Column(
         children: [
-          _header(context, now),
+          _header(context, ref, now),
           Expanded(
             child: reportAsync.when(
               loading: () => const LoadingWidget(),

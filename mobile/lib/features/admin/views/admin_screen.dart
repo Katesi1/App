@@ -7,6 +7,7 @@ import '../../../core/theme/app_spacing.dart';
 import '../../../core/utils/helpers.dart';
 import '../../../shared/widgets/app_scaffold.dart';
 import '../../../shared/widgets/loading_widget.dart';
+import '../../auth/controllers/auth_controller.dart';
 import '../../bookings/controllers/booking_controller.dart';
 import '../../properties/controllers/property_controller.dart';
 import '../../rooms/controllers/room_controller.dart';
@@ -17,6 +18,7 @@ class AdminScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final user = ref.watch(currentUserProvider);
     final usersAsync = ref.watch(userListProvider(null));
     final homestaysAsync = ref.watch(homestayListProvider);
     final roomsAsync = ref.watch(roomListProvider(null));
@@ -96,25 +98,9 @@ class AdminScreen extends ConsumerWidget {
                         ],
                       ),
                     ),
-                    GestureDetector(
-                      onTap: () async {
-                        ref.invalidate(userListProvider(null));
-                        ref.invalidate(homestayListProvider);
-                        ref.invalidate(roomListProvider(null));
-                        ref.invalidate(bookingListProvider(null));
-                      },
-                      child: Container(
-                        width: 38,
-                        height: 38,
-                        decoration: BoxDecoration(
-                          color: Colors.white.withValues(alpha: 0.12),
-                          shape: BoxShape.circle,
-                          border: Border.all(
-                              color: Colors.white.withValues(alpha: 0.15)),
-                        ),
-                        child: const Icon(Icons.refresh_rounded,
-                            color: Colors.white, size: 18),
-                      ),
+                    _AvatarBtn(
+                      userName: user?.name ?? user?.phone ?? '',
+                      onTap: () => context.push('/profile'),
                     ),
                   ],
                 ),
@@ -769,6 +755,43 @@ class _UserRow extends StatelessWidget {
               ),
             ],
           ],
+        ),
+      ),
+    );
+  }
+}
+
+
+// ─── Avatar Button ─────────────────────────────────────────────────────────────
+class _AvatarBtn extends StatelessWidget {
+  final String userName;
+  final VoidCallback onTap;
+
+  const _AvatarBtn({required this.userName, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        width: 40,
+        height: 40,
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          gradient: const LinearGradient(
+              colors: [AppColors.teal, AppColors.gold]),
+          border: Border.all(
+              color: Colors.white.withValues(alpha: 0.3), width: 1.5),
+        ),
+        child: Center(
+          child: Text(
+            userName.isNotEmpty ? userName[0].toUpperCase() : 'U',
+            style: GoogleFonts.beVietnamPro(
+              color: Colors.white,
+              fontWeight: FontWeight.w700,
+              fontSize: 15,
+            ),
+          ),
         ),
       ),
     );

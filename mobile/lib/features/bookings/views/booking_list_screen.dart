@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 import '../../../core/constants/app_constants.dart';
@@ -111,23 +112,9 @@ class _BookingListScreenState extends ConsumerState<BookingListScreen> {
                         ],
                       ),
                     ),
-                    GestureDetector(
-                      onTap: () => ref.invalidate(bookingListProvider(null)),
-                      child: Container(
-                        width: 38,
-                        height: 38,
-                        decoration: BoxDecoration(
-                          color: Colors.white.withValues(alpha: 0.12),
-                          shape: BoxShape.circle,
-                          border: Border.all(
-                              color: Colors.white.withValues(alpha: 0.15)),
-                        ),
-                        child: const Icon(
-                          Icons.refresh_rounded,
-                          color: Colors.white,
-                          size: 18,
-                        ),
-                      ),
+                    _AvatarBtn(
+                      userName: user?.name ?? user?.phone ?? '',
+                      onTap: () => context.push('/profile'),
                     ),
                   ],
                 ),
@@ -526,6 +513,42 @@ class _BookingCardState extends ConsumerState<_BookingCard> {
               ),
             ),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+// ─── Avatar Button ─────────────────────────────────────────────────────────────
+class _AvatarBtn extends StatelessWidget {
+  final String userName;
+  final VoidCallback onTap;
+
+  const _AvatarBtn({required this.userName, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        width: 40,
+        height: 40,
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          gradient: const LinearGradient(
+              colors: [AppColors.teal, AppColors.gold]),
+          border: Border.all(
+              color: Colors.white.withValues(alpha: 0.3), width: 1.5),
+        ),
+        child: Center(
+          child: Text(
+            userName.isNotEmpty ? userName[0].toUpperCase() : 'U',
+            style: GoogleFonts.beVietnamPro(
+              color: Colors.white,
+              fontWeight: FontWeight.w700,
+              fontSize: 15,
+            ),
+          ),
         ),
       ),
     );

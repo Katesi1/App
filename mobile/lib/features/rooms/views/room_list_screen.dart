@@ -11,6 +11,7 @@ import '../../../shared/widgets/filter_chip_tile.dart';
 import '../../../shared/widgets/guest_counter.dart';
 import '../../../shared/widgets/loading_widget.dart';
 import '../../../shared/widgets/section_label.dart';
+import '../../auth/controllers/auth_controller.dart';
 import '../controllers/room_controller.dart';
 import '../widgets/room_card.dart';
 
@@ -411,6 +412,8 @@ class _RoomListScreenState extends ConsumerState<RoomListScreen>
 
   @override
   Widget build(BuildContext context) {
+    final user = ref.watch(currentUserProvider);
+    final userName = user?.name ?? user?.phone ?? '';
     final roomsAsync = ref.watch(roomListProvider(null));
 
     return AppScaffold(
@@ -505,6 +508,34 @@ class _RoomListScreenState extends ConsumerState<RoomListScreen>
                               icon: Icons.filter_list_rounded,
                               badge: _hasActiveFilters,
                               onTap: _showFilterSheet,
+                            ),
+                            const SizedBox(width: 8),
+                            GestureDetector(
+                              onTap: () => context.push('/profile'),
+                              child: Container(
+                                width: 40,
+                                height: 40,
+                                decoration: BoxDecoration(
+                                  shape: BoxShape.circle,
+                                  gradient: const LinearGradient(
+                                      colors: [AppColors.teal, AppColors.gold]),
+                                  border: Border.all(
+                                      color: Colors.white.withValues(alpha: 0.3),
+                                      width: 1.5),
+                                ),
+                                child: Center(
+                                  child: Text(
+                                    userName.isNotEmpty
+                                        ? userName[0].toUpperCase()
+                                        : 'U',
+                                    style: GoogleFonts.beVietnamPro(
+                                      color: Colors.white,
+                                      fontWeight: FontWeight.w700,
+                                      fontSize: 15,
+                                    ),
+                                  ),
+                                ),
+                              ),
                             ),
                           ],
                         ),
