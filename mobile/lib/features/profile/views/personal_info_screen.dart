@@ -17,7 +17,8 @@ class PersonalInfoScreen extends ConsumerStatefulWidget {
       _PersonalInfoScreenState();
 }
 
-class _PersonalInfoScreenState extends ConsumerState<PersonalInfoScreen> {
+class _PersonalInfoScreenState
+    extends ConsumerState<PersonalInfoScreen> {
   final _formKey = GlobalKey<FormState>();
   late final TextEditingController _nameController;
   late final TextEditingController _phoneController;
@@ -33,11 +34,14 @@ class _PersonalInfoScreenState extends ConsumerState<PersonalInfoScreen> {
     super.initState();
     final user = ref.read(currentUserProvider);
     _nameController = TextEditingController(text: user?.name ?? '');
-    _phoneController = TextEditingController(text: user?.phone ?? '');
-    _emailController = TextEditingController(text: user?.email ?? '');
+    _phoneController =
+        TextEditingController(text: user?.phone ?? '');
+    _emailController =
+        TextEditingController(text: user?.email ?? '');
     _gender = user?.gender ?? 'MALE';
 
-    if (user?.dateOfBirth != null && user!.dateOfBirth!.isNotEmpty) {
+    if (user?.dateOfBirth != null &&
+        user!.dateOfBirth!.isNotEmpty) {
       try {
         _dateOfBirth = DateTime.parse(user.dateOfBirth!);
         _dobController = TextEditingController(
@@ -81,7 +85,8 @@ class _PersonalInfoScreenState extends ConsumerState<PersonalInfoScreen> {
     if (picked != null) {
       setState(() {
         _dateOfBirth = picked;
-        _dobController.text = DateFormat('dd/MM/yyyy').format(picked);
+        _dobController.text =
+            DateFormat('dd/MM/yyyy').format(picked);
       });
     }
   }
@@ -122,217 +127,255 @@ class _PersonalInfoScreenState extends ConsumerState<PersonalInfoScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final isDark =
+        Theme.of(context).brightness == Brightness.dark;
+    final topPad = MediaQuery.of(context).padding.top;
+    final initial = _nameController.text.isNotEmpty
+        ? _nameController.text[0].toUpperCase()
+        : 'U';
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Thông tin cá nhân'),
-      ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(AppSpacing.lg),
-        child: Form(
-          key: _formKey,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // ── Avatar ────────────────────────────────────────
-              Center(
-                child: Stack(
+      body: Column(
+        children: [
+          // ── Custom gradient header ─────────────────────────────
+          _buildHeader(context, topPad, initial, isDark),
+
+          // ── Scrollable form body ───────────────────────────────
+          Expanded(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.fromLTRB(20, 24, 20, 32),
+              child: Form(
+                key: _formKey,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    CircleAvatar(
-                      radius: 48,
-                      backgroundColor: isDark
-                          ? AppColors.darkContainer
-                          : AppColors.oceanLight,
-                      child: Text(
-                        _nameController.text.isNotEmpty
-                            ? _nameController.text[0].toUpperCase()
-                            : 'U',
-                        style: GoogleFonts.beVietnamPro(
-                          fontSize: 36,
-                          fontWeight: FontWeight.w700,
-                          color: AppColors.ocean,
-                        ),
-                      ),
-                    ),
-                    Positioned(
-                      bottom: 0,
-                      right: 0,
-                      child: Container(
-                        width: 32,
-                        height: 32,
-                        decoration: BoxDecoration(
-                          color: AppColors.ocean,
-                          shape: BoxShape.circle,
-                          border: Border.all(
-                            color: isDark
-                                ? AppColors.darkSurface
-                                : AppColors.surface,
-                            width: 2,
+                    // ── Group: Thông tin cơ bản ──────────────
+                    _GroupCard(
+                      isDark: isDark,
+                      label: 'THÔNG TIN CƠ BẢN',
+                      child: Column(
+                        children: [
+                          _buildFieldRow(
+                            label: 'Họ và tên',
+                            field: TextFormField(
+                              controller: _nameController,
+                              decoration: _inputDecoration(
+                                hintText: 'Nhập họ và tên',
+                                prefixIcon:
+                                    Icons.person_outline_rounded,
+                              ),
+                              validator: (v) {
+                                if (v == null ||
+                                    v.trim().isEmpty) {
+                                  return 'Vui lòng nhập họ tên';
+                                }
+                                return null;
+                              },
+                            ),
                           ),
-                        ),
-                        child: const Icon(
-                          Icons.camera_alt_rounded,
-                          color: Colors.white,
-                          size: 16,
-                        ),
+                          const SizedBox(height: 16),
+                          _buildFieldRow(
+                            label: 'Số điện thoại',
+                            field: TextFormField(
+                              controller: _phoneController,
+                              keyboardType: TextInputType.phone,
+                              decoration: _inputDecoration(
+                                hintText: 'Nhập số điện thoại',
+                                prefixIcon: Icons.phone_outlined,
+                                prefixText: '+84  ',
+                              ),
+                              validator: (v) {
+                                if (v == null ||
+                                    v.trim().isEmpty) {
+                                  return 'Vui lòng nhập số điện thoại';
+                                }
+                                return null;
+                              },
+                            ),
+                          ),
+                          const SizedBox(height: 16),
+                          _buildFieldRow(
+                            label: 'Email',
+                            field: TextFormField(
+                              controller: _emailController,
+                              keyboardType:
+                                  TextInputType.emailAddress,
+                              decoration: _inputDecoration(
+                                hintText: 'Nhập email',
+                                prefixIcon: Icons.email_outlined,
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
-                    ),
+                    )
+                        .animate()
+                        .fadeIn(duration: 350.ms)
+                        .slideY(begin: 0.04, end: 0),
+
+                    const SizedBox(height: 16),
+
+                    // ── Group: Cá nhân ────────────────────────
+                    _GroupCard(
+                      isDark: isDark,
+                      label: 'CÁ NHÂN',
+                      child: Column(
+                        children: [
+                          _buildFieldRow(
+                            label: 'Giới tính',
+                            field: Row(
+                              children: [
+                                _GenderChip(
+                                  label: 'Nam',
+                                  isSelected: _gender == 'MALE',
+                                  onTap: () => setState(
+                                      () => _gender = 'MALE'),
+                                ),
+                                const SizedBox(width: 10),
+                                _GenderChip(
+                                  label: 'Nữ',
+                                  isSelected:
+                                      _gender == 'FEMALE',
+                                  onTap: () => setState(
+                                      () => _gender = 'FEMALE'),
+                                ),
+                                const SizedBox(width: 10),
+                                _GenderChip(
+                                  label: 'Khác',
+                                  isSelected:
+                                      _gender == 'OTHER',
+                                  onTap: () => setState(
+                                      () => _gender = 'OTHER'),
+                                ),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(height: 16),
+                          _buildFieldRow(
+                            label: 'Ngày sinh',
+                            field: TextFormField(
+                              controller: _dobController,
+                              readOnly: true,
+                              onTap: _pickDate,
+                              decoration: _inputDecoration(
+                                hintText: 'Chọn ngày sinh',
+                                prefixIcon:
+                                    Icons.calendar_today_outlined,
+                                suffixIcon:
+                                    Icons.chevron_right_rounded,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    )
+                        .animate(delay: 100.ms)
+                        .fadeIn(duration: 350.ms)
+                        .slideY(begin: 0.04, end: 0),
+
+                    const SizedBox(height: 28),
+
+                    // ── Save button ───────────────────────────
+                    _GradientButton(
+                      onPressed: _isLoading ? null : _save,
+                      isLoading: _isLoading,
+                      label: 'Lưu thay đổi',
+                    )
+                        .animate(delay: 200.ms)
+                        .fadeIn(duration: 350.ms)
+                        .slideY(begin: 0.06, end: 0),
                   ],
                 ),
-              ).animate().fadeIn(duration: 400.ms),
-
-              const SizedBox(height: 28),
-
-              // ── Họ và tên ─────────────────────────────────────
-              _buildLabel('Họ và tên'),
-              const SizedBox(height: 6),
-              TextFormField(
-                controller: _nameController,
-                decoration: _inputDecoration(
-                  hintText: 'Nhập họ và tên',
-                  prefixIcon: Icons.person_outline_rounded,
-                ),
-                validator: (v) {
-                  if (v == null || v.trim().isEmpty) {
-                    return 'Vui lòng nhập họ tên';
-                  }
-                  return null;
-                },
               ),
-
-              const SizedBox(height: 20),
-
-              // ── Số điện thoại ─────────────────────────────────
-              _buildLabel('Số điện thoại'),
-              const SizedBox(height: 6),
-              TextFormField(
-                controller: _phoneController,
-                keyboardType: TextInputType.phone,
-                decoration: _inputDecoration(
-                  hintText: 'Nhập số điện thoại',
-                  prefixIcon: Icons.phone_outlined,
-                  prefixText: '+84  ',
-                ),
-                validator: (v) {
-                  if (v == null || v.trim().isEmpty) {
-                    return 'Vui lòng nhập số điện thoại';
-                  }
-                  return null;
-                },
-              ),
-
-              const SizedBox(height: 20),
-
-              // ── Email ─────────────────────────────────────────
-              _buildLabel('Email'),
-              const SizedBox(height: 6),
-              TextFormField(
-                controller: _emailController,
-                keyboardType: TextInputType.emailAddress,
-                decoration: _inputDecoration(
-                  hintText: 'Nhập email',
-                  prefixIcon: Icons.email_outlined,
-                ),
-              ),
-
-              const SizedBox(height: 20),
-
-              // ── Giới tính ─────────────────────────────────────
-              _buildLabel('Giới tính'),
-              const SizedBox(height: 8),
-              Row(
-                children: [
-                  _GenderChip(
-                    label: 'Nam',
-                    isSelected: _gender == 'MALE',
-                    onTap: () => setState(() => _gender = 'MALE'),
-                  ),
-                  const SizedBox(width: 10),
-                  _GenderChip(
-                    label: 'Nữ',
-                    isSelected: _gender == 'FEMALE',
-                    onTap: () =>
-                        setState(() => _gender = 'FEMALE'),
-                  ),
-                  const SizedBox(width: 10),
-                  _GenderChip(
-                    label: 'Khác',
-                    isSelected: _gender == 'OTHER',
-                    onTap: () =>
-                        setState(() => _gender = 'OTHER'),
-                  ),
-                ],
-              ),
-
-              const SizedBox(height: 20),
-
-              // ── Ngày sinh ─────────────────────────────────────
-              _buildLabel('Ngày sinh'),
-              const SizedBox(height: 6),
-              TextFormField(
-                controller: _dobController,
-                readOnly: true,
-                onTap: _pickDate,
-                decoration: _inputDecoration(
-                  hintText: 'Chọn ngày sinh',
-                  prefixIcon: Icons.calendar_today_outlined,
-                  suffixIcon: Icons.chevron_right_rounded,
-                ),
-              ),
-
-              const SizedBox(height: 32),
-
-              // ── Save button ───────────────────────────────────
-              SizedBox(
-                width: double.infinity,
-                height: 50,
-                child: FilledButton(
-                  onPressed: _isLoading ? null : _save,
-                  style: FilledButton.styleFrom(
-                    backgroundColor: AppColors.ocean,
-                    foregroundColor: Colors.white,
-                    shape: RoundedRectangleBorder(
-                      borderRadius:
-                          BorderRadius.circular(AppRadius.xl),
-                    ),
-                    textStyle: GoogleFonts.beVietnamPro(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                  child: _isLoading
-                      ? const SizedBox(
-                          width: 22,
-                          height: 22,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2,
-                            color: Colors.white,
-                          ),
-                        )
-                      : const Text('Lưu thay đổi'),
-                ),
-              )
-                  .animate(delay: 300.ms)
-                  .fadeIn(duration: 400.ms)
-                  .slideY(begin: 0.1, end: 0),
-
-              const SizedBox(height: 24),
-            ],
+            ),
           ),
-        ),
+        ],
       ),
     );
   }
 
-  Widget _buildLabel(String text) {
-    return Text(
-      text,
-      style: GoogleFonts.beVietnamPro(
-        fontSize: 13,
-        fontWeight: FontWeight.w600,
-        color: AppColors.muted,
+  Widget _buildHeader(BuildContext context, double topPad,
+      String initial, bool isDark) {
+    return Container(
+      width: double.infinity,
+      padding: EdgeInsets.only(
+        top: topPad + 12,
+        left: 20,
+        right: 20,
+        bottom: 28,
       ),
+      decoration: const BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment(-0.4, -1),
+          end: Alignment(0.6, 1),
+          colors: [AppColors.oceanDeep, AppColors.ocean],
+        ),
+        borderRadius: BorderRadius.only(
+          bottomLeft: Radius.circular(32),
+          bottomRight: Radius.circular(32),
+        ),
+      ),
+      child: Column(
+        children: [
+          // Back row
+          Row(
+            children: [
+              GestureDetector(
+                onTap: () => Navigator.of(context).maybePop(),
+                child: Container(
+                  width: 40,
+                  height: 40,
+                  decoration: BoxDecoration(
+                    color: Colors.white.withValues(alpha: 0.12),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(
+                    Icons.arrow_back_rounded,
+                    color: Colors.white,
+                    size: 22,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 14),
+              Text(
+                'Thông tin cá nhân',
+                style: GoogleFonts.beVietnamPro(
+                  fontSize: 20,
+                  fontWeight: FontWeight.w700,
+                  color: Colors.white,
+                  letterSpacing: -0.2,
+                ),
+              ),
+            ],
+          ),
+
+          const SizedBox(height: 20),
+
+          // Avatar centered
+          _HeaderAvatar(initial: initial),
+        ],
+      ),
+    ).animate().fadeIn(duration: 400.ms).slideY(begin: -0.04, end: 0);
+  }
+
+  Widget _buildFieldRow({
+    required String label,
+    required Widget field,
+  }) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label,
+          style: GoogleFonts.beVietnamPro(
+            fontSize: 13,
+            fontWeight: FontWeight.w500,
+            color: AppColors.muted,
+          ),
+        ),
+        const SizedBox(height: 6),
+        field,
+      ],
     );
   }
 
@@ -344,7 +387,8 @@ class _PersonalInfoScreenState extends ConsumerState<PersonalInfoScreen> {
   }) {
     return InputDecoration(
       hintText: hintText,
-      hintStyle: GoogleFonts.beVietnamPro(color: AppColors.slate),
+      hintStyle:
+          GoogleFonts.beVietnamPro(color: AppColors.slate),
       prefixIcon:
           Icon(prefixIcon, color: AppColors.muted, size: 20),
       prefixText: prefixText,
@@ -367,14 +411,189 @@ class _PersonalInfoScreenState extends ConsumerState<PersonalInfoScreen> {
       ),
       focusedBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(AppRadius.md),
-        borderSide:
-            const BorderSide(color: AppColors.ocean, width: 1.5),
+        borderSide: const BorderSide(
+            color: AppColors.ocean, width: 1.5),
       ),
     );
   }
 }
 
-// ─── Gender Chip ────────────────────────────────────────────────────────────
+// ─── Header Avatar ───────────────────────────────────────────────────────────
+
+class _HeaderAvatar extends StatelessWidget {
+  final String initial;
+  const _HeaderAvatar({required this.initial});
+
+  @override
+  Widget build(BuildContext context) {
+    return Stack(
+      alignment: Alignment.center,
+      children: [
+        // Gradient ring
+        Container(
+          width: 96,
+          height: 96,
+          decoration: const BoxDecoration(
+            shape: BoxShape.circle,
+            gradient: LinearGradient(
+              colors: [AppColors.teal, AppColors.gold],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+          ),
+        ),
+        // White gap
+        Container(
+          width: 90,
+          height: 90,
+          decoration: const BoxDecoration(
+            shape: BoxShape.circle,
+            color: Colors.white,
+          ),
+        ),
+        // Inner avatar
+        Container(
+          width: 84,
+          height: 84,
+          decoration: const BoxDecoration(
+            shape: BoxShape.circle,
+            gradient: LinearGradient(
+              colors: [AppColors.ocean, AppColors.oceanMid],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+          ),
+          alignment: Alignment.center,
+          child: Text(
+            initial,
+            style: GoogleFonts.beVietnamPro(
+              color: Colors.white,
+              fontWeight: FontWeight.w700,
+              fontSize: 32,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+// ─── Group Card ──────────────────────────────────────────────────────────────
+
+class _GroupCard extends StatelessWidget {
+  final bool isDark;
+  final String label;
+  final Widget child;
+
+  const _GroupCard({
+    required this.isDark,
+    required this.label,
+    required this.child,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label,
+          style: GoogleFonts.beVietnamPro(
+            fontSize: 11,
+            fontWeight: FontWeight.w600,
+            color: AppColors.muted,
+            letterSpacing: 1.2,
+          ),
+        ),
+        const SizedBox(height: 8),
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.all(20),
+          decoration: BoxDecoration(
+            color: isDark
+                ? AppColors.darkContainer
+                : AppColors.surface,
+            borderRadius: BorderRadius.circular(AppRadius.lg),
+            boxShadow: isDark
+                ? null
+                : [
+                    BoxShadow(
+                      color:
+                          AppColors.navy.withValues(alpha: 0.06),
+                      blurRadius: 20,
+                      offset: const Offset(0, 4),
+                    ),
+                  ],
+          ),
+          child: child,
+        ),
+      ],
+    );
+  }
+}
+
+// ─── Gradient Button ─────────────────────────────────────────────────────────
+
+class _GradientButton extends StatelessWidget {
+  final VoidCallback? onPressed;
+  final bool isLoading;
+  final String label;
+
+  const _GradientButton({
+    required this.onPressed,
+    required this.isLoading,
+    required this.label,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: double.infinity,
+      height: 52,
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          gradient: onPressed == null
+              ? null
+              : const LinearGradient(
+                  colors: [AppColors.ocean, AppColors.teal],
+                  begin: Alignment.centerLeft,
+                  end: Alignment.centerRight,
+                ),
+          color:
+              onPressed == null ? AppColors.slate : null,
+          borderRadius: BorderRadius.circular(14),
+        ),
+        child: ElevatedButton(
+          onPressed: onPressed,
+          style: ElevatedButton.styleFrom(
+            backgroundColor: Colors.transparent,
+            shadowColor: Colors.transparent,
+            foregroundColor: Colors.white,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(14),
+            ),
+            textStyle: GoogleFonts.beVietnamPro(
+              fontSize: 16,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+          child: isLoading
+              ? const SizedBox(
+                  width: 22,
+                  height: 22,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    color: Colors.white,
+                  ),
+                )
+              : Text(label),
+        ),
+      ),
+    );
+  }
+}
+
+// ─── Gender Chip ─────────────────────────────────────────────────────────────
 
 class _GenderChip extends StatelessWidget {
   final String label;
@@ -396,10 +615,20 @@ class _GenderChip extends StatelessWidget {
         padding: const EdgeInsets.symmetric(
             horizontal: 20, vertical: 10),
         decoration: BoxDecoration(
-          color: isSelected ? AppColors.ocean : Colors.transparent,
-          borderRadius: BorderRadius.circular(AppRadius.full),
+          gradient: isSelected
+              ? const LinearGradient(
+                  colors: [AppColors.ocean, AppColors.teal],
+                  begin: Alignment.centerLeft,
+                  end: Alignment.centerRight,
+                )
+              : null,
+          color: isSelected ? null : Colors.transparent,
+          borderRadius:
+              BorderRadius.circular(AppRadius.full),
           border: Border.all(
-            color: isSelected ? AppColors.ocean : AppColors.border,
+            color: isSelected
+                ? AppColors.ocean
+                : AppColors.border,
             width: 1.5,
           ),
         ),
@@ -407,9 +636,12 @@ class _GenderChip extends StatelessWidget {
           label,
           style: GoogleFonts.beVietnamPro(
             fontSize: 14,
-            fontWeight:
-                isSelected ? FontWeight.w600 : FontWeight.w400,
-            color: isSelected ? Colors.white : AppColors.navy,
+            fontWeight: isSelected
+                ? FontWeight.w600
+                : FontWeight.w400,
+            color: isSelected
+                ? Colors.white
+                : AppColors.navy,
           ),
         ),
       ),
