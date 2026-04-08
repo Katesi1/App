@@ -11,7 +11,9 @@ class RoomRepository {
     try {
       final response = await _dio.get(
         ApiConstants.rooms,
-        queryParameters: homestayId != null ? {'homestayId': homestayId} : null,
+        // API mới dùng propertyId, fallback tên cũ homestayId
+        queryParameters:
+            homestayId != null ? {'propertyId': homestayId} : null,
       );
       final list = (response.data['data'] as List)
           .map((e) => RoomModel.fromJson(e))

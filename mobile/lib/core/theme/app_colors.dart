@@ -1,32 +1,99 @@
 import 'package:flutter/material.dart';
 
 class AppColors {
-  // Primary — xanh lá thiên nhiên (homestay feel)
-  static const primary = Color(0xFF1E6B4A);
-  static const primaryLight = Color(0xFF4CAF82);
-  static const primaryDark = Color(0xFF0D4D33);
+  // Primary — Ocean blue (Hạ Long bay feel)
+  static const ocean = Color(0xFF0A4F6E);
+  static const oceanMid = Color(0xFF0D6E96);
+  static const oceanDeep = Color(0xFF062D42);
+  static const oceanLight = Color(0xFFE8F4FA);
+  static const oceanPale = Color(0xFFF0F8FC);
 
-  // Secondary — cam vàng ấm (accent)
-  static const secondary = Color(0xFFF5A623);
-  static const secondaryLight = Color(0xFFFFB74D);
+  // Aliases cho theme system
+  static const primary = ocean;
+  static const primaryLight = oceanMid;
+  static const primaryDark = oceanDeep;
+
+  // Teal accent
+  static const teal = Color(0xFF00B4D8);
+  static const tealLight = Color(0xFFCAF0F8);
+
+  // Gold premium accent
+  static const gold = Color(0xFFC9A84C);
+  static const goldLight = Color(0xFFFDF6E3);
+
+  // Secondary — gold
+  static const secondary = gold;
+  static const secondaryLight = goldLight;
 
   // Neutrals
-  static const background = Color(0xFFF8F9FA);
-  static const backgroundDark = Color(0xFF121212);
+  static const navy = Color(0xFF0F172A);
+  static const ink = Color(0xFF1E293B);
+  static const muted = Color(0xFF64748B);
+  static const slate = Color(0xFF94A3B8);
+  static const slateLight = Color(0xFFF1F5F9);
+  static const border = Color(0xFFE2E8F0);
+  static const background = Color(0xFFF8FAFC);
+  static const backgroundDark = Color(0xFF0F172A);
   static const surface = Color(0xFFFFFFFF);
-  static const surfaceDark = Color(0xFF1E1E2E);
-  static const divider = Color(0xFFE0E0E0);
+  static const surfaceDark = Color(0xFF1E293B);
+  static const divider = Color(0xFFE2E8F0);
 
   // Semantic
-  static const error = Color(0xFFD32F2F);
-  static const warning = Color(0xFFFB8C00);
-  static const success = Color(0xFF388E3C);
-  static const info = Color(0xFF1976D2);
+  static const emerald = Color(0xFF22C55E);
+  static const emeraldLight = Color(0xFFDCFCE7);
+  static const amber = Color(0xFFF59E0B);
+  static const amberLight = Color(0xFFFEF3C7);
+  static const coral = Color(0xFFEF4444);
+  static const coralLight = Color(0xFFFEE2E2);
+
+  static const error = coral;
+  static const warning = amber;
+  static const success = emerald;
+  static const info = oceanMid;
 
   // Booking status
-  static const hold = Color(0xFFFFA726);
-  static const confirmed = Color(0xFF43A047);
-  static const cancelled = Color(0xFFE53935);
+  static const hold = Color(0xFFF59E0B);
+  static const confirmed = Color(0xFF22C55E);
+  static const cancelled = Color(0xFFEF4444);
   static const completed = Color(0xFF7B1FA2);
-  static const available = Color(0xFFE8F5E9);
+  static const available = Color(0xFFDCFCE7);
+
+  // Room status colors
+  static const vacant = emerald;
+  static const vacantBg = emeraldLight;
+  static const booked = amber;
+  static const bookedBg = amberLight;
+  static const occupied = oceanMid;
+  static const occupiedBg = oceanLight;
+  static const maintenance = slate;
+  static const maintenanceBg = slateLight;
+
+  // Semantic accent colors (previously hardcoded)
+  static const brownDark = Color(0xFF92400E);
+  static const greenDark = Color(0xFF065F46);
+  static const greenForest = Color(0xFF166534);
+  static const purple = Color(0xFF7B1FA2);
+  static const blueWeekday = Color(0xFF1976D2);
+  static const orangeHoliday = Color(0xFFE65100);
+
+  // Dark theme specific colors — soft dark slate (nhẹ nhàng, không nặng)
+  static const darkBackground = Color(0xFF1A2232);    // scaffold bg — xanh slate trung tính
+  static const darkSurface = Color(0xFF212C3F);       // card/surface — nhẹ hơn bg
+  static const darkContainer = Color(0xFF283448);     // input/elevated container
+  static const darkElevated = Color(0xFF2F3E54);      // modal/dialog/sheet
+  static const darkBorder = Color(0xFF364D65);        // borders rõ hơn
+  static const darkDivider = Color(0xFF2A3A4F);       // dividers nhẹ
+  static const darkHint = Color(0xFF8FA8BC);          // placeholder/hint
+  static const darkSubtext = Color(0xFF7090AA);       // secondary text
+  static const darkTextPrimary = Color(0xFFE6F0F8);   // primary text — trắng mát
+  static const darkTextSecondary = Color(0xFFAAC4D8); // secondary text
+  static const darkError = Color(0xFFFF6B7A);
+  static const darkOnSurface = Color(0xFFE6F0F8);
+  static const darkSecondaryContainer = Color(0xFF3E2000);
+  static const darkOnSecondaryContainer = Color(0xFFFFDDB3);
+  static const oceanBright = Color(0xFF48C9F0);       // primary accent dark
+  static const tealBright = Color(0xFF26D9C8);        // teal on dark
+  static const goldBright = Color(0xFFD4AE5C);        // gold on dark
+  static const darkGradientStart = Color(0xFF1A2232);
+  static const darkGradientEnd = Color(0xFF1F3A55);
 }

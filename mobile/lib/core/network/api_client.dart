@@ -25,10 +25,13 @@ class ApiClient {
 }
 
 class _AuthInterceptor extends Interceptor {
-  final Dio dio;
+  final Dio _dio;
   bool _isRefreshing = false;
 
-  _AuthInterceptor(this.dio);
+  // Hàng chờ: các request nhận 401 trong khi đang refresh sẽ đợi ở đây
+  final List<({RequestOptions options, ErrorInterceptorHandler handler})> _queue = [];
+
+  _AuthInterceptor(this._dio);
 
   @override
   Future<void> onRequest(
@@ -47,41 +50,78 @@ class _AuthInterceptor extends Interceptor {
     DioException err,
     ErrorInterceptorHandler handler,
   ) async {
-    if (err.response?.statusCode == 401 && !_isRefreshing) {
-      _isRefreshing = true;
-      try {
-        final refreshToken = await SecureStorage.getRefreshToken();
-        if (refreshToken == null) {
-          await SecureStorage.clear();
-          return handler.next(err);
-        }
+    // Chỉ xử lý 401 (Unauthorized)
+    if (err.response?.statusCode != 401) {
+      return handler.next(err);
+    }
 
-        final response = await dio.post(
-          ApiConstants.refresh,
-          data: {'refreshToken': refreshToken},
-          options: Options(headers: {'Authorization': null}),
-        );
+    // Nếu đang refresh → đưa request vào hàng chờ, không retry ngay
+    if (_isRefreshing) {
+      _queue.add((options: err.requestOptions, handler: handler));
+      return;
+    }
 
-        final newAccessToken = response.data['data']['accessToken'];
-        final newRefreshToken = response.data['data']['refreshToken'];
-
-        await SecureStorage.saveAccessToken(newAccessToken);
-        if (newRefreshToken != null) {
-          await SecureStorage.saveRefreshToken(newRefreshToken);
-        }
-
-        // Retry original request
-        err.requestOptions.headers['Authorization'] = 'Bearer $newAccessToken';
-        final retryResponse = await dio.fetch(err.requestOptions);
-        return handler.resolve(retryResponse);
-      } catch (_) {
-        await SecureStorage.clear();
+    _isRefreshing = true;
+    try {
+      final refreshToken = await SecureStorage.getRefreshToken();
+      if (refreshToken == null) {
+        await _failAll(err);
         handler.next(err);
-      } finally {
-        _isRefreshing = false;
+        return;
       }
-    } else {
+
+      final response = await _dio.post(
+        ApiConstants.refresh,
+        data: {'refreshToken': refreshToken},
+        options: Options(headers: {'Authorization': null}),
+      );
+
+      final newAccessToken = response.data['data']['accessToken'];
+      final newRefreshToken = response.data['data']['refreshToken'];
+
+      await SecureStorage.saveAccessToken(newAccessToken);
+      if (newRefreshToken != null) {
+        await SecureStorage.saveRefreshToken(newRefreshToken);
+      }
+
+      // Retry request gốc với token mới
+      err.requestOptions.headers['Authorization'] = 'Bearer $newAccessToken';
+      final retryResponse = await _dio.fetch(err.requestOptions);
+      handler.resolve(retryResponse);
+
+      // Replay tất cả request đang chờ trong hàng
+      await _replayQueue(newAccessToken, err);
+    } catch (_) {
+      // Refresh thất bại → xoá token, đăng xuất
+      await SecureStorage.clear();
+      await _failAll(err);
       handler.next(err);
+    } finally {
+      _isRefreshing = false;
+    }
+  }
+
+  /// Replay tất cả request trong hàng chờ với token mới
+  Future<void> _replayQueue(String newToken, DioException originalErr) async {
+    final pending = List.of(_queue);
+    _queue.clear();
+    for (final item in pending) {
+      item.options.headers['Authorization'] = 'Bearer $newToken';
+      try {
+        final r = await _dio.fetch(item.options);
+        item.handler.resolve(r);
+      } catch (e) {
+        item.handler.next(originalErr);
+      }
+    }
+  }
+
+  /// Fail tất cả request đang chờ (refresh thất bại)
+  Future<void> _failAll(DioException err) async {
+    final pending = List.of(_queue);
+    _queue.clear();
+    for (final item in pending) {
+      item.handler.next(err);
     }
   }
 }

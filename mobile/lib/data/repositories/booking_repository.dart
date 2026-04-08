@@ -7,6 +7,19 @@ import '../models/booking_model.dart';
 class BookingRepository {
   final _dio = ApiClient.instance;
 
+  Future<ApiResponse<BookingModel>> getBookingDetail(String id) async {
+    try {
+      final response = await _dio.get(ApiConstants.bookingDetail(id));
+      return ApiResponse(
+        success: true,
+        data: BookingModel.fromJson(response.data['data']),
+        message: '',
+      );
+    } on DioException catch (e) {
+      return ApiResponse(success: false, message: parseDioError(e));
+    }
+  }
+
   Future<ApiResponse<List<BookingModel>>> getBookings({String? roomId}) async {
     try {
       final response = await _dio.get(

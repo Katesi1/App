@@ -4,49 +4,76 @@ import * as bcrypt from 'bcryptjs';
 const prisma = new PrismaClient();
 
 async function main() {
-  console.log('🌱 Seeding database...');
+  console.log('Seeding database...');
 
-  // Tài khoản Admin mặc định
-  // Dùng "phone" field như username cho admin
-  const adminPhone = process.env.ADMIN_PHONE || 'Admin';
-  const adminPassword = process.env.ADMIN_PASSWORD || 'Abcd@1234';
-  const adminName = process.env.ADMIN_NAME || 'Super Admin';
+  // Default Owner account
+  const ownerEmail = process.env.OWNER_EMAIL || 'owner@halong24h.vn';
+  const ownerPassword = process.env.OWNER_PASSWORD || 'Abcd@1234';
+  const ownerName = process.env.OWNER_NAME || 'Owner Admin';
 
-  const existingAdmin = await prisma.user.findUnique({ where: { phone: adminPhone } });
-  if (!existingAdmin) {
-    const hashedPassword = await bcrypt.hash(adminPassword, 10);
+  const existingOwner = await prisma.user.findUnique({ where: { email: ownerEmail } });
+  if (!existingOwner) {
+    const passwordHash = await bcrypt.hash(ownerPassword, 10);
     await prisma.user.create({
       data: {
-        name: adminName,
-        phone: adminPhone,
-        password: hashedPassword,
-        role: Role.ADMIN,
+        fullName: ownerName,
+        email: ownerEmail,
+        phone: '0900000000',
+        passwordHash,
+        role: Role.OWNER,
       },
     });
-    console.log(`✅ Admin created`);
-    console.log(`   Username : ${adminPhone}`);
-    console.log(`   Password : ${adminPassword}`);
+    console.log(`Owner created`);
+    console.log(`  Email    : ${ownerEmail}`);
+    console.log(`  Password : ${ownerPassword}`);
   } else {
-    // Cập nhật password nếu admin đã tồn tại
-    const isMatch = await bcrypt.compare(adminPassword, existingAdmin.password);
-    if (!isMatch) {
-      const hashedPassword = await bcrypt.hash(adminPassword, 10);
-      await prisma.user.update({
-        where: { phone: adminPhone },
-        data: { password: hashedPassword, name: adminName },
-      });
-      console.log(`✅ Admin password updated`);
-    } else {
-      console.log('ℹ️  Admin already exists');
-    }
+    console.log('Owner already exists');
   }
 
-  console.log('✅ Seed completed!');
+  // Default room types
+  const defaultRoomTypes = [
+    { name: 'Standard', description: 'Phong tieu chuan', basePrice: 300000, maxCapacity: 2 },
+    { name: 'Deluxe', description: 'Phong cao cap', basePrice: 500000, maxCapacity: 3 },
+    { name: 'Suite', description: 'Phong suite', basePrice: 800000, maxCapacity: 4 },
+    { name: 'Family', description: 'Phong gia dinh', basePrice: 700000, maxCapacity: 6 },
+  ];
+
+  for (const rt of defaultRoomTypes) {
+    await prisma.roomType.upsert({
+      where: { name: rt.name },
+      update: {},
+      create: rt,
+    });
+  }
+  console.log('Room types seeded');
+
+  // Default amenities
+  const defaultAmenities = [
+    { name: 'WiFi', icon: 'wifi', category: 'connectivity' },
+    { name: 'Air Conditioning', icon: 'ac_unit', category: 'comfort' },
+    { name: 'TV', icon: 'tv', category: 'entertainment' },
+    { name: 'Mini Bar', icon: 'local_bar', category: 'food' },
+    { name: 'Hot Water', icon: 'hot_tub', category: 'comfort' },
+    { name: 'Balcony', icon: 'balcony', category: 'space' },
+    { name: 'Sea View', icon: 'beach_access', category: 'view' },
+    { name: 'Parking', icon: 'local_parking', category: 'facility' },
+  ];
+
+  for (const amenity of defaultAmenities) {
+    await prisma.amenity.upsert({
+      where: { name: amenity.name },
+      update: {},
+      create: amenity,
+    });
+  }
+  console.log('Amenities seeded');
+
+  console.log('Seed completed!');
 }
 
 main()
   .catch((e) => {
-    console.error('❌ Seed failed:', e);
+    console.error('Seed failed:', e);
     process.exit(1);
   })
   .finally(async () => {

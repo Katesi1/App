@@ -18,7 +18,8 @@ export class AllExceptionsFilter implements ExceptionFilter {
     const request = ctx.getRequest<Request>();
 
     let status = HttpStatus.INTERNAL_SERVER_ERROR;
-    let message = 'Lỗi server';
+    let message = 'Loi server';
+    let errorCode: string | null = null;
     let errors: any = null;
 
     if (exception instanceof HttpException) {
@@ -28,6 +29,7 @@ export class AllExceptionsFilter implements ExceptionFilter {
         message = res;
       } else if (typeof res === 'object') {
         message = (res as any).message || message;
+        errorCode = (res as any).errorCode || null;
         errors = (res as any).errors || null;
       }
     } else {
@@ -36,9 +38,11 @@ export class AllExceptionsFilter implements ExceptionFilter {
 
     response.status(status).json({
       success: false,
-      statusCode: status,
-      message: Array.isArray(message) ? message.join(', ') : message,
-      errors,
+      error: {
+        code: errorCode || `HTTP_${status}`,
+        message: Array.isArray(message) ? message.join(', ') : message,
+        errors,
+      },
       path: request.url,
       timestamp: new Date().toISOString(),
     });

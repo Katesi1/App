@@ -1,0 +1,685 @@
+import 'package:flutter/material.dart';
+import 'package:flutter_animate/flutter_animate.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
+import 'package:google_fonts/google_fonts.dart';
+import '../../../core/theme/app_colors.dart';
+import '../../../core/theme/app_spacing.dart';
+import '../../../core/utils/helpers.dart';
+import '../../../features/auth/controllers/auth_controller.dart';
+import '../../../shared/providers/theme_provider.dart';
+
+class ProfileScreen extends ConsumerWidget {
+  const ProfileScreen({super.key});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final user = ref.watch(currentUserProvider);
+    final themeMode = ref.watch(themeProvider);
+    final isDark = themeMode == ThemeMode.dark;
+    final topPad = MediaQuery.of(context).padding.top;
+
+    return Scaffold(
+      body: SingleChildScrollView(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            // ── Immersive gradient header ──────────────────────────
+            _ProfileHeader(user: user, topPad: topPad)
+                .animate()
+                .fadeIn(duration: 400.ms)
+                .slideY(begin: -0.04, end: 0),
+
+            const SizedBox(height: 24),
+
+            // ── Section: TÀI KHOẢN ────────────────────────────────
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _SectionLabel('TÀI KHOẢN'),
+                  const SizedBox(height: 8),
+                  _MenuCard(
+                    isDark: isDark,
+                    items: [
+                      _MenuItemData(
+                        icon: Icons.person_outline_rounded,
+                        label: 'Thông tin cá nhân',
+                        subtitle: 'Cập nhật hồ sơ của bạn',
+                        iconColor: AppColors.ocean,
+                        onTap: () => context.push('/profile/edit'),
+                      ),
+                      _MenuItemData(
+                        icon: Icons.lock_outline_rounded,
+                        label: 'Đổi mật khẩu',
+                        subtitle: 'Bảo mật tài khoản',
+                        iconColor: AppColors.teal,
+                        onTap: () =>
+                            context.push('/profile/change-password'),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            )
+                .animate(delay: 100.ms)
+                .fadeIn(duration: 300.ms)
+                .slideX(begin: 0.05, end: 0),
+
+            const SizedBox(height: 16),
+
+            // ── Section: CÀI ĐẶT ──────────────────────────────────
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _SectionLabel('CÀI ĐẶT'),
+                  const SizedBox(height: 8),
+                  _MenuCard(
+                    isDark: isDark,
+                    items: [
+                      _MenuItemData(
+                        icon: isDark
+                            ? Icons.light_mode_rounded
+                            : Icons.dark_mode_rounded,
+                        label: 'Chế độ tối',
+                        subtitle: isDark ? 'Đang bật' : 'Đang tắt',
+                        iconColor: AppColors.navy,
+                        isToggle: true,
+                        toggleValue: isDark,
+                        onToggle: (_) =>
+                            ref.read(themeProvider.notifier).toggle(),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            )
+                .animate(delay: 200.ms)
+                .fadeIn(duration: 300.ms)
+                .slideX(begin: 0.05, end: 0),
+
+            const SizedBox(height: 16),
+
+            // ── Section: HỖ TRỢ ───────────────────────────────────
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _SectionLabel('HỖ TRỢ'),
+                  const SizedBox(height: 8),
+                  _MenuCard(
+                    isDark: isDark,
+                    items: [
+                      _MenuItemData(
+                        icon: Icons.help_outline_rounded,
+                        label: 'Trợ giúp',
+                        subtitle: 'Câu hỏi thường gặp & liên hệ',
+                        iconColor: AppColors.amber,
+                        onTap: () => context.push('/profile/help'),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            )
+                .animate(delay: 300.ms)
+                .fadeIn(duration: 300.ms)
+                .slideX(begin: 0.05, end: 0),
+
+            const SizedBox(height: 24),
+
+            // ── Logout button ──────────────────────────────────────
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20),
+              child: OutlinedButton.icon(
+                onPressed: () => _confirmLogout(context, ref),
+                icon: const Icon(
+                  Icons.logout_rounded,
+                  color: AppColors.coral,
+                  size: 20,
+                ),
+                label: Text(
+                  'Đăng xuất',
+                  style: GoogleFonts.beVietnamPro(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.coral,
+                  ),
+                ),
+                style: OutlinedButton.styleFrom(
+                  minimumSize: const Size(double.infinity, 52),
+                  side: const BorderSide(
+                    color: AppColors.coral,
+                    width: 1.5,
+                  ),
+                  shape: RoundedRectangleBorder(
+                    borderRadius:
+                        BorderRadius.circular(AppRadius.lg),
+                  ),
+                ),
+              ),
+            )
+                .animate(delay: 400.ms)
+                .fadeIn(duration: 300.ms)
+                .slideX(begin: 0.05, end: 0),
+
+            const SizedBox(height: 16),
+
+            // ── App version ────────────────────────────────────────
+            Center(
+              child: Text(
+                'Halong24h v1.0.0',
+                style: GoogleFonts.beVietnamPro(
+                  fontSize: 11,
+                  color: AppColors.slate,
+                ),
+              ),
+            )
+                .animate(delay: 450.ms)
+                .fadeIn(duration: 300.ms),
+
+            const SizedBox(height: 32),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _confirmLogout(
+      BuildContext context, WidgetRef ref) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(
+          'Đăng xuất?',
+          style: GoogleFonts.beVietnamPro(fontWeight: FontWeight.w700),
+        ),
+        content: Text(
+          'Bạn có chắc chắn muốn đăng xuất?',
+          style: GoogleFonts.beVietnamPro(color: AppColors.muted),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: Text(
+              'Huỷ',
+              style:
+                  GoogleFonts.beVietnamPro(color: AppColors.muted),
+            ),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: Text(
+              'Đăng xuất',
+              style: GoogleFonts.beVietnamPro(
+                color: AppColors.coral,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+    if (confirmed == true && context.mounted) {
+      await ref.read(authProvider.notifier).logout();
+      if (context.mounted) {
+        context.go('/login');
+      }
+    }
+  }
+}
+
+// ─── Profile Header ─────────────────────────────────────────────────────────
+
+class _ProfileHeader extends StatelessWidget {
+  final dynamic user;
+  final double topPad;
+
+  const _ProfileHeader({required this.user, required this.topPad});
+
+  @override
+  Widget build(BuildContext context) {
+    final initial = (user?.name?.isNotEmpty == true)
+        ? user!.name[0].toUpperCase()
+        : 'U';
+
+    return Container(
+      width: double.infinity,
+      padding: EdgeInsets.only(
+        top: topPad + 16,
+        left: 24,
+        right: 24,
+        bottom: 32,
+      ),
+      decoration: const BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment(-0.4, -1),
+          end: Alignment(0.6, 1),
+          colors: [AppColors.oceanDeep, AppColors.ocean],
+        ),
+        borderRadius: BorderRadius.only(
+          bottomLeft: Radius.circular(32),
+          bottomRight: Radius.circular(32),
+        ),
+      ),
+      child: Column(
+        children: [
+          // Back button row
+          Align(
+            alignment: Alignment.centerLeft,
+            child: GestureDetector(
+              onTap: () => Navigator.of(context).maybePop(),
+              child: Container(
+                width: 40,
+                height: 40,
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: 0.12),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(
+                  Icons.arrow_back_rounded,
+                  color: Colors.white,
+                  size: 22,
+                ),
+              ),
+            ),
+          ),
+
+          const SizedBox(height: 20),
+
+          // Avatar with gradient ring + pulsing shimmer
+          _GradientAvatar(initial: initial),
+
+          const SizedBox(height: 16),
+
+          // Name
+          Text(
+            user?.name ?? '',
+            style: GoogleFonts.beVietnamPro(
+              fontSize: 22,
+              fontWeight: FontWeight.w700,
+              color: Colors.white,
+              letterSpacing: -0.3,
+            ),
+            textAlign: TextAlign.center,
+          ),
+
+          const SizedBox(height: 8),
+
+          // Role badge
+          Container(
+            padding: const EdgeInsets.symmetric(
+              horizontal: AppSpacing.md,
+              vertical: 5,
+            ),
+            decoration: BoxDecoration(
+              color: Colors.white.withValues(alpha: 0.15),
+              borderRadius: BorderRadius.circular(AppRadius.full),
+              border: Border.all(
+                color: Colors.white.withValues(alpha: 0.25),
+                width: 1,
+              ),
+            ),
+            child: Text(
+              AppHelpers.roleLabel(user?.role),
+              style: GoogleFonts.beVietnamPro(
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+                color: Colors.white,
+                letterSpacing: 0.5,
+              ),
+            ),
+          ),
+
+          const SizedBox(height: 10),
+
+          // Phone
+          if (user?.phone != null && user!.phone.isNotEmpty)
+            Text(
+              user!.phone,
+              style: GoogleFonts.beVietnamPro(
+                fontSize: 13,
+                color: Colors.white.withValues(alpha: 0.7),
+              ),
+            ),
+
+          // Email
+          if (user?.email != null && user!.email!.isNotEmpty) ...[
+            const SizedBox(height: 4),
+            Text(
+              user!.email!,
+              style: GoogleFonts.beVietnamPro(
+                fontSize: 13,
+                color: Colors.white.withValues(alpha: 0.7),
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+// ─── Gradient Avatar with pulsing ring ──────────────────────────────────────
+
+class _GradientAvatar extends StatelessWidget {
+  final String initial;
+  const _GradientAvatar({required this.initial});
+
+  @override
+  Widget build(BuildContext context) {
+    return Stack(
+      alignment: Alignment.center,
+      children: [
+        // Pulsing outer ring
+        Container(
+          width: 100,
+          height: 100,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            gradient: const LinearGradient(
+              colors: [AppColors.teal, AppColors.gold],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+          ),
+        )
+            .animate(onPlay: (c) => c.repeat())
+            .shimmer(
+              duration: 2000.ms,
+              color: Colors.white.withValues(alpha: 0.4),
+              angle: 0.5,
+            )
+            .then()
+            .shimmer(
+              duration: 2000.ms,
+              delay: 500.ms,
+              color: Colors.white.withValues(alpha: 0.2),
+            ),
+
+        // White spacing ring
+        Container(
+          width: 94,
+          height: 94,
+          decoration: const BoxDecoration(
+            shape: BoxShape.circle,
+            color: Colors.white,
+          ),
+        ),
+
+        // Avatar inner circle
+        Container(
+          width: 88,
+          height: 88,
+          decoration: const BoxDecoration(
+            shape: BoxShape.circle,
+            gradient: LinearGradient(
+              colors: [AppColors.ocean, AppColors.oceanMid],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+          ),
+          alignment: Alignment.center,
+          child: Text(
+            initial,
+            style: GoogleFonts.beVietnamPro(
+              color: Colors.white,
+              fontWeight: FontWeight.w700,
+              fontSize: 34,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+// ─── Section Label ───────────────────────────────────────────────────────────
+
+class _SectionLabel extends StatelessWidget {
+  final String text;
+  const _SectionLabel(this.text);
+
+  @override
+  Widget build(BuildContext context) {
+    return Text(
+      text,
+      style: GoogleFonts.beVietnamPro(
+        fontSize: 11,
+        fontWeight: FontWeight.w600,
+        color: AppColors.muted,
+        letterSpacing: 1.2,
+      ),
+    );
+  }
+}
+
+// ─── Menu Item Data ──────────────────────────────────────────────────────────
+
+class _MenuItemData {
+  final IconData icon;
+  final String label;
+  final String subtitle;
+  final Color iconColor;
+  final VoidCallback? onTap;
+  final bool isToggle;
+  final bool toggleValue;
+  final ValueChanged<bool>? onToggle;
+
+  const _MenuItemData({
+    required this.icon,
+    required this.label,
+    required this.subtitle,
+    required this.iconColor,
+    this.onTap,
+    this.isToggle = false,
+    this.toggleValue = false,
+    this.onToggle,
+  });
+}
+
+// ─── Menu Card ───────────────────────────────────────────────────────────────
+
+class _MenuCard extends StatelessWidget {
+  final bool isDark;
+  final List<_MenuItemData> items;
+
+  const _MenuCard({required this.isDark, required this.items});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(
+        color: isDark ? AppColors.darkContainer : AppColors.surface,
+        borderRadius: BorderRadius.circular(AppRadius.lg),
+        boxShadow: isDark
+            ? null
+            : [
+                BoxShadow(
+                  color: AppColors.navy.withValues(alpha: 0.06),
+                  blurRadius: 20,
+                  offset: const Offset(0, 4),
+                ),
+              ],
+      ),
+      child: Column(
+        children: [
+          for (int i = 0; i < items.length; i++) ...[
+            if (i > 0)
+              Divider(
+                height: 1,
+                indent: 72,
+                color: isDark ? AppColors.darkBorder : AppColors.border,
+              ),
+            items[i].isToggle
+                ? _ToggleRow(item: items[i], isDark: isDark)
+                : _TapRow(item: items[i], isDark: isDark),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+// ─── Tap Row ─────────────────────────────────────────────────────────────────
+
+class _TapRow extends StatelessWidget {
+  final _MenuItemData item;
+  final bool isDark;
+
+  const _TapRow({required this.item, required this.isDark});
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: item.onTap,
+        borderRadius: BorderRadius.circular(AppRadius.lg),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(
+            horizontal: 16,
+            vertical: 14,
+          ),
+          child: Row(
+            children: [
+              // Icon container 44px
+              Container(
+                width: 44,
+                height: 44,
+                decoration: BoxDecoration(
+                  color:
+                      item.iconColor.withValues(alpha: 0.10),
+                  borderRadius:
+                      BorderRadius.circular(AppRadius.md),
+                ),
+                child: Icon(
+                  item.icon,
+                  color: item.iconColor,
+                  size: 22,
+                ),
+              ),
+
+              const SizedBox(width: 14),
+
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      item.label,
+                      style: GoogleFonts.beVietnamPro(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w500,
+                        color: isDark
+                            ? AppColors.darkOnSurface
+                            : AppColors.navy,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      item.subtitle,
+                      style: GoogleFonts.beVietnamPro(
+                        fontSize: 12,
+                        color: AppColors.muted,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+
+              Icon(
+                Icons.chevron_right_rounded,
+                color: AppColors.slate,
+                size: 22,
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ─── Toggle Row ───────────────────────────────────────────────────────────────
+
+class _ToggleRow extends StatelessWidget {
+  final _MenuItemData item;
+  final bool isDark;
+
+  const _ToggleRow({required this.item, required this.isDark});
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: () => item.onToggle?.call(!item.toggleValue),
+        borderRadius: BorderRadius.circular(AppRadius.lg),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(
+            horizontal: 16,
+            vertical: 10,
+          ),
+          child: Row(
+            children: [
+              // Icon container 44px
+              Container(
+                width: 44,
+                height: 44,
+                decoration: BoxDecoration(
+                  color: item.iconColor.withValues(alpha: 0.10),
+                  borderRadius:
+                      BorderRadius.circular(AppRadius.md),
+                ),
+                child: Icon(
+                  item.icon,
+                  color: item.iconColor,
+                  size: 22,
+                ),
+              ),
+
+              const SizedBox(width: 14),
+
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      item.label,
+                      style: GoogleFonts.beVietnamPro(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w500,
+                        color: isDark
+                            ? AppColors.darkOnSurface
+                            : AppColors.navy,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      item.subtitle,
+                      style: GoogleFonts.beVietnamPro(
+                        fontSize: 12,
+                        color: AppColors.muted,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+
+              Switch(
+                value: item.toggleValue,
+                activeThumbColor: AppColors.ocean,
+                onChanged: item.onToggle,
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}

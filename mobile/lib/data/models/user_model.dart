@@ -7,6 +7,8 @@ class UserModel {
   final String? email;
   final String role;
   final bool isActive;
+  final String? gender;
+  final String? dateOfBirth;
 
   UserModel({
     required this.id,
@@ -15,6 +17,8 @@ class UserModel {
     this.email,
     required this.role,
     this.isActive = true,
+    this.gender,
+    this.dateOfBirth,
   });
 
   factory UserModel.fromJson(Map<String, dynamic> json) => UserModel(
@@ -22,8 +26,10 @@ class UserModel {
         name: json['name'] ?? '',
         phone: json['phone'] ?? '',
         email: json['email'],
-        role: json['role'] ?? 'SALE',
+        role: json['role'] ?? 'CUSTOMER',
         isActive: json['isActive'] ?? true,
+        gender: json['gender'],
+        dateOfBirth: json['dateOfBirth'],
       );
 
   Map<String, dynamic> toJson() => {
@@ -33,6 +39,8 @@ class UserModel {
         'email': email,
         'role': role,
         'isActive': isActive,
+        if (gender != null) 'gender': gender,
+        if (dateOfBirth != null) 'dateOfBirth': dateOfBirth,
       };
 
   String toJsonString() => jsonEncode(toJson());
@@ -41,7 +49,12 @@ class UserModel {
       UserModel.fromJson(jsonDecode(str));
 
   bool get isAdmin => role == 'ADMIN';
-  bool get isOwner => role == 'OWNER';
-  bool get isSale => role == 'SALE';
-  bool get canEdit => isAdmin || isOwner;
+  bool get isStaff => role == 'STAFF';
+  bool get isCustomer => role == 'CUSTOMER';
+
+  /// ADMIN + STAFF = quản lý (xem dashboard, CRUD phòng/booking)
+  bool get isManagement => isAdmin || isStaff;
+
+  /// Có quyền chỉnh sửa (tạo/sửa phòng, homestay)
+  bool get canEdit => isAdmin || isStaff;
 }
