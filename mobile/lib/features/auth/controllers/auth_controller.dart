@@ -1,4 +1,5 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../../core/storage/secure_storage.dart';
 import '../../../data/models/user_model.dart';
 import '../../../data/repositories/auth_repository.dart';
 import '../../../shared/providers/view_mode_provider.dart';
@@ -41,17 +42,28 @@ class AuthNotifier extends StateNotifier<AuthState> {
   }
 
   Future<void> _init() async {
-    state = state.copyWith(isLoading: true);
+    // Giữ isLoading = true cho đến khi verify xong — GoRouter không redirect sớm
     final user = await _repo.getStoredUser();
     final isLoggedIn = await _repo.isLoggedIn();
-    state = AuthState(user: user, isLoggedIn: isLoggedIn);
-    if (isLoggedIn) {
-      final fresh = await _repo.getProfile();
-      if (fresh.success && fresh.data != null) {
-        state = state.copyWith(user: fresh.data);
-      }
+
+    if (!isLoggedIn) {
+      state = AuthState(isLoading: false);
+      return;
     }
-    state = state.copyWith(isLoading: false);
+
+    // Hiển thị user đã lưu ngay lập tức (UX tốt hơn), nhưng giữ isLoading
+    state = AuthState(user: user, isLoggedIn: true, isLoading: true);
+
+    // Verify token bằng cách gọi profile — interceptor tự refresh nếu cần
+    final fresh = await _repo.getProfile();
+    if (fresh.success && fresh.data != null) {
+      // Token hợp lệ (hoặc đã refresh thành công)
+      state = AuthState(user: fresh.data, isLoggedIn: true, isLoading: false);
+    } else {
+      // Token hết hạn hoàn toàn, refresh thất bại → buộc đăng nhập lại
+      await SecureStorage.clear();
+      state = AuthState(isLoading: false);
+    }
   }
 
   Future<String?> login(String phone, String password) async {
