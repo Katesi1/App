@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../core/utils/vnd_input_formatter.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 import '../../../core/theme/app_colors.dart';
@@ -79,12 +80,14 @@ class _PropertyRulesScreenState extends State<PropertyRulesScreen> {
                     'Người lớn',
                     _adultSurchargeCtrl,
                     suffix: 'đ/người',
+                    isVnd: true,
                   ),
                   _buildDivider(),
                   _buildRow(
                     'Trẻ em 7-11 tuổi',
                     _childSurchargeCtrl,
                     suffix: 'đ/người',
+                    isVnd: true,
                   ),
                 ]),
                 const SizedBox(height: AppSpacing.lg),
@@ -162,6 +165,7 @@ class _PropertyRulesScreenState extends State<PropertyRulesScreen> {
     String label,
     TextEditingController controller, {
     String? suffix,
+    bool isVnd = false,
   }) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: AppSpacing.md),
@@ -182,6 +186,8 @@ class _PropertyRulesScreenState extends State<PropertyRulesScreen> {
             child: TextFormField(
               controller: controller,
               textAlign: TextAlign.right,
+              keyboardType: isVnd ? TextInputType.number : null,
+              inputFormatters: isVnd ? [VndInputFormatter()] : null,
               style: GoogleFonts.beVietnamPro(
                 fontSize: 14,
                 fontWeight: FontWeight.w700,

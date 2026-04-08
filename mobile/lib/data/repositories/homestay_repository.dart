@@ -7,9 +7,14 @@ import '../models/homestay_model.dart';
 class HomestayRepository {
   final _dio = ApiClient.instance;
 
-  Future<ApiResponse<List<HomestayModel>>> getHomestays() async {
+  Future<ApiResponse<List<HomestayModel>>> getHomestays({
+    bool includeInactive = false,
+  }) async {
     try {
-      final response = await _dio.get(ApiConstants.properties);
+      final response = await _dio.get(
+        ApiConstants.properties,
+        queryParameters: includeInactive ? {'includeInactive': true} : null,
+      );
       final list = (response.data['data'] as List)
           .map((e) => HomestayModel.fromJson(e))
           .toList();

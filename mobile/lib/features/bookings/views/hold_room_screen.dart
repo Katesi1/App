@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
+import '../../../core/utils/vnd_input_formatter.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -298,9 +298,10 @@ class _HoldRoomScreenState extends ConsumerState<HoldRoomScreen> {
                   controller: _depositCtrl,
                   keyboardType: TextInputType.number,
                   textInputAction: TextInputAction.next,
-                  inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                  inputFormatters: [VndInputFormatter()],
                   decoration: InputDecoration(
-                    labelText: 'Tiền cọc (đ)',
+                    labelText: 'Tiền cọc',
+                    suffixText: '₫',
                     prefixIcon:
                         Icon(Icons.payments_outlined, color: colors.primary),
                   ),

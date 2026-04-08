@@ -8,9 +8,12 @@ final homestayRepositoryProvider = Provider<HomestayRepository>(
 );
 
 // ─── List provider ────────────────────────────────────────────────────────────
-final homestayListProvider = FutureProvider<List<HomestayModel>>((ref) async {
+// includeInactive: true → dùng ở management screen (admin/staff thấy cả cơ sở bị tắt)
+// includeInactive: false (default) → dùng ở customer / public views
+final homestayListProvider =
+    FutureProvider.family<List<HomestayModel>, bool>((ref, includeInactive) async {
   final repo = ref.read(homestayRepositoryProvider);
-  final result = await repo.getHomestays();
+  final result = await repo.getHomestays(includeInactive: includeInactive);
   if (result.success) return result.data!;
   throw Exception(result.message);
 });
@@ -47,6 +50,19 @@ class HomestayActionsNotifier extends StateNotifier<AsyncValue<void>> {
   Future<bool> update(String id, Map<String, dynamic> data) async {
     state = const AsyncValue.loading();
     final result = await _repo.updateHomestay(id, data);
+    if (result.success) {
+      _ref.invalidate(homestayListProvider);
+      _ref.invalidate(homestayDetailProvider(id));
+      state = const AsyncValue.data(null);
+      return true;
+    }
+    state = AsyncValue.error(result.message, StackTrace.current);
+    return false;
+  }
+
+  Future<bool> toggleActive(String id, bool isActive) async {
+    state = const AsyncValue.loading();
+    final result = await _repo.updateHomestay(id, {'isActive': isActive});
     if (result.success) {
       _ref.invalidate(homestayListProvider);
       _ref.invalidate(homestayDetailProvider(id));

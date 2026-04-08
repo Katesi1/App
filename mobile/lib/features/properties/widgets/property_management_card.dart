@@ -21,7 +21,9 @@ class PropertyManagementCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
-    return Material(
+    return Opacity(
+      opacity: homestay.isActive ? 1.0 : 0.55,
+      child: Material(
       color: isDark ? AppColors.darkContainer : AppColors.surface,
       borderRadius: BorderRadius.circular(AppRadius.lg),
       elevation: 1,
@@ -146,6 +148,7 @@ class PropertyManagementCard extends StatelessWidget {
           ),
         ),
       ),
+    ),
     );
   }
 

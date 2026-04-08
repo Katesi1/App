@@ -20,7 +20,7 @@ class AdminScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final user = ref.watch(currentUserProvider);
     final usersAsync = ref.watch(userListProvider(null));
-    final homestaysAsync = ref.watch(homestayListProvider);
+    final homestaysAsync = ref.watch(homestayListProvider(true));
     final roomsAsync = ref.watch(roomListProvider(null));
     final bookingsAsync = ref.watch(bookingListProvider(null));
 
@@ -114,7 +114,7 @@ class AdminScreen extends ConsumerWidget {
               color: AppColors.ocean,
               onRefresh: () async {
                 ref.invalidate(userListProvider(null));
-                ref.invalidate(homestayListProvider);
+                ref.invalidate(homestayListProvider(true));
                 ref.invalidate(roomListProvider(null));
                 ref.invalidate(bookingListProvider(null));
               },

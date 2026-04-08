@@ -101,7 +101,7 @@ class _PropertyManagementScreenState extends ConsumerState<PropertyManagementScr
 
   @override
   Widget build(BuildContext context) {
-    final homestaysAsync = ref.watch(homestayListProvider);
+    final homestaysAsync = ref.watch(homestayListProvider(true));
     final user = ref.watch(currentUserProvider);
     final canEdit = user?.canEdit ?? false;
 
@@ -246,7 +246,7 @@ class _PropertyManagementScreenState extends ConsumerState<PropertyManagementScr
         body: RefreshIndicator(
           color: AppColors.ocean,
           onRefresh: () async {
-            ref.invalidate(homestayListProvider);
+            ref.invalidate(homestayListProvider(true));
           },
           child: homestaysAsync.when(
             loading: () => SkeletonList(
@@ -256,7 +256,7 @@ class _PropertyManagementScreenState extends ConsumerState<PropertyManagementScr
             error: (e, _) => Center(
               child: ErrorStateWidget(
                 message: e.toString().replaceAll('Exception: ', ''),
-                onRetry: () => ref.invalidate(homestayListProvider),
+                onRetry: () => ref.invalidate(homestayListProvider(true)),
               ),
             ),
             data: (homestays) => TabBarView(

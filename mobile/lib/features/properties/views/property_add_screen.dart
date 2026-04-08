@@ -1,5 +1,7 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart' show TextInputFormatter;
+import '../../../core/utils/vnd_input_formatter.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -163,6 +165,21 @@ class _PropertyAddScreenState extends ConsumerState<PropertyAddScreen> {
   double _parsePrice(String text) {
     final cleaned = text.replaceAll('.', '').replaceAll(',', '');
     return double.tryParse(cleaned) ?? 0;
+  }
+
+  bool _isGroupAllSelected(List<String> items) =>
+      items.every((a) => _selectedAmenities.contains(a));
+
+  void _toggleGroup(List<String> items) {
+    setState(() {
+      if (_isGroupAllSelected(items)) {
+        for (final a in items) {
+          _selectedAmenities.remove(a);
+        }
+      } else {
+        _selectedAmenities.addAll(items);
+      }
+    });
   }
 
   @override
@@ -437,15 +454,21 @@ class _PropertyAddScreenState extends ConsumerState<PropertyAddScreen> {
                   const SizedBox(height: AppSpacing.sm),
                   _Field(ctrl: _weekdayPriceCtrl,
                       label: 'Ngày thường (T2-T5)', hint: '1.300.000',
-                      keyboard: TextInputType.number),
+                      keyboard: TextInputType.number,
+                      inputFormatters: [VndInputFormatter()],
+                      suffix: '₫'),
                   const SizedBox(height: AppSpacing.md),
                   _Field(ctrl: _weekendPriceCtrl,
                       label: 'Cuối tuần (T6-CN)', hint: '1.500.000',
-                      keyboard: TextInputType.number),
+                      keyboard: TextInputType.number,
+                      inputFormatters: [VndInputFormatter()],
+                      suffix: '₫'),
                   const SizedBox(height: AppSpacing.md),
                   _Field(ctrl: _holidayPriceCtrl,
                       label: 'Ngày lễ / Cao điểm', hint: '2.000.000',
-                      keyboard: TextInputType.number),
+                      keyboard: TextInputType.number,
+                      inputFormatters: [VndInputFormatter()],
+                      suffix: '₫'),
                 ],
               ),
             ).animate(delay: 250.ms).fadeIn(duration: 300.ms),
@@ -459,12 +482,16 @@ class _PropertyAddScreenState extends ConsumerState<PropertyAddScreen> {
                   const _Title('PHỤ THU'),
                   const SizedBox(height: AppSpacing.sm),
                   _Field(ctrl: _adultSurchargeCtrl,
-                      label: 'Người lớn (> 11 tuổi)', hint: 'VD: 250.000',
-                      keyboard: TextInputType.number),
+                      label: 'Người lớn (> 11 tuổi)', hint: '250.000',
+                      keyboard: TextInputType.number,
+                      inputFormatters: [VndInputFormatter()],
+                      suffix: '₫'),
                   const SizedBox(height: AppSpacing.md),
                   _Field(ctrl: _childSurchargeCtrl,
-                      label: 'Trẻ em (7-11 tuổi)', hint: 'VD: 150.000',
-                      keyboard: TextInputType.number),
+                      label: 'Trẻ em (7-11 tuổi)', hint: '150.000',
+                      keyboard: TextInputType.number,
+                      inputFormatters: [VndInputFormatter()],
+                      suffix: '₫'),
                   const SizedBox(height: 6),
                   Text('Trẻ em dưới 6 tuổi: Miễn phí',
                       style: GoogleFonts.beVietnamPro(fontSize: 11,
@@ -493,10 +520,57 @@ class _PropertyAddScreenState extends ConsumerState<PropertyAddScreen> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           const SizedBox(height: AppSpacing.sm),
-                          Text(g.key,
-                              style: GoogleFonts.beVietnamPro(fontSize: 12,
-                                  fontWeight: FontWeight.w500,
-                                  color: AppColors.muted)),
+                          Row(
+                            children: [
+                              Text(g.key,
+                                  style: GoogleFonts.beVietnamPro(fontSize: 12,
+                                      fontWeight: FontWeight.w500,
+                                      color: AppColors.muted)),
+                              const Spacer(),
+                              GestureDetector(
+                                onTap: () => _toggleGroup(g.value),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    AnimatedContainer(
+                                      duration: const Duration(milliseconds: 150),
+                                      width: 18,
+                                      height: 18,
+                                      decoration: BoxDecoration(
+                                        color: _isGroupAllSelected(g.value)
+                                            ? AppColors.teal
+                                            : Colors.transparent,
+                                        borderRadius: BorderRadius.circular(4),
+                                        border: Border.all(
+                                          color: _isGroupAllSelected(g.value)
+                                              ? AppColors.teal
+                                              : AppColors.slate,
+                                          width: 1.5,
+                                        ),
+                                      ),
+                                      child: _isGroupAllSelected(g.value)
+                                          ? const Icon(Icons.check_rounded,
+                                              size: 12, color: Colors.white)
+                                          : null,
+                                    ),
+                                    const SizedBox(width: 5),
+                                    Text(
+                                      _isGroupAllSelected(g.value)
+                                          ? 'Bỏ tất cả'
+                                          : 'Chọn tất cả',
+                                      style: GoogleFonts.beVietnamPro(
+                                        fontSize: 11,
+                                        fontWeight: FontWeight.w500,
+                                        color: _isGroupAllSelected(g.value)
+                                            ? AppColors.teal
+                                            : AppColors.muted,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
                           const SizedBox(height: AppSpacing.xs),
                           Wrap(
                             spacing: 8,
@@ -711,8 +785,18 @@ class _Field extends StatelessWidget {
   final String? hint;
   final TextInputType? keyboard;
   final String? Function(String?)? validator;
-  const _Field({required this.ctrl, required this.label, this.hint,
-      this.keyboard, this.validator});
+  final List<TextInputFormatter>? inputFormatters;
+  final String? suffix;
+
+  const _Field({
+    required this.ctrl,
+    required this.label,
+    this.hint,
+    this.keyboard,
+    this.validator,
+    this.inputFormatters,
+    this.suffix,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -727,12 +811,18 @@ class _Field extends StatelessWidget {
           controller: ctrl,
           keyboardType: keyboard,
           validator: validator,
+          inputFormatters: inputFormatters,
           style: GoogleFonts.beVietnamPro(fontSize: 14),
           decoration: InputDecoration(
             hintText: hint,
             hintStyle: GoogleFonts.beVietnamPro(
                 fontSize: 14,
                 color: AppColors.muted.withValues(alpha: 0.6)),
+            suffixText: suffix,
+            suffixStyle: GoogleFonts.beVietnamPro(
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+                color: AppColors.muted),
             filled: true,
             fillColor: isDark ? AppColors.darkContainer : AppColors.background,
             border: OutlineInputBorder(
@@ -746,6 +836,7 @@ class _Field extends StatelessWidget {
     );
   }
 }
+
 
 class _Chip extends StatelessWidget {
   final String label;
