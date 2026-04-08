@@ -39,7 +39,8 @@ class HomestayActionsNotifier extends StateNotifier<AsyncValue<void>> {
     state = const AsyncValue.loading();
     final result = await _repo.createHomestay(data);
     if (result.success) {
-      _ref.invalidate(homestayListProvider);
+      _ref.invalidate(homestayListProvider(true));
+      _ref.invalidate(homestayListProvider(false));
       state = const AsyncValue.data(null);
       return true;
     }
@@ -51,7 +52,8 @@ class HomestayActionsNotifier extends StateNotifier<AsyncValue<void>> {
     state = const AsyncValue.loading();
     final result = await _repo.updateHomestay(id, data);
     if (result.success) {
-      _ref.invalidate(homestayListProvider);
+      _ref.invalidate(homestayListProvider(true));
+      _ref.invalidate(homestayListProvider(false));
       _ref.invalidate(homestayDetailProvider(id));
       state = const AsyncValue.data(null);
       return true;
@@ -64,7 +66,8 @@ class HomestayActionsNotifier extends StateNotifier<AsyncValue<void>> {
     state = const AsyncValue.loading();
     final result = await _repo.updateHomestay(id, {'isActive': isActive});
     if (result.success) {
-      _ref.invalidate(homestayListProvider);
+      _ref.invalidate(homestayListProvider(true));
+      _ref.invalidate(homestayListProvider(false));
       _ref.invalidate(homestayDetailProvider(id));
       state = const AsyncValue.data(null);
       return true;
@@ -77,7 +80,8 @@ class HomestayActionsNotifier extends StateNotifier<AsyncValue<void>> {
     state = const AsyncValue.loading();
     final result = await _repo.deleteHomestay(id);
     if (result.success) {
-      _ref.invalidate(homestayListProvider);
+      _ref.invalidate(homestayListProvider(true));
+      _ref.invalidate(homestayListProvider(false));
       state = const AsyncValue.data(null);
       return true;
     }

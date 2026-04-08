@@ -186,7 +186,10 @@ class _PropertyAddScreenState extends ConsumerState<PropertyAddScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: const Text('Thêm phòng')),
-      body: Form(
+      body: GestureDetector(
+        onTap: () => FocusScope.of(context).unfocus(),
+        behavior: HitTestBehavior.opaque,
+        child: Form(
         key: _formKey,
         child: ListView(
           padding: const EdgeInsets.only(bottom: 100),
@@ -729,6 +732,7 @@ class _PropertyAddScreenState extends ConsumerState<PropertyAddScreen> {
             ).animate(delay: 450.ms).fadeIn(duration: 300.ms),
           ],
         ),
+      ),
       ),
     );
   }
