@@ -15,11 +15,10 @@ class AppHelpers {
         return 'Nhân viên';
       case 'CUSTOMER':
         return 'Khách hàng';
-      // Migration: role cũ
       case 'OWNER':
-        return 'Nhân viên';
+        return 'Chủ nhà';
       case 'SALE':
-        return 'Nhân viên';
+        return 'Sale';
       default:
         return role ?? '';
     }

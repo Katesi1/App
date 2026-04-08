@@ -370,13 +370,11 @@ class _ImageGalleryHeaderState extends State<_ImageGalleryHeader> {
               right: 16,
               child: _CircleBtn(
                 icon: Icons.share_rounded,
-                onTap: () {
-                  final text =
-                      '${widget.room.code} · ${widget.room.name}\n'
-                      '${widget.room.homestay?.address ?? ''}\n'
-                      'Giá từ: ${widget.room.priceDisplay}';
-                  Share.share(text);
-                },
+                onTap: () => Share.share(
+                  _buildShareText(widget.room),
+                  subject:
+                      '${widget.room.code} · ${widget.room.name}',
+                ),
               ),
             ),
 
@@ -461,6 +459,77 @@ class _ImageGalleryHeaderState extends State<_ImageGalleryHeader> {
           ),
       ],
     );
+  }
+
+  String _buildShareText(RoomModel room) {
+    final buf = StringBuffer();
+
+    buf.writeln('🏠 ${room.code} · ${room.name}');
+
+    if (room.homestay != null) {
+      buf.writeln('📍 ${room.homestay!.name}');
+      if (room.homestay!.address.isNotEmpty) {
+        buf.writeln('   ${room.homestay!.address}');
+      }
+    } else if (room.address?.isNotEmpty == true) {
+      buf.writeln('📍 ${room.address}');
+    }
+
+    buf.writeln();
+    buf.writeln('━━━━━━━━━━━━━━━━━');
+
+    // Thông tin phòng
+    buf.writeln('🛏  Phòng ngủ: ${room.bedrooms}');
+    if (room.bathrooms > 0) {
+      buf.writeln('🚿 Phòng tắm: ${room.bathrooms}');
+    }
+    buf.writeln('👥 Sức chứa: tối đa ${room.maxGuests} người');
+    if (room.standardGuests != room.maxGuests) {
+      buf.writeln('   (tiêu chuẩn ${room.standardGuests} người)');
+    }
+
+    // Tiện ích
+    if (room.amenities.isNotEmpty) {
+      buf.writeln();
+      buf.writeln('✅ Tiện ích:');
+      for (final a in room.amenities) {
+        buf.writeln('   • $a');
+      }
+    }
+
+    // Mô tả
+    if (room.description?.isNotEmpty == true) {
+      buf.writeln();
+      buf.writeln('📝 Mô tả:');
+      buf.writeln(room.description);
+    }
+
+    // Phụ thu
+    if (room.adultSurcharge != null && room.adultSurcharge! > 0) {
+      buf.writeln();
+      buf.writeln('💰 Phụ thu người lớn: ${_fmtPrice(room.adultSurcharge!)}đ/người');
+    }
+    if (room.childSurcharge != null && room.childSurcharge! > 0) {
+      buf.writeln('💰 Phụ thu trẻ em: ${_fmtPrice(room.childSurcharge!)}đ/người');
+    }
+
+    // Chính sách huỷ
+    if (room.cancellationPolicy?.isNotEmpty == true) {
+      buf.writeln();
+      buf.writeln('📋 Chính sách huỷ:');
+      buf.writeln(room.cancellationPolicy);
+    }
+
+    buf.writeln();
+    buf.writeln('━━━━━━━━━━━━━━━━━');
+    buf.write('Liên hệ để đặt phòng! 🌊');
+
+    return buf.toString();
+  }
+
+  String _fmtPrice(double p) {
+    if (p >= 1000000) return '${(p / 1000000).toStringAsFixed(1)}tr';
+    return '${(p / 1000).toStringAsFixed(0)}k';
   }
 
   void _openGallery(
