@@ -9,7 +9,7 @@ final userRepositoryProvider = Provider<UserRepository>(
 
 // ─── List provider (optional role filter) ────────────────────────────────────
 final userListProvider =
-    FutureProvider.family<List<UserModel>, String?>((ref, role) async {
+    FutureProvider.family<List<UserModel>, int?>((ref, role) async {
   final repo = ref.read(userRepositoryProvider);
   final result = await repo.getUsers(role: role);
   if (result.success) return result.data!;

@@ -235,7 +235,7 @@ final routerProvider = Provider<GoRouter>((ref) {
                 pageBuilder: (_, state) => fadeScalePage(
                   key: state.pageKey,
                   child: HoldRoomScreen(
-                      roomId: state.pathParameters['id']!),
+                      propertyId: state.pathParameters['id']!),
                 ),
               ),
             ],

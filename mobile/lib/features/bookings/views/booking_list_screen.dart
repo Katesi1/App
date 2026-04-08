@@ -355,7 +355,7 @@ class _BookingCardState extends ConsumerState<_BookingCard> {
                       children: [
                         Expanded(
                           child: Text(
-                            booking.roomName,
+                            booking.propertyName,
                             style: GoogleFonts.beVietnamPro(
                               fontWeight: FontWeight.w700,
                               fontSize: 15,
@@ -387,7 +387,7 @@ class _BookingCardState extends ConsumerState<_BookingCard> {
 
                     // Homestay
                     Text(
-                      booking.homestayName,
+                      booking.propertyName,
                       style: GoogleFonts.beVietnamPro(
                         fontSize: 12,
                         color: colors.onSurface.withValues(alpha: 0.5),

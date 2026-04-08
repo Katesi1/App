@@ -18,7 +18,7 @@ class CustomerRepository {
   }) async {
     try {
       final response = await _dio.get(
-        ApiConstants.roomsPublic,
+        ApiConstants.propertiesPublic,
         queryParameters: {
           if (checkinDate != null)
             'checkinDate': checkinDate.toIso8601String().split('T')[0],
@@ -56,7 +56,7 @@ class CustomerRepository {
 
   /// Lấy danh sách booking của customer hiện tại
   Future<ApiResponse<List<BookingModel>>> getMyBookings({
-    String? status,
+    int? status,
   }) async {
     try {
       final response = await _dio.get(

@@ -16,19 +16,16 @@ class ApiConstants {
   static const String users = '/users';
   static String userDetail(String id) => '/users/$id';
 
-  // Properties (cơ sở lưu trú)
+  // Properties (cơ sở lưu trú — đây cũng là booking unit)
   static const String properties = '/properties';
   static String propertyDetail(String id) => '/properties/$id';
-
-  // Rooms
-  static const String rooms = '/rooms';
-  static String roomDetail(String id) => '/rooms/$id';
-  static String roomImages(String id) => '/rooms/$id/images';
-  static String roomImageDetail(String roomId, String imageId) =>
-      '/rooms/$roomId/images/$imageId';
-  static String roomImageCover(String roomId, String imageId) =>
-      '/rooms/$roomId/images/$imageId/cover';
-  static String roomPrices(String roomId) => '/rooms/$roomId/prices';
+  static String propertyImages(String id) => '/properties/$id/images';
+  static String propertyImageDetail(String propertyId, String imageId) =>
+      '/properties/$propertyId/images/$imageId';
+  static String propertyImageCover(String propertyId, String imageId) =>
+      '/properties/$propertyId/images/$imageId/cover';
+  static String propertyPrices(String propertyId) =>
+      '/properties/$propertyId/prices';
 
   // Bookings
   static const String bookings = '/bookings';
@@ -37,18 +34,19 @@ class ApiConstants {
   static String bookingConfirm(String id) => '/bookings/$id/confirm';
   static String bookingCancel(String id) => '/bookings/$id/cancel';
   static String bookingUpdate(String id) => '/bookings/$id';
-  static String bookingCalendar(String roomId) => '/bookings/calendar/$roomId';
+  static String bookingCalendar(String propertyId) =>
+      '/bookings/calendar/$propertyId';
 
   // Customer bookings
   static const String customerHold = '/bookings/customer-hold';
   static const String myBookings = '/bookings/my';
   static String customerCancel(String id) => '/bookings/$id/customer-cancel';
 
-  // Public rooms (cho customer)
-  static const String roomsPublic = '/rooms/public';
+  // Public properties (cho customer)
+  static const String propertiesPublic = '/properties/public';
 
   // Calendar
-  static const String calendarPropertyGroups = '/calendar/property-groups';
+  static const String calendarProperties = '/calendar/properties';
   static const String calendarGrid = '/calendar/grid';
   static const String calendarLock = '/calendar/lock';
   static const String calendarUnlock = '/calendar/unlock';
@@ -65,10 +63,10 @@ class ApiConstants {
   static const String notificationsReadAll = '/notifications/read-all';
 
   // Partner (bắt buộc header X-Partner-Key — truyền qua repository, không hardcode)
-  static const String partnerRooms = '/partner/rooms';
-  static String partnerRoomDetail(String id) => '/partner/rooms/$id';
-  static String partnerRoomAvailability(String id) =>
-      '/partner/rooms/$id/availability';
+  static const String partnerProperties = '/partner/properties';
+  static String partnerPropertyDetail(String id) => '/partner/properties/$id';
+  static String partnerPropertyAvailability(String id) =>
+      '/partner/properties/$id/availability';
   static const String partnerBookings = '/partner/bookings';
   static String partnerBookingCancel(String id) =>
       '/partner/bookings/$id/cancel';

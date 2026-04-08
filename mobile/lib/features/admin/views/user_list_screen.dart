@@ -20,10 +20,11 @@ class UserListScreen extends ConsumerStatefulWidget {
 }
 
 class _UserListScreenState extends ConsumerState<UserListScreen> {
-  // null = tất cả nhân viên (SALE + OWNER + STAFF, loại trừ ADMIN)
-  String? _roleFilter;
+  // null = tất cả nhân viên (OWNER + SALE, loại trừ ADMIN)
+  int? _roleFilter;
 
-  static const _filterRoles = ['SALE', 'OWNER'];
+  // 1=OWNER, 2=SALE
+  static const _filterRoles = [2, 1];
   static const _filterLabels = ['Sale', 'Chủ nhà'];
 
   @override
@@ -59,7 +60,7 @@ class _UserListScreenState extends ConsumerState<UserListScreen> {
               data: (allUsers) {
                 // Loại Admin ra khỏi danh sách quản lý
                 final users = allUsers
-                    .where((u) => u.role != 'ADMIN')
+                    .where((u) => !u.isAdmin)
                     .toList();
 
                 if (users.isEmpty) {

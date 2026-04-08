@@ -27,7 +27,7 @@ final publicRoomsProvider = FutureProvider.family<List<RoomModel>,
 // ── My bookings (booking của customer) ─────────────────────────────────────
 
 final myBookingsProvider =
-    FutureProvider.family<List<BookingModel>, String?>((ref, status) async {
+    FutureProvider.family<List<BookingModel>, int?>((ref, status) async {
   final repo = ref.read(customerRepositoryProvider);
   final result = await repo.getMyBookings(status: status);
   if (result.success) return result.data!;

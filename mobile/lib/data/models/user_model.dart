@@ -5,9 +5,9 @@ class UserModel {
   final String name;
   final String phone;
   final String? email;
-  final String role;
+  final int role;
   final bool isActive;
-  final String? gender;
+  final int? gender;
   final String? dateOfBirth;
 
   UserModel({
@@ -26,7 +26,7 @@ class UserModel {
         name: json['name'] ?? '',
         phone: json['phone'] ?? '',
         email: json['email'],
-        role: json['role'] ?? 'CUSTOMER',
+        role: json['role'] ?? 3,
         isActive: json['isActive'] ?? true,
         gender: json['gender'],
         dateOfBirth: json['dateOfBirth'],
@@ -48,13 +48,15 @@ class UserModel {
   factory UserModel.fromJsonString(String str) =>
       UserModel.fromJson(jsonDecode(str));
 
-  bool get isAdmin => role == 'ADMIN';
-  bool get isStaff => role == 'STAFF';
-  bool get isCustomer => role == 'CUSTOMER';
+  // 0=ADMIN, 1=OWNER, 2=SALE, 3=CUSTOMER
+  bool get isAdmin => role == 0;
+  bool get isOwner => role == 1;
+  bool get isSale => role == 2;
+  bool get isCustomer => role == 3;
 
-  /// ADMIN + STAFF = quản lý (xem dashboard, CRUD phòng/booking)
-  bool get isManagement => isAdmin || isStaff;
+  /// ADMIN + OWNER + SALE = quản lý (xem dashboard, CRUD phòng/booking)
+  bool get isManagement => isAdmin || isOwner || isSale;
 
   /// Có quyền chỉnh sửa (tạo/sửa phòng, homestay)
-  bool get canEdit => isAdmin || isStaff;
+  bool get canEdit => isAdmin || isOwner || isSale;
 }

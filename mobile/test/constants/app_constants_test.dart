@@ -4,17 +4,19 @@ import 'package:mobile/core/constants/app_constants.dart';
 void main() {
   group('UserRole', () {
     group('value', () {
-      test('returns uppercase string', () {
-        expect(UserRole.admin.value, 'ADMIN');
-        expect(UserRole.staff.value, 'STAFF');
-        expect(UserRole.customer.value, 'CUSTOMER');
+      test('returns correct int values', () {
+        expect(UserRole.admin.value, 0);
+        expect(UserRole.owner.value, 1);
+        expect(UserRole.sale.value, 2);
+        expect(UserRole.customer.value, 3);
       });
     });
 
     group('label', () {
       test('returns Vietnamese labels', () {
         expect(UserRole.admin.label, 'Admin');
-        expect(UserRole.staff.label, 'Nhân viên');
+        expect(UserRole.owner.label, 'Chủ nhà');
+        expect(UserRole.sale.label, 'Sale');
         expect(UserRole.customer.label, 'Khách hàng');
       });
     });
@@ -24,8 +26,12 @@ void main() {
         expect(UserRole.admin.isManagement, true);
       });
 
-      test('staff is management', () {
-        expect(UserRole.staff.isManagement, true);
+      test('owner is management', () {
+        expect(UserRole.owner.isManagement, true);
+      });
+
+      test('sale is management', () {
+        expect(UserRole.sale.isManagement, true);
       });
 
       test('customer is NOT management', () {
@@ -33,35 +39,24 @@ void main() {
       });
     });
 
-    group('fromString', () {
-      test('parses new roles', () {
-        expect(UserRoleExtension.fromString('ADMIN'), UserRole.admin);
-        expect(UserRoleExtension.fromString('STAFF'), UserRole.staff);
-        expect(
-            UserRoleExtension.fromString('CUSTOMER'), UserRole.customer);
-      });
-
-      test('case insensitive', () {
-        expect(UserRoleExtension.fromString('admin'), UserRole.admin);
-        expect(UserRoleExtension.fromString('Staff'), UserRole.staff);
-      });
-
-      test('migrates legacy roles to STAFF', () {
-        expect(UserRoleExtension.fromString('OWNER'), UserRole.staff);
-        expect(UserRoleExtension.fromString('SALE'), UserRole.staff);
+    group('fromInt', () {
+      test('parses all roles', () {
+        expect(UserRoleExtension.fromInt(0), UserRole.admin);
+        expect(UserRoleExtension.fromInt(1), UserRole.owner);
+        expect(UserRoleExtension.fromInt(2), UserRole.sale);
+        expect(UserRoleExtension.fromInt(3), UserRole.customer);
       });
 
       test('defaults to customer for unknown', () {
-        expect(
-            UserRoleExtension.fromString('UNKNOWN'), UserRole.customer);
-        expect(UserRoleExtension.fromString(''), UserRole.customer);
+        expect(UserRoleExtension.fromInt(99), UserRole.customer);
+        expect(UserRoleExtension.fromInt(-1), UserRole.customer);
       });
     });
 
     group('registrableRoles', () {
-      test('contains staff and customer only', () {
+      test('contains owner, sale, and customer', () {
         expect(UserRoleExtension.registrableRoles,
-            [UserRole.staff, UserRole.customer]);
+            containsAll([UserRole.owner, UserRole.sale, UserRole.customer]));
       });
 
       test('does NOT contain admin', () {
@@ -73,11 +68,11 @@ void main() {
 
   group('BookingStatus', () {
     group('value', () {
-      test('returns uppercase string', () {
-        expect(BookingStatus.hold.value, 'HOLD');
-        expect(BookingStatus.confirmed.value, 'CONFIRMED');
-        expect(BookingStatus.cancelled.value, 'CANCELLED');
-        expect(BookingStatus.completed.value, 'COMPLETED');
+      test('returns correct int values', () {
+        expect(BookingStatus.hold.value, 0);
+        expect(BookingStatus.confirmed.value, 1);
+        expect(BookingStatus.cancelled.value, 2);
+        expect(BookingStatus.completed.value, 3);
       });
     });
 
@@ -90,21 +85,16 @@ void main() {
       });
     });
 
-    group('fromString', () {
+    group('fromInt', () {
       test('parses all statuses', () {
-        expect(BookingStatusExtension.fromString('HOLD'),
-            BookingStatus.hold);
-        expect(BookingStatusExtension.fromString('CONFIRMED'),
-            BookingStatus.confirmed);
-        expect(BookingStatusExtension.fromString('CANCELLED'),
-            BookingStatus.cancelled);
-        expect(BookingStatusExtension.fromString('COMPLETED'),
-            BookingStatus.completed);
+        expect(BookingStatusExtension.fromInt(0), BookingStatus.hold);
+        expect(BookingStatusExtension.fromInt(1), BookingStatus.confirmed);
+        expect(BookingStatusExtension.fromInt(2), BookingStatus.cancelled);
+        expect(BookingStatusExtension.fromInt(3), BookingStatus.completed);
       });
 
       test('defaults to hold for unknown', () {
-        expect(BookingStatusExtension.fromString('UNKNOWN'),
-            BookingStatus.hold);
+        expect(BookingStatusExtension.fromInt(99), BookingStatus.hold);
       });
     });
   });

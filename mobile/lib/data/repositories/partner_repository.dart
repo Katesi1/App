@@ -12,12 +12,12 @@ class PartnerRepository {
         headers: {'X-Partner-Key': partnerKey},
       );
 
-  Future<ApiResponse<List<Map<String, dynamic>>>> getRooms(
+  Future<ApiResponse<List<Map<String, dynamic>>>> getProperties(
     String partnerKey,
   ) async {
     try {
       final response = await _dio.get(
-        ApiConstants.partnerRooms,
+        ApiConstants.partnerProperties,
         options: _headers(partnerKey),
       );
       final list = (response.data['data'] as List)
@@ -29,13 +29,13 @@ class PartnerRepository {
     }
   }
 
-  Future<ApiResponse<Map<String, dynamic>>> getRoomDetail(
+  Future<ApiResponse<Map<String, dynamic>>> getPropertyDetail(
     String partnerKey,
-    String roomId,
+    String propertyId,
   ) async {
     try {
       final response = await _dio.get(
-        ApiConstants.partnerRoomDetail(roomId),
+        ApiConstants.partnerPropertyDetail(propertyId),
         options: _headers(partnerKey),
       );
       final data = Map<String, dynamic>.from(
@@ -47,15 +47,15 @@ class PartnerRepository {
     }
   }
 
-  Future<ApiResponse<Map<String, dynamic>>> getRoomAvailability(
+  Future<ApiResponse<Map<String, dynamic>>> getPropertyAvailability(
     String partnerKey,
-    String roomId, {
+    String propertyId, {
     required int year,
     required int month,
   }) async {
     try {
       final response = await _dio.get(
-        ApiConstants.partnerRoomAvailability(roomId),
+        ApiConstants.partnerPropertyAvailability(propertyId),
         options: _headers(partnerKey),
         queryParameters: {'year': year, 'month': month},
       );

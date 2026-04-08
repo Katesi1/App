@@ -7,42 +7,40 @@ void main() {
     test('fromJson parses correctly', () {
       final json = {
         'id': 'b-1',
-        'roomId': 'r-1',
+        'propertyId': 'p-1',
         'saleId': 's-1',
         'checkinDate': '2026-04-01T00:00:00.000Z',
         'checkoutDate': '2026-04-03T00:00:00.000Z',
-        'status': 'HOLD',
+        'status': 0, // HOLD
         'holdExpireAt': '2026-04-02T10:00:00.000Z',
         'customerName': 'Khách Test',
         'customerPhone': '0912345678',
         'depositAmount': 500000,
         'notes': 'Ghi chú',
         'holdRemainingSeconds': 3600,
-        'room': {'name': 'P.101', 'homestay': {'name': 'HL Resort'}},
+        'property': {'name': 'Villa Hạ Long'},
         'sale': {'name': 'Staff A'},
       };
 
       final booking = BookingModel.fromJson(json);
 
       expect(booking.id, 'b-1');
-      expect(booking.roomId, 'r-1');
+      expect(booking.propertyId, 'p-1');
       expect(booking.status, BookingStatus.hold);
       expect(booking.customerName, 'Khách Test');
       expect(booking.depositAmount, 500000.0);
       expect(booking.holdRemainingSeconds, 3600);
-      expect(booking.roomName, 'P.101');
-      expect(booking.homestayName, 'HL Resort');
+      expect(booking.propertyName, 'Villa Hạ Long');
       expect(booking.saleName, 'Staff A');
     });
 
     test('nights calculated correctly', () {
       final booking = BookingModel.fromJson({
         'id': 'b-1',
-        'roomId': 'r-1',
-        'saleId': 's-1',
+        'propertyId': 'p-1',
         'checkinDate': '2026-04-01T00:00:00.000Z',
         'checkoutDate': '2026-04-05T00:00:00.000Z',
-        'status': 'CONFIRMED',
+        'status': 1, // CONFIRMED
       });
 
       expect(booking.nights, 4);
@@ -51,20 +49,18 @@ void main() {
     test('defaults for missing optional fields', () {
       final booking = BookingModel.fromJson({
         'id': 'b-1',
-        'roomId': 'r-1',
-        'saleId': 's-1',
+        'propertyId': 'p-1',
         'checkinDate': '2026-04-01T00:00:00.000Z',
         'checkoutDate': '2026-04-02T00:00:00.000Z',
-        'status': 'HOLD',
+        'status': 0, // HOLD
       });
 
       expect(booking.customerName, isNull);
       expect(booking.customerPhone, isNull);
-      expect(booking.depositAmount, 0.0);
+      expect(booking.depositAmount, isNull);
       expect(booking.notes, isNull);
       expect(booking.holdRemainingSeconds, 0);
-      expect(booking.roomName, 'N/A');
-      expect(booking.homestayName, 'N/A');
+      expect(booking.propertyName, 'N/A');
       expect(booking.saleName, 'N/A');
     });
   });
@@ -75,7 +71,7 @@ void main() {
         'id': 'cb-1',
         'checkinDate': '2026-04-01T00:00:00.000Z',
         'checkoutDate': '2026-04-04T00:00:00.000Z',
-        'status': 'CONFIRMED',
+        'status': 1, // CONFIRMED
       });
 
       // Ngày trong khoảng → true

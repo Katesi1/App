@@ -7,14 +7,14 @@ import '../models/calendar_model.dart';
 class CalendarRepository {
   final _dio = ApiClient.instance;
 
-  /// GET /calendar/property-groups — danh sách property nhóm cho lịch
+  /// GET /calendar/properties — danh sách property nhóm cho lịch
   Future<ApiResponse<List<CalendarPropertyGroup>>> getPropertyGroups({
     String? category,
     String? ownerId,
   }) async {
     try {
       final response = await _dio.get(
-        ApiConstants.calendarPropertyGroups,
+        ApiConstants.calendarProperties,
         queryParameters: {
           if (category != null) 'category': category,
           if (ownerId != null) 'ownerId': ownerId,
@@ -56,13 +56,13 @@ class CalendarRepository {
 
   /// POST /calendar/lock — khoá phòng theo ngày
   Future<ApiResponse<Map<String, dynamic>>> lockRoom({
-    required String roomId,
+    required String propertyId,
     required String date,
   }) async {
     try {
       final response = await _dio.post(
         ApiConstants.calendarLock,
-        data: {'roomId': roomId, 'date': date},
+        data: {'propertyId': propertyId, 'date': date},
       );
       return ApiResponse(
         success: true,
@@ -76,13 +76,13 @@ class CalendarRepository {
 
   /// POST /calendar/lock — đánh dấu đã bán (status = BOOKED)
   Future<ApiResponse<Map<String, dynamic>>> markAsSold({
-    required String roomId,
+    required String propertyId,
     required String date,
   }) async {
     try {
       final response = await _dio.post(
         ApiConstants.calendarLock,
-        data: {'roomId': roomId, 'date': date, 'status': 'BOOKED'},
+        data: {'propertyId': propertyId, 'date': date, 'status': 'BOOKED'},
       );
       return ApiResponse(
         success: true,
@@ -96,13 +96,13 @@ class CalendarRepository {
 
   /// POST /calendar/unlock — mở khoá phòng
   Future<ApiResponse<void>> unlockRoom({
-    required String roomId,
+    required String propertyId,
     required String date,
   }) async {
     try {
       await _dio.post(
         ApiConstants.calendarUnlock,
-        data: {'roomId': roomId, 'date': date},
+        data: {'propertyId': propertyId, 'date': date},
       );
       return ApiResponse(success: true, message: 'Đã mở khoá phòng');
     } on DioException catch (e) {

@@ -28,8 +28,8 @@ class _UserFormScreenState extends ConsumerState<UserFormScreen> {
   final _passwordCtrl = TextEditingController();
   bool _obscurePassword = true;
 
-  // Shared state
-  String _role = 'SALE';
+  // Shared state (2=SALE, 1=OWNER)
+  int _role = 2;
   bool _isActive = true;
   bool _isLoading = false;
 
@@ -194,20 +194,20 @@ class _UserFormScreenState extends ConsumerState<UserFormScreen> {
                     children: [
                       _RoleCard(
                         label: 'Sale',
-                        value: 'SALE',
+                        value: 2,
                         icon: Icons.headset_mic_outlined,
                         color: AppColors.ocean,
-                        selected: _role == 'SALE',
-                        onTap: () => setState(() => _role = 'SALE'),
+                        selected: _role == 2,
+                        onTap: () => setState(() => _role = 2),
                       ),
                       const SizedBox(width: AppSpacing.md),
                       _RoleCard(
                         label: 'Chủ nhà',
-                        value: 'OWNER',
+                        value: 1,
                         icon: Icons.home_outlined,
                         color: AppColors.amber,
-                        selected: _role == 'OWNER',
-                        onTap: () => setState(() => _role = 'OWNER'),
+                        selected: _role == 1,
+                        onTap: () => setState(() => _role = 1),
                       ),
                     ],
                   )
@@ -473,20 +473,20 @@ class _UserFormScreenState extends ConsumerState<UserFormScreen> {
                 children: [
                   _RoleCard(
                     label: 'Sale',
-                    value: 'SALE',
+                    value: 2,
                     icon: Icons.headset_mic_outlined,
                     color: AppColors.ocean,
-                    selected: _role == 'SALE',
-                    onTap: () => setState(() => _role = 'SALE'),
+                    selected: _role == 2,
+                    onTap: () => setState(() => _role = 2),
                   ),
                   const SizedBox(width: AppSpacing.md),
                   _RoleCard(
                     label: 'Chủ nhà',
-                    value: 'OWNER',
+                    value: 1,
                     icon: Icons.home_outlined,
                     color: AppColors.amber,
-                    selected: _role == 'OWNER',
-                    onTap: () => setState(() => _role = 'OWNER'),
+                    selected: _role == 1,
+                    onTap: () => setState(() => _role = 1),
                   ),
                 ],
               ).animate(delay: 100.ms).fadeIn(duration: 300.ms),
@@ -656,7 +656,7 @@ class _Divider extends StatelessWidget {
 
 class _RoleCard extends StatelessWidget {
   final String label;
-  final String value;
+  final int value;
   final IconData icon;
   final Color color;
   final bool selected;

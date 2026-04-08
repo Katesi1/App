@@ -514,10 +514,14 @@ class _ImageGalleryHeaderState extends State<_ImageGalleryHeader> {
     }
 
     // Chính sách huỷ
-    if (room.cancellationPolicy?.isNotEmpty == true) {
+    if (room.cancellationPolicy != null) {
+      const policyLabels = ['Linh hoạt', 'Vừa phải', 'Nghiêm ngặt'];
+      final label = (room.cancellationPolicy! < policyLabels.length)
+          ? policyLabels[room.cancellationPolicy!]
+          : '${room.cancellationPolicy}';
       buf.writeln();
       buf.writeln('📋 Chính sách huỷ:');
-      buf.writeln(room.cancellationPolicy);
+      buf.writeln(label);
     }
 
     buf.writeln();

@@ -609,7 +609,7 @@ class _RecentBookingCard extends StatelessWidget {
                 ),
                 const SizedBox(height: 2),
                 Text(
-                  '${booking.roomName} · ${booking.nights} đêm',
+                  '${booking.propertyName} · ${booking.nights} đêm',
                   style: GoogleFonts.beVietnamPro(
                     fontSize: 12,
                     color: AppColors.muted,

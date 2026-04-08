@@ -20,11 +20,12 @@ class BookingRepository {
     }
   }
 
-  Future<ApiResponse<List<BookingModel>>> getBookings({String? roomId}) async {
+  Future<ApiResponse<List<BookingModel>>> getBookings(
+      {String? propertyId}) async {
     try {
       final response = await _dio.get(
         ApiConstants.bookings,
-        queryParameters: roomId != null ? {'roomId': roomId} : null,
+        queryParameters: propertyId != null ? {'propertyId': propertyId} : null,
       );
       final list = (response.data['data'] as List)
           .map((e) => BookingModel.fromJson(e))
@@ -36,10 +37,10 @@ class BookingRepository {
   }
 
   Future<ApiResponse<List<CalendarBooking>>> getCalendar(
-      String roomId, int year, int month) async {
+      String propertyId, int year, int month) async {
     try {
       final response = await _dio.get(
-        '${ApiConstants.bookings}/calendar/$roomId',
+        '${ApiConstants.bookings}/calendar/$propertyId',
         queryParameters: {'year': year, 'month': month},
       );
       final list = (response.data['data'] as List)

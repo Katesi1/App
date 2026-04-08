@@ -18,7 +18,7 @@ class AuthRepository {
     required String name,
     required String phone,
     required String password,
-    required String role,
+    required int role,
     String? email,
   }) async {
     try {
@@ -70,7 +70,7 @@ class AuthRepository {
   }
 
   /// [role] chỉ cần khi user mới (đăng ký qua Google lần đầu)
-  Future<ApiResponse<UserModel>> loginWithGoogle({String? role}) async {
+  Future<ApiResponse<UserModel>> loginWithGoogle({int? role}) async {
     try {
       final googleUser = await _googleSignIn.signIn();
       if (googleUser == null) {

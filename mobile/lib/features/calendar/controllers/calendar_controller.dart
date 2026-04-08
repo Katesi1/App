@@ -90,12 +90,12 @@ class CalendarActionsNotifier extends StateNotifier<AsyncValue<void>> {
       : super(const AsyncValue.data(null));
 
   Future<bool> lockRoom({
-    required String roomId,
+    required String propertyId,
     required String date,
     required CalendarGridParams gridParams,
   }) async {
     state = const AsyncValue.loading();
-    final result = await _repo.lockRoom(roomId: roomId, date: date);
+    final result = await _repo.lockRoom(propertyId: propertyId, date: date);
     if (result.success) {
       _ref.invalidate(calendarGridProvider(gridParams));
       state = const AsyncValue.data(null);
@@ -106,12 +106,12 @@ class CalendarActionsNotifier extends StateNotifier<AsyncValue<void>> {
   }
 
   Future<bool> unlockRoom({
-    required String roomId,
+    required String propertyId,
     required String date,
     required CalendarGridParams gridParams,
   }) async {
     state = const AsyncValue.loading();
-    final result = await _repo.unlockRoom(roomId: roomId, date: date);
+    final result = await _repo.unlockRoom(propertyId: propertyId, date: date);
     if (result.success) {
       _ref.invalidate(calendarGridProvider(gridParams));
       state = const AsyncValue.data(null);
@@ -122,12 +122,12 @@ class CalendarActionsNotifier extends StateNotifier<AsyncValue<void>> {
   }
 
   Future<bool> markAsSold({
-    required String roomId,
+    required String propertyId,
     required String date,
     required CalendarGridParams gridParams,
   }) async {
     state = const AsyncValue.loading();
-    final result = await _repo.markAsSold(roomId: roomId, date: date);
+    final result = await _repo.markAsSold(propertyId: propertyId, date: date);
     if (result.success) {
       _ref.invalidate(calendarGridProvider(gridParams));
       state = const AsyncValue.data(null);

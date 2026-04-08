@@ -10,8 +10,7 @@ class RoomRepository {
   Future<ApiResponse<List<RoomModel>>> getRooms({String? homestayId}) async {
     try {
       final response = await _dio.get(
-        ApiConstants.rooms,
-        // API mới dùng propertyId, fallback tên cũ homestayId
+        ApiConstants.properties,
         queryParameters:
             homestayId != null ? {'propertyId': homestayId} : null,
       );
@@ -26,7 +25,7 @@ class RoomRepository {
 
   Future<ApiResponse<RoomModel>> getRoomDetail(String id) async {
     try {
-      final response = await _dio.get('${ApiConstants.rooms}/$id');
+      final response = await _dio.get('${ApiConstants.properties}/$id');
       return ApiResponse(
         success: true,
         data: RoomModel.fromJson(response.data['data']),
@@ -39,7 +38,7 @@ class RoomRepository {
 
   Future<ApiResponse<RoomModel>> createRoom(Map<String, dynamic> data) async {
     try {
-      final response = await _dio.post(ApiConstants.rooms, data: data);
+      final response = await _dio.post(ApiConstants.properties, data: data);
       return ApiResponse(
         success: true,
         data: RoomModel.fromJson(response.data['data']),
@@ -53,7 +52,7 @@ class RoomRepository {
   Future<ApiResponse<RoomModel>> updateRoom(
       String id, Map<String, dynamic> data) async {
     try {
-      final response = await _dio.put('${ApiConstants.rooms}/$id', data: data);
+      final response = await _dio.put('${ApiConstants.properties}/$id', data: data);
       return ApiResponse(
         success: true,
         data: RoomModel.fromJson(response.data['data']),
@@ -66,7 +65,7 @@ class RoomRepository {
 
   Future<ApiResponse<void>> deleteRoom(String id) async {
     try {
-      await _dio.delete('${ApiConstants.rooms}/$id');
+      await _dio.delete('${ApiConstants.properties}/$id');
       return ApiResponse(success: true, message: 'Xoá phòng thành công');
     } on DioException catch (e) {
       return ApiResponse(success: false, message: parseDioError(e));
@@ -84,7 +83,7 @@ class RoomRepository {
         ));
       }
       final response = await _dio.post(
-        '${ApiConstants.rooms}/$roomId/images',
+        '${ApiConstants.properties}/$roomId/images',
         data: formData,
         options: Options(contentType: 'multipart/form-data'),
       );
@@ -99,7 +98,7 @@ class RoomRepository {
 
   Future<ApiResponse<void>> deleteImage(String roomId, String imageId) async {
     try {
-      await _dio.delete('${ApiConstants.rooms}/$roomId/images/$imageId');
+      await _dio.delete('${ApiConstants.properties}/$roomId/images/$imageId');
       return ApiResponse(success: true, message: 'Xoá ảnh thành công');
     } on DioException catch (e) {
       return ApiResponse(success: false, message: parseDioError(e));
@@ -108,7 +107,7 @@ class RoomRepository {
 
   Future<ApiResponse<void>> setCoverImage(String roomId, String imageId) async {
     try {
-      await _dio.patch('${ApiConstants.rooms}/$roomId/images/$imageId/cover');
+      await _dio.patch('${ApiConstants.properties}/$roomId/images/$imageId/cover');
       return ApiResponse(success: true, message: 'Đặt ảnh cover thành công');
     } on DioException catch (e) {
       return ApiResponse(success: false, message: parseDioError(e));
@@ -119,7 +118,7 @@ class RoomRepository {
       String roomId, Map<String, dynamic> data) async {
     try {
       final response =
-          await _dio.put('${ApiConstants.rooms}/$roomId/prices', data: data);
+          await _dio.put('${ApiConstants.properties}/$roomId/prices', data: data);
       return ApiResponse(
         success: true,
         data: response.data['data'],

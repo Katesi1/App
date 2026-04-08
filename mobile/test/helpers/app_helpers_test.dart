@@ -4,25 +4,15 @@ import 'package:mobile/core/theme/app_colors.dart';
 
 void main() {
   group('AppHelpers.roleLabel', () {
-    test('returns correct labels for new roles', () {
-      expect(AppHelpers.roleLabel('ADMIN'), 'Admin');
-      expect(AppHelpers.roleLabel('STAFF'), 'Nhân viên');
-      expect(AppHelpers.roleLabel('CUSTOMER'), 'Khách hàng');
+    test('returns correct labels (0=ADMIN, 1=OWNER, 2=SALE, 3=CUSTOMER)', () {
+      expect(AppHelpers.roleLabel(0), 'Admin');
+      expect(AppHelpers.roleLabel(1), 'Chủ nhà');
+      expect(AppHelpers.roleLabel(2), 'Sale');
+      expect(AppHelpers.roleLabel(3), 'Khách hàng');
     });
 
-    test('handles legacy roles (migration)', () {
-      expect(AppHelpers.roleLabel('OWNER'), 'Nhân viên');
-      expect(AppHelpers.roleLabel('SALE'), 'Nhân viên');
-    });
-
-    test('case insensitive', () {
-      expect(AppHelpers.roleLabel('admin'), 'Admin');
-      expect(AppHelpers.roleLabel('staff'), 'Nhân viên');
-      expect(AppHelpers.roleLabel('customer'), 'Khách hàng');
-    });
-
-    test('returns raw value for unknown role', () {
-      expect(AppHelpers.roleLabel('UNKNOWN'), 'UNKNOWN');
+    test('returns empty string for unknown role', () {
+      expect(AppHelpers.roleLabel(99), '');
     });
 
     test('handles null', () {
@@ -31,40 +21,31 @@ void main() {
   });
 
   group('AppHelpers.roleColor', () {
-    test('returns correct colors for new roles', () {
-      expect(AppHelpers.roleColor('ADMIN'), AppColors.coral);
-      expect(AppHelpers.roleColor('STAFF'), AppColors.ocean);
-      expect(AppHelpers.roleColor('CUSTOMER'), AppColors.teal);
-    });
-
-    test('handles legacy roles', () {
-      expect(AppHelpers.roleColor('OWNER'), AppColors.ocean);
-      expect(AppHelpers.roleColor('SALE'), AppColors.ocean);
+    test('returns correct colors', () {
+      expect(AppHelpers.roleColor(0), AppColors.coral);
+      expect(AppHelpers.roleColor(1), AppColors.amber);
+      expect(AppHelpers.roleColor(2), AppColors.ocean);
+      expect(AppHelpers.roleColor(3), AppColors.teal);
     });
 
     test('defaults to ocean for null/unknown', () {
       expect(AppHelpers.roleColor(null), AppColors.ocean);
-      expect(AppHelpers.roleColor('UNKNOWN'), AppColors.ocean);
+      expect(AppHelpers.roleColor(99), AppColors.ocean);
     });
   });
 
   group('AppHelpers.bookingStatusColor', () {
-    test('returns correct colors', () {
-      expect(
-          AppHelpers.bookingStatusColor('HOLD'), AppColors.hold);
-      expect(AppHelpers.bookingStatusColor('CONFIRMED'),
-          AppColors.confirmed);
-      expect(AppHelpers.bookingStatusColor('CANCELLED'),
-          AppColors.cancelled);
-      expect(AppHelpers.bookingStatusColor('COMPLETED'),
-          AppColors.completed);
+    test('returns correct colors (0=HOLD, 1=CONFIRMED, 2=CANCELLED, 3=COMPLETED)',
+        () {
+      expect(AppHelpers.bookingStatusColor(0), AppColors.hold);
+      expect(AppHelpers.bookingStatusColor(1), AppColors.confirmed);
+      expect(AppHelpers.bookingStatusColor(2), AppColors.cancelled);
+      expect(AppHelpers.bookingStatusColor(3), AppColors.completed);
     });
 
     test('defaults to primary for null/unknown', () {
-      expect(
-          AppHelpers.bookingStatusColor(null), AppColors.primary);
-      expect(AppHelpers.bookingStatusColor('INVALID'),
-          AppColors.primary);
+      expect(AppHelpers.bookingStatusColor(null), AppColors.primary);
+      expect(AppHelpers.bookingStatusColor(99), AppColors.primary);
     });
   });
 

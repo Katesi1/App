@@ -12,8 +12,8 @@ import '../../rooms/controllers/room_controller.dart';
 import '../controllers/booking_controller.dart';
 
 class HoldRoomScreen extends ConsumerStatefulWidget {
-  final String roomId;
-  const HoldRoomScreen({super.key, required this.roomId});
+  final String propertyId;
+  const HoldRoomScreen({super.key, required this.propertyId});
 
   @override
   ConsumerState<HoldRoomScreen> createState() => _HoldRoomScreenState();
@@ -73,7 +73,7 @@ class _HoldRoomScreenState extends ConsumerState<HoldRoomScreen> {
     }
 
     final success = await ref.read(bookingActionsProvider.notifier).hold({
-      'roomId': widget.roomId,
+      'propertyId': widget.propertyId,
       'checkinDate': _checkinDate!.toIso8601String(),
       'checkoutDate': _checkoutDate!.toIso8601String(),
       if (_customerNameCtrl.text.trim().isNotEmpty)
@@ -102,7 +102,7 @@ class _HoldRoomScreenState extends ConsumerState<HoldRoomScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final roomAsync = ref.watch(roomDetailProvider(widget.roomId));
+    final roomAsync = ref.watch(roomDetailProvider(widget.propertyId));
     final isLoading = ref.watch(bookingActionsProvider).isLoading;
     final colors = Theme.of(context).colorScheme;
 
