@@ -57,7 +57,7 @@ class RoomDetailScreen extends ConsumerWidget {
                                 CrossAxisAlignment.start,
                             children: [
                               Text(
-                                '${room.code} · ${room.name}',
+                                _titleText(room),
                                 style: GoogleFonts.beVietnamPro(
                                   fontSize: 22,
                                   fontWeight: FontWeight.w700,
@@ -82,16 +82,18 @@ class RoomDetailScreen extends ConsumerWidget {
                           padding: const EdgeInsets.symmetric(
                               horizontal: 10, vertical: 4),
                           decoration: BoxDecoration(
-                            color: AppColors.occupiedBg,
+                            color: room.isActive
+                                ? AppColors.emeraldLight
+                                : AppColors.slateLight,
                             borderRadius: BorderRadius.circular(20),
                           ),
                           child: Text(
-                            room.isActive ? 'Đang ở' : 'Tạm nghỉ',
+                            room.isActive ? 'Hoạt động' : 'Tạm nghỉ',
                             style: GoogleFonts.beVietnamPro(
                               fontSize: 11,
                               fontWeight: FontWeight.w600,
                               color: room.isActive
-                                  ? AppColors.ocean
+                                  ? AppColors.greenForest
                                   : AppColors.slate,
                             ),
                           ),
@@ -104,18 +106,16 @@ class RoomDetailScreen extends ConsumerWidget {
 
                     const SizedBox(height: 10),
 
-                    // ── Price + Rating ───────────────────────────────
-                    Row(
-                      children: [
-                        Text(
-                          room.priceDisplay,
-                          style: GoogleFonts.beVietnamPro(
-                            fontSize: 20,
-                            fontWeight: FontWeight.w700,
-                            color: AppColors.ocean,
-                          ),
-                        ),
-                      ],
+                    // ── Price ────────────────────────────────────────
+                    Text(
+                      room.priceDisplay,
+                      style: GoogleFonts.beVietnamPro(
+                        fontSize: 20,
+                        fontWeight: FontWeight.w700,
+                        color: room.price != null
+                            ? AppColors.ocean
+                            : AppColors.muted,
+                      ),
                     ),
 
                     const SizedBox(height: 16),
@@ -143,10 +143,9 @@ class RoomDetailScreen extends ConsumerWidget {
                         .animate(delay: 100.ms)
                         .fadeIn(duration: 300.ms),
 
-                    const SizedBox(height: 16),
-
-                    // ── Amenities (từ data) ────────────────────────
-                    if (room.amenities.isNotEmpty)
+                    // ── Amenities ────────────────────────────────────
+                    if (room.amenities.isNotEmpty) ...[
+                      const SizedBox(height: 16),
                       Wrap(
                         spacing: 6,
                         runSpacing: 6,
@@ -154,62 +153,30 @@ class RoomDetailScreen extends ConsumerWidget {
                             .map((a) => _AmenityChip(a))
                             .toList(),
                       ),
+                    ],
 
                     const SizedBox(height: 24),
 
                     // ── Địa chỉ ───────────────────────────────────
-                    if (room.address != null &&
-                        room.address!.isNotEmpty) ...[
-                      Text(
-                        'Địa chỉ',
-                        style: GoogleFonts.beVietnamPro(
-                          fontSize: 13,
-                          fontWeight: FontWeight.w700,
-                          color: AppColors.navy,
-                        ),
-                      ),
-                      const SizedBox(height: 6),
-                      Row(
-                        children: [
-                          const Icon(Icons.location_on_outlined,
-                              size: 16, color: AppColors.muted),
-                          const SizedBox(width: 6),
-                          Expanded(
-                            child: Text(
-                              room.address!,
-                              style: GoogleFonts.beVietnamPro(
-                                fontSize: 13,
-                                color: AppColors.muted,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 24),
-                    ],
+                    _DetailRow(
+                      title: 'Địa chỉ',
+                      icon: Icons.location_on_outlined,
+                      value: room.address?.isNotEmpty == true
+                          ? room.address!
+                          : '-',
+                    ),
+
+                    const SizedBox(height: 16),
 
                     // ── Mô tả ─────────────────────────────────────
-                    if (room.description != null &&
-                        room.description!.isNotEmpty) ...[
-                      Text(
-                        'Mô tả',
-                        style: GoogleFonts.beVietnamPro(
-                          fontSize: 13,
-                          fontWeight: FontWeight.w700,
-                          color: AppColors.navy,
-                        ),
-                      ),
-                      const SizedBox(height: 6),
-                      Text(
-                        room.description!,
-                        style: GoogleFonts.beVietnamPro(
-                          fontSize: 13,
-                          color: AppColors.muted,
-                          height: 1.5,
-                        ),
-                      ),
-                      const SizedBox(height: 24),
-                    ],
+                    _DetailSection(
+                      title: 'Mô tả',
+                      value: room.description?.isNotEmpty == true
+                          ? room.description!
+                          : '-',
+                    ),
+
+                    const SizedBox(height: 24),
 
                     // ── Price grid ──────────────────────────────────
                     if (room.price != null) ...[
@@ -226,7 +193,7 @@ class RoomDetailScreen extends ConsumerWidget {
                       const SizedBox(height: 24),
                     ],
 
-                    // ── Action button — chỉ Tạo booking ──────────────
+                    // ── Action button ──────────────────────────────
                     SizedBox(
                       width: double.infinity,
                       height: 48,
@@ -270,43 +237,6 @@ class RoomDetailScreen extends ConsumerWidget {
                         ),
                       ),
                     ),
-
-                    // ── Gallery thumbnails ──────────────────────────
-                    if (room.images.length > 1) ...[
-                      const SizedBox(height: 24),
-                      Text(
-                        'Hình ảnh (${room.images.length})',
-                        style: GoogleFonts.beVietnamPro(
-                          fontSize: 13,
-                          fontWeight: FontWeight.w700,
-                          color: AppColors.navy,
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      SizedBox(
-                        height: 80,
-                        child: ListView.separated(
-                          scrollDirection: Axis.horizontal,
-                          itemCount: room.images.length,
-                          separatorBuilder: (_, __) =>
-                              const SizedBox(width: 8),
-                          itemBuilder: (_, i) => GestureDetector(
-                            onTap: () =>
-                                _openGallery(context, room, i),
-                            child: ClipRRect(
-                              borderRadius: BorderRadius.circular(
-                                  AppRadius.sm),
-                              child: CachedNetworkImage(
-                                imageUrl: room.images[i].imageUrl,
-                                width: 110,
-                                height: 80,
-                                fit: BoxFit.cover,
-                              ),
-                            ),
-                          ),
-                        ),
-                      ),
-                    ],
                   ],
                 ),
               ),
@@ -317,15 +247,10 @@ class RoomDetailScreen extends ConsumerWidget {
     );
   }
 
-  void _openGallery(
-      BuildContext context, RoomModel room, int initialIndex) {
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (_) => _GalleryScreen(
-            images: room.images, initialIndex: initialIndex),
-      ),
-    );
+  String _titleText(RoomModel room) {
+    final code = room.code.isNotEmpty ? room.code : '-';
+    final name = room.name.isNotEmpty ? room.name : '-';
+    return '$code · $name';
   }
 }
 
@@ -363,133 +288,301 @@ class _ImageGalleryHeaderState extends State<_ImageGalleryHeader> {
     final images = room.images;
     final topPadding = MediaQuery.of(context).padding.top;
 
-    return Stack(
+    return Column(
+      mainAxisSize: MainAxisSize.min,
       children: [
-        SizedBox(
-          height: 260,
-          child: images.isNotEmpty
-              ? PageView.builder(
-                  controller: _pageCtrl,
-                  itemCount: images.length,
-                  onPageChanged: (i) =>
-                      setState(() => _currentPage = i),
-                  itemBuilder: (_, i) => GestureDetector(
-                    onTap: () => Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) => _GalleryScreen(
-                            images: images, initialIndex: i),
-                      ),
-                    ),
-                    child: Hero(
-                      tag: i == 0
-                          ? 'room-cover-${room.id}'
-                          : 'room-img-${room.id}-$i',
-                      child: CachedNetworkImage(
-                        imageUrl: images[i].imageUrl,
-                        fit: BoxFit.cover,
-                        width: double.infinity,
-                        placeholder: (_, __) => Container(
-                          decoration: const BoxDecoration(
-                            gradient: LinearGradient(
-                              colors: [
-                                AppColors.oceanDeep,
-                                AppColors.oceanMid,
-                              ],
-                            ),
-                          ),
-                        ),
-                        errorWidget: (_, __, ___) => Container(
-                          decoration: const BoxDecoration(
-                            gradient: LinearGradient(
-                              colors: [
-                                AppColors.oceanDeep,
-                                AppColors.oceanMid,
-                              ],
-                            ),
-                          ),
-                          child: const Center(
-                            child: Icon(Icons.broken_image_outlined,
+        // ── Main image area ───────────────────────────────
+        Stack(
+          children: [
+            GestureDetector(
+              onTap: images.isNotEmpty
+                  ? () => _openGallery(context, images, _currentPage)
+                  : null,
+              child: SizedBox(
+                height: 280,
+                child: images.isNotEmpty
+                    ? PageView.builder(
+                        controller: _pageCtrl,
+                        itemCount: images.length,
+                        onPageChanged: (i) =>
+                            setState(() => _currentPage = i),
+                        itemBuilder: (_, i) => Hero(
+                          tag: i == 0
+                              ? 'room-cover-${room.id}'
+                              : 'room-img-${room.id}-$i',
+                          child: CachedNetworkImage(
+                            imageUrl: images[i].imageUrl,
+                            fit: BoxFit.cover,
+                            width: double.infinity,
+                            memCacheWidth: 800,
+                            placeholder: (_, __) => _gradientBox(),
+                            errorWidget: (_, __, ___) => _gradientBox(
+                              child: const Icon(
+                                Icons.broken_image_outlined,
                                 size: 48,
-                                color: AppColors.oceanLight),
+                                color: AppColors.oceanLight,
+                              ),
+                            ),
                           ),
                         ),
+                      )
+                    : _gradientBox(
+                        child: const Icon(Icons.image_outlined,
+                            size: 64, color: AppColors.oceanLight),
                       ),
-                    ),
-                  ),
-                )
-              : Container(
-                  decoration: const BoxDecoration(
+              ),
+            ),
+
+            // Gradient scrim
+            if (images.isNotEmpty)
+              Positioned(
+                bottom: 0,
+                left: 0,
+                right: 0,
+                height: 80,
+                child: DecoratedBox(
+                  decoration: BoxDecoration(
                     gradient: LinearGradient(
-                      colors: [AppColors.oceanDeep, AppColors.oceanMid],
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                      colors: [
+                        Colors.transparent,
+                        Colors.black.withValues(alpha: 0.5),
+                      ],
                     ),
-                  ),
-                  child: const Center(
-                    child: Icon(Icons.image_outlined,
-                        size: 64, color: AppColors.oceanLight),
                   ),
                 ),
-        ),
-
-        // Top action buttons
-        Positioned(
-          top: topPadding + 8,
-          left: 16,
-          child: _CircleBtn(
-            icon: Icons.arrow_back_rounded,
-            onTap: () => Navigator.of(context).pop(),
-          ),
-        ),
-        Positioned(
-          top: topPadding + 8,
-          right: 16,
-          child: Row(
-            children: [
-              _CircleBtn(
-                icon: Icons.favorite_outline_rounded,
-                onTap: () {},
               ),
-              const SizedBox(width: 8),
-              _CircleBtn(
+
+            // Back button
+            Positioned(
+              top: topPadding + 8,
+              left: 16,
+              child: _CircleBtn(
+                icon: Icons.arrow_back_rounded,
+                onTap: () => Navigator.of(context).pop(),
+              ),
+            ),
+
+            // Share button
+            Positioned(
+              top: topPadding + 8,
+              right: 16,
+              child: _CircleBtn(
                 icon: Icons.share_rounded,
                 onTap: () {
                   final text =
-                      '${room.code} · ${room.name}\n'
-                      '${room.homestay?.address ?? ''}\n'
-                      'Giá từ: ${room.priceDisplay}';
+                      '${widget.room.code} · ${widget.room.name}\n'
+                      '${widget.room.homestay?.address ?? ''}\n'
+                      'Giá từ: ${widget.room.priceDisplay}';
                   Share.share(text);
                 },
               ),
-            ],
-          ),
+            ),
+
+            // Badge ảnh (luôn hiện khi có ảnh)
+            if (images.isNotEmpty)
+              Positioned(
+                bottom: 12,
+                right: 12,
+                child: GestureDetector(
+                  onTap: () =>
+                      _openGallery(context, images, _currentPage),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 10, vertical: 5),
+                    decoration: BoxDecoration(
+                      color: Colors.black54,
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(Icons.photo_library_outlined,
+                            size: 14, color: Colors.white),
+                        const SizedBox(width: 5),
+                        Text(
+                          images.length == 1
+                              ? 'Xem ảnh'
+                              : '${_currentPage + 1} / ${images.length}',
+                          style: GoogleFonts.beVietnamPro(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                            color: Colors.white,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+
+            // Dot indicators (chỉ khi nhiều ảnh)
+            if (images.length > 1)
+              Positioned(
+                bottom: 14,
+                left: 0,
+                right: 120,
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: List.generate(
+                    images.length.clamp(0, 8),
+                    (i) => AnimatedContainer(
+                      duration: const Duration(milliseconds: 250),
+                      margin:
+                          const EdgeInsets.symmetric(horizontal: 3),
+                      width: _currentPage == i ? 20 : 6,
+                      height: 6,
+                      decoration: BoxDecoration(
+                        color: _currentPage == i
+                            ? Colors.white
+                            : Colors.white.withValues(alpha: 0.5),
+                        borderRadius: BorderRadius.circular(3),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+          ],
         ),
 
-        // Page indicators
+        // ── Thumbnail strip (ngoài Stack, hiển thị đúng) ─
         if (images.length > 1)
-          Positioned(
-            bottom: 12,
-            left: 0,
-            right: 0,
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: List.generate(
-                images.length,
-                (i) => AnimatedContainer(
-                  duration: const Duration(milliseconds: 300),
-                  margin: const EdgeInsets.symmetric(horizontal: 3),
-                  width: _currentPage == i ? 24 : 8,
-                  height: 8,
-                  decoration: BoxDecoration(
-                    color: _currentPage == i
-                        ? Colors.white
-                        : Colors.white.withValues(alpha: 0.4),
-                    borderRadius: BorderRadius.circular(4),
+          _ThumbnailStrip(
+            images: images,
+            selectedIndex: _currentPage,
+            onTap: (i) {
+              _pageCtrl.animateToPage(
+                i,
+                duration: const Duration(milliseconds: 300),
+                curve: Curves.easeInOut,
+              );
+            },
+          ),
+      ],
+    );
+  }
+
+  void _openGallery(
+      BuildContext context, List<RoomImageModel> images, int index) {
+    Navigator.push(
+      context,
+      PageRouteBuilder(
+        opaque: false,
+        pageBuilder: (_, __, ___) =>
+            _GalleryScreen(images: images, initialIndex: index),
+        transitionsBuilder: (_, anim, __, child) =>
+            FadeTransition(opacity: anim, child: child),
+      ),
+    );
+  }
+
+  Widget _gradientBox({Widget? child}) => Container(
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            colors: [AppColors.oceanDeep, AppColors.oceanMid],
+          ),
+        ),
+        child: child != null ? Center(child: child) : null,
+      );
+}
+
+// ─── Thumbnail Strip ─────────────────────────────────────────────────────────
+class _ThumbnailStrip extends StatefulWidget {
+  final List<RoomImageModel> images;
+  final int selectedIndex;
+  final ValueChanged<int> onTap;
+
+  const _ThumbnailStrip({
+    required this.images,
+    required this.selectedIndex,
+    required this.onTap,
+  });
+
+  @override
+  State<_ThumbnailStrip> createState() => _ThumbnailStripState();
+}
+
+class _ThumbnailStripState extends State<_ThumbnailStrip> {
+  late final ScrollController _scrollCtrl;
+
+  @override
+  void initState() {
+    super.initState();
+    _scrollCtrl = ScrollController();
+  }
+
+  @override
+  void didUpdateWidget(_ThumbnailStrip oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // Tự động scroll thumbnail đến item đang chọn
+    if (oldWidget.selectedIndex != widget.selectedIndex) {
+      final targetOffset =
+          (widget.selectedIndex * 72.0) - 100;
+      _scrollCtrl.animateTo(
+        targetOffset.clamp(
+            0.0, _scrollCtrl.position.maxScrollExtent),
+        duration: const Duration(milliseconds: 300),
+        curve: Curves.easeInOut,
+      );
+    }
+  }
+
+  @override
+  void dispose() {
+    _scrollCtrl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      height: 56,
+      color: Colors.black.withValues(alpha: 0.6),
+      child: ListView.builder(
+        controller: _scrollCtrl,
+        scrollDirection: Axis.horizontal,
+        padding: const EdgeInsets.symmetric(
+            horizontal: AppSpacing.sm, vertical: 6),
+        itemCount: widget.images.length,
+        itemBuilder: (_, i) {
+          final isSelected = i == widget.selectedIndex;
+          return GestureDetector(
+            onTap: () => widget.onTap(i),
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 200),
+              width: 60,
+              height: 44,
+              margin: const EdgeInsets.only(right: 6),
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(AppRadius.xs),
+                border: Border.all(
+                  color: isSelected
+                      ? Colors.white
+                      : Colors.transparent,
+                  width: 2,
+                ),
+              ),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(AppRadius.xs),
+                child: CachedNetworkImage(
+                  imageUrl: widget.images[i].imageUrl,
+                  fit: BoxFit.cover,
+                  memCacheWidth: 120,
+                  placeholder: (_, __) => Container(
+                    color: AppColors.oceanDeep,
+                  ),
+                  errorWidget: (_, __, ___) => Container(
+                    color: AppColors.oceanDeep,
+                    child: const Icon(Icons.broken_image_outlined,
+                        size: 16, color: AppColors.oceanLight),
                   ),
                 ),
               ),
             ),
-          ),
-      ],
+          );
+        },
+      ),
     );
   }
 }
@@ -509,7 +602,7 @@ class _CircleBtn extends StatelessWidget {
         width: 40,
         height: 40,
         decoration: BoxDecoration(
-          color: Colors.white.withValues(alpha: 0.2),
+          color: Colors.black.withValues(alpha: 0.35),
           shape: BoxShape.circle,
         ),
         child: Icon(icon, color: Colors.white, size: 20),
@@ -570,6 +663,79 @@ class _AmenityChip extends StatelessWidget {
           fontWeight: FontWeight.w500,
         ),
       ),
+    );
+  }
+}
+
+class _DetailRow extends StatelessWidget {
+  final String title;
+  final IconData icon;
+  final String value;
+  const _DetailRow(
+      {required this.title, required this.icon, required this.value});
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          title,
+          style: GoogleFonts.beVietnamPro(
+            fontSize: 13,
+            fontWeight: FontWeight.w700,
+            color: AppColors.navy,
+          ),
+        ),
+        const SizedBox(height: 6),
+        Row(
+          children: [
+            Icon(icon, size: 16, color: AppColors.muted),
+            const SizedBox(width: 6),
+            Expanded(
+              child: Text(
+                value,
+                style: GoogleFonts.beVietnamPro(
+                  fontSize: 13,
+                  color: value == '-' ? AppColors.slate : AppColors.muted,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+}
+
+class _DetailSection extends StatelessWidget {
+  final String title;
+  final String value;
+  const _DetailSection({required this.title, required this.value});
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          title,
+          style: GoogleFonts.beVietnamPro(
+            fontSize: 13,
+            fontWeight: FontWeight.w700,
+            color: AppColors.navy,
+          ),
+        ),
+        const SizedBox(height: 6),
+        Text(
+          value,
+          style: GoogleFonts.beVietnamPro(
+            fontSize: 13,
+            color: value == '-' ? AppColors.slate : AppColors.muted,
+            height: 1.5,
+          ),
+        ),
+      ],
     );
   }
 }
@@ -667,7 +833,8 @@ class _PriceGrid extends StatelessWidget {
   }
 }
 
-class _GalleryScreen extends StatelessWidget {
+// ─── Full Gallery Screen ──────────────────────────────────────────────────────
+class _GalleryScreen extends StatefulWidget {
   final List<RoomImageModel> images;
   final int initialIndex;
 
@@ -675,25 +842,141 @@ class _GalleryScreen extends StatelessWidget {
       {required this.images, required this.initialIndex});
 
   @override
+  State<_GalleryScreen> createState() => _GalleryScreenState();
+}
+
+class _GalleryScreenState extends State<_GalleryScreen> {
+  late int _current;
+  late final PageController _pageCtrl;
+
+  @override
+  void initState() {
+    super.initState();
+    _current = widget.initialIndex;
+    _pageCtrl = PageController(initialPage: widget.initialIndex);
+  }
+
+  @override
+  void dispose() {
+    _pageCtrl.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) => Scaffold(
         backgroundColor: Colors.black,
+        extendBodyBehindAppBar: true,
         appBar: AppBar(
-          backgroundColor: Colors.black,
+          backgroundColor: Colors.black.withValues(alpha: 0.6),
           foregroundColor: Colors.white,
-          title: Text('${images.length} ảnh',
-              style: GoogleFonts.beVietnamPro(color: Colors.white)),
-        ),
-        body: PhotoViewGallery.builder(
-          itemCount: images.length,
-          pageController: PageController(initialPage: initialIndex),
-          builder: (_, i) => PhotoViewGalleryPageOptions(
-            imageProvider:
-                CachedNetworkImageProvider(images[i].imageUrl),
-            minScale: PhotoViewComputedScale.contained,
-            maxScale: PhotoViewComputedScale.covered * 3,
+          title: Text(
+            '${_current + 1} / ${widget.images.length}',
+            style: GoogleFonts.beVietnamPro(
+              color: Colors.white,
+              fontWeight: FontWeight.w600,
+            ),
           ),
-          backgroundDecoration:
-              const BoxDecoration(color: Colors.black),
+          actions: [
+            Padding(
+              padding: const EdgeInsets.only(right: 8),
+              child: Text(
+                '${widget.images.length} ảnh',
+                style: GoogleFonts.beVietnamPro(
+                  color: Colors.white54,
+                  fontSize: 13,
+                ),
+              ),
+            ),
+          ],
+        ),
+        body: Stack(
+          children: [
+            PhotoViewGallery.builder(
+              pageController: _pageCtrl,
+              itemCount: widget.images.length,
+              onPageChanged: (i) => setState(() => _current = i),
+              builder: (_, i) => PhotoViewGalleryPageOptions(
+                imageProvider: CachedNetworkImageProvider(
+                  widget.images[i].imageUrl,
+                ),
+                minScale: PhotoViewComputedScale.contained,
+                maxScale: PhotoViewComputedScale.covered * 3,
+                heroAttributes: PhotoViewHeroAttributes(
+                  tag: i == 0
+                      ? 'room-cover-${widget.images[i].roomId}'
+                      : 'room-img-${widget.images[i].roomId}-$i',
+                ),
+              ),
+              backgroundDecoration:
+                  const BoxDecoration(color: Colors.black),
+              loadingBuilder: (_, __) => const Center(
+                child: CircularProgressIndicator(
+                  color: Colors.white54,
+                  strokeWidth: 2,
+                ),
+              ),
+            ),
+            // Thumbnail strip at bottom
+            if (widget.images.length > 1)
+              Positioned(
+                bottom: 0,
+                left: 0,
+                right: 0,
+                child: Container(
+                  color: Colors.black.withValues(alpha: 0.7),
+                  child: SafeArea(
+                    child: SizedBox(
+                      height: 72,
+                      child: ListView.builder(
+                        scrollDirection: Axis.horizontal,
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: AppSpacing.sm,
+                            vertical: AppSpacing.sm),
+                        itemCount: widget.images.length,
+                        itemBuilder: (_, i) {
+                          final sel = i == _current;
+                          return GestureDetector(
+                            onTap: () => _pageCtrl.animateToPage(
+                              i,
+                              duration:
+                                  const Duration(milliseconds: 300),
+                              curve: Curves.easeInOut,
+                            ),
+                            child: AnimatedContainer(
+                              duration:
+                                  const Duration(milliseconds: 200),
+                              width: 56,
+                              height: 56,
+                              margin: const EdgeInsets.only(right: 6),
+                              decoration: BoxDecoration(
+                                borderRadius: BorderRadius.circular(
+                                    AppRadius.xs),
+                                border: Border.all(
+                                  color: sel
+                                      ? Colors.white
+                                      : Colors.transparent,
+                                  width: 2,
+                                ),
+                              ),
+                              child: ClipRRect(
+                                borderRadius: BorderRadius.circular(
+                                    AppRadius.xs),
+                                child: CachedNetworkImage(
+                                  imageUrl:
+                                      widget.images[i].imageUrl,
+                                  fit: BoxFit.cover,
+                                  memCacheWidth: 120,
+                                ),
+                              ),
+                            ),
+                          );
+                        },
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+          ],
         ),
       );
 }

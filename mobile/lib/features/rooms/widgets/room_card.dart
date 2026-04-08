@@ -92,17 +92,17 @@ class _RoomCardState extends State<RoomCard> {
                       decoration: BoxDecoration(
                         color: room.isActive
                             ? AppColors.emeraldLight
-                            : AppColors.amberLight,
+                            : AppColors.slateLight,
                         borderRadius: BorderRadius.circular(20),
                       ),
                       child: Text(
-                        room.isActive ? 'Trống' : 'Đang ở',
+                        room.isActive ? 'Hoạt động' : 'Tạm nghỉ',
                         style: GoogleFonts.beVietnamPro(
                           fontSize: 10,
                           fontWeight: FontWeight.w600,
                           color: room.isActive
                               ? AppColors.greenForest
-                              : AppColors.brownDark,
+                              : AppColors.slate,
                         ),
                       ),
                     ),
@@ -188,20 +188,8 @@ class _RoomCardState extends State<RoomCard> {
   }
 
   List<Widget> _buildAmenityChips(RoomModel room) {
-    final chips = <String>[];
-    if (room.description?.toLowerCase().contains('view') == true ||
-        room.description?.toLowerCase().contains('biển') == true) {
-      chips.add('View biển');
-    }
-    chips.add('Điều hoà');
-    if (room.bedrooms >= 2) {
-      chips.add('${room.bedrooms} PN');
-    }
-    if (room.price != null && room.price!.weekdayPrice >= 1000000) {
-      chips.add('Smart TV');
-    }
-
-    return chips
+    if (room.amenities.isEmpty) return [];
+    return room.amenities
         .take(3)
         .map((label) => Container(
               padding: const EdgeInsets.symmetric(
