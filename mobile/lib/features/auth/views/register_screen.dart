@@ -113,16 +113,14 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen>
   @override
   Widget build(BuildContext context) {
     final size = MediaQuery.of(context).size;
+    final bottomInset = MediaQuery.of(context).viewPadding.bottom;
 
-    return Scaffold(
-      resizeToAvoidBottomInset: true,
-      body: Stack(
-        children: [
-          // ── Background gradient ────────────────────────────────
-          Container(
-            width: size.width,
-            height: size.height,
-            decoration: const BoxDecoration(
+    return Stack(
+      children: [
+        // ── Background gradient (ngoài Scaffold để keyboard không ảnh hưởng) ──
+        const Positioned.fill(
+          child: DecoratedBox(
+            decoration: BoxDecoration(
               gradient: LinearGradient(
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
@@ -135,19 +133,28 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen>
               ),
             ),
           ),
+        ),
 
-          // ── Animated wave circles ──────────────────────────────
-          AnimatedBuilder(
+        // ── Animated wave circles (ngoài Scaffold) ──────────────────
+        Positioned.fill(
+          child: AnimatedBuilder(
             animation: _waveCtrl,
             builder: (_, __) => CustomPaint(
               size: size,
               painter: _RegisterWavePainter(_waveCtrl.value),
             ),
           ),
+        ),
 
-          // ── Main content ───────────────────────────────────────
-          SafeArea(
-            child: Column(
+        Scaffold(
+          backgroundColor: Colors.transparent,
+          resizeToAvoidBottomInset: true,
+          body: GestureDetector(
+            onTap: () => FocusScope.of(context).unfocus(),
+            behavior: HitTestBehavior.opaque,
+            child: SafeArea(
+              bottom: false,
+              child: Column(
               children: [
                 // ── Top bar ───────────────────────────────────────
                 Padding(
@@ -272,7 +279,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen>
                       ],
                     ),
                     child: SingleChildScrollView(
-                      padding: const EdgeInsets.fromLTRB(28, 28, 28, 24),
+                      padding: EdgeInsets.fromLTRB(28, 28, 28, 24 + bottomInset),
                       child: Form(
                         key: _formKey,
                         child: Column(
@@ -520,8 +527,9 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen>
               ],
             ),
           ),
-        ],
+        ),
       ),
+        ],
     );
   }
 

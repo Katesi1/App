@@ -7,6 +7,7 @@ import 'package:flutter_svg/flutter_svg.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 
+import '../../../core/storage/secure_storage.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../controllers/auth_controller.dart';
@@ -30,6 +31,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
 
   bool _obscurePassword = true;
   bool _isLoading = false;
+  bool _rememberMe = false;
 
   @override
   void initState() {
@@ -46,6 +48,17 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
       vsync: this,
       duration: const Duration(milliseconds: 8000),
     )..repeat();
+    _loadSavedCredentials();
+  }
+
+  Future<void> _loadSavedCredentials() async {
+    final saved = await SecureStorage.getSavedCredentials();
+    if (saved == null || !mounted) return;
+    setState(() {
+      _phoneCtrl.text = saved.phone;
+      _passwordCtrl.text = saved.password;
+      _rememberMe = true;
+    });
   }
 
   @override
@@ -61,12 +74,12 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
   Future<void> _login() async {
     if (!_formKey.currentState!.validate()) return;
     setState(() => _isLoading = true);
-    final error = await ref.read(authProvider.notifier).login(
-          _phoneCtrl.text.trim(),
-          _passwordCtrl.text,
-        );
+    final phone = _phoneCtrl.text.trim();
+    final password = _passwordCtrl.text;
+    final error = await ref.read(authProvider.notifier).login(phone, password);
     if (!mounted) return;
     setState(() => _isLoading = false);
+
     if (error != null) {
       _shakeCtrl.forward(from: 0);
       ScaffoldMessenger.of(context).showSnackBar(
@@ -85,6 +98,14 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
           margin: const EdgeInsets.all(AppSpacing.md),
         ),
       );
+      return;
+    }
+
+    // Đăng nhập thành công → lưu hoặc xoá credentials theo checkbox
+    if (_rememberMe) {
+      await SecureStorage.saveCredentials(phone, password);
+    } else {
+      await SecureStorage.clearCredentials();
     }
   }
 
@@ -111,16 +132,14 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
   Widget build(BuildContext context) {
     final size = MediaQuery.of(context).size;
     final topPadding = MediaQuery.of(context).padding.top;
+    final bottomInset = MediaQuery.of(context).viewPadding.bottom;
 
-    return Scaffold(
-      resizeToAvoidBottomInset: true,
-      body: Stack(
-        children: [
-          // ── Background gradient ────────────────────────────────
-          Container(
-            width: size.width,
-            height: size.height,
-            decoration: const BoxDecoration(
+    return Stack(
+      children: [
+        // ── Background gradient (ngoài Scaffold để keyboard không ảnh hưởng) ──
+        const Positioned.fill(
+          child: DecoratedBox(
+            decoration: BoxDecoration(
               gradient: LinearGradient(
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
@@ -133,20 +152,27 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
               ),
             ),
           ),
+        ),
 
-          // ── Animated wave circles ──────────────────────────────
-          AnimatedBuilder(
+        // ── Animated wave circles (ngoài Scaffold) ──────────────────
+        Positioned.fill(
+          child: AnimatedBuilder(
             animation: _waveCtrl,
-            builder: (_, __) {
-              return CustomPaint(
-                size: size,
-                painter: _WavePainter(_waveCtrl.value),
-              );
-            },
+            builder: (_, __) => CustomPaint(
+              size: size,
+              painter: _WavePainter(_waveCtrl.value),
+            ),
           ),
+        ),
 
-          // ── Main content ───────────────────────────────────────
-          SafeArea(
+        Scaffold(
+          backgroundColor: Colors.transparent,
+          resizeToAvoidBottomInset: true,
+          body: GestureDetector(
+            onTap: () => FocusScope.of(context).unfocus(),
+            behavior: HitTestBehavior.opaque,
+            child: SafeArea(
+              bottom: false,
             child: SingleChildScrollView(
               physics: const ClampingScrollPhysics(),
               child: SizedBox(
@@ -285,7 +311,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
                             ],
                           ),
                           child: SingleChildScrollView(
-                            padding: const EdgeInsets.fromLTRB(28, 32, 28, 24),
+                            padding: EdgeInsets.fromLTRB(28, 32, 28, 24 + bottomInset),
                             child: Form(
                               key: _formKey,
                               child: Column(
@@ -390,25 +416,77 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
                                     ),
                                   ),
 
-                                  // Forgot password
-                                  Align(
-                                    alignment: Alignment.centerRight,
-                                    child: TextButton(
-                                      onPressed: () =>
-                                          context.go('/forgot-password'),
-                                      style: TextButton.styleFrom(
-                                        padding: const EdgeInsets.symmetric(
-                                            vertical: 8, horizontal: 4),
-                                      ),
-                                      child: Text(
-                                        'Quên mật khẩu?',
-                                        style: GoogleFonts.beVietnamPro(
-                                          fontSize: 13,
-                                          color: AppColors.oceanMid,
-                                          fontWeight: FontWeight.w500,
+                                  // Remember me + Forgot password
+                                  Row(
+                                    mainAxisAlignment:
+                                        MainAxisAlignment.spaceBetween,
+                                    children: [
+                                      // Remember me checkbox
+                                      InkWell(
+                                        onTap: () => setState(
+                                            () => _rememberMe = !_rememberMe),
+                                        borderRadius:
+                                            BorderRadius.circular(6),
+                                        child: Padding(
+                                          padding: const EdgeInsets.symmetric(
+                                              vertical: 8, horizontal: 4),
+                                          child: Row(
+                                            mainAxisSize: MainAxisSize.min,
+                                            children: [
+                                              SizedBox(
+                                                width: 20,
+                                                height: 20,
+                                                child: Checkbox(
+                                                  value: _rememberMe,
+                                                  onChanged: (v) => setState(
+                                                      () => _rememberMe =
+                                                          v ?? false),
+                                                  activeColor:
+                                                      AppColors.ocean,
+                                                  shape: RoundedRectangleBorder(
+                                                    borderRadius:
+                                                        BorderRadius.circular(
+                                                            4),
+                                                  ),
+                                                  materialTapTargetSize:
+                                                      MaterialTapTargetSize
+                                                          .shrinkWrap,
+                                                  visualDensity:
+                                                      VisualDensity.compact,
+                                                ),
+                                              ),
+                                              const SizedBox(width: 8),
+                                              Text(
+                                                'Ghi nhớ tài khoản',
+                                                style:
+                                                    GoogleFonts.beVietnamPro(
+                                                  fontSize: 13,
+                                                  color: AppColors.slate,
+                                                  fontWeight: FontWeight.w500,
+                                                ),
+                                              ),
+                                            ],
+                                          ),
                                         ),
                                       ),
-                                    ),
+                                      // Forgot password
+                                      TextButton(
+                                        onPressed: () =>
+                                            context.go('/forgot-password'),
+                                        style: TextButton.styleFrom(
+                                          padding: const EdgeInsets.symmetric(
+                                              vertical: 8, horizontal: 4),
+                                        ),
+                                        child: Text(
+                                          'Quên mật khẩu?',
+                                          style: GoogleFonts.beVietnamPro(
+                                            fontSize: 13,
+                                            color: AppColors.oceanMid,
+                                            fontWeight: FontWeight.w500,
+                                          ),
+                                        ),
+                                      ),
+                                    ],
                                   ),
 
                                   const SizedBox(height: 4),
@@ -503,8 +581,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
               ),
             ),
           ),
-        ],
+        ),
       ),
+      ],
     );
   }
 
