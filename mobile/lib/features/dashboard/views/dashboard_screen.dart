@@ -134,7 +134,7 @@ class DashboardScreen extends ConsumerWidget {
                             icon: Icons.add_rounded,
                             label: 'Booking',
                             color: AppColors.ocean,
-                            onTap: () => context.go('/bookings'),
+                            onTap: () => context.push('/bookings'),
                           ),
                           const SizedBox(width: 10),
                           _QuickAction(
@@ -177,7 +177,7 @@ class DashboardScreen extends ConsumerWidget {
                           Expanded(
                               child: _SectionLabel('BOOKING HÔM NAY')),
                           GestureDetector(
-                            onTap: () => context.go('/bookings'),
+                            onTap: () => context.push('/bookings'),
                             child: Text(
                               'Xem tất cả →',
                               style: GoogleFonts.beVietnamPro(

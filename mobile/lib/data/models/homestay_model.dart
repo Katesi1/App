@@ -7,8 +7,8 @@ class HomestayModel {
   final double? latitude;
   final double? longitude;
   final String? mapLink;
-  final String? rules;
-  final String? services;
+  final List<String>? rules;
+  final List<String>? services;
   final bool isActive;
   final Map<String, dynamic>? owner;
   final int? roomCount;
@@ -42,8 +42,9 @@ class HomestayModel {
         latitude: (json['latitude'] as num?)?.toDouble(),
         longitude: (json['longitude'] as num?)?.toDouble(),
         mapLink: json['mapLink'],
-        rules: json['rules'],
-        services: json['services'],
+        rules: (json['rules'] as List?)?.map((e) => e.toString()).toList(),
+        services:
+            (json['services'] as List?)?.map((e) => e.toString()).toList(),
         isActive: json['isActive'] ?? true,
         owner: json['owner'],
         roomCount: json['_count']?['rooms'],
