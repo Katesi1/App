@@ -31,13 +31,12 @@ class _PropertyManagementScreenState extends ConsumerState<PropertyManagementScr
   final _searchFocusNode = FocusNode();
   Timer? _debounce;
 
-  // typeValues matches PropertyType int: 0=VILLA, 1=HOMESTAY/CĂN HỘ, 2=HOTEL, 3=HOMESTAY/CĂN HỘ
+  // typeValues matches PropertyType int: 0=VILLA, 1=HOMESTAY, 2=HOTEL
   // typeValues == null nghĩa là tab "Tất cả" — không filter theo type
-  // Homestay & Căn hộ gộp chung 1 tab (type 1 + 3)
   static const _tabs = [
     (label: 'Tất cả', icon: Icons.apps_rounded, typeValues: null),
     (label: 'Villa', icon: Icons.villa_rounded, typeValues: [0]),
-    (label: 'Homestay', icon: Icons.cottage_rounded, typeValues: [1, 3]),
+    (label: 'Homestay', icon: Icons.cottage_rounded, typeValues: [1]),
     (label: 'Khách sạn', icon: Icons.hotel_rounded, typeValues: [2]),
   ];
 
@@ -82,7 +81,7 @@ class _PropertyManagementScreenState extends ConsumerState<PropertyManagementScr
 
   /// Lọc homestay theo tab — so sánh int type field.
   /// [typeValues] null = tab "Tất cả" → không filter theo type.
-  /// [typeValues] có thể chứa nhiều type (vd: Homestay gộp 1 + 3).
+  /// [typeValues] có thể chứa nhiều type (vd: Homestay = [1]).
   List<HomestayModel> _filterByTab(
       List<HomestayModel> homestays, List<int>? typeValues) {
     var filtered = typeValues == null

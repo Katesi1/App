@@ -44,13 +44,12 @@ class _RoomListScreenState extends ConsumerState<RoomListScreen>
   bool? _priceAscending;
 
   // Tabs
-  // typeValues: 0=VILLA, 1=HOMESTAY, 2=HOTEL, 3=APARTMENT
+  // typeValues: 0=VILLA, 1=HOMESTAY, 2=HOTEL
   // typeValues == null nghĩa là tab "Tất cả" — không filter theo type
-  // Homestay & Căn hộ gộp chung 1 tab (type 1 + 3)
   static const _tabs = [
     (label: 'Tất cả', icon: Icons.apps_rounded, typeValues: null),
     (label: 'Villa', icon: Icons.villa_rounded, typeValues: [0]),
-    (label: 'Homestay', icon: Icons.cottage_rounded, typeValues: [1, 3]),
+    (label: 'Homestay', icon: Icons.cottage_rounded, typeValues: [1]),
     (label: 'Khách sạn', icon: Icons.hotel_rounded, typeValues: [2]),
   ];
 
@@ -110,7 +109,7 @@ class _RoomListScreenState extends ConsumerState<RoomListScreen>
 
   /// Lọc rooms theo tab.
   /// [typeValues] null = tab "Tất cả" → không filter theo type.
-  /// [typeValues] có thể chứa nhiều type (vd: Homestay gộp 1 + 3).
+  /// [typeValues] có thể chứa nhiều type (vd: Homestay = [1]).
   List<RoomModel> _filterByTab(List<RoomModel> rooms, List<int>? typeValues) {
     var list = typeValues == null
         ? List<RoomModel>.from(rooms)

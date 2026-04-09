@@ -22,7 +22,7 @@ class PropertyAddScreen extends ConsumerStatefulWidget {
 class _PropertyAddScreenState extends ConsumerState<PropertyAddScreen> {
   final _formKey = GlobalKey<FormState>();
 
-  // Loại hình (0=VILLA, 1=HOMESTAY, 2=HOTEL, 3=APARTMENT)
+  // Loại hình (0=VILLA, 1=HOMESTAY, 2=HOTEL)
   int _selectedType = 0;
 
   // Ảnh
@@ -58,12 +58,11 @@ class _PropertyAddScreenState extends ConsumerState<PropertyAddScreen> {
 
   bool _isLoading = false;
 
-  // 0=VILLA, 1=HOMESTAY, 2=HOTEL, 3=APARTMENT
+  // 0=VILLA, 1=HOMESTAY, 2=HOTEL
   static const _typeOptions = [
     (value: 0, label: 'Villa', icon: Icons.villa_rounded),
     (value: 1, label: 'Homestay', icon: Icons.cottage_rounded),
     (value: 2, label: 'Khách sạn', icon: Icons.hotel_rounded),
-    (value: 3, label: 'Căn hộ', icon: Icons.apartment_rounded),
   ];
 
   static const _amenityGroups = {

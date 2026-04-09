@@ -202,47 +202,56 @@ class _SearchRoomScreenState extends ConsumerState<SearchRoomScreen> {
           // ── Room list ───────────────────────────────────────
           Expanded(
             child: roomsAsync.when(
-              data: (rooms) {
-                if (rooms.isEmpty) {
-                  return Center(
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        const Icon(Icons.search_off_rounded,
-                            size: 48, color: AppColors.slate),
-                        const SizedBox(height: 12),
-                        Text(
-                          'Không tìm thấy phòng',
-                          style: GoogleFonts.beVietnamPro(
-                            fontSize: 15,
-                            color: AppColors.muted,
+              data: (rooms) => RefreshIndicator(
+                color: AppColors.ocean,
+                onRefresh: () async =>
+                    ref.invalidate(publicRoomsProvider(_currentFilter)),
+                child: rooms.isEmpty
+                    ? ListView(
+                        physics: const AlwaysScrollableScrollPhysics(),
+                        children: [
+                          SizedBox(
+                            height: MediaQuery.of(context).size.height * 0.4,
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                const Icon(Icons.search_off_rounded,
+                                    size: 48, color: AppColors.slate),
+                                const SizedBox(height: 12),
+                                Text(
+                                  'Không tìm thấy phòng',
+                                  style: GoogleFonts.beVietnamPro(
+                                    fontSize: 15,
+                                    color: AppColors.muted,
+                                  ),
+                                ),
+                                const SizedBox(height: 4),
+                                Text(
+                                  'Thử thay đổi bộ lọc',
+                                  style: GoogleFonts.beVietnamPro(
+                                    fontSize: 13,
+                                    color: AppColors.slate,
+                                  ),
+                                ),
+                              ],
+                            ),
                           ),
+                        ],
+                      )
+                    : ListView.separated(
+                        physics: const AlwaysScrollableScrollPhysics(),
+                        padding: const EdgeInsets.all(16),
+                        itemCount: rooms.length,
+                        separatorBuilder: (_, __) =>
+                            const SizedBox(height: 14),
+                        itemBuilder: (_, i) => _RoomListCard(
+                          room: rooms[i],
+                          index: i,
+                          onTap: () =>
+                              context.push('/rooms/${rooms[i].id}'),
                         ),
-                        const SizedBox(height: 4),
-                        Text(
-                          'Thử thay đổi bộ lọc',
-                          style: GoogleFonts.beVietnamPro(
-                            fontSize: 13,
-                            color: AppColors.slate,
-                          ),
-                        ),
-                      ],
-                    ),
-                  );
-                }
-                return ListView.separated(
-                  padding: const EdgeInsets.all(16),
-                  itemCount: rooms.length,
-                  separatorBuilder: (_, __) =>
-                      const SizedBox(height: 14),
-                  itemBuilder: (_, i) => _RoomListCard(
-                    room: rooms[i],
-                    index: i,
-                    onTap: () =>
-                        context.push('/rooms/${rooms[i].id}'),
-                  ),
-                );
-              },
+                      ),
+              ),
               loading: () => SkeletonList(
                 skeleton: const RoomCardSkeleton(),
                 count: 4,
