@@ -74,15 +74,15 @@ class CalendarRepository {
     }
   }
 
-  /// POST /calendar/lock — đánh dấu đã bán (status = BOOKED)
+  /// PATCH /calendar/sold — đánh dấu đã bán (status = BOOKED)
   Future<ApiResponse<Map<String, dynamic>>> markAsSold({
     required String propertyId,
     required String date,
   }) async {
     try {
-      final response = await _dio.post(
-        ApiConstants.calendarLock,
-        data: {'propertyId': propertyId, 'date': date, 'status': 'BOOKED'},
+      final response = await _dio.patch(
+        ApiConstants.calendarSold,
+        data: {'propertyId': propertyId, 'date': date},
       );
       return ApiResponse(
         success: true,
@@ -94,14 +94,14 @@ class CalendarRepository {
     }
   }
 
-  /// POST /calendar/unlock — mở khoá phòng
+  /// DELETE /calendar/lock — mở khoá phòng (body: propertyId + date)
   Future<ApiResponse<void>> unlockRoom({
     required String propertyId,
     required String date,
   }) async {
     try {
-      await _dio.post(
-        ApiConstants.calendarUnlock,
+      await _dio.delete(
+        ApiConstants.calendarLock,
         data: {'propertyId': propertyId, 'date': date},
       );
       return ApiResponse(success: true, message: 'Đã mở khoá phòng');

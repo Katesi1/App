@@ -31,11 +31,14 @@ class _PropertyManagementScreenState extends ConsumerState<PropertyManagementScr
   final _searchFocusNode = FocusNode();
   Timer? _debounce;
 
-  // typeValue matches PropertyType int: 0=VILLA, 1=HOMESTAY, 2=HOTEL
+  // typeValues matches PropertyType int: 0=VILLA, 1=HOMESTAY/CĂN HỘ, 2=HOTEL, 3=HOMESTAY/CĂN HỘ
+  // typeValues == null nghĩa là tab "Tất cả" — không filter theo type
+  // Homestay & Căn hộ gộp chung 1 tab (type 1 + 3)
   static const _tabs = [
-    (label: 'Villa', icon: Icons.villa_rounded, typeValue: 0),
-    (label: 'Homestay', icon: Icons.cottage_rounded, typeValue: 1),
-    (label: 'Khách sạn', icon: Icons.hotel_rounded, typeValue: 2),
+    (label: 'Tất cả', icon: Icons.apps_rounded, typeValues: null),
+    (label: 'Villa', icon: Icons.villa_rounded, typeValues: [0]),
+    (label: 'Homestay', icon: Icons.cottage_rounded, typeValues: [1, 3]),
+    (label: 'Khách sạn', icon: Icons.hotel_rounded, typeValues: [2]),
   ];
 
   @override
@@ -77,10 +80,14 @@ class _PropertyManagementScreenState extends ConsumerState<PropertyManagementScr
     });
   }
 
-  /// Lọc homestay theo tab — so sánh int type field
+  /// Lọc homestay theo tab — so sánh int type field.
+  /// [typeValues] null = tab "Tất cả" → không filter theo type.
+  /// [typeValues] có thể chứa nhiều type (vd: Homestay gộp 1 + 3).
   List<HomestayModel> _filterByTab(
-      List<HomestayModel> homestays, int typeValue) {
-    var filtered = homestays.where((h) => h.type == typeValue).toList();
+      List<HomestayModel> homestays, List<int>? typeValues) {
+    var filtered = typeValues == null
+        ? List<HomestayModel>.from(homestays)
+        : homestays.where((h) => typeValues.contains(h.type)).toList();
 
     if (_searchQuery.isNotEmpty) {
       final query = _searchQuery.toLowerCase();
@@ -203,9 +210,13 @@ class _PropertyManagementScreenState extends ConsumerState<PropertyManagementScr
 
                   const SizedBox(height: 12),
 
-                  // TabBar
+                  // TabBar — scrollable để tránh overflow khi có nhiều tab
                   TabBar(
                     controller: _tabController,
+                    isScrollable: true,
+                    tabAlignment: TabAlignment.start,
+                    labelPadding:
+                        const EdgeInsets.symmetric(horizontal: 14),
                     labelColor: Colors.white,
                     unselectedLabelColor:
                         Colors.white.withValues(alpha: 0.6),
@@ -257,7 +268,7 @@ class _PropertyManagementScreenState extends ConsumerState<PropertyManagementScr
             data: (homestays) => TabBarView(
               controller: _tabController,
               children: _tabs.map((tab) {
-                final filtered = _filterByTab(homestays, tab.typeValue);
+                final filtered = _filterByTab(homestays, tab.typeValues);
                 if (filtered.isEmpty) {
                   return Center(
                     child: EmptyStateWidget(

@@ -3,7 +3,7 @@ class HomestayModel {
   final String ownerId;
   final String name;
   final String address;
-  final int? type; // 0=VILLA, 1=HOMESTAY, 2=HOTEL, 3=APARTMENT
+  final int? type; // 0=VILLA, 1=HOMESTAY, 2=HOTEL
   final double? latitude;
   final double? longitude;
   final String? mapLink;

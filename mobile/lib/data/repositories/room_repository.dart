@@ -7,12 +7,17 @@ import '../models/room_model.dart';
 class RoomRepository {
   final _dio = ApiClient.instance;
 
-  Future<ApiResponse<List<RoomModel>>> getRooms({String? homestayId}) async {
+  Future<ApiResponse<List<RoomModel>>> getRooms({
+    String? homestayId,
+    bool includeInactive = true,
+  }) async {
     try {
       final response = await _dio.get(
         ApiConstants.properties,
-        queryParameters:
-            homestayId != null ? {'propertyId': homestayId} : null,
+        queryParameters: {
+          if (homestayId != null) 'propertyId': homestayId,
+          if (includeInactive) 'includeInactive': true,
+        },
       );
       final list = (response.data['data'] as List)
           .map((e) => RoomModel.fromJson(e))
@@ -52,7 +57,8 @@ class RoomRepository {
   Future<ApiResponse<RoomModel>> updateRoom(
       String id, Map<String, dynamic> data) async {
     try {
-      final response = await _dio.put('${ApiConstants.properties}/$id', data: data);
+      final response =
+          await _dio.patch('${ApiConstants.properties}/$id', data: data);
       return ApiResponse(
         success: true,
         data: RoomModel.fromJson(response.data['data']),

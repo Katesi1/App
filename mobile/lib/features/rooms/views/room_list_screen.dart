@@ -40,12 +40,18 @@ class _RoomListScreenState extends ConsumerState<RoomListScreen>
   int _adults = 0;
   int _children = 0;
 
+  // Sort theo giá: null = mặc định, true = tăng dần, false = giảm dần
+  bool? _priceAscending;
+
   // Tabs
-  // typeValue: 0=VILLA, 1=HOMESTAY, 2=HOTEL
+  // typeValues: 0=VILLA, 1=HOMESTAY, 2=HOTEL, 3=APARTMENT
+  // typeValues == null nghĩa là tab "Tất cả" — không filter theo type
+  // Homestay & Căn hộ gộp chung 1 tab (type 1 + 3)
   static const _tabs = [
-    (label: 'Villa', icon: Icons.villa_rounded, typeValue: 0),
-    (label: 'Homestay', icon: Icons.cottage_rounded, typeValue: 1),
-    (label: 'Khách sạn', icon: Icons.hotel_rounded, typeValue: 2),
+    (label: 'Tất cả', icon: Icons.apps_rounded, typeValues: null),
+    (label: 'Villa', icon: Icons.villa_rounded, typeValues: [0]),
+    (label: 'Homestay', icon: Icons.cottage_rounded, typeValues: [1, 3]),
+    (label: 'Khách sạn', icon: Icons.hotel_rounded, typeValues: [2]),
   ];
 
   bool get _hasActiveFilters =>
@@ -102,8 +108,13 @@ class _RoomListScreenState extends ConsumerState<RoomListScreen>
     });
   }
 
-  List<RoomModel> _filterByTab(List<RoomModel> rooms, int typeValue) {
-    var list = rooms.where((r) => r.type == typeValue).toList();
+  /// Lọc rooms theo tab.
+  /// [typeValues] null = tab "Tất cả" → không filter theo type.
+  /// [typeValues] có thể chứa nhiều type (vd: Homestay gộp 1 + 3).
+  List<RoomModel> _filterByTab(List<RoomModel> rooms, List<int>? typeValues) {
+    var list = typeValues == null
+        ? List<RoomModel>.from(rooms)
+        : rooms.where((r) => typeValues.contains(r.type)).toList();
 
     // Search
     if (_searchQuery.isNotEmpty) {
@@ -115,8 +126,33 @@ class _RoomListScreenState extends ConsumerState<RoomListScreen>
           .toList();
     }
 
+    // Sort theo giá (weekdayPrice). Phòng chưa có giá → đẩy xuống cuối.
+    if (_priceAscending != null) {
+      list.sort((a, b) {
+        final pa = a.price?.weekdayPrice;
+        final pb = b.price?.weekdayPrice;
+        if (pa == null && pb == null) return 0;
+        if (pa == null) return 1;
+        if (pb == null) return -1;
+        return _priceAscending! ? pa.compareTo(pb) : pb.compareTo(pa);
+      });
+    }
+
     // TODO: Apply view, date, guest filters khi API hỗ trợ
     return list;
+  }
+
+  void _cyclePriceSort() {
+    setState(() {
+      // null → asc → desc → null
+      if (_priceAscending == null) {
+        _priceAscending = true;
+      } else if (_priceAscending == true) {
+        _priceAscending = false;
+      } else {
+        _priceAscending = null;
+      }
+    });
   }
 
   void _toggleSearch() {
@@ -499,6 +535,16 @@ class _RoomListScreenState extends ConsumerState<RoomListScreen>
                             ),
                             const SizedBox(width: 8),
                             _HeaderIconBtn(
+                              icon: _priceAscending == null
+                                  ? Icons.sort_rounded
+                                  : _priceAscending == true
+                                      ? Icons.arrow_upward_rounded
+                                      : Icons.arrow_downward_rounded,
+                              badge: _priceAscending != null,
+                              onTap: _cyclePriceSort,
+                            ),
+                            const SizedBox(width: 8),
+                            _HeaderIconBtn(
                               icon: Icons.filter_list_rounded,
                               badge: _hasActiveFilters,
                               onTap: _showFilterSheet,
@@ -589,9 +635,13 @@ class _RoomListScreenState extends ConsumerState<RoomListScreen>
                       ),
                     ],
                     const SizedBox(height: 12),
-                    // ── TabBar ──
+                    // ── TabBar — scrollable để tránh overflow ──
                     TabBar(
                       controller: _tabController,
+                      isScrollable: true,
+                      tabAlignment: TabAlignment.start,
+                      labelPadding:
+                          const EdgeInsets.symmetric(horizontal: 14),
                       labelColor: Colors.white,
                       unselectedLabelColor:
                           Colors.white.withValues(alpha: 0.6),
@@ -700,7 +750,7 @@ class _RoomListScreenState extends ConsumerState<RoomListScreen>
             data: (rooms) => TabBarView(
               controller: _tabController,
               children: _tabs.map((tab) {
-                final filtered = _filterByTab(rooms, tab.typeValue);
+                final filtered = _filterByTab(rooms, tab.typeValues);
                 if (filtered.isEmpty) {
                   return Center(
                     child: EmptyStateWidget(

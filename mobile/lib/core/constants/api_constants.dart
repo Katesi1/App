@@ -39,7 +39,7 @@ class ApiConstants {
 
   // Customer bookings
   static const String customerHold = '/bookings/customer-hold';
-  static const String myBookings = '/bookings/my';
+  static const String myBookings = '/bookings/my-bookings';
   static String customerCancel(String id) => '/bookings/$id/customer-cancel';
 
   // Public properties (cho customer)
@@ -48,8 +48,8 @@ class ApiConstants {
   // Calendar
   static const String calendarProperties = '/calendar/properties';
   static const String calendarGrid = '/calendar/grid';
-  static const String calendarLock = '/calendar/lock';
-  static const String calendarUnlock = '/calendar/unlock';
+  static const String calendarLock = '/calendar/lock'; // POST = lock, DELETE = unlock
+  static const String calendarSold = '/calendar/sold'; // PATCH = đánh dấu đã bán
   static const String calendarAdminContact = '/calendar/admin-contact';
 
   // Dashboard & Reports
