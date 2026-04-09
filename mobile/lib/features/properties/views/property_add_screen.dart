@@ -22,8 +22,8 @@ class PropertyAddScreen extends ConsumerStatefulWidget {
 class _PropertyAddScreenState extends ConsumerState<PropertyAddScreen> {
   final _formKey = GlobalKey<FormState>();
 
-  // Loại hình
-  String _selectedType = 'VILLA';
+  // Loại hình (0=VILLA, 1=HOMESTAY, 2=HOTEL, 3=APARTMENT)
+  int _selectedType = 0;
 
   // Ảnh
   final List<File> _pickedImages = [];
@@ -31,7 +31,6 @@ class _PropertyAddScreenState extends ConsumerState<PropertyAddScreen> {
   // Thông tin cơ bản
   final _codeCtrl = TextEditingController();
   final _nameCtrl = TextEditingController();
-  final _addressCtrl = TextEditingController();
   final _mapLinkCtrl = TextEditingController();
 
   // Thông số phòng
@@ -54,16 +53,17 @@ class _PropertyAddScreenState extends ConsumerState<PropertyAddScreen> {
   // Tiện nghi
   final Set<String> _selectedAmenities = {};
 
-  // Chính sách huỷ
-  String _cancellationPolicy = 'FLEXIBLE';
+  // Chính sách huỷ (0=FLEXIBLE, 1=MODERATE, 2=STRICT)
+  int _cancellationPolicy = 0;
 
   bool _isLoading = false;
 
+  // 0=VILLA, 1=HOMESTAY, 2=HOTEL, 3=APARTMENT
   static const _typeOptions = [
-    (value: 'VILLA', label: 'Villa', icon: Icons.villa_rounded),
-    (value: 'HOMESTAY', label: 'Homestay', icon: Icons.cottage_rounded),
-    (value: 'APARTMENT', label: 'Căn hộ', icon: Icons.apartment_rounded),
-    (value: 'HOTEL', label: 'Khách sạn', icon: Icons.hotel_rounded),
+    (value: 0, label: 'Villa', icon: Icons.villa_rounded),
+    (value: 1, label: 'Homestay', icon: Icons.cottage_rounded),
+    (value: 2, label: 'Khách sạn', icon: Icons.hotel_rounded),
+    (value: 3, label: 'Căn hộ', icon: Icons.apartment_rounded),
   ];
 
   static const _amenityGroups = {
@@ -80,17 +80,17 @@ class _PropertyAddScreenState extends ConsumerState<PropertyAddScreen> {
     'Giải trí': ['Bida', 'Bàn bóng bàn', 'Máy giặt', 'Bàn là'],
   };
 
+  // 0=FLEXIBLE, 1=MODERATE, 2=STRICT
   static const _cancellationPolicies = [
-    (value: 'FLEXIBLE', label: 'Linh hoạt', desc: 'Hoàn 100% nếu huỷ trước 1 ngày'),
-    (value: 'MODERATE', label: 'Vừa phải', desc: 'Hoàn 100% nếu huỷ trước 7 ngày'),
-    (value: 'STRICT', label: 'Nghiêm ngặt', desc: 'Không hoàn tiền sau khi đặt'),
+    (value: 0, label: 'Linh hoạt', desc: 'Hoàn 100% nếu huỷ trước 1 ngày'),
+    (value: 1, label: 'Vừa phải', desc: 'Hoàn 100% nếu huỷ trước 7 ngày'),
+    (value: 2, label: 'Nghiêm ngặt', desc: 'Không hoàn tiền sau khi đặt'),
   ];
 
   @override
   void dispose() {
     _codeCtrl.dispose();
     _nameCtrl.dispose();
-    _addressCtrl.dispose();
     _mapLinkCtrl.dispose();
     _bathroomCtrl.dispose();
     _standardGuestsCtrl.dispose();
@@ -124,7 +124,6 @@ class _PropertyAddScreenState extends ConsumerState<PropertyAddScreen> {
       'name': _nameCtrl.text.trim().isNotEmpty
           ? _nameCtrl.text.trim()
           : '$_selectedType ${_codeCtrl.text.trim()}',
-      'address': _addressCtrl.text.trim(),
       'type': _selectedType,
       'code': _codeCtrl.text.trim(),
       'bedrooms': _bedrooms,
@@ -186,7 +185,10 @@ class _PropertyAddScreenState extends ConsumerState<PropertyAddScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: const Text('Thêm phòng')),
-      body: Form(
+      body: GestureDetector(
+        onTap: () => FocusScope.of(context).unfocus(),
+        behavior: HitTestBehavior.opaque,
+        child: Form(
         key: _formKey,
         child: ListView(
           padding: const EdgeInsets.only(bottom: 100),
@@ -204,7 +206,7 @@ class _PropertyAddScreenState extends ConsumerState<PropertyAddScreen> {
                       return Expanded(
                         child: Padding(
                           padding: EdgeInsets.only(
-                              right: t.value != 'HOTEL' ? 8 : 0),
+                              right: t.value != 2 ? 8 : 0),
                           child: GestureDetector(
                             onTap: () =>
                                 setState(() => _selectedType = t.value),
@@ -378,9 +380,6 @@ class _PropertyAddScreenState extends ConsumerState<PropertyAddScreen> {
                   const SizedBox(height: AppSpacing.md),
                   _Field(ctrl: _nameCtrl, label: 'Tên hiển thị',
                       hint: 'VD: Villa Vịnh Xanh'),
-                  const SizedBox(height: AppSpacing.md),
-                  _Field(ctrl: _addressCtrl, label: 'Địa chỉ',
-                      hint: 'VD: Bãi Cháy, Hạ Long, Quảng Ninh'),
                   const SizedBox(height: AppSpacing.md),
                   _Field(ctrl: _mapLinkCtrl, label: 'Link Google Maps',
                       hint: 'Dán link Google Maps tại đây'),
@@ -729,6 +728,7 @@ class _PropertyAddScreenState extends ConsumerState<PropertyAddScreen> {
             ).animate(delay: 450.ms).fadeIn(duration: 300.ms),
           ],
         ),
+      ),
       ),
     );
   }

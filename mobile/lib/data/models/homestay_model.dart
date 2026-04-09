@@ -3,7 +3,7 @@ class HomestayModel {
   final String ownerId;
   final String name;
   final String address;
-  final String? type; // VILLA | HOMESTAY | APARTMENT | HOTEL
+  final int? type; // 0=VILLA, 1=HOMESTAY, 2=HOTEL, 3=APARTMENT
   final double? latitude;
   final double? longitude;
   final String? mapLink;
@@ -38,7 +38,7 @@ class HomestayModel {
         ownerId: json['ownerId'] ?? '',
         name: json['name'] ?? '',
         address: json['address'] ?? '',
-        type: json['type'] as String?,
+        type: json['type'] as int?,
         latitude: (json['latitude'] as num?)?.toDouble(),
         longitude: (json['longitude'] as num?)?.toDouble(),
         mapLink: json['mapLink'],

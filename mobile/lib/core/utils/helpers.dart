@@ -5,53 +5,49 @@ import '../theme/app_colors.dart';
 class AppHelpers {
   AppHelpers._();
 
-  // ── Role helpers ──────────────────────────────────────────────────────────
+  // ── Role helpers (0=ADMIN, 1=OWNER, 2=SALE, 3=CUSTOMER) ─────────────────
 
-  static String roleLabel(String? role) {
-    switch (role?.toUpperCase()) {
-      case 'ADMIN':
+  static String roleLabel(int? role) {
+    switch (role) {
+      case 0:
         return 'Admin';
-      case 'STAFF':
-        return 'Nhân viên';
-      case 'CUSTOMER':
-        return 'Khách hàng';
-      case 'OWNER':
+      case 1:
         return 'Chủ nhà';
-      case 'SALE':
+      case 2:
         return 'Sale';
+      case 3:
+        return 'Khách hàng';
       default:
-        return role ?? '';
+        return '';
     }
   }
 
-  static Color roleColor(String? role) {
-    switch (role?.toUpperCase()) {
-      case 'ADMIN':
+  static Color roleColor(int? role) {
+    switch (role) {
+      case 0:
         return AppColors.coral;
-      case 'STAFF':
+      case 1:
+        return AppColors.amber;
+      case 2:
         return AppColors.ocean;
-      case 'CUSTOMER':
+      case 3:
         return AppColors.teal;
-      // Migration: role cũ
-      case 'OWNER':
-      case 'SALE':
-        return AppColors.ocean;
       default:
         return AppColors.ocean;
     }
   }
 
-  // ── Booking status helpers ────────────────────────────────────────────────
+  // ── Booking status helpers (0=HOLD, 1=CONFIRMED, 2=CANCELLED, 3=COMPLETED)
 
-  static Color bookingStatusColor(String? status) {
-    switch (status?.toUpperCase()) {
-      case 'HOLD':
+  static Color bookingStatusColor(int? status) {
+    switch (status) {
+      case 0:
         return AppColors.hold;
-      case 'CONFIRMED':
+      case 1:
         return AppColors.confirmed;
-      case 'CANCELLED':
+      case 2:
         return AppColors.cancelled;
-      case 'COMPLETED':
+      case 3:
         return AppColors.completed;
       default:
         return AppColors.primary;

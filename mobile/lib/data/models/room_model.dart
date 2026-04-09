@@ -91,7 +91,7 @@ class RoomModel {
   final String homestayId;
   final String name;
   final String code;
-  final String? type;
+  final int? type; // 0=VILLA, 1=HOMESTAY, 2=HOTEL, 3=APARTMENT
   final int bedrooms;
   final int bathrooms;
   final int standardGuests;
@@ -100,7 +100,7 @@ class RoomModel {
   final String? address;
   final String? mapLink;
   final List<String> amenities;
-  final String? cancellationPolicy;
+  final int? cancellationPolicy; // 0=FLEXIBLE, 1=MODERATE, 2=STRICT
   final double? adultSurcharge;
   final double? childSurcharge;
   final bool isActive;

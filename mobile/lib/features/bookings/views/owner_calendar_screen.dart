@@ -427,9 +427,9 @@ class _OwnerCalendarScreenState
 
     final success = newStatus == DayCellStatus.hold
         ? await actions.lockRoom(
-            roomId: room.id, date: dateStr, gridParams: gridParams)
+            propertyId: room.id, date: dateStr, gridParams: gridParams)
         : await actions.unlockRoom(
-            roomId: room.id, date: dateStr, gridParams: gridParams);
+            propertyId: room.id, date: dateStr, gridParams: gridParams);
 
     if (!mounted) return;
 
@@ -461,7 +461,7 @@ class _OwnerCalendarScreenState
     final dateStr = DateFormat('yyyy-MM-dd').format(date);
     final success = await ref
         .read(calendarActionsProvider.notifier)
-        .markAsSold(roomId: room.id, date: dateStr, gridParams: gridParams);
+        .markAsSold(propertyId: room.id, date: dateStr, gridParams: gridParams);
 
     if (!mounted) return;
     if (success) {

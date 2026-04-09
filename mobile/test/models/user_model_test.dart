@@ -11,7 +11,7 @@ void main() {
           'name': 'Nguyễn Văn A',
           'phone': '0912345678',
           'email': 'a@test.com',
-          'role': 'ADMIN',
+          'role': 0, // ADMIN
           'isActive': true,
         };
 
@@ -21,7 +21,7 @@ void main() {
         expect(user.name, 'Nguyễn Văn A');
         expect(user.phone, '0912345678');
         expect(user.email, 'a@test.com');
-        expect(user.role, 'ADMIN');
+        expect(user.role, 0);
         expect(user.isActive, true);
       });
 
@@ -32,7 +32,7 @@ void main() {
         expect(user.name, '');
         expect(user.phone, '');
         expect(user.email, isNull);
-        expect(user.role, 'CUSTOMER');
+        expect(user.role, 3); // CUSTOMER
         expect(user.isActive, true);
       });
 
@@ -50,7 +50,7 @@ void main() {
 
         expect(user.id, '');
         expect(user.name, '');
-        expect(user.role, 'CUSTOMER');
+        expect(user.role, 3); // CUSTOMER
         expect(user.isActive, true);
       });
     });
@@ -62,7 +62,7 @@ void main() {
           name: 'Test',
           phone: '0912345678',
           email: 'test@test.com',
-          role: 'STAFF',
+          role: 2, // SALE
         );
 
         final json = user.toJson();
@@ -71,7 +71,7 @@ void main() {
         expect(json['name'], 'Test');
         expect(json['phone'], '0912345678');
         expect(json['email'], 'test@test.com');
-        expect(json['role'], 'STAFF');
+        expect(json['role'], 2);
         expect(json['isActive'], true);
       });
     });
@@ -82,7 +82,7 @@ void main() {
           id: 'u-1',
           name: 'Round Trip',
           phone: '0999888777',
-          role: 'STAFF',
+          role: 2, // SALE
         );
 
         final jsonStr = original.toJsonString();
@@ -99,7 +99,7 @@ void main() {
           id: 'u-1',
           name: 'Test',
           phone: '0912345678',
-          role: 'ADMIN',
+          role: 0, // ADMIN
         );
 
         final jsonStr = user.toJsonString();
@@ -108,52 +108,68 @@ void main() {
     });
 
     group('role helpers', () {
-      test('isAdmin returns true for ADMIN', () {
-        final user = _makeUser(role: 'ADMIN');
+      test('isAdmin returns true for role=0', () {
+        final user = _makeUser(role: 0);
         expect(user.isAdmin, true);
-        expect(user.isStaff, false);
+        expect(user.isOwner, false);
+        expect(user.isSale, false);
         expect(user.isCustomer, false);
       });
 
-      test('isStaff returns true for STAFF', () {
-        final user = _makeUser(role: 'STAFF');
+      test('isOwner returns true for role=1', () {
+        final user = _makeUser(role: 1);
         expect(user.isAdmin, false);
-        expect(user.isStaff, true);
+        expect(user.isOwner, true);
+        expect(user.isSale, false);
         expect(user.isCustomer, false);
       });
 
-      test('isCustomer returns true for CUSTOMER', () {
-        final user = _makeUser(role: 'CUSTOMER');
+      test('isSale returns true for role=2', () {
+        final user = _makeUser(role: 2);
         expect(user.isAdmin, false);
-        expect(user.isStaff, false);
+        expect(user.isOwner, false);
+        expect(user.isSale, true);
+        expect(user.isCustomer, false);
+      });
+
+      test('isCustomer returns true for role=3', () {
+        final user = _makeUser(role: 3);
+        expect(user.isAdmin, false);
+        expect(user.isOwner, false);
+        expect(user.isSale, false);
         expect(user.isCustomer, true);
       });
 
-      test('isManagement true for ADMIN', () {
-        expect(_makeUser(role: 'ADMIN').isManagement, true);
+      test('isManagement true for ADMIN (0)', () {
+        expect(_makeUser(role: 0).isManagement, true);
       });
 
-      test('isManagement true for STAFF', () {
-        expect(_makeUser(role: 'STAFF').isManagement, true);
+      test('isManagement true for OWNER (1)', () {
+        expect(_makeUser(role: 1).isManagement, true);
       });
 
-      test('isManagement false for CUSTOMER', () {
-        expect(_makeUser(role: 'CUSTOMER').isManagement, false);
+      test('isManagement true for SALE (2)', () {
+        expect(_makeUser(role: 2).isManagement, true);
       });
 
-      test('canEdit true for ADMIN and STAFF', () {
-        expect(_makeUser(role: 'ADMIN').canEdit, true);
-        expect(_makeUser(role: 'STAFF').canEdit, true);
+      test('isManagement false for CUSTOMER (3)', () {
+        expect(_makeUser(role: 3).isManagement, false);
+      });
+
+      test('canEdit true for ADMIN, OWNER, SALE', () {
+        expect(_makeUser(role: 0).canEdit, true);
+        expect(_makeUser(role: 1).canEdit, true);
+        expect(_makeUser(role: 2).canEdit, true);
       });
 
       test('canEdit false for CUSTOMER', () {
-        expect(_makeUser(role: 'CUSTOMER').canEdit, false);
+        expect(_makeUser(role: 3).canEdit, false);
       });
     });
   });
 }
 
-UserModel _makeUser({required String role}) {
+UserModel _makeUser({required int role}) {
   return UserModel(
     id: 'test-id',
     name: 'Test User',

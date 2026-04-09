@@ -20,7 +20,7 @@ class UserRepository {
     }
   }
 
-  Future<ApiResponse<List<UserModel>>> getUsers({String? role}) async {
+  Future<ApiResponse<List<UserModel>>> getUsers({int? role}) async {
     try {
       final response = await _dio.get(
         ApiConstants.users,

@@ -33,8 +33,8 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen>
   bool _obscureConfirm = true;
   bool _isLoading = false;
 
-  // Chỉ hỗ trợ STAFF — giữ lại để dễ mở rộng sau
-  final UserRole _role = UserRole.staff;
+  // Đăng ký mặc định là CUSTOMER
+  final UserRole _role = UserRole.customer;
 
   @override
   void initState() {

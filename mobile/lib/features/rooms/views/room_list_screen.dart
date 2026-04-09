@@ -41,10 +41,11 @@ class _RoomListScreenState extends ConsumerState<RoomListScreen>
   int _children = 0;
 
   // Tabs
+  // typeValue: 0=VILLA, 1=HOMESTAY, 2=HOTEL
   static const _tabs = [
-    (label: 'Villa', icon: Icons.villa_rounded, keyword: 'villa'),
-    (label: 'Homestay', icon: Icons.cottage_rounded, keyword: 'homestay'),
-    (label: 'Khách sạn', icon: Icons.hotel_rounded, keyword: 'hotel'),
+    (label: 'Villa', icon: Icons.villa_rounded, typeValue: 0),
+    (label: 'Homestay', icon: Icons.cottage_rounded, typeValue: 1),
+    (label: 'Khách sạn', icon: Icons.hotel_rounded, typeValue: 2),
   ];
 
   bool get _hasActiveFilters =>
@@ -101,15 +102,8 @@ class _RoomListScreenState extends ConsumerState<RoomListScreen>
     });
   }
 
-  List<RoomModel> _filterByTab(List<RoomModel> rooms, String keyword) {
-    var list = rooms.where((r) {
-      final roomType = (r.type ?? '').toLowerCase();
-      if (roomType.isNotEmpty) return roomType == keyword;
-      // Fallback khi API chưa trả type
-      final name = r.name.toLowerCase();
-      final homestayName = r.homestay?.name.toLowerCase() ?? '';
-      return name.contains(keyword) || homestayName.contains(keyword);
-    }).toList();
+  List<RoomModel> _filterByTab(List<RoomModel> rooms, int typeValue) {
+    var list = rooms.where((r) => r.type == typeValue).toList();
 
     // Search
     if (_searchQuery.isNotEmpty) {
@@ -706,7 +700,7 @@ class _RoomListScreenState extends ConsumerState<RoomListScreen>
             data: (rooms) => TabBarView(
               controller: _tabController,
               children: _tabs.map((tab) {
-                final filtered = _filterByTab(rooms, tab.keyword);
+                final filtered = _filterByTab(rooms, tab.typeValue);
                 if (filtered.isEmpty) {
                   return Center(
                     child: EmptyStateWidget(

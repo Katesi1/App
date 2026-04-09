@@ -25,7 +25,8 @@ class _PersonalInfoScreenState
   late final TextEditingController _emailController;
   late final TextEditingController _dobController;
 
-  String _gender = 'MALE';
+  // 0=MALE, 1=FEMALE, 2=OTHER
+  int _gender = 0;
   DateTime? _dateOfBirth;
   bool _isLoading = false;
 
@@ -38,7 +39,7 @@ class _PersonalInfoScreenState
         TextEditingController(text: user?.phone ?? '');
     _emailController =
         TextEditingController(text: user?.email ?? '');
-    _gender = user?.gender ?? 'MALE';
+    _gender = user?.gender ?? 0;
 
     if (user?.dateOfBirth != null &&
         user!.dateOfBirth!.isNotEmpty) {
@@ -227,25 +228,23 @@ class _PersonalInfoScreenState
                               children: [
                                 _GenderChip(
                                   label: 'Nam',
-                                  isSelected: _gender == 'MALE',
+                                  isSelected: _gender == 0,
                                   onTap: () => setState(
-                                      () => _gender = 'MALE'),
+                                      () => _gender = 0),
                                 ),
                                 const SizedBox(width: 10),
                                 _GenderChip(
                                   label: 'Nữ',
-                                  isSelected:
-                                      _gender == 'FEMALE',
+                                  isSelected: _gender == 1,
                                   onTap: () => setState(
-                                      () => _gender = 'FEMALE'),
+                                      () => _gender = 1),
                                 ),
                                 const SizedBox(width: 10),
                                 _GenderChip(
                                   label: 'Khác',
-                                  isSelected:
-                                      _gender == 'OTHER',
+                                  isSelected: _gender == 2,
                                   onTap: () => setState(
-                                      () => _gender = 'OTHER'),
+                                      () => _gender = 2),
                                 ),
                               ],
                             ),

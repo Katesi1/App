@@ -22,11 +22,12 @@ class _MyBookingsScreenState extends ConsumerState<MyBookingsScreen>
     with SingleTickerProviderStateMixin {
   late final TabController _tabCtrl;
 
-  static const _tabs = <(String label, String? status)>[
+  // status: null=tất cả, 0=HOLD, 1=CONFIRMED, 2=CANCELLED
+  static const _tabs = <(String label, int? status)>[
     ('Tất cả', null),
-    ('Đang giữ', 'HOLD'),
-    ('Đã xác nhận', 'CONFIRMED'),
-    ('Đã huỷ', 'CANCELLED'),
+    ('Đang giữ', 0),
+    ('Đã xác nhận', 1),
+    ('Đã huỷ', 2),
   ];
 
   @override
@@ -158,7 +159,7 @@ class _MyBookingsScreenState extends ConsumerState<MyBookingsScreen>
 // ─── Booking Tab ────────────────────────────────────────────────────────────
 
 class _BookingTab extends ConsumerStatefulWidget {
-  final String? status;
+  final int? status;
   final void Function(String id) onCancel;
 
   const _BookingTab({
@@ -285,7 +286,7 @@ class _MyBookingCard extends StatelessWidget {
               children: [
                 Expanded(
                   child: Text(
-                    booking.roomName,
+                    booking.propertyName,
                     style: GoogleFonts.beVietnamPro(
                       fontSize: 15,
                       fontWeight: FontWeight.w700,
@@ -323,7 +324,7 @@ class _MyBookingCard extends StatelessWidget {
                     size: 14, color: AppColors.muted),
                 const SizedBox(width: 4),
                 Text(
-                  booking.homestayName,
+                  booking.propertyName,
                   style: GoogleFonts.beVietnamPro(
                     fontSize: 12,
                     color: AppColors.muted,

@@ -31,10 +31,11 @@ class _PropertyManagementScreenState extends ConsumerState<PropertyManagementScr
   final _searchFocusNode = FocusNode();
   Timer? _debounce;
 
+  // typeValue matches PropertyType int: 0=VILLA, 1=HOMESTAY, 2=HOTEL
   static const _tabs = [
-    (label: 'Villa', icon: Icons.villa_rounded, keyword: 'villa'),
-    (label: 'Homestay', icon: Icons.cottage_rounded, keyword: 'homestay'),
-    (label: 'Khách sạn', icon: Icons.hotel_rounded, keyword: 'hotel'),
+    (label: 'Villa', icon: Icons.villa_rounded, typeValue: 0),
+    (label: 'Homestay', icon: Icons.cottage_rounded, typeValue: 1),
+    (label: 'Khách sạn', icon: Icons.hotel_rounded, typeValue: 2),
   ];
 
   @override
@@ -76,16 +77,10 @@ class _PropertyManagementScreenState extends ConsumerState<PropertyManagementScr
     });
   }
 
-  /// Lọc homestay theo tab — ưu tiên field type, fallback về name
+  /// Lọc homestay theo tab — so sánh int type field
   List<HomestayModel> _filterByTab(
-      List<HomestayModel> homestays, String keyword) {
-    var filtered = homestays.where((h) {
-      // Ưu tiên match theo type field từ API (VILLA, HOMESTAY, HOTEL, APARTMENT)
-      final type = (h.type ?? '').toLowerCase();
-      if (type.isNotEmpty) return type.contains(keyword);
-      // Fallback: match theo tên nếu API chưa trả type
-      return h.name.toLowerCase().contains(keyword);
-    }).toList();
+      List<HomestayModel> homestays, int typeValue) {
+    var filtered = homestays.where((h) => h.type == typeValue).toList();
 
     if (_searchQuery.isNotEmpty) {
       final query = _searchQuery.toLowerCase();
@@ -262,7 +257,7 @@ class _PropertyManagementScreenState extends ConsumerState<PropertyManagementScr
             data: (homestays) => TabBarView(
               controller: _tabController,
               children: _tabs.map((tab) {
-                final filtered = _filterByTab(homestays, tab.keyword);
+                final filtered = _filterByTab(homestays, tab.typeValue);
                 if (filtered.isEmpty) {
                   return Center(
                     child: EmptyStateWidget(

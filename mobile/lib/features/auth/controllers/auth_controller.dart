@@ -81,7 +81,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
     required String name,
     required String phone,
     required String password,
-    required String role,
+    required int role,
     String? email,
   }) async {
     final result = await _repo.register(
@@ -101,7 +101,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
   }
 
   /// [role] chỉ cần khi đăng ký qua Google lần đầu
-  Future<String?> signInWithGoogle({String? role}) async {
+  Future<String?> signInWithGoogle({int? role}) async {
     final result = await _repo.loginWithGoogle(role: role);
     if (result.success) {
       state = AuthState(user: result.data, isLoggedIn: true);
