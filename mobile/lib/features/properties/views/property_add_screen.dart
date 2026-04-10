@@ -35,6 +35,7 @@ class _PropertyAddScreenState extends ConsumerState<PropertyAddScreen> {
   final _codeCtrl = TextEditingController();
   final _nameCtrl = TextEditingController();
   final _descriptionCtrl = TextEditingController();
+  final _addressCtrl = TextEditingController();
   final _mapLinkCtrl = TextEditingController();
 
   // Thông số phòng
@@ -56,6 +57,18 @@ class _PropertyAddScreenState extends ConsumerState<PropertyAddScreen> {
 
   // Tiện nghi
   final Set<String> _selectedAmenities = {};
+
+  // Quy định (String, mặc định có sẵn text)
+  final _rulesCtrl = TextEditingController(
+    text: 'Check-in sau 14:00, check-out trước 12:00.\n'
+        'Không hút thuốc trong phòng.\n'
+        'Giữ gìn vệ sinh chung.\n'
+        'Không gây tiếng ồn sau 22:00.',
+  );
+  final _notesCtrl = TextEditingController(
+    text: 'Ưu tiên bán cặp cuối tuần (T6-T7, T7-CN).\n'
+        'Ngày lễ áp dụng giá lễ, tối thiểu 2 đêm.',
+  );
 
   // Chính sách huỷ (0=FLEXIBLE, 1=MODERATE, 2=STRICT)
   int _cancellationPolicy = 0;
@@ -105,7 +118,10 @@ class _PropertyAddScreenState extends ConsumerState<PropertyAddScreen> {
     _codeCtrl.dispose();
     _nameCtrl.dispose();
     _descriptionCtrl.dispose();
+    _addressCtrl.dispose();
     _mapLinkCtrl.dispose();
+    _rulesCtrl.dispose();
+    _notesCtrl.dispose();
     // _bathrooms is an int field, no controller to dispose
     _standardGuestsCtrl.dispose();
     _maxGuestsCtrl.dispose();
@@ -149,6 +165,12 @@ class _PropertyAddScreenState extends ConsumerState<PropertyAddScreen> {
       'amenities': _selectedAmenities.toList(),
       'cancellationPolicy': _cancellationPolicy,
       if (_selectedView != null) 'view': _selectedView,
+      if (_addressCtrl.text.trim().isNotEmpty)
+        'address': _addressCtrl.text.trim(),
+      if (_rulesCtrl.text.trim().isNotEmpty)
+        'rules': _notesCtrl.text.trim().isNotEmpty
+            ? '${_rulesCtrl.text.trim()}\n\n--- LƯU Ý ---\n${_notesCtrl.text.trim()}'
+            : _rulesCtrl.text.trim(),
       if (_mapLinkCtrl.text.trim().isNotEmpty)
         'mapLink': _mapLinkCtrl.text.trim(),
       if (_weekdayPriceCtrl.text.isNotEmpty)
@@ -421,6 +443,9 @@ class _PropertyAddScreenState extends ConsumerState<PropertyAddScreen> {
                           onTap: () => setState(() => _selectedView = 'city')),
                     ],
                   ),
+                  const SizedBox(height: AppSpacing.md),
+                  _Field(ctrl: _addressCtrl, label: 'Khu vực / Địa chỉ',
+                      hint: 'VD: Bãi Cháy, Hạ Long'),
                   const SizedBox(height: AppSpacing.md),
                   _Field(ctrl: _mapLinkCtrl, label: 'Link Google Maps',
                       hint: 'Dán link Google Maps tại đây'),
@@ -751,6 +776,30 @@ class _PropertyAddScreenState extends ConsumerState<PropertyAddScreen> {
                 ],
               ),
             ).animate(delay: 400.ms).fadeIn(duration: 300.ms),
+
+            // ── QUY ĐỊNH ──
+            _Section(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const _Title('QUY ĐỊNH'),
+                  const SizedBox(height: AppSpacing.sm),
+                  _Field(
+                    ctrl: _rulesCtrl,
+                    label: 'Nội quy phòng',
+                    hint: 'Nhập quy định...',
+                    maxLines: 6,
+                  ),
+                  const SizedBox(height: AppSpacing.lg),
+                  _Field(
+                    ctrl: _notesCtrl,
+                    label: 'Lưu ý bán phòng',
+                    hint: 'VD: Ưu tiên bán cặp cuối tuần...',
+                    maxLines: 4,
+                  ),
+                ],
+              ),
+            ).animate(delay: 450.ms).fadeIn(duration: 300.ms),
 
             // ── LƯU PHÒNG ──
             Padding(

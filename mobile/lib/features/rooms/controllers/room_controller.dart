@@ -82,6 +82,24 @@ class RoomActionsNotifier extends StateNotifier<AsyncValue<void>> {
     return false;
   }
 
+  Future<bool> deleteImage(String roomId, String imageId) async {
+    final result = await _repo.deleteImage(roomId, imageId);
+    if (result.success) {
+      _ref.invalidate(roomDetailProvider(roomId));
+      return true;
+    }
+    return false;
+  }
+
+  Future<bool> setCoverImage(String roomId, String imageId) async {
+    final result = await _repo.setCoverImage(roomId, imageId);
+    if (result.success) {
+      _ref.invalidate(roomDetailProvider(roomId));
+      return true;
+    }
+    return false;
+  }
+
   Future<bool> upsertPrice(
       String roomId, Map<String, dynamic> data) async {
     final result = await _repo.upsertPrice(roomId, data);

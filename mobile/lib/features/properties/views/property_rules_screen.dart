@@ -1,256 +1,214 @@
 import 'package:flutter/material.dart';
-import '../../../core/utils/vnd_input_formatter.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
+import '../../../shared/widgets/loading_widget.dart';
+import '../../rooms/controllers/room_controller.dart';
 
-class PropertyRulesScreen extends StatefulWidget {
+class PropertyRulesScreen extends ConsumerStatefulWidget {
   final String homestayId;
 
   const PropertyRulesScreen({super.key, required this.homestayId});
 
   @override
-  State<PropertyRulesScreen> createState() => _PropertyRulesScreenState();
+  ConsumerState<PropertyRulesScreen> createState() =>
+      _PropertyRulesScreenState();
 }
 
-class _PropertyRulesScreenState extends State<PropertyRulesScreen> {
-  // Sức chứa
-  final _standardCapacityCtrl = TextEditingController(text: '10 người lớn');
-  final _childrenCapacityCtrl = TextEditingController(text: '4 trẻ');
-  final _maxCapacityCtrl = TextEditingController(text: '20 người');
+class _PropertyRulesScreenState extends ConsumerState<PropertyRulesScreen> {
+  final _rulesCtrl = TextEditingController();
+  final _notesCtrl = TextEditingController();
+  bool _isLoading = false;
+  bool _initialized = false;
 
-  // Phụ thu
-  final _adultSurchargeCtrl = TextEditingController(text: '250.000');
-  final _childSurchargeCtrl = TextEditingController(text: '150.000');
+  static const _defaultRules =
+      'Check-in sau 14:00, check-out trước 12:00.\n'
+      'Không hút thuốc trong phòng.\n'
+      'Giữ gìn vệ sinh chung.\n'
+      'Không gây tiếng ồn sau 22:00.';
 
-  // Giờ nhận/trả
-  final _checkInCtrl = TextEditingController(text: '14:00');
-  final _checkOutCtrl = TextEditingController(text: '12:00');
+  static const _defaultNotes =
+      'Ưu tiên bán cặp cuối tuần (T6-T7, T7-CN).\n'
+      'Ngày lễ áp dụng giá lễ, tối thiểu 2 đêm.';
 
-  // Lưu ý
-  final _notesCtrl = TextEditingController(
-    text:
-        'Các căn ưu tiên bán cặp 2 đêm Lễ & Cuối tuần.\n'
-        'Nếu có khách lễ đêm T7, BK sát ngày chủ động nhắn tin hỏi Sale',
-  );
+  static const _notesSeparator = '\n\n--- LƯU Ý ---\n';
 
   @override
   void dispose() {
-    _standardCapacityCtrl.dispose();
-    _childrenCapacityCtrl.dispose();
-    _maxCapacityCtrl.dispose();
-    _adultSurchargeCtrl.dispose();
-    _childSurchargeCtrl.dispose();
-    _checkInCtrl.dispose();
-    _checkOutCtrl.dispose();
+    _rulesCtrl.dispose();
     _notesCtrl.dispose();
     super.dispose();
   }
 
+  void _initFromRoom() {
+    if (_initialized) return;
+    final room = ref.read(roomDetailProvider(widget.homestayId)).valueOrNull;
+    if (room == null) return;
+    _initialized = true;
+
+    final raw = room.rules ?? '';
+    if (raw.contains(_notesSeparator)) {
+      final parts = raw.split(_notesSeparator);
+      _rulesCtrl.text = parts[0];
+      _notesCtrl.text = parts.length > 1 ? parts[1] : _defaultNotes;
+    } else {
+      _rulesCtrl.text = raw.isNotEmpty ? raw : _defaultRules;
+      _notesCtrl.text = _defaultNotes;
+    }
+  }
+
+  Future<void> _onSave() async {
+    setState(() => _isLoading = true);
+
+    final rules = _rulesCtrl.text.trim();
+    final notes = _notesCtrl.text.trim();
+    final combined = notes.isNotEmpty
+        ? '$rules$_notesSeparator$notes'
+        : rules;
+
+    final ok = await ref
+        .read(roomActionsProvider.notifier)
+        .update(widget.homestayId, {
+      'rules': combined,
+    });
+
+    if (!mounted) return;
+    setState(() => _isLoading = false);
+
+    if (ok) {
+      AppSnackBar.success(context, 'Đã lưu quy định');
+      Navigator.of(context).pop();
+    } else {
+      AppSnackBar.error(context, 'Có lỗi xảy ra');
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Quy định'),
-      ),
-      body: Column(
-        children: [
-          Expanded(
-            child: ListView(
+    final roomAsync = ref.watch(roomDetailProvider(widget.homestayId));
+
+    return GestureDetector(
+      onTap: () => FocusScope.of(context).unfocus(),
+      child: Scaffold(
+        appBar: AppBar(title: const Text('Quy định')),
+        body: roomAsync.when(
+          loading: () => const LoadingWidget(),
+          error: (e, _) => ErrorStateWidget(
+            message: e.toString().replaceAll('Exception: ', ''),
+            onRetry: () =>
+                ref.invalidate(roomDetailProvider(widget.homestayId)),
+          ),
+          data: (_) {
+            _initFromRoom();
+            return ListView(
               padding: const EdgeInsets.all(AppSpacing.md),
               children: [
-                _buildSectionLabel('SỨC CHỨA'),
-                const SizedBox(height: AppSpacing.sm),
-                _buildContainer([
-                  _buildRow('Tiêu chuẩn', _standardCapacityCtrl),
-                  _buildDivider(),
-                  _buildRow('Trẻ em dưới 6 tuổi', _childrenCapacityCtrl),
-                  _buildDivider(),
-                  _buildRow(
-                    'Tối đa (đã phụ thu)',
-                    _maxCapacityCtrl,
-                  ),
-                ]),
-                const SizedBox(height: AppSpacing.lg),
-                _buildSectionLabel('PHỤ THU'),
-                const SizedBox(height: AppSpacing.sm),
-                _buildContainer([
-                  _buildRow(
-                    'Người lớn',
-                    _adultSurchargeCtrl,
-                    suffix: 'đ/người',
-                    isVnd: true,
-                  ),
-                  _buildDivider(),
-                  _buildRow(
-                    'Trẻ em 7-11 tuổi',
-                    _childSurchargeCtrl,
-                    suffix: 'đ/người',
-                    isVnd: true,
-                  ),
-                ]),
-                const SizedBox(height: AppSpacing.lg),
-                _buildSectionLabel('GIỜ NHẬN/TRẢ'),
-                const SizedBox(height: AppSpacing.sm),
-                _buildContainer([
-                  _buildRow('Check-in', _checkInCtrl),
-                  _buildDivider(),
-                  _buildRow('Check-out', _checkOutCtrl),
-                ]),
-                const SizedBox(height: AppSpacing.lg),
-                _buildSectionLabel('LƯU Ý'),
-                const SizedBox(height: AppSpacing.sm),
-                Container(
-                  decoration: BoxDecoration(
-                    color: AppColors.surface,
-                    borderRadius: BorderRadius.circular(AppRadius.md),
-                    border: Border.all(color: AppColors.border),
-                  ),
-                  padding: const EdgeInsets.all(AppSpacing.md),
-                  child: TextFormField(
-                    controller: _notesCtrl,
-                    maxLines: 5,
+                Text('Nội quy phòng',
                     style: GoogleFonts.beVietnamPro(
-                      fontSize: 14,
-                      color: AppColors.navy,
+                        fontSize: 13, fontWeight: FontWeight.w500)),
+                const SizedBox(height: AppSpacing.xs),
+                TextFormField(
+                  controller: _rulesCtrl,
+                  maxLines: 12,
+                  style: GoogleFonts.beVietnamPro(fontSize: 14, height: 1.6),
+                  decoration: InputDecoration(
+                    hintText: 'Nhập quy định...',
+                    hintStyle: GoogleFonts.beVietnamPro(
+                        fontSize: 14,
+                        color: AppColors.muted.withValues(alpha: 0.6)),
+                    filled: true,
+                    fillColor: AppColors.background,
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(AppRadius.md),
+                      borderSide: BorderSide.none,
                     ),
-                    decoration: const InputDecoration(
-                      border: InputBorder.none,
-                      enabledBorder: InputBorder.none,
-                      focusedBorder: InputBorder.none,
-                      filled: false,
-                      isDense: true,
-                      contentPadding: EdgeInsets.zero,
-                    ),
+                    contentPadding: const EdgeInsets.all(14),
                   ),
                 ),
-                const SizedBox(height: AppSpacing.lg),
-              ],
-            ),
-          ),
-          _buildSaveButton(),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildSectionLabel(String text) {
-    return Text(
-      text,
-      style: GoogleFonts.beVietnamPro(
-        fontSize: 11,
-        fontWeight: FontWeight.w600,
-        color: AppColors.muted,
-        letterSpacing: 1.2,
-      ),
-    );
-  }
-
-  Widget _buildContainer(List<Widget> children) {
-    return Container(
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(AppRadius.md),
-        border: Border.all(color: AppColors.border),
-      ),
-      padding: const EdgeInsets.symmetric(
-        horizontal: AppSpacing.md,
-      ),
-      child: Column(children: children),
-    );
-  }
-
-  Widget _buildRow(
-    String label,
-    TextEditingController controller, {
-    String? suffix,
-    bool isVnd = false,
-  }) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: AppSpacing.md),
-      child: Row(
-        children: [
-          Expanded(
-            child: Text(
-              label,
-              style: GoogleFonts.beVietnamPro(
-                fontSize: 14,
-                color: AppColors.ink,
-              ),
-            ),
-          ),
-          const SizedBox(width: AppSpacing.sm),
-          SizedBox(
-            width: 140,
-            child: TextFormField(
-              controller: controller,
-              textAlign: TextAlign.right,
-              keyboardType: isVnd ? TextInputType.number : null,
-              inputFormatters: isVnd ? [VndInputFormatter()] : null,
-              style: GoogleFonts.beVietnamPro(
-                fontSize: 14,
-                fontWeight: FontWeight.w700,
-                color: AppColors.navy,
-              ),
-              decoration: InputDecoration(
-                border: InputBorder.none,
-                enabledBorder: InputBorder.none,
-                focusedBorder: InputBorder.none,
-                filled: false,
-                isDense: true,
-                contentPadding: EdgeInsets.zero,
-                suffixText: suffix,
-                suffixStyle: GoogleFonts.beVietnamPro(
-                  fontSize: 13,
-                  color: AppColors.muted,
+                const SizedBox(height: AppSpacing.md),
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: AppColors.amberLight,
+                    borderRadius: BorderRadius.circular(AppRadius.md),
+                  ),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.info_outline_rounded,
+                          size: 18, color: AppColors.brownDark),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Text(
+                          'Nội dung quy định sẽ hiển thị cho khách hàng khi xem chi tiết phòng.',
+                          style: GoogleFonts.beVietnamPro(
+                            fontSize: 12,
+                            color: AppColors.brownDark,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildDivider() {
-    return const Divider(height: 1, color: AppColors.border);
-  }
-
-  Widget _buildSaveButton() {
-    return Container(
-      padding: const EdgeInsets.all(AppSpacing.md),
-      decoration: const BoxDecoration(
-        color: AppColors.surface,
-        border: Border(top: BorderSide(color: AppColors.border)),
-      ),
-      child: SizedBox(
-        width: double.infinity,
-        height: 48,
-        child: DecoratedBox(
-          decoration: BoxDecoration(
-            gradient: const LinearGradient(
-              colors: [AppColors.oceanMid, AppColors.ocean],
-            ),
-            borderRadius: BorderRadius.circular(AppRadius.md),
-          ),
-          child: ElevatedButton(
-            onPressed: () {
-              // TODO: Save logic
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.transparent,
-              shadowColor: Colors.transparent,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(AppRadius.md),
-              ),
-            ),
-            child: Text(
-              'Lưu',
-              style: GoogleFonts.beVietnamPro(
-                fontSize: 16,
-                fontWeight: FontWeight.w700,
-                color: Colors.white,
+                const SizedBox(height: AppSpacing.xl),
+                Text('Lưu ý bán phòng',
+                    style: GoogleFonts.beVietnamPro(
+                        fontSize: 13, fontWeight: FontWeight.w500)),
+                const SizedBox(height: AppSpacing.xs),
+                TextFormField(
+                  controller: _notesCtrl,
+                  maxLines: 6,
+                  style: GoogleFonts.beVietnamPro(fontSize: 14, height: 1.6),
+                  decoration: InputDecoration(
+                    hintText: 'VD: Ưu tiên bán cặp cuối tuần...',
+                    hintStyle: GoogleFonts.beVietnamPro(
+                        fontSize: 14,
+                        color: AppColors.muted.withValues(alpha: 0.6)),
+                    filled: true,
+                    fillColor: AppColors.background,
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(AppRadius.md),
+                      borderSide: BorderSide.none,
+                    ),
+                    contentPadding: const EdgeInsets.all(14),
+                  ),
+                ),
+              ],
+            );
+          },
+        ),
+        bottomNavigationBar: SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.all(AppSpacing.md),
+            child: SizedBox(
+              width: double.infinity, height: 48,
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  gradient: const LinearGradient(
+                    colors: [AppColors.oceanMid, AppColors.ocean],
+                  ),
+                  borderRadius: BorderRadius.circular(AppRadius.md),
+                ),
+                child: ElevatedButton(
+                  onPressed: _isLoading ? null : _onSave,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.transparent,
+                    shadowColor: Colors.transparent,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(AppRadius.md),
+                    ),
+                  ),
+                  child: _isLoading
+                      ? const SizedBox(width: 20, height: 20,
+                          child: CircularProgressIndicator(
+                              strokeWidth: 2, color: Colors.white))
+                      : Text('Lưu',
+                          style: GoogleFonts.beVietnamPro(
+                            fontWeight: FontWeight.w700, fontSize: 15,
+                            color: Colors.white,
+                          )),
+                ),
               ),
             ),
           ),

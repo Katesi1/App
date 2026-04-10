@@ -136,8 +136,13 @@ class RoomDetailScreen extends ConsumerWidget {
                           ),
                         _InfoChip(
                           icon: Icons.people_outline_rounded,
-                          label: '${room.maxGuests} người',
+                          label: '${room.standardGuests} người',
                         ),
+                        if (room.maxGuests > room.standardGuests)
+                          _InfoChip(
+                            icon: Icons.group_add_outlined,
+                            label: 'Tối đa ${room.maxGuests}',
+                          ),
                       ],
                     )
                         .animate(delay: 100.ms)
@@ -177,6 +182,25 @@ class RoomDetailScreen extends ConsumerWidget {
                     ),
 
                     const SizedBox(height: 24),
+
+                    // ── Quy định + Lưu ý ──────────────────────────
+                    if (room.rules != null &&
+                        room.rules!.isNotEmpty) ...[
+                      _DetailSection(
+                        title: 'Quy định',
+                        value: room.rules!.contains('\n\n--- LƯU Ý ---\n')
+                            ? room.rules!.split('\n\n--- LƯU Ý ---\n')[0]
+                            : room.rules!,
+                      ),
+                      if (room.rules!.contains('\n\n--- LƯU Ý ---\n')) ...[
+                        const SizedBox(height: 16),
+                        _DetailSection(
+                          title: 'Lưu ý',
+                          value: room.rules!.split('\n\n--- LƯU Ý ---\n')[1],
+                        ),
+                      ],
+                      const SizedBox(height: 24),
+                    ],
 
                     // ── Price grid ──────────────────────────────────
                     if (room.price != null) ...[

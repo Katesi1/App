@@ -89,9 +89,8 @@ class RoomRepository {
         ));
       }
       final response = await _dio.post(
-        '${ApiConstants.properties}/$roomId/images',
+        ApiConstants.propertyImages(roomId),
         data: formData,
-        options: Options(contentType: 'multipart/form-data'),
       );
       final list = (response.data['data'] as List)
           .map((e) => RoomImageModel.fromJson(e))

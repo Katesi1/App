@@ -1,497 +1,224 @@
 import 'package:flutter/material.dart';
-import '../../../core/utils/vnd_input_formatter.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
+
+import '../../../core/utils/vnd_input_formatter.dart';
+
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../shared/widgets/loading_widget.dart';
+import '../../rooms/controllers/room_controller.dart';
 
-class PropertyPricingScreen extends StatefulWidget {
+class PropertyPricingScreen extends ConsumerStatefulWidget {
   final String homestayId;
 
   const PropertyPricingScreen({super.key, required this.homestayId});
 
   @override
-  State<PropertyPricingScreen> createState() => _PropertyPricingScreenState();
+  ConsumerState<PropertyPricingScreen> createState() =>
+      _PropertyPricingScreenState();
 }
 
-class _PropertyPricingScreenState extends State<PropertyPricingScreen> {
-  final _weekdayController = TextEditingController(text: '4.500.000');
-  final _fridayController = TextEditingController(text: '6.500.000');
-  final _saturdayController = TextEditingController(text: '6.500.000');
-  final _sundayController = TextEditingController(text: '5.500.000');
-
-  final List<_HolidayPrice> _holidayPrices = [
-    _HolidayPrice(
-      title: 'Lễ Giỗ Tổ 25-27/4',
-      price: '11.000.000',
-    ),
-    _HolidayPrice(
-      title: 'Lễ 30/4 - 1/5',
-      price: '12.000.000',
-    ),
-  ];
-
-  final List<String> _notes = [
-    'Giá đã bao gồm bữa sáng cho 2 người',
-    'Phụ thu thêm người: 200.000đ/người/đêm',
-    'Check-in: 14:00 | Check-out: 12:00',
-  ];
+class _PropertyPricingScreenState
+    extends ConsumerState<PropertyPricingScreen> {
+  final _weekdayCtrl = TextEditingController();
+  final _weekendCtrl = TextEditingController();
+  final _holidayCtrl = TextEditingController();
+  final _adultSurchargeCtrl = TextEditingController();
+  final _childSurchargeCtrl = TextEditingController();
+  bool _isLoading = false;
+  bool _initialized = false;
 
   @override
   void dispose() {
-    _weekdayController.dispose();
-    _fridayController.dispose();
-    _saturdayController.dispose();
-    _sundayController.dispose();
+    _weekdayCtrl.dispose();
+    _weekendCtrl.dispose();
+    _holidayCtrl.dispose();
+    _adultSurchargeCtrl.dispose();
+    _childSurchargeCtrl.dispose();
     super.dispose();
+  }
+
+  void _initFromRoom() {
+    if (_initialized) return;
+    final room = ref.read(roomDetailProvider(widget.homestayId)).valueOrNull;
+    if (room == null) return;
+    _initialized = true;
+    _weekdayCtrl.text = _fmtVnd(room.price?.weekdayPrice);
+    _weekendCtrl.text = _fmtVnd(room.price?.saturdayPrice);
+    _holidayCtrl.text = _fmtVnd(room.price?.holidayPrice);
+    _adultSurchargeCtrl.text = _fmtVnd(room.adultSurcharge);
+    _childSurchargeCtrl.text = _fmtVnd(room.childSurcharge);
+  }
+
+  String _fmtVnd(double? v) {
+    if (v == null || v == 0) return '';
+    final digits = v.toInt().toString();
+    final buf = StringBuffer();
+    for (var i = 0; i < digits.length; i++) {
+      if (i > 0 && (digits.length - i) % 3 == 0) buf.write('.');
+      buf.write(digits[i]);
+    }
+    return buf.toString();
+  }
+
+  int _parseVnd(String text) =>
+      int.tryParse(text.replaceAll('.', '')) ?? 0;
+
+  Future<void> _onSave() async {
+    setState(() => _isLoading = true);
+
+    final data = <String, dynamic>{};
+    if (_weekdayCtrl.text.isNotEmpty) {
+      data['weekdayPrice'] = _parseVnd(_weekdayCtrl.text);
+    }
+    if (_weekendCtrl.text.isNotEmpty) {
+      data['weekendPrice'] = _parseVnd(_weekendCtrl.text);
+    }
+    if (_holidayCtrl.text.isNotEmpty) {
+      data['holidayPrice'] = _parseVnd(_holidayCtrl.text);
+    }
+    if (_adultSurchargeCtrl.text.isNotEmpty) {
+      data['adultSurcharge'] = _parseVnd(_adultSurchargeCtrl.text);
+    }
+    if (_childSurchargeCtrl.text.isNotEmpty) {
+      data['childSurcharge'] = _parseVnd(_childSurchargeCtrl.text);
+    }
+
+    final ok = await ref
+        .read(roomActionsProvider.notifier)
+        .upsertPrice(widget.homestayId, data);
+
+    if (!mounted) return;
+    setState(() => _isLoading = false);
+
+    if (ok) {
+      AppSnackBar.success(context, 'Đã lưu bảng giá');
+      Navigator.of(context).pop();
+    } else {
+      AppSnackBar.error(context, 'Có lỗi xảy ra');
+    }
   }
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Bảng giá'),
-      ),
-      body: ListView(
-        padding: const EdgeInsets.all(AppSpacing.md),
-        children: [
-          _buildSectionLabel('GIÁ CƠ BẢN'),
-          const SizedBox(height: AppSpacing.sm),
-          _buildBasePriceSection(),
-          const SizedBox(height: AppSpacing.lg),
-          _buildSectionLabel('GIÁ LỄ / SỰ KIỆN'),
-          const SizedBox(height: AppSpacing.sm),
-          _buildHolidayPriceSection(),
-          const SizedBox(height: AppSpacing.lg),
-          _buildSectionLabel('GHI CHÚ GIÁ'),
-          const SizedBox(height: AppSpacing.sm),
-          _buildNotesSection(),
-          const SizedBox(height: AppSpacing.lg),
-          _buildSaveButton(),
-          const SizedBox(height: AppSpacing.md),
-        ],
-      ),
-    );
-  }
+    final roomAsync = ref.watch(roomDetailProvider(widget.homestayId));
 
-  Widget _buildSectionLabel(String text) {
-    return Text(
-      text,
-      style: GoogleFonts.beVietnamPro(
-        fontSize: 11,
-        fontWeight: FontWeight.w600,
-        color: AppColors.muted,
-        letterSpacing: 1.2,
-      ),
-    );
-  }
-
-  Widget _buildBasePriceSection() {
-    return Container(
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(AppRadius.md),
-        border: Border.all(color: AppColors.border),
-      ),
-      child: Column(
-        children: [
-          _buildPriceRow('Ngày thường (T2-T5)', _weekdayController),
-          const Divider(height: 1, color: AppColors.border),
-          _buildPriceRow('Thứ 6', _fridayController),
-          const Divider(height: 1, color: AppColors.border),
-          _buildPriceRow('Thứ 7', _saturdayController),
-          const Divider(height: 1, color: AppColors.border),
-          _buildPriceRow('Chủ nhật', _sundayController),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildPriceRow(String label, TextEditingController controller) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(
-        horizontal: AppSpacing.md,
-        vertical: AppSpacing.sm,
-      ),
-      child: Row(
-        children: [
-          Expanded(
-            flex: 2,
-            child: Text(
-              label,
-              style: GoogleFonts.beVietnamPro(
-                fontSize: 14,
-                fontWeight: FontWeight.w400,
-                color: AppColors.ink,
-              ),
-            ),
+    return GestureDetector(
+      onTap: () => FocusScope.of(context).unfocus(),
+      child: Scaffold(
+        appBar: AppBar(title: const Text('Bảng giá')),
+        body: roomAsync.when(
+          loading: () => const LoadingWidget(),
+          error: (e, _) => ErrorStateWidget(
+            message: e.toString().replaceAll('Exception: ', ''),
+            onRetry: () =>
+                ref.invalidate(roomDetailProvider(widget.homestayId)),
           ),
-          Expanded(
-            flex: 2,
-            child: TextFormField(
-              controller: controller,
-              textAlign: TextAlign.right,
-              keyboardType: TextInputType.number,
-              inputFormatters: [VndInputFormatter()],
-              style: GoogleFonts.beVietnamPro(
-                fontSize: 14,
-                fontWeight: FontWeight.w600,
-                color: AppColors.ocean,
-              ),
-              decoration: InputDecoration(
-                isDense: true,
-                contentPadding: const EdgeInsets.symmetric(
-                  vertical: AppSpacing.sm,
-                  horizontal: AppSpacing.sm,
-                ),
-                suffixText: 'đ',
-                suffixStyle: GoogleFonts.beVietnamPro(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w600,
-                  color: AppColors.ocean,
-                ),
-                border: InputBorder.none,
-                enabledBorder: InputBorder.none,
-                focusedBorder: InputBorder.none,
-                filled: false,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildHolidayPriceSection() {
-    return Column(
-      children: [
-        Container(
-          decoration: BoxDecoration(
-            color: AppColors.surface,
-            borderRadius: BorderRadius.circular(AppRadius.md),
-            border: Border.all(color: AppColors.border),
-          ),
-          child: Column(
-            children: [
-              for (int i = 0; i < _holidayPrices.length; i++) ...[
-                if (i > 0)
-                  const Divider(height: 1, color: AppColors.border),
-                _buildHolidayItem(i),
-              ],
-            ],
-          ),
-        ),
-        const SizedBox(height: AppSpacing.sm),
-        _buildAddButton('Thêm mùa giá', _showAddHolidayDialog),
-      ],
-    );
-  }
-
-  Widget _buildHolidayItem(int index) {
-    final item = _holidayPrices[index];
-    return Padding(
-      padding: const EdgeInsets.symmetric(
-        horizontal: AppSpacing.md,
-        vertical: AppSpacing.sm + AppSpacing.xs,
-      ),
-      child: Row(
-        children: [
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+          data: (_) {
+            _initFromRoom();
+            return ListView(
+              padding: const EdgeInsets.all(AppSpacing.md),
               children: [
-                Text(
-                  item.title,
-                  style: GoogleFonts.beVietnamPro(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w700,
-                    color: AppColors.ink,
-                  ),
-                ),
-                const SizedBox(height: AppSpacing.xs),
-                Text(
-                  '${item.price}đ/đêm',
-                  style: GoogleFonts.beVietnamPro(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w500,
-                    color: AppColors.amber,
-                  ),
-                ),
+                _section('GIÁ PHÒNG'),
+                const SizedBox(height: AppSpacing.sm),
+                _field(_weekdayCtrl, 'Giá ngày thường (T2-T6)', 'đ/đêm'),
+                const SizedBox(height: AppSpacing.md),
+                _field(_weekendCtrl, 'Giá cuối tuần (T7-CN)', 'đ/đêm'),
+                const SizedBox(height: AppSpacing.md),
+                _field(_holidayCtrl, 'Giá ngày lễ', 'đ/đêm'),
+                const SizedBox(height: AppSpacing.xl),
+                _section('PHỤ THU'),
+                const SizedBox(height: AppSpacing.sm),
+                _field(_adultSurchargeCtrl, 'Phụ thu người lớn', 'đ/người'),
+                const SizedBox(height: AppSpacing.md),
+                _field(_childSurchargeCtrl, 'Phụ thu trẻ em', 'đ/người'),
+                const SizedBox(height: AppSpacing.lg),
               ],
-            ),
-          ),
-          IconButton(
-            onPressed: () {
-              setState(() {
-                _holidayPrices.removeAt(index);
-              });
-            },
-            icon: const Icon(Icons.delete_outline, color: AppColors.coral),
-            visualDensity: VisualDensity.compact,
-          ),
-        ],
+            );
+          },
+        ),
+        bottomNavigationBar: _saveBtn(),
       ),
     );
   }
 
-  Widget _buildNotesSection() {
+  Widget _section(String t) => Text(t,
+      style: GoogleFonts.beVietnamPro(
+        fontSize: 11, fontWeight: FontWeight.w600,
+        color: AppColors.muted, letterSpacing: 1.2,
+      ));
+
+  Widget _field(TextEditingController c, String label, String suffix) {
     return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Container(
-          decoration: BoxDecoration(
-            color: AppColors.surface,
-            borderRadius: BorderRadius.circular(AppRadius.md),
-            border: Border.all(color: AppColors.border),
-          ),
-          child: Column(
-            children: [
-              for (int i = 0; i < _notes.length; i++) ...[
-                if (i > 0)
-                  const Divider(height: 1, color: AppColors.border),
-                _buildNoteItem(i),
-              ],
-            ],
+        Text(label,
+            style: GoogleFonts.beVietnamPro(
+                fontSize: 13, fontWeight: FontWeight.w500)),
+        const SizedBox(height: 6),
+        TextFormField(
+          controller: c,
+          keyboardType: TextInputType.number,
+          inputFormatters: [VndInputFormatter()],
+          style: GoogleFonts.beVietnamPro(fontSize: 14),
+          decoration: InputDecoration(
+            hintText: '0',
+            hintStyle: GoogleFonts.beVietnamPro(
+                fontSize: 14, color: AppColors.muted.withValues(alpha: 0.6)),
+            suffixText: suffix,
+            suffixStyle: GoogleFonts.beVietnamPro(
+                fontSize: 13, fontWeight: FontWeight.w600,
+                color: AppColors.muted),
+            filled: true,
+            fillColor: AppColors.background,
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(AppRadius.md),
+              borderSide: BorderSide.none,
+            ),
+            contentPadding: const EdgeInsets.symmetric(
+                horizontal: 14, vertical: 14),
           ),
         ),
-        const SizedBox(height: AppSpacing.sm),
-        _buildAddButton('Thêm ghi chú', _showAddNoteDialog),
       ],
     );
   }
 
-  Widget _buildNoteItem(int index) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(
-        horizontal: AppSpacing.md,
-        vertical: AppSpacing.sm + AppSpacing.xs,
-      ),
-      child: Row(
-        children: [
-          Expanded(
-            child: Text(
-              _notes[index],
-              style: GoogleFonts.beVietnamPro(
-                fontSize: 14,
-                color: AppColors.ink,
-              ),
-            ),
-          ),
-          IconButton(
-            onPressed: () {
-              setState(() {
-                _notes.removeAt(index);
-              });
-            },
-            icon: const Icon(Icons.delete_outline, color: AppColors.coral),
-            visualDensity: VisualDensity.compact,
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildAddButton(String label, VoidCallback onTap) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(AppRadius.sm),
+  Widget _saveBtn() {
+    return SafeArea(
       child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: AppSpacing.sm),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const Icon(
-              Icons.add_circle_outline,
-              color: AppColors.ocean,
-              size: 20,
-            ),
-            const SizedBox(width: AppSpacing.sm),
-            Text(
-              label,
-              style: GoogleFonts.beVietnamPro(
-                fontSize: 14,
-                fontWeight: FontWeight.w600,
-                color: AppColors.ocean,
+        padding: const EdgeInsets.all(AppSpacing.md),
+        child: SizedBox(
+          width: double.infinity, height: 48,
+          child: DecoratedBox(
+            decoration: BoxDecoration(
+              gradient: const LinearGradient(
+                colors: [AppColors.oceanMid, AppColors.ocean],
               ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildSaveButton() {
-    return SizedBox(
-      width: double.infinity,
-      height: 48,
-      child: DecoratedBox(
-        decoration: BoxDecoration(
-          gradient: const LinearGradient(
-            colors: [AppColors.oceanMid, AppColors.ocean],
-          ),
-          borderRadius: BorderRadius.circular(AppRadius.md),
-        ),
-        child: ElevatedButton(
-          onPressed: () {
-            AppSnackBar.success(context, 'Đã lưu bảng giá');
-          },
-          style: ElevatedButton.styleFrom(
-            backgroundColor: Colors.transparent,
-            shadowColor: Colors.transparent,
-            shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(AppRadius.md),
             ),
-          ),
-          child: Text(
-            'Lưu',
-            style: GoogleFonts.beVietnamPro(
-              fontSize: 16,
-              fontWeight: FontWeight.w700,
-              color: Colors.white,
+            child: ElevatedButton(
+              onPressed: _isLoading ? null : _onSave,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.transparent,
+                shadowColor: Colors.transparent,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(AppRadius.md),
+                ),
+              ),
+              child: _isLoading
+                  ? const SizedBox(width: 20, height: 20,
+                      child: CircularProgressIndicator(
+                          strokeWidth: 2, color: Colors.white))
+                  : Text('Lưu',
+                      style: GoogleFonts.beVietnamPro(
+                        fontWeight: FontWeight.w700, fontSize: 15,
+                        color: Colors.white,
+                      )),
             ),
           ),
         ),
       ),
     );
   }
-
-  void _showAddHolidayDialog() {
-    final titleController = TextEditingController();
-    final priceController = TextEditingController();
-
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: Text(
-          'Thêm mùa giá',
-          style: GoogleFonts.beVietnamPro(
-            fontSize: 18,
-            fontWeight: FontWeight.w700,
-          ),
-        ),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextField(
-              controller: titleController,
-              decoration: InputDecoration(
-                labelText: 'Tên mùa giá',
-                labelStyle: GoogleFonts.beVietnamPro(fontSize: 14),
-                border: const OutlineInputBorder(),
-              ),
-              style: GoogleFonts.beVietnamPro(fontSize: 14),
-            ),
-            const SizedBox(height: AppSpacing.md),
-            TextField(
-              controller: priceController,
-              keyboardType: TextInputType.number,
-              decoration: InputDecoration(
-                labelText: 'Giá (VNĐ)',
-                labelStyle: GoogleFonts.beVietnamPro(fontSize: 14),
-                border: const OutlineInputBorder(),
-                suffixText: 'đ',
-              ),
-              style: GoogleFonts.beVietnamPro(fontSize: 14),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: Text(
-              'Huỷ',
-              style: GoogleFonts.beVietnamPro(color: AppColors.muted),
-            ),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              final title = titleController.text.trim();
-              final price = priceController.text.trim();
-              if (title.isNotEmpty && price.isNotEmpty) {
-                setState(() {
-                  _holidayPrices.add(
-                    _HolidayPrice(title: title, price: price),
-                  );
-                });
-                Navigator.pop(ctx);
-              }
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.ocean,
-            ),
-            child: Text(
-              'Thêm',
-              style: GoogleFonts.beVietnamPro(color: Colors.white),
-            ),
-          ),
-        ],
-      ),
-    ).then((_) {
-      titleController.dispose();
-      priceController.dispose();
-    });
-  }
-
-  void _showAddNoteDialog() {
-    final noteController = TextEditingController();
-
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: Text(
-          'Thêm ghi chú',
-          style: GoogleFonts.beVietnamPro(
-            fontSize: 18,
-            fontWeight: FontWeight.w700,
-          ),
-        ),
-        content: TextField(
-          controller: noteController,
-          maxLines: 3,
-          decoration: InputDecoration(
-            labelText: 'Nội dung ghi chú',
-            labelStyle: GoogleFonts.beVietnamPro(fontSize: 14),
-            border: const OutlineInputBorder(),
-          ),
-          style: GoogleFonts.beVietnamPro(fontSize: 14),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: Text(
-              'Huỷ',
-              style: GoogleFonts.beVietnamPro(color: AppColors.muted),
-            ),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              final note = noteController.text.trim();
-              if (note.isNotEmpty) {
-                setState(() {
-                  _notes.add(note);
-                });
-                Navigator.pop(ctx);
-              }
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.ocean,
-            ),
-            child: Text(
-              'Thêm',
-              style: GoogleFonts.beVietnamPro(color: Colors.white),
-            ),
-          ),
-        ],
-      ),
-    ).then((_) {
-      noteController.dispose();
-    });
-  }
 }
-
-class _HolidayPrice {
-  final String title;
-  final String price;
-
-  const _HolidayPrice({required this.title, required this.price});
-}
-

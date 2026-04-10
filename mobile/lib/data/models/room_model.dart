@@ -102,6 +102,8 @@ class RoomModel {
   final List<String> amenities;
   final int? cancellationPolicy; // 0=FLEXIBLE, 1=MODERATE, 2=STRICT
   final String? view; // "sea" = view biển, "city" = view thành phố, null = không
+  final String? rules; // Quy định (1 chuỗi text)
+  final List<String> services; // Dịch vụ trả phí
   final double? adultSurcharge;
   final double? childSurcharge;
   final bool isActive;
@@ -125,6 +127,8 @@ class RoomModel {
     this.amenities = const [],
     this.cancellationPolicy,
     this.view,
+    this.rules,
+    this.services = const [],
     this.adultSurcharge,
     this.childSurcharge,
     this.isActive = true,
@@ -153,6 +157,11 @@ class RoomModel {
             [],
         cancellationPolicy: json['cancellationPolicy'],
         view: json['view'],
+        rules: json['rules'],
+        services: (json['services'] as List<dynamic>?)
+                ?.map((e) => e.toString())
+                .toList() ??
+            [],
         adultSurcharge: (json['adultSurcharge'] as num?)?.toDouble(),
         childSurcharge: (json['childSurcharge'] as num?)?.toDouble(),
         isActive: json['isActive'] ?? true,
