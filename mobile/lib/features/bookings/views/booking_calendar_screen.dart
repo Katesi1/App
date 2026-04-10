@@ -34,7 +34,7 @@ class _BookingCalendarScreenState
   bool _isSharing = false;
 
   CalendarViewMode _viewMode = CalendarViewMode.weekly;
-  PropertyCategory _category = PropertyCategory.villa;
+  PropertyCategory _category = PropertyCategory.all;
   DateTime _weekStart = _mondayOf(DateTime.now());
   DateTime _monthStart = DateTime(DateTime.now().year, DateTime.now().month);
 
@@ -69,8 +69,9 @@ class _BookingCalendarScreenState
     return DateFormat('yyyy-MM-dd').format(lastDay);
   }
 
-  /// Map PropertyCategory → API type param
-  int get _typeParam => switch (_category) {
+  /// Map PropertyCategory → API type param (null = tất cả)
+  int? get _typeParam => switch (_category) {
+        PropertyCategory.all => null,
         PropertyCategory.villa => 0,
         PropertyCategory.homestay => 1,
         PropertyCategory.hotel => 2,

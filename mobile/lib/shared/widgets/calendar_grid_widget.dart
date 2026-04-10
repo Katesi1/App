@@ -9,7 +9,7 @@ import '../../core/theme/app_spacing.dart';
 
 enum CalendarViewMode { weekly, monthly }
 
-enum PropertyCategory { villa, homestay, hotel }
+enum PropertyCategory { all, villa, homestay, hotel }
 
 class CalendarRoom {
   final String id;
@@ -760,6 +760,7 @@ class CalendarCategoryTabs extends StatelessWidget {
         children: PropertyCategory.values.map((cat) {
           final isSelected = selected == cat;
           final label = switch (cat) {
+            PropertyCategory.all => 'Tất cả',
             PropertyCategory.villa => 'Villa',
             PropertyCategory.homestay => 'Homestay',
             PropertyCategory.hotel => 'Khách sạn',
