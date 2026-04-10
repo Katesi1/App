@@ -35,7 +35,7 @@ class _PropertyAddScreenState extends ConsumerState<PropertyAddScreen> {
 
   // Thông số phòng
   int _bedrooms = 5;
-  final _bathroomCtrl = TextEditingController();
+  int _bathrooms = 2;
 
   // Sức chứa
   final _standardGuestsCtrl = TextEditingController();
@@ -66,17 +66,27 @@ class _PropertyAddScreenState extends ConsumerState<PropertyAddScreen> {
   ];
 
   static const _amenityGroups = {
-    'Phòng khách': ['Điều hòa', 'Wifi', 'TV', 'Karaoke', 'Loa di động'],
+    'Phòng khách': [
+      'Điều hòa', 'Wifi', 'TV', 'Karaoke', 'Loa di động',
+    ],
     'Bếp & Ăn uống': [
-      'Bếp đầy đủ', 'Tủ lạnh', 'BBQ ngoài trời',
-      'Bát đũa 20 người', 'Nước lọc free',
+      'Bếp đầy đủ', 'Tủ lạnh', 'Lò vi sóng', 'Bếp từ',
+      'BBQ ngoài trời', 'Bát đũa', 'Nước lọc free',
     ],
     'Phòng ngủ & Tắm': [
-      'Bồn tắm', 'Máy sấy tóc', 'Đèn sưởi',
-      'Khăn tắm', 'Dầu gội/Sữa tắm',
+      'Bồn tắm', 'Vòi sen', 'Nước nóng', 'Máy sấy tóc',
+      'Đèn sưởi', 'Khăn tắm', 'Dầu gội/Sữa tắm',
     ],
-    'Ngoài trời': ['Bể bơi', 'Ban công', 'View biển', 'Sân vườn', 'Đỗ xe'],
-    'Giải trí': ['Bida', 'Bàn bóng bàn', 'Máy giặt', 'Bàn là'],
+    'Ngoài trời': [
+      'Bể bơi', 'Ban công', 'View biển',
+      'Sân vườn', 'Sân thượng', 'Đỗ xe',
+    ],
+    'Tiện ích chung': [
+      'Máy giặt', 'Bàn là', 'Tủ quần áo', 'Két sắt', 'Thang máy',
+    ],
+    'Giải trí': [
+      'Bida', 'Bàn bóng bàn', 'Xích đu', 'Khu vui chơi trẻ em',
+    ],
   };
 
   // 0=FLEXIBLE, 1=MODERATE, 2=STRICT
@@ -91,7 +101,7 @@ class _PropertyAddScreenState extends ConsumerState<PropertyAddScreen> {
     _codeCtrl.dispose();
     _nameCtrl.dispose();
     _mapLinkCtrl.dispose();
-    _bathroomCtrl.dispose();
+    // _bathrooms is an int field, no controller to dispose
     _standardGuestsCtrl.dispose();
     _maxGuestsCtrl.dispose();
     _weekdayPriceCtrl.dispose();
@@ -126,7 +136,7 @@ class _PropertyAddScreenState extends ConsumerState<PropertyAddScreen> {
       'type': _selectedType,
       'code': _codeCtrl.text.trim(),
       'bedrooms': _bedrooms,
-      'bathrooms': int.tryParse(_bathroomCtrl.text) ?? 1,
+      'bathrooms': _bathrooms,
       'standardGuests': int.tryParse(_standardGuestsCtrl.text) ?? _bedrooms * 2,
       'maxGuests': int.tryParse(_maxGuestsCtrl.text) ?? _bedrooms * 2,
       'amenities': _selectedAmenities.toList(),
@@ -200,12 +210,12 @@ class _PropertyAddScreenState extends ConsumerState<PropertyAddScreen> {
                   const _Title('LOẠI HÌNH *'),
                   const SizedBox(height: AppSpacing.sm),
                   Row(
+                    spacing: 8,
                     children: _typeOptions.map((t) {
                       final on = _selectedType == t.value;
                       return Expanded(
                         child: Padding(
-                          padding: EdgeInsets.only(
-                              right: t.value != 2 ? 8 : 0),
+                          padding: EdgeInsets.zero,
                           child: GestureDetector(
                             onTap: () =>
                                 setState(() => _selectedType = t.value),
@@ -401,7 +411,9 @@ class _PropertyAddScreenState extends ConsumerState<PropertyAddScreen> {
                     spacing: 8,
                     runSpacing: 8,
                     children: [
-                      for (var i = 2; i <= 9; i++)
+                      _Chip(label: 'Studio', on: _bedrooms == 0,
+                          onTap: () => setState(() => _bedrooms = 0)),
+                      for (var i = 1; i <= 9; i++)
                         _Chip(label: '${i}PN', on: _bedrooms == i,
                             onTap: () => setState(() => _bedrooms = i)),
                       _Chip(label: '10PN+', on: _bedrooms >= 10,
@@ -409,8 +421,21 @@ class _PropertyAddScreenState extends ConsumerState<PropertyAddScreen> {
                     ],
                   ),
                   const SizedBox(height: AppSpacing.md),
-                  _Field(ctrl: _bathroomCtrl, label: 'Số nhà tắm / WC',
-                      hint: 'VD: 5', keyboard: TextInputType.number),
+                  Text('Số nhà tắm / WC *',
+                      style: GoogleFonts.beVietnamPro(
+                          fontSize: 13, fontWeight: FontWeight.w500)),
+                  const SizedBox(height: AppSpacing.xs),
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: [
+                      for (var i = 1; i <= 9; i++)
+                        _Chip(label: '$i WC', on: _bathrooms == i,
+                            onTap: () => setState(() => _bathrooms = i)),
+                      _Chip(label: '10+', on: _bathrooms >= 10,
+                          onTap: () => setState(() => _bathrooms = 10)),
+                    ],
+                  ),
                 ],
               ),
             ).animate(delay: 150.ms).fadeIn(duration: 300.ms),

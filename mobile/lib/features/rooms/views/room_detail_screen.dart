@@ -127,7 +127,7 @@ class RoomDetailScreen extends ConsumerWidget {
                       children: [
                         _InfoChip(
                           icon: Icons.bed_outlined,
-                          label: '${room.bedrooms} PN',
+                          label: room.bedrooms == 0 ? 'Studio' : '${room.bedrooms} PN',
                         ),
                         if (room.bathrooms > 0)
                           _InfoChip(
