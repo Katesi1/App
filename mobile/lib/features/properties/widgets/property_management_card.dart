@@ -57,7 +57,9 @@ class PropertyManagementCard extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      homestay.name,
+                      homestay.code.isNotEmpty
+                          ? '${homestay.code} · ${homestay.name}'
+                          : homestay.name,
                       style: GoogleFonts.beVietnamPro(
                         fontSize: 15,
                         fontWeight: FontWeight.w600,

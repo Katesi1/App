@@ -2,6 +2,7 @@ class HomestayModel {
   final String id;
   final String ownerId;
   final String name;
+  final String code;
   final String address;
   final int? type; // 0=VILLA, 1=HOMESTAY, 2=HOTEL
   final double? latitude;
@@ -19,6 +20,7 @@ class HomestayModel {
     required this.id,
     required this.ownerId,
     required this.name,
+    this.code = '',
     required this.address,
     this.type,
     this.latitude,
@@ -37,6 +39,7 @@ class HomestayModel {
         id: json['id'] ?? '',
         ownerId: json['ownerId'] ?? '',
         name: json['name'] ?? '',
+        code: json['code'] ?? '',
         address: json['address'] ?? '',
         type: json['type'] as int?,
         latitude: (json['latitude'] as num?)?.toDouble(),
