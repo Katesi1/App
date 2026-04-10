@@ -183,7 +183,14 @@ class _RoomCardState extends State<RoomCard> {
     if (room.homestay != null) {
       parts.add(room.homestay!.name);
     }
-    parts.add('${room.maxGuests} người');
+    // Phòng ngủ
+    parts.add(room.bedrooms == 0 ? 'Studio' : '${room.bedrooms}PN');
+    // WC
+    if (room.bathrooms > 0) {
+      parts.add('${room.bathrooms}WC');
+    }
+    // Sức chứa
+    parts.add('${room.standardGuests} người');
     return parts.join(' · ');
   }
 

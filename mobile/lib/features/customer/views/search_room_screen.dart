@@ -552,11 +552,24 @@ class _RoomListCard extends StatelessWidget {
                           ),
                         ),
                         const Spacer(),
+                        Icon(Icons.bed_outlined,
+                            size: 14, color: AppColors.muted),
+                        const SizedBox(width: 3),
+                        Text(
+                          room.bedrooms == 0
+                              ? 'Studio'
+                              : '${room.bedrooms}PN',
+                          style: GoogleFonts.beVietnamPro(
+                            fontSize: 11,
+                            color: AppColors.muted,
+                          ),
+                        ),
+                        const SizedBox(width: 8),
                         const Icon(Icons.people_outline_rounded,
                             size: 14, color: AppColors.muted),
                         const SizedBox(width: 3),
                         Text(
-                          '${room.maxGuests} người',
+                          '${room.standardGuests} người',
                           style: GoogleFonts.beVietnamPro(
                             fontSize: 11,
                             color: AppColors.muted,
