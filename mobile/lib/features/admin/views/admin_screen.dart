@@ -10,7 +10,6 @@ import '../../../shared/widgets/loading_widget.dart';
 import '../../auth/controllers/auth_controller.dart';
 import '../../bookings/controllers/booking_controller.dart';
 import '../../properties/controllers/property_controller.dart';
-import '../../rooms/controllers/room_controller.dart';
 import '../controllers/user_controller.dart';
 
 class AdminScreen extends ConsumerWidget {
@@ -21,7 +20,6 @@ class AdminScreen extends ConsumerWidget {
     final user = ref.watch(currentUserProvider);
     final usersAsync = ref.watch(userListProvider(null));
     final homestaysAsync = ref.watch(homestayListProvider(true));
-    final roomsAsync = ref.watch(roomListProvider(null));
     final bookingsAsync = ref.watch(bookingListProvider(null));
 
     return AppScaffold(
@@ -115,7 +113,6 @@ class AdminScreen extends ConsumerWidget {
               onRefresh: () async {
                 ref.invalidate(userListProvider(null));
                 ref.invalidate(homestayListProvider(true));
-                ref.invalidate(roomListProvider(null));
                 ref.invalidate(bookingListProvider(null));
               },
               child: ListView(
@@ -143,14 +140,14 @@ class AdminScreen extends ConsumerWidget {
                       const SizedBox(width: 12),
                       Expanded(
                         child: _KpiCard(
-                          icon: Icons.home_work_rounded,
-                          iconBg: AppColors.tealLight,
-                          iconColor: AppColors.teal,
-                          label: 'Homestay',
+                          icon: Icons.villa_rounded,
+                          iconBg: AppColors.emeraldLight,
+                          iconColor: AppColors.emerald,
+                          label: 'Villa',
                           asyncValue: homestaysAsync.whenData(
-                            (list) => '${list.length}',
+                            (list) => '${list.where((h) => h.type == 0).length}',
                           ),
-                          sub: 'Cơ sở lưu trú',
+                          sub: 'Biệt thự',
                         ),
                       ),
                     ],
@@ -162,18 +159,14 @@ class AdminScreen extends ConsumerWidget {
                     children: [
                       Expanded(
                         child: _KpiCard(
-                          icon: Icons.apartment_rounded,
-                          iconBg: AppColors.emeraldLight,
-                          iconColor: AppColors.emerald,
+                          icon: Icons.home_work_rounded,
+                          iconBg: AppColors.tealLight,
+                          iconColor: AppColors.teal,
                           label: 'Phòng',
-                          asyncValue: roomsAsync.whenData(
-                            (rooms) => '${rooms.length}',
+                          asyncValue: homestaysAsync.whenData(
+                            (list) => '${list.where((h) => h.type != 0).length}',
                           ),
-                          sub: roomsAsync.whenOrNull(
-                                data: (rooms) =>
-                                    '${rooms.where((r) => r.isActive).length} hoạt động',
-                              ) ??
-                              '',
+                          sub: 'Cơ sở lưu trú',
                         ),
                       ),
                       const SizedBox(width: 12),
@@ -226,8 +219,8 @@ class AdminScreen extends ConsumerWidget {
                     iconColor: AppColors.teal,
                     title: 'Quản lý phòng',
                     subtitle: 'Villa, Homestay, Khách sạn',
-                    trailing: roomsAsync.whenOrNull(
-                      data: (rooms) => '${rooms.length} phòng',
+                    trailing: homestaysAsync.whenOrNull(
+                      data: (list) => '${list.length} phòng',
                     ),
                     onTap: () => context.push('/admin/rooms'),
                   ),
