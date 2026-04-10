@@ -55,6 +55,7 @@ class _RoomListScreenState extends ConsumerState<RoomListScreen>
 
   bool get _hasActiveFilters =>
       _selectedViews.isNotEmpty ||
+      _priceAscending != null ||
       _checkIn != null ||
       _checkOut != null ||
       _adults > 0 ||
@@ -65,6 +66,8 @@ class _RoomListScreenState extends ConsumerState<RoomListScreen>
     for (final v in _selectedViews) {
       labels.add(_viewLabels[v] ?? v);
     }
+    if (_priceAscending == true) labels.add('Giá tăng dần');
+    if (_priceAscending == false) labels.add('Giá giảm dần');
     if (_checkIn != null) {
       labels.add('Check-in: ${_checkIn!.day}/${_checkIn!.month}');
     }
@@ -79,7 +82,6 @@ class _RoomListScreenState extends ConsumerState<RoomListScreen>
   static const _viewLabels = {
     'sea': 'View biển',
     'city': 'View thành phố',
-    'garden': 'View sân vườn',
   };
 
   @override
@@ -137,21 +139,12 @@ class _RoomListScreenState extends ConsumerState<RoomListScreen>
       });
     }
 
-    // TODO: Apply view, date, guest filters khi API hỗ trợ
-    return list;
-  }
+    // Filter theo view
+    if (_selectedViews.isNotEmpty) {
+      list = list.where((r) => _selectedViews.contains(r.view)).toList();
+    }
 
-  void _cyclePriceSort() {
-    setState(() {
-      // null → asc → desc → null
-      if (_priceAscending == null) {
-        _priceAscending = true;
-      } else if (_priceAscending == true) {
-        _priceAscending = false;
-      } else {
-        _priceAscending = null;
-      }
-    });
+    return list;
   }
 
   void _toggleSearch() {
@@ -171,6 +164,7 @@ class _RoomListScreenState extends ConsumerState<RoomListScreen>
   void _resetFilters() {
     setState(() {
       _selectedViews.clear();
+      _priceAscending = null;
       _checkIn = null;
       _checkOut = null;
       _adults = 0;
@@ -180,6 +174,7 @@ class _RoomListScreenState extends ConsumerState<RoomListScreen>
 
   void _showFilterSheet() {
     final tempViews = Set<String>.from(_selectedViews);
+    bool? tempPriceAsc = _priceAscending;
     var tempCheckIn = _checkIn;
     var tempCheckOut = _checkOut;
     var tempAdults = _adults;
@@ -285,6 +280,7 @@ class _RoomListScreenState extends ConsumerState<RoomListScreen>
                         onTap: () {
                           setSheetState(() {
                             tempViews.clear();
+                            tempPriceAsc = null;
                             tempCheckIn = null;
                             tempCheckOut = null;
                             tempAdults = 0;
@@ -320,7 +316,6 @@ class _RoomListScreenState extends ConsumerState<RoomListScreen>
                         icon: switch (e.key) {
                           'sea' => Icons.waves_rounded,
                           'city' => Icons.location_city_rounded,
-                          'garden' => Icons.park_rounded,
                           _ => Icons.home_rounded,
                         },
                         isSelected: selected,
@@ -328,6 +323,40 @@ class _RoomListScreenState extends ConsumerState<RoomListScreen>
                             toggleSet(tempViews, e.key),
                       );
                     }).toList(),
+                  ),
+                ),
+
+                // ── Sắp xếp giá ──
+                SectionLabel(label: 'SẮP XẾP GIÁ'),
+                Padding(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 20),
+                  child: Wrap(
+                    spacing: 10,
+                    runSpacing: 8,
+                    children: [
+                      FilterChipTile(
+                        label: 'Mặc định',
+                        icon: Icons.sort_rounded,
+                        isSelected: tempPriceAsc == null,
+                        onTap: () =>
+                            setSheetState(() => tempPriceAsc = null),
+                      ),
+                      FilterChipTile(
+                        label: 'Giá tăng dần',
+                        icon: Icons.arrow_upward_rounded,
+                        isSelected: tempPriceAsc == true,
+                        onTap: () =>
+                            setSheetState(() => tempPriceAsc = true),
+                      ),
+                      FilterChipTile(
+                        label: 'Giá giảm dần',
+                        icon: Icons.arrow_downward_rounded,
+                        isSelected: tempPriceAsc == false,
+                        onTap: () =>
+                            setSheetState(() => tempPriceAsc = false),
+                      ),
+                    ],
                   ),
                 ),
 
@@ -403,6 +432,7 @@ class _RoomListScreenState extends ConsumerState<RoomListScreen>
                           _selectedViews
                             ..clear()
                             ..addAll(tempViews);
+                          _priceAscending = tempPriceAsc;
                           _checkIn = tempCheckIn;
                           _checkOut = tempCheckOut;
                           _adults = tempAdults;
@@ -531,16 +561,6 @@ class _RoomListScreenState extends ConsumerState<RoomListScreen>
                                   ? Icons.close_rounded
                                   : Icons.search_rounded,
                               onTap: _toggleSearch,
-                            ),
-                            const SizedBox(width: 8),
-                            _HeaderIconBtn(
-                              icon: _priceAscending == null
-                                  ? Icons.sort_rounded
-                                  : _priceAscending == true
-                                      ? Icons.arrow_upward_rounded
-                                      : Icons.arrow_downward_rounded,
-                              badge: _priceAscending != null,
-                              onTap: _cyclePriceSort,
                             ),
                             const SizedBox(width: 8),
                             _HeaderIconBtn(

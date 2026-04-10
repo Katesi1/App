@@ -28,6 +28,9 @@ class _PropertyAddScreenState extends ConsumerState<PropertyAddScreen> {
   // Ảnh
   final List<File> _pickedImages = [];
 
+  // View (null = không, "sea" = view biển, "city" = view thành phố)
+  String? _selectedView;
+
   // Thông tin cơ bản
   final _codeCtrl = TextEditingController();
   final _nameCtrl = TextEditingController();
@@ -145,6 +148,7 @@ class _PropertyAddScreenState extends ConsumerState<PropertyAddScreen> {
       'maxGuests': int.tryParse(_maxGuestsCtrl.text) ?? _bedrooms * 2,
       'amenities': _selectedAmenities.toList(),
       'cancellationPolicy': _cancellationPolicy,
+      if (_selectedView != null) 'view': _selectedView,
       if (_mapLinkCtrl.text.trim().isNotEmpty)
         'mapLink': _mapLinkCtrl.text.trim(),
       if (_weekdayPriceCtrl.text.isNotEmpty)
@@ -399,6 +403,23 @@ class _PropertyAddScreenState extends ConsumerState<PropertyAddScreen> {
                     label: 'Mô tả',
                     hint: 'Mô tả ngắn về phòng...',
                     maxLines: 4,
+                  ),
+                  const SizedBox(height: AppSpacing.md),
+                  Text('View',
+                      style: GoogleFonts.beVietnamPro(
+                          fontSize: 13, fontWeight: FontWeight.w500)),
+                  const SizedBox(height: AppSpacing.xs),
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: [
+                      _Chip(label: 'Không có', on: _selectedView == null,
+                          onTap: () => setState(() => _selectedView = null)),
+                      _Chip(label: 'View biển', on: _selectedView == 'sea',
+                          onTap: () => setState(() => _selectedView = 'sea')),
+                      _Chip(label: 'View thành phố', on: _selectedView == 'city',
+                          onTap: () => setState(() => _selectedView = 'city')),
+                    ],
                   ),
                   const SizedBox(height: AppSpacing.md),
                   _Field(ctrl: _mapLinkCtrl, label: 'Link Google Maps',

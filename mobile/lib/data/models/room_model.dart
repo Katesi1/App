@@ -101,6 +101,7 @@ class RoomModel {
   final String? mapLink;
   final List<String> amenities;
   final int? cancellationPolicy; // 0=FLEXIBLE, 1=MODERATE, 2=STRICT
+  final String? view; // "sea" = view biển, "city" = view thành phố, null = không
   final double? adultSurcharge;
   final double? childSurcharge;
   final bool isActive;
@@ -123,6 +124,7 @@ class RoomModel {
     this.mapLink,
     this.amenities = const [],
     this.cancellationPolicy,
+    this.view,
     this.adultSurcharge,
     this.childSurcharge,
     this.isActive = true,
@@ -150,6 +152,7 @@ class RoomModel {
                 .toList() ??
             [],
         cancellationPolicy: json['cancellationPolicy'],
+        view: json['view'],
         adultSurcharge: (json['adultSurcharge'] as num?)?.toDouble(),
         childSurcharge: (json['childSurcharge'] as num?)?.toDouble(),
         isActive: json['isActive'] ?? true,

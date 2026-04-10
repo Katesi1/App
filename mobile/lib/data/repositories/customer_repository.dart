@@ -15,6 +15,7 @@ class CustomerRepository {
     int? guests,
     double? minPrice,
     double? maxPrice,
+    String? view,
   }) async {
     try {
       final response = await _dio.get(
@@ -27,6 +28,7 @@ class CustomerRepository {
           if (guests != null) 'guests': guests,
           if (minPrice != null) 'minPrice': minPrice,
           if (maxPrice != null) 'maxPrice': maxPrice,
+          if (view != null) 'view': view,
         },
       );
       final list = (response.data['data'] as List)

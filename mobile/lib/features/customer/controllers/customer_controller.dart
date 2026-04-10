@@ -19,6 +19,7 @@ final publicRoomsProvider = FutureProvider.family<List<RoomModel>,
     guests: filter?.guests,
     minPrice: filter?.minPrice,
     maxPrice: filter?.maxPrice,
+    view: filter?.view,
   );
   if (result.success) return result.data!;
   throw Exception(result.message);
@@ -84,6 +85,7 @@ class PublicRoomFilter {
   final int? guests;
   final double? minPrice;
   final double? maxPrice;
+  final String? view; // "sea", "city", null
 
   const PublicRoomFilter({
     this.checkinDate,
@@ -91,5 +93,6 @@ class PublicRoomFilter {
     this.guests,
     this.minPrice,
     this.maxPrice,
+    this.view,
   });
 }

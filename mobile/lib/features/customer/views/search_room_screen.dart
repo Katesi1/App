@@ -22,6 +22,8 @@ class _SearchRoomScreenState extends ConsumerState<SearchRoomScreen> {
   DateTime? _checkinDate;
   DateTime? _checkoutDate;
   int _guests = 2;
+  String? _selectedView; // "sea", "city", null
+  bool? _priceAscending; // null = mặc định, true = tăng, false = giảm
   PublicRoomFilter? _currentFilter;
 
   Future<void> _pickDate({required bool isCheckin}) async {
@@ -54,8 +56,23 @@ class _SearchRoomScreenState extends ConsumerState<SearchRoomScreen> {
         checkinDate: _checkinDate,
         checkoutDate: _checkoutDate,
         guests: _guests,
+        view: _selectedView,
       );
     });
+  }
+
+  List<RoomModel> _sortRooms(List<RoomModel> rooms) {
+    if (_priceAscending == null) return rooms;
+    final sorted = List<RoomModel>.from(rooms);
+    sorted.sort((a, b) {
+      final pa = a.price?.weekdayPrice;
+      final pb = b.price?.weekdayPrice;
+      if (pa == null && pb == null) return 0;
+      if (pa == null) return 1;
+      if (pb == null) return -1;
+      return _priceAscending! ? pa.compareTo(pb) : pb.compareTo(pa);
+    });
+    return sorted;
   }
 
   String _formatDate(DateTime? date) {
@@ -103,6 +120,110 @@ class _SearchRoomScreenState extends ConsumerState<SearchRoomScreen> {
                         label: 'Trả phòng',
                         value: _formatDate(_checkoutDate),
                         onTap: () => _pickDate(isCheckin: false),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 10),
+                // View + Sort row
+                Row(
+                  children: [
+                    // View filter
+                    Expanded(
+                      child: Container(
+                        height: 38,
+                        padding: const EdgeInsets.symmetric(horizontal: 10),
+                        decoration: BoxDecoration(
+                          border: Border.all(color: AppColors.border),
+                          borderRadius:
+                              BorderRadius.circular(AppRadius.md),
+                        ),
+                        child: DropdownButtonHideUnderline(
+                          child: DropdownButton<String?>(
+                            value: _selectedView,
+                            isExpanded: true,
+                            icon: const Icon(Icons.expand_more_rounded,
+                                size: 18, color: AppColors.slate),
+                            style: GoogleFonts.beVietnamPro(
+                              fontSize: 13,
+                              color: AppColors.navy,
+                            ),
+                            items: const [
+                              DropdownMenuItem(
+                                  value: null, child: Text('Tất cả view')),
+                              DropdownMenuItem(
+                                  value: 'sea', child: Text('View biển')),
+                              DropdownMenuItem(
+                                  value: 'city',
+                                  child: Text('View thành phố')),
+                            ],
+                            onChanged: (v) =>
+                                setState(() => _selectedView = v),
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    // Sort
+                    GestureDetector(
+                      onTap: () {
+                        setState(() {
+                          if (_priceAscending == null) {
+                            _priceAscending = true;
+                          } else if (_priceAscending == true) {
+                            _priceAscending = false;
+                          } else {
+                            _priceAscending = null;
+                          }
+                        });
+                      },
+                      child: Container(
+                        height: 38,
+                        padding:
+                            const EdgeInsets.symmetric(horizontal: 10),
+                        decoration: BoxDecoration(
+                          border: Border.all(
+                            color: _priceAscending != null
+                                ? AppColors.ocean
+                                : AppColors.border,
+                          ),
+                          borderRadius:
+                              BorderRadius.circular(AppRadius.md),
+                          color: _priceAscending != null
+                              ? AppColors.oceanPale
+                              : null,
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              _priceAscending == null
+                                  ? Icons.sort_rounded
+                                  : _priceAscending == true
+                                      ? Icons.arrow_upward_rounded
+                                      : Icons.arrow_downward_rounded,
+                              size: 16,
+                              color: _priceAscending != null
+                                  ? AppColors.ocean
+                                  : AppColors.slate,
+                            ),
+                            const SizedBox(width: 4),
+                            Text(
+                              _priceAscending == null
+                                  ? 'Giá'
+                                  : _priceAscending == true
+                                      ? 'Giá ↑'
+                                      : 'Giá ↓',
+                              style: GoogleFonts.beVietnamPro(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w500,
+                                color: _priceAscending != null
+                                    ? AppColors.ocean
+                                    : AppColors.slate,
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
                     ),
                   ],
@@ -202,7 +323,9 @@ class _SearchRoomScreenState extends ConsumerState<SearchRoomScreen> {
           // ── Room list ───────────────────────────────────────
           Expanded(
             child: roomsAsync.when(
-              data: (rooms) => RefreshIndicator(
+              data: (rawRooms) {
+                final rooms = _sortRooms(rawRooms);
+                return RefreshIndicator(
                 color: AppColors.ocean,
                 onRefresh: () async =>
                     ref.invalidate(publicRoomsProvider(_currentFilter)),
@@ -251,7 +374,8 @@ class _SearchRoomScreenState extends ConsumerState<SearchRoomScreen> {
                               context.push('/rooms/${rooms[i].id}'),
                         ),
                       ),
-              ),
+                );
+              },
               loading: () => SkeletonList(
                 skeleton: const RoomCardSkeleton(),
                 count: 4,
