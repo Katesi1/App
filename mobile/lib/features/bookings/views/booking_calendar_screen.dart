@@ -18,7 +18,7 @@ import '../../../shared/widgets/calendar_grid_widget.dart';
 import '../../../shared/widgets/loading_widget.dart';
 import '../../calendar/controllers/calendar_controller.dart';
 
-/// Lịch tổng — dành cho tất cả user xem.
+/// Lịch tổng — dành cho tất cả user xem (public, không cần auth).
 /// Tap ô → mở modal liên hệ admin qua Zalo.
 class BookingCalendarScreen extends ConsumerStatefulWidget {
   const BookingCalendarScreen({super.key});
@@ -35,7 +35,6 @@ class _BookingCalendarScreenState
 
   CalendarViewMode _viewMode = CalendarViewMode.weekly;
   PropertyCategory _category = PropertyCategory.villa;
-  int _selectedGroupIndex = 0;
   DateTime _weekStart = _mondayOf(DateTime.now());
   DateTime _monthStart = DateTime(DateTime.now().year, DateTime.now().month);
 
@@ -70,16 +69,14 @@ class _BookingCalendarScreenState
     return DateFormat('yyyy-MM-dd').format(lastDay);
   }
 
-  List<CalendarPropertyGroup> _filterGroups(
-      List<CalendarPropertyGroup> all) {
-    return all
-        .where((g) =>
-            (g.category ?? '').toLowerCase() ==
-            _category.name.toLowerCase())
-        .toList();
-  }
+  /// Map PropertyCategory → API type param
+  int get _typeParam => switch (_category) {
+        PropertyCategory.villa => 0,
+        PropertyCategory.homestay => 1,
+        PropertyCategory.hotel => 2,
+      };
 
-  List<CalendarRoom> _mapRooms(List<CalendarRoomRow> rows) {
+  List<CalendarRoom> _mapProperties(List<CalendarRoomRow> rows) {
     return rows.map((row) {
       final cells = <DateTime, DayCell>{};
       for (final day in row.days) {
@@ -98,39 +95,20 @@ class _BookingCalendarScreenState
         CalendarDayStatus.available => DayCellStatus.available,
         CalendarDayStatus.hold => DayCellStatus.hold,
         CalendarDayStatus.booked => DayCellStatus.booked,
+        CalendarDayStatus.locked => DayCellStatus.locked,
       };
 
   @override
   Widget build(BuildContext context) {
-    final groupsAsync = ref.watch(calendarPropertyGroupsProvider(null));
+    final gridParams = CalendarGridParams(
+      startDate: _startDate,
+      endDate: _endDate,
+      type: _typeParam,
+      isPublic: true,
+    );
+
+    final gridAsync = ref.watch(calendarGridProvider(gridParams));
     final adminContact = ref.watch(adminContactProvider).valueOrNull;
-
-    final allGroups = groupsAsync.valueOrNull ?? [];
-    final filtered = _filterGroups(allGroups);
-    final safeIndex = filtered.isEmpty
-        ? 0
-        : _selectedGroupIndex.clamp(0, filtered.length - 1);
-
-    final gridParams = filtered.isNotEmpty
-        ? CalendarGridParams(
-            propertyGroupId: filtered[safeIndex].id,
-            startDate: _startDate,
-            endDate: _endDate,
-          )
-        : null;
-
-    final gridAsync = gridParams != null
-        ? ref.watch(calendarGridProvider(gridParams))
-        : const AsyncValue<CalendarGrid>.loading();
-
-    final stubGroups = filtered
-        .map((g) => PropertyGroup(
-              id: g.id,
-              name: g.name,
-              category: PropertyCategory.villa,
-              rooms: const [],
-            ))
-        .toList();
 
     return AppScaffold(
       title: '',
@@ -172,18 +150,8 @@ class _BookingCalendarScreenState
 
           CalendarCategoryTabs(
             selected: _category,
-            onChanged: (cat) => setState(() {
-              _category = cat;
-              _selectedGroupIndex = 0;
-            }),
+            onChanged: (cat) => setState(() => _category = cat),
           ),
-
-          if (stubGroups.isNotEmpty)
-            CalendarSubCategoryChips(
-              groups: stubGroups,
-              selectedIndex: safeIndex,
-              onChanged: (i) => setState(() => _selectedGroupIndex = i),
-            ),
 
           CalendarDateNavigation(
             viewMode: _viewMode,
@@ -194,39 +162,35 @@ class _BookingCalendarScreenState
           ),
 
           Expanded(
-            child: groupsAsync.when(
+            child: gridAsync.when(
               loading: () => const LoadingWidget(),
               error: (e, _) => ErrorStateWidget(
                 message: e.toString().replaceAll('Exception: ', ''),
                 onRetry: () =>
-                    ref.invalidate(calendarPropertyGroupsProvider(null)),
+                    ref.invalidate(calendarGridProvider(gridParams)),
               ),
-              data: (_) => filtered.isEmpty
-                  ? const EmptyStateWidget(
-                      icon: Icons.calendar_today_outlined,
-                      message: 'Không có nhóm phòng nào',
-                    )
-                  : gridAsync.when(
-                      loading: () => const LoadingWidget(),
-                      error: (e, _) => ErrorStateWidget(
-                        message: e.toString().replaceAll('Exception: ', ''),
-                        onRetry: () =>
-                            ref.invalidate(calendarGridProvider(gridParams!)),
-                      ),
-                      data: (grid) => Screenshot(
-                        controller: _screenshotController,
-                        child: CalendarGridWidget(
-                          rooms: _mapRooms(grid.rooms),
-                          viewMode: _viewMode,
-                          weekStart: _weekStart,
-                          monthStart: _monthStart,
-                          onCellTap: (room, date, cell) =>
-                              _showContactModal(
-                                  context, room, date, cell, adminContact),
-                          legendTapHint: 'Tap ô = liên hệ',
-                        ),
-                      ),
-                    ),
+              data: (grid) {
+                final rooms = _mapProperties(grid.properties);
+                if (rooms.isEmpty) {
+                  return const EmptyStateWidget(
+                    icon: Icons.calendar_today_outlined,
+                    message: 'Không có phòng nào',
+                  );
+                }
+                return Screenshot(
+                  controller: _screenshotController,
+                  child: CalendarGridWidget(
+                    rooms: rooms,
+                    viewMode: _viewMode,
+                    weekStart: _weekStart,
+                    monthStart: _monthStart,
+                    onCellTap: (room, date, cell) =>
+                        _showContactModal(
+                            context, room, date, cell, adminContact),
+                    legendTapHint: 'Tap ô = liên hệ',
+                  ),
+                );
+              },
             ),
           ),
         ],
@@ -245,11 +209,13 @@ class _BookingCalendarScreenState
       DayCellStatus.available => 'Trống',
       DayCellStatus.booked => 'Đã bán',
       DayCellStatus.hold => 'Đang giữ',
+      DayCellStatus.locked => 'Đã khoá',
     };
     final statusColor = switch (cell.status) {
       DayCellStatus.available => AppColors.emerald,
       DayCellStatus.booked => AppColors.coral,
       DayCellStatus.hold => AppColors.amber,
+      DayCellStatus.locked => AppColors.slate,
     };
 
     showModalBottomSheet(

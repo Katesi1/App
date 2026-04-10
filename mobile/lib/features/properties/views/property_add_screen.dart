@@ -31,6 +31,7 @@ class _PropertyAddScreenState extends ConsumerState<PropertyAddScreen> {
   // Thông tin cơ bản
   final _codeCtrl = TextEditingController();
   final _nameCtrl = TextEditingController();
+  final _descriptionCtrl = TextEditingController();
   final _mapLinkCtrl = TextEditingController();
 
   // Thông số phòng
@@ -100,6 +101,7 @@ class _PropertyAddScreenState extends ConsumerState<PropertyAddScreen> {
   void dispose() {
     _codeCtrl.dispose();
     _nameCtrl.dispose();
+    _descriptionCtrl.dispose();
     _mapLinkCtrl.dispose();
     // _bathrooms is an int field, no controller to dispose
     _standardGuestsCtrl.dispose();
@@ -133,6 +135,8 @@ class _PropertyAddScreenState extends ConsumerState<PropertyAddScreen> {
       'name': _nameCtrl.text.trim().isNotEmpty
           ? _nameCtrl.text.trim()
           : '$_selectedType ${_codeCtrl.text.trim()}',
+      if (_descriptionCtrl.text.trim().isNotEmpty)
+        'description': _descriptionCtrl.text.trim(),
       'type': _selectedType,
       'code': _codeCtrl.text.trim(),
       'bedrooms': _bedrooms,
@@ -389,6 +393,13 @@ class _PropertyAddScreenState extends ConsumerState<PropertyAddScreen> {
                   const SizedBox(height: AppSpacing.md),
                   _Field(ctrl: _nameCtrl, label: 'Tên hiển thị',
                       hint: 'VD: Villa Vịnh Xanh'),
+                  const SizedBox(height: AppSpacing.md),
+                  _Field(
+                    ctrl: _descriptionCtrl,
+                    label: 'Mô tả',
+                    hint: 'Mô tả ngắn về phòng...',
+                    maxLines: 4,
+                  ),
                   const SizedBox(height: AppSpacing.md),
                   _Field(ctrl: _mapLinkCtrl, label: 'Link Google Maps',
                       hint: 'Dán link Google Maps tại đây'),
@@ -811,6 +822,7 @@ class _Field extends StatelessWidget {
   final String? Function(String?)? validator;
   final List<TextInputFormatter>? inputFormatters;
   final String? suffix;
+  final int? maxLines;
 
   const _Field({
     required this.ctrl,
@@ -820,6 +832,7 @@ class _Field extends StatelessWidget {
     this.validator,
     this.inputFormatters,
     this.suffix,
+    this.maxLines,
   });
 
   @override
@@ -833,7 +846,10 @@ class _Field extends StatelessWidget {
         const SizedBox(height: 6),
         TextFormField(
           controller: ctrl,
-          keyboardType: keyboard,
+          keyboardType: maxLines != null && maxLines! > 1
+              ? TextInputType.multiline
+              : keyboard,
+          maxLines: maxLines ?? 1,
           validator: validator,
           inputFormatters: inputFormatters,
           style: GoogleFonts.beVietnamPro(fontSize: 14),

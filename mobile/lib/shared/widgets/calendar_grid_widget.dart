@@ -1,5 +1,3 @@
-import 'dart:math';
-
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
@@ -13,20 +11,6 @@ enum CalendarViewMode { weekly, monthly }
 
 enum PropertyCategory { villa, homestay, hotel }
 
-class PropertyGroup {
-  final String id;
-  final String name;
-  final PropertyCategory category;
-  final List<CalendarRoom> rooms;
-
-  const PropertyGroup({
-    required this.id,
-    required this.name,
-    required this.category,
-    required this.rooms,
-  });
-}
-
 class CalendarRoom {
   final String id;
   final String code;
@@ -39,75 +23,13 @@ class CalendarRoom {
   });
 }
 
-enum DayCellStatus { available, booked, hold }
+enum DayCellStatus { available, booked, hold, locked }
 
 class DayCell {
   final double price;
   final DayCellStatus status;
 
   const DayCell({required this.price, required this.status});
-}
-
-// ─── Mock data generator ─────────────────────────────────────────────────────
-
-List<PropertyGroup> generateMockCalendarData(PropertyCategory category) {
-  final random = Random(category.index * 42);
-
-  final names = switch (category) {
-    PropertyCategory.villa => ['Sunferia', 'Harborbay', 'Grandbay'],
-    PropertyCategory.homestay => [
-        'Hạ Long View',
-        'Bãi Cháy House',
-        'Tuần Châu Stay',
-      ],
-    PropertyCategory.hotel => ['Grand Palace', 'Ocean Resort', 'Bay Hotel'],
-  };
-
-  final roomPrefixes = switch (category) {
-    PropertyCategory.villa => ['C', 'M'],
-    PropertyCategory.homestay => ['H', 'P'],
-    PropertyCategory.hotel => ['R', 'S'],
-  };
-
-  return names.asMap().entries.map((entry) {
-    final groupId = '${category.name}_${entry.key}';
-    final rooms = <CalendarRoom>[];
-
-    for (var i = 0; i < 8 + random.nextInt(5); i++) {
-      final prefix = roomPrefixes[random.nextInt(roomPrefixes.length)];
-      final code =
-          '$prefix${random.nextInt(9) + 1}-${(random.nextInt(40) + 1).toString().padLeft(2, '0')}';
-      final basePrice = (random.nextInt(5) + 5) * 1000000.0;
-
-      final dayCells = <DateTime, DayCell>{};
-      final now = DateTime.now();
-      for (var d = -30; d < 60; d++) {
-        final date = DateTime(now.year, now.month, now.day + d);
-        final isWeekend = date.weekday == 6 || date.weekday == 7;
-        final price = isWeekend ? basePrice * 1.8 : basePrice;
-
-        final statusRoll = random.nextDouble();
-        final status = statusRoll < 0.12
-            ? DayCellStatus.booked
-            : statusRoll < 0.2
-                ? DayCellStatus.hold
-                : DayCellStatus.available;
-
-        dayCells[date] = DayCell(price: price, status: status);
-      }
-
-      rooms.add(
-        CalendarRoom(id: '${groupId}_$i', code: code, dayCells: dayCells),
-      );
-    }
-
-    return PropertyGroup(
-      id: groupId,
-      name: entry.value,
-      category: category,
-      rooms: rooms,
-    );
-  }).toList();
 }
 
 // ─── Callbacks ───────────────────────────────────────────────────────────────
@@ -421,6 +343,9 @@ class _CalendarGridWidgetState extends State<CalendarGridWidget> {
       DayCellStatus.hold => isDark
           ? AppColors.amber.withValues(alpha: 0.18)
           : AppColors.amberLight,
+      DayCellStatus.locked => isDark
+          ? AppColors.slate.withValues(alpha: 0.25)
+          : AppColors.slateLight,
       DayCellStatus.available => isWeekend
           ? isDark
               ? AppColors.gold.withValues(alpha: 0.1)
@@ -456,7 +381,7 @@ class _CalendarGridWidgetState extends State<CalendarGridWidget> {
           ],
         ),
       DayCellStatus.hold => Icon(
-          Icons.lock_rounded,
+          Icons.lock_clock_rounded,
           size: 18,
           color: isDark ? AppColors.amber : AppColors.brownDark,
         ),
@@ -468,6 +393,11 @@ class _CalendarGridWidgetState extends State<CalendarGridWidget> {
             height: 1,
             color: AppColors.coral,
           ),
+        ),
+      DayCellStatus.locked => Icon(
+          Icons.lock_rounded,
+          size: 18,
+          color: isDark ? AppColors.slate : AppColors.muted,
         ),
     };
 
@@ -537,13 +467,13 @@ class _CalendarGridWidgetState extends State<CalendarGridWidget> {
             label: 'Trống',
             labelColor: labelColor,
           ),
-          const SizedBox(width: AppSpacing.md),
+          const SizedBox(width: AppSpacing.sm),
           _buildLegendSymbol(
-            child: Icon(Icons.lock_rounded, size: 14, color: lockColor),
+            child: Icon(Icons.lock_clock_rounded, size: 14, color: lockColor),
             label: 'Giữ chỗ',
             labelColor: labelColor,
           ),
-          const SizedBox(width: AppSpacing.md),
+          const SizedBox(width: AppSpacing.sm),
           _buildLegendSymbol(
             child: Text(
               '×',
@@ -556,7 +486,17 @@ class _CalendarGridWidgetState extends State<CalendarGridWidget> {
             label: 'Đã đặt',
             labelColor: labelColor,
           ),
-          const SizedBox(width: AppSpacing.md),
+          const SizedBox(width: AppSpacing.sm),
+          _buildLegendSymbol(
+            child: Icon(
+              Icons.lock_rounded,
+              size: 14,
+              color: isDark ? AppColors.slate : AppColors.muted,
+            ),
+            label: 'Khoá',
+            labelColor: labelColor,
+          ),
+          const SizedBox(width: AppSpacing.sm),
           Flexible(
             child: Text(
               widget.legendTapHint,
@@ -866,74 +806,6 @@ class CalendarCategoryTabs extends StatelessWidget {
             ),
           );
         }).toList(),
-      ),
-    );
-  }
-}
-
-class CalendarSubCategoryChips extends StatelessWidget {
-  final List<PropertyGroup> groups;
-  final int selectedIndex;
-  final ValueChanged<int> onChanged;
-
-  const CalendarSubCategoryChips({
-    super.key,
-    required this.groups,
-    required this.selectedIndex,
-    required this.onChanged,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    return SizedBox(
-      height: 44,
-      child: ListView.separated(
-        scrollDirection: Axis.horizontal,
-        padding: const EdgeInsets.symmetric(
-          horizontal: AppSpacing.md,
-          vertical: AppSpacing.xs,
-        ),
-        itemCount: groups.length,
-        separatorBuilder: (_, __) => const SizedBox(width: AppSpacing.sm),
-        itemBuilder: (_, i) {
-          final isSelected = selectedIndex == i;
-          return GestureDetector(
-            onTap: () => onChanged(i),
-            child: Chip(
-              label: Text(groups[i].name),
-              labelStyle: GoogleFonts.beVietnamPro(
-                fontSize: 12,
-                fontWeight: FontWeight.w600,
-                color: isSelected
-                    ? isDark
-                        ? AppColors.oceanBright
-                        : AppColors.oceanDeep
-                    : isDark
-                        ? AppColors.darkHint
-                        : AppColors.muted,
-              ),
-              backgroundColor: isSelected
-                  ? isDark
-                      ? AppColors.ocean.withValues(alpha: 0.25)
-                      : AppColors.oceanLight
-                  : isDark
-                      ? AppColors.darkContainer
-                      : AppColors.surface,
-              side: BorderSide(
-                color: isSelected
-                    ? isDark
-                        ? AppColors.oceanBright
-                        : AppColors.ocean
-                    : isDark
-                        ? AppColors.darkBorder
-                        : AppColors.border,
-              ),
-              visualDensity: VisualDensity.compact,
-              padding: const EdgeInsets.symmetric(horizontal: 4),
-            ),
-          );
-        },
       ),
     );
   }

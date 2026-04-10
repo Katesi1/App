@@ -10,7 +10,8 @@ import '../../../shared/widgets/calendar_grid_widget.dart';
 import '../../../shared/widgets/loading_widget.dart';
 import '../../calendar/controllers/calendar_controller.dart';
 
-/// Lịch riêng cho chủ nhà — chỉ hiện các căn của chủ nhà.
+/// Lịch riêng cho chủ nhà — chỉ hiện các căn của chủ nhà (Bearer token).
+/// OWNER/SALE thấy property của mình, ADMIN thấy tất cả.
 /// Tap ô = lock/mở phòng.
 class OwnerCalendarScreen extends ConsumerStatefulWidget {
   const OwnerCalendarScreen({super.key});
@@ -24,7 +25,6 @@ class _OwnerCalendarScreenState
     extends ConsumerState<OwnerCalendarScreen> {
   CalendarViewMode _viewMode = CalendarViewMode.weekly;
   PropertyCategory _category = PropertyCategory.villa;
-  int _selectedGroupIndex = 0;
   DateTime _weekStart = _mondayOf(DateTime.now());
   DateTime _monthStart = DateTime(DateTime.now().year, DateTime.now().month);
 
@@ -62,16 +62,14 @@ class _OwnerCalendarScreenState
     return DateFormat('yyyy-MM-dd').format(lastDay);
   }
 
-  List<CalendarPropertyGroup> _filterGroups(
-      List<CalendarPropertyGroup> all) {
-    return all
-        .where((g) =>
-            (g.category ?? '').toLowerCase() ==
-            _category.name.toLowerCase())
-        .toList();
-  }
+  /// Map PropertyCategory → API type param
+  int get _typeParam => switch (_category) {
+        PropertyCategory.villa => 0,
+        PropertyCategory.homestay => 1,
+        PropertyCategory.hotel => 2,
+      };
 
-  List<CalendarRoom> _mapRooms(List<CalendarRoomRow> rows) {
+  List<CalendarRoom> _mapProperties(List<CalendarRoomRow> rows) {
     return rows.map((row) {
       final cells = <DateTime, DayCell>{};
       for (final day in row.days) {
@@ -94,38 +92,19 @@ class _OwnerCalendarScreenState
         CalendarDayStatus.available => DayCellStatus.available,
         CalendarDayStatus.hold => DayCellStatus.hold,
         CalendarDayStatus.booked => DayCellStatus.booked,
+        CalendarDayStatus.locked => DayCellStatus.locked,
       };
 
   @override
   Widget build(BuildContext context) {
-    final groupsAsync = ref.watch(calendarPropertyGroupsProvider(null));
+    final gridParams = CalendarGridParams(
+      startDate: _startDate,
+      endDate: _endDate,
+      type: _typeParam,
+      isPublic: false, // management — dùng /calendar/grid với Bearer token
+    );
 
-    final allGroups = groupsAsync.valueOrNull ?? [];
-    final filtered = _filterGroups(allGroups);
-    final safeIndex = filtered.isEmpty
-        ? 0
-        : _selectedGroupIndex.clamp(0, filtered.length - 1);
-
-    final gridParams = filtered.isNotEmpty
-        ? CalendarGridParams(
-            propertyGroupId: filtered[safeIndex].id,
-            startDate: _startDate,
-            endDate: _endDate,
-          )
-        : null;
-
-    final gridAsync = gridParams != null
-        ? ref.watch(calendarGridProvider(gridParams))
-        : const AsyncValue<CalendarGrid>.loading();
-
-    final stubGroups = filtered
-        .map((g) => PropertyGroup(
-              id: g.id,
-              name: g.name,
-              category: PropertyCategory.villa,
-              rooms: const [],
-            ))
-        .toList();
+    final gridAsync = ref.watch(calendarGridProvider(gridParams));
 
     return Scaffold(
       body: Column(
@@ -143,18 +122,8 @@ class _OwnerCalendarScreenState
 
           CalendarCategoryTabs(
             selected: _category,
-            onChanged: (cat) => setState(() {
-              _category = cat;
-              _selectedGroupIndex = 0;
-            }),
+            onChanged: (cat) => setState(() => _category = cat),
           ),
-
-          if (stubGroups.isNotEmpty)
-            CalendarSubCategoryChips(
-              groups: stubGroups,
-              selectedIndex: safeIndex,
-              onChanged: (i) => setState(() => _selectedGroupIndex = i),
-            ),
 
           CalendarDateNavigation(
             viewMode: _viewMode,
@@ -165,35 +134,31 @@ class _OwnerCalendarScreenState
           ),
 
           Expanded(
-            child: groupsAsync.when(
+            child: gridAsync.when(
               loading: () => const LoadingWidget(),
               error: (e, _) => ErrorStateWidget(
                 message: e.toString().replaceAll('Exception: ', ''),
                 onRetry: () =>
-                    ref.invalidate(calendarPropertyGroupsProvider(null)),
+                    ref.invalidate(calendarGridProvider(gridParams)),
               ),
-              data: (_) => filtered.isEmpty
-                  ? const EmptyStateWidget(
-                      icon: Icons.calendar_today_outlined,
-                      message: 'Không có nhóm phòng nào',
-                    )
-                  : gridAsync.when(
-                      loading: () => const LoadingWidget(),
-                      error: (e, _) => ErrorStateWidget(
-                        message: e.toString().replaceAll('Exception: ', ''),
-                        onRetry: () =>
-                            ref.invalidate(calendarGridProvider(gridParams!)),
-                      ),
-                      data: (grid) => CalendarGridWidget(
-                        rooms: _mapRooms(grid.rooms),
-                        viewMode: _viewMode,
-                        weekStart: _weekStart,
-                        monthStart: _monthStart,
-                        onCellTap: (room, date, cell) => _showLockDialog(
-                            context, room, date, cell, gridParams!),
-                        legendTapHint: 'Tap ô = lock/mở',
-                      ),
-                    ),
+              data: (grid) {
+                final rooms = _mapProperties(grid.properties);
+                if (rooms.isEmpty) {
+                  return const EmptyStateWidget(
+                    icon: Icons.calendar_today_outlined,
+                    message: 'Không có phòng nào',
+                  );
+                }
+                return CalendarGridWidget(
+                  rooms: rooms,
+                  viewMode: _viewMode,
+                  weekStart: _weekStart,
+                  monthStart: _monthStart,
+                  onCellTap: (room, date, cell) => _showLockDialog(
+                      context, room, date, cell, gridParams),
+                  legendTapHint: 'Tap ô = lock/mở',
+                );
+              },
             ),
           ),
         ],
@@ -211,16 +176,19 @@ class _OwnerCalendarScreenState
     final isAvailable = cell.status == DayCellStatus.available;
     final isHold = cell.status == DayCellStatus.hold;
     final isBooked = cell.status == DayCellStatus.booked;
+    final isLocked = cell.status == DayCellStatus.locked;
 
     final statusLabel = switch (cell.status) {
       DayCellStatus.available => 'Trống',
       DayCellStatus.booked => 'Đã bán',
       DayCellStatus.hold => 'Đang giữ',
+      DayCellStatus.locked => 'Đã khoá',
     };
     final statusColor = switch (cell.status) {
       DayCellStatus.available => AppColors.emerald,
       DayCellStatus.booked => AppColors.coral,
       DayCellStatus.hold => AppColors.amber,
+      DayCellStatus.locked => AppColors.slate,
     };
 
     showModalBottomSheet(
@@ -256,10 +224,12 @@ class _OwnerCalendarScreenState
                   ),
                   child: Icon(
                     isBooked
-                        ? Icons.lock_rounded
+                        ? Icons.sell_rounded
                         : isHold
                             ? Icons.lock_clock_rounded
-                            : Icons.lock_open_rounded,
+                            : isLocked
+                                ? Icons.lock_rounded
+                                : Icons.lock_open_rounded,
                     color: statusColor,
                     size: 24,
                   ),
@@ -319,7 +289,19 @@ class _OwnerCalendarScreenState
             const SizedBox(height: 24),
 
             if (isAvailable) ...[
-              // Khoá giữ chỗ
+              // Khoá ngày
+              _ActionBtn(
+                icon: Icons.lock_rounded,
+                label: 'Khoá ngày',
+                sub: 'Không cho khách đặt ngày này',
+                color: AppColors.slate,
+                onTap: () {
+                  Navigator.pop(ctx);
+                  _doLock(room, date, gridParams);
+                },
+              ),
+              const SizedBox(height: 10),
+              // Giữ chỗ
               _ActionBtn(
                 icon: Icons.lock_clock_rounded,
                 label: 'Giữ chỗ',
@@ -327,7 +309,7 @@ class _OwnerCalendarScreenState
                 color: AppColors.amber,
                 onTap: () {
                   Navigator.pop(ctx);
-                  _toggleLock(room, date, DayCellStatus.hold, gridParams);
+                  _doHold(room, date, gridParams);
                 },
               ),
               const SizedBox(height: 10),
@@ -351,8 +333,7 @@ class _OwnerCalendarScreenState
                 color: AppColors.emerald,
                 onTap: () {
                   Navigator.pop(ctx);
-                  _toggleLock(
-                      room, date, DayCellStatus.available, gridParams);
+                  _doUnlock(room, date, gridParams);
                 },
               ),
               const SizedBox(height: 10),
@@ -365,6 +346,18 @@ class _OwnerCalendarScreenState
                 onTap: () {
                   Navigator.pop(ctx);
                   _markSold(room, date, gridParams);
+                },
+              ),
+            ] else if (isLocked) ...[
+              // Mở khoá
+              _ActionBtn(
+                icon: Icons.lock_open_rounded,
+                label: 'Mở khoá ngày',
+                sub: 'Cho phép khách đặt lại ngày này',
+                color: AppColors.emerald,
+                onTap: () {
+                  Navigator.pop(ctx);
+                  _doUnlock(room, date, gridParams);
                 },
               ),
             ] else ...[
@@ -405,8 +398,7 @@ class _OwnerCalendarScreenState
                 color: AppColors.emerald,
                 onTap: () {
                   Navigator.pop(ctx);
-                  _toggleLock(
-                      room, date, DayCellStatus.available, gridParams);
+                  _doUnlock(room, date, gridParams);
                 },
               ),
             ],
@@ -416,37 +408,89 @@ class _OwnerCalendarScreenState
     );
   }
 
-  Future<void> _toggleLock(
+  Future<void> _doLock(
     CalendarRoom room,
     DateTime date,
-    DayCellStatus newStatus,
     CalendarGridParams gridParams,
   ) async {
     final dateStr = DateFormat('yyyy-MM-dd').format(date);
-    final actions = ref.read(calendarActionsProvider.notifier);
-
-    final success = newStatus == DayCellStatus.hold
-        ? await actions.lockRoom(
-            propertyId: room.id, date: dateStr, gridParams: gridParams)
-        : await actions.unlockRoom(
-            propertyId: room.id, date: dateStr, gridParams: gridParams);
+    final success = await ref
+        .read(calendarActionsProvider.notifier)
+        .lockRoom(
+          propertyId: room.id,
+          date: dateStr,
+          gridParams: gridParams,
+          status: 0, // LOCKED
+        );
 
     if (!mounted) return;
-
-    final label =
-        newStatus == DayCellStatus.hold ? 'Đã khoá' : 'Đã mở khoá';
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(
           success
-              ? '$label phòng ${room.code} ngày ${date.day}/${date.month}'
+              ? 'Đã khoá phòng ${room.code} ngày ${date.day}/${date.month}'
               : 'Có lỗi xảy ra, vui lòng thử lại',
         ),
-        backgroundColor: success
-            ? (newStatus == DayCellStatus.hold
-                ? AppColors.amber
-                : AppColors.emerald)
-            : AppColors.coral,
+        backgroundColor: success ? AppColors.slate : AppColors.coral,
+        behavior: SnackBarBehavior.floating,
+        duration: const Duration(seconds: 2),
+      ),
+    );
+  }
+
+  Future<void> _doHold(
+    CalendarRoom room,
+    DateTime date,
+    CalendarGridParams gridParams,
+  ) async {
+    final dateStr = DateFormat('yyyy-MM-dd').format(date);
+    final success = await ref
+        .read(calendarActionsProvider.notifier)
+        .lockRoom(
+          propertyId: room.id,
+          date: dateStr,
+          gridParams: gridParams,
+          status: 1, // BOOKED (giữ chỗ)
+        );
+
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          success
+              ? 'Đã giữ chỗ phòng ${room.code} ngày ${date.day}/${date.month}'
+              : 'Có lỗi xảy ra, vui lòng thử lại',
+        ),
+        backgroundColor: success ? AppColors.amber : AppColors.coral,
+        behavior: SnackBarBehavior.floating,
+        duration: const Duration(seconds: 2),
+      ),
+    );
+  }
+
+  Future<void> _doUnlock(
+    CalendarRoom room,
+    DateTime date,
+    CalendarGridParams gridParams,
+  ) async {
+    final dateStr = DateFormat('yyyy-MM-dd').format(date);
+    final success = await ref
+        .read(calendarActionsProvider.notifier)
+        .unlockRoom(
+          propertyId: room.id,
+          date: dateStr,
+          gridParams: gridParams,
+        );
+
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          success
+              ? 'Đã mở khoá phòng ${room.code} ngày ${date.day}/${date.month}'
+              : 'Có lỗi xảy ra, vui lòng thử lại',
+        ),
+        backgroundColor: success ? AppColors.emerald : AppColors.coral,
         behavior: SnackBarBehavior.floating,
         duration: const Duration(seconds: 2),
       ),

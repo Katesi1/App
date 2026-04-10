@@ -6,68 +6,54 @@ import '../../../data/repositories/calendar_repository.dart';
 final calendarRepositoryProvider =
     Provider<CalendarRepository>((ref) => CalendarRepository());
 
-// ─── Property groups provider ─────────────────────────────────────────────────
-class PropertyGroupFilter {
-  final String? category;
-  final String? ownerId;
-
-  const PropertyGroupFilter({this.category, this.ownerId});
-
-  @override
-  bool operator ==(Object other) =>
-      other is PropertyGroupFilter &&
-      category == other.category &&
-      ownerId == other.ownerId;
-
-  @override
-  int get hashCode => Object.hash(category, ownerId);
-}
-
-final calendarPropertyGroupsProvider = FutureProvider.family<
-    List<CalendarPropertyGroup>, PropertyGroupFilter?>(
-  (ref, filter) async {
-    final repo = ref.read(calendarRepositoryProvider);
-    final result = await repo.getPropertyGroups(
-      category: filter?.category,
-      ownerId: filter?.ownerId,
-    );
-    if (result.success) return result.data!;
-    throw Exception(result.message);
-  },
-);
-
-// ─── Grid provider ────────────────────────────────────────────────────────────
+// ─── Grid params ──────────────────────────────────────────────────────────────
 class CalendarGridParams {
-  final String propertyGroupId;
   final String startDate;
   final String endDate;
+  final String? propertyId;
+  final int? type; // 0=VILLA, 1=HOMESTAY, 2=HOTEL
+  final bool isPublic; // true = /public-grid, false = /grid
 
   const CalendarGridParams({
-    required this.propertyGroupId,
     required this.startDate,
     required this.endDate,
+    this.propertyId,
+    this.type,
+    this.isPublic = false,
   });
 
   @override
   bool operator ==(Object other) =>
       other is CalendarGridParams &&
-      propertyGroupId == other.propertyGroupId &&
       startDate == other.startDate &&
-      endDate == other.endDate;
+      endDate == other.endDate &&
+      propertyId == other.propertyId &&
+      type == other.type &&
+      isPublic == other.isPublic;
 
   @override
-  int get hashCode => Object.hash(propertyGroupId, startDate, endDate);
+  int get hashCode =>
+      Object.hash(startDate, endDate, propertyId, type, isPublic);
 }
 
+// ─── Grid provider ────────────────────────────────────────────────────────────
 final calendarGridProvider =
     FutureProvider.family<CalendarGrid, CalendarGridParams>(
   (ref, params) async {
     final repo = ref.read(calendarRepositoryProvider);
-    final result = await repo.getGrid(
-      propertyGroupId: params.propertyGroupId,
-      startDate: params.startDate,
-      endDate: params.endDate,
-    );
+    final result = params.isPublic
+        ? await repo.getPublicGrid(
+            startDate: params.startDate,
+            endDate: params.endDate,
+            propertyId: params.propertyId,
+            type: params.type,
+          )
+        : await repo.getGrid(
+            startDate: params.startDate,
+            endDate: params.endDate,
+            propertyId: params.propertyId,
+            type: params.type,
+          );
     if (result.success) return result.data!;
     throw Exception(result.message);
   },
@@ -93,9 +79,14 @@ class CalendarActionsNotifier extends StateNotifier<AsyncValue<void>> {
     required String propertyId,
     required String date,
     required CalendarGridParams gridParams,
+    int status = 0,
   }) async {
     state = const AsyncValue.loading();
-    final result = await _repo.lockRoom(propertyId: propertyId, date: date);
+    final result = await _repo.lockRoom(
+      propertyId: propertyId,
+      date: date,
+      status: status,
+    );
     if (result.success) {
       _ref.invalidate(calendarGridProvider(gridParams));
       state = const AsyncValue.data(null);
