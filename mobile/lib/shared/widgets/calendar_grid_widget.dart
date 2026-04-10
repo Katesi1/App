@@ -66,12 +66,46 @@ class CalendarGridWidget extends StatefulWidget {
 
 class _CalendarGridWidgetState extends State<CalendarGridWidget> {
   final _verticalController = ScrollController();
-  final _horizontalController = ScrollController();
+  final _headerHorizontalController = ScrollController();
+  final _bodyHorizontalController = ScrollController();
+  bool _isSyncing = false;
+
+  @override
+  void initState() {
+    super.initState();
+    // Sync header → body
+    _headerHorizontalController.addListener(_syncHeaderToBody);
+    // Sync body → header
+    _bodyHorizontalController.addListener(_syncBodyToHeader);
+  }
+
+  void _syncHeaderToBody() {
+    if (_isSyncing) return;
+    _isSyncing = true;
+    if (_bodyHorizontalController.hasClients) {
+      _bodyHorizontalController.jumpTo(
+          _headerHorizontalController.offset);
+    }
+    _isSyncing = false;
+  }
+
+  void _syncBodyToHeader() {
+    if (_isSyncing) return;
+    _isSyncing = true;
+    if (_headerHorizontalController.hasClients) {
+      _headerHorizontalController.jumpTo(
+          _bodyHorizontalController.offset);
+    }
+    _isSyncing = false;
+  }
 
   @override
   void dispose() {
+    _headerHorizontalController.removeListener(_syncHeaderToBody);
+    _bodyHorizontalController.removeListener(_syncBodyToHeader);
     _verticalController.dispose();
-    _horizontalController.dispose();
+    _headerHorizontalController.dispose();
+    _bodyHorizontalController.dispose();
     super.dispose();
   }
 
@@ -222,7 +256,7 @@ class _CalendarGridWidgetState extends State<CalendarGridWidget> {
             ),
             Expanded(
               child: SingleChildScrollView(
-                controller: _horizontalController,
+                controller: _headerHorizontalController,
                 scrollDirection: Axis.horizontal,
                 physics: const ClampingScrollPhysics(),
                 child: SizedBox(width: gridWidth, child: dateHeaders()),
@@ -271,21 +305,16 @@ class _CalendarGridWidgetState extends State<CalendarGridWidget> {
               Expanded(
                 child: NotificationListener<ScrollNotification>(
                   onNotification: (notification) {
-                    if (notification is ScrollUpdateNotification) {
-                      if (notification.metrics.axis == Axis.horizontal) {
-                        _horizontalController.jumpTo(
-                          notification.metrics.pixels,
-                        );
-                      }
-                      if (notification.metrics.axis == Axis.vertical) {
-                        _verticalController.jumpTo(
-                          notification.metrics.pixels,
-                        );
-                      }
+                    if (notification is ScrollUpdateNotification &&
+                        notification.metrics.axis == Axis.vertical) {
+                      _verticalController.jumpTo(
+                        notification.metrics.pixels,
+                      );
                     }
                     return false;
                   },
                   child: SingleChildScrollView(
+                    controller: _bodyHorizontalController,
                     scrollDirection: Axis.horizontal,
                     child: SizedBox(
                       width: gridWidth,
