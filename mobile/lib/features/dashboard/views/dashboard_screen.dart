@@ -2,9 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
+import '../../../core/constants/app_constants.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/utils/helpers.dart';
 import '../../auth/controllers/auth_controller.dart';
+import '../../bookings/controllers/booking_controller.dart';
 import '../../dashboard/controllers/dashboard_controller.dart';
 import '../../../shared/widgets/app_scaffold.dart';
 import '../../../shared/widgets/loading_widget.dart';
@@ -16,6 +18,7 @@ class DashboardScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final user = ref.watch(currentUserProvider);
     final statsAsync = ref.watch(dashboardStatsProvider);
+    final bookingsAsync = ref.watch(bookingListProvider(null));
     final now = DateTime.now();
     final dayOfWeek = AppHelpers.vietnameseDayOfWeek(now.weekday);
     final formattedDate = '$dayOfWeek, ${now.day} tháng ${now.month}';
@@ -166,7 +169,7 @@ class DashboardScreen extends ConsumerWidget {
 
                 const SizedBox(height: 28),
 
-                // ── Booking hôm nay ─────────────────────────────────────
+                // ── Booking gần đây ─────────────────────────────────────
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 16),
                   child: Column(
@@ -175,7 +178,7 @@ class DashboardScreen extends ConsumerWidget {
                       Row(
                         children: [
                           Expanded(
-                              child: _SectionLabel('BOOKING HÔM NAY')),
+                              child: _SectionLabel('BOOKING GẦN ĐÂY')),
                           GestureDetector(
                             onTap: () => context.push('/bookings'),
                             child: Text(
@@ -190,55 +193,47 @@ class DashboardScreen extends ConsumerWidget {
                         ],
                       ),
                       const SizedBox(height: 12),
-                      _BookingItem(
-                        initials: '🏠',
-                        name: 'Nguyễn Văn An',
-                        meta: 'P.101 · Deluxe · 2 khách',
-                        status: 'Đã xác nhận',
-                        statusColor: AppColors.emerald,
-                        statusBg: AppColors.emeraldLight,
-                        price: '1.800.000đ',
-                      ),
-                      const SizedBox(height: 10),
-                      _BookingItem(
-                        initials: '🌊',
-                        name: 'Trần Thị Bích',
-                        meta: 'P.203 · Ocean View · 3 khách',
-                        status: 'Giữ chỗ',
-                        statusColor: AppColors.brownDark,
-                        statusBg: AppColors.goldLight,
-                        price: '2.400.000đ',
-                      ),
-                    ],
-                  ),
-                ),
-
-                const SizedBox(height: 28),
-
-                // ── Hoạt động gần đây ─────────────────────────────────
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      _SectionLabel('HOẠT ĐỘNG GẦN ĐÂY'),
-                      const SizedBox(height: 12),
-                      _ActivityItem(
-                        icon: Icons.bookmark_add_outlined,
-                        iconColor: AppColors.oceanMid,
-                        iconBg: AppColors.oceanLight,
-                        title: 'Booking mới — Phòng 201',
-                        subtitle: 'Nguyễn Thị Lan · 2 đêm · 19–21/3',
-                        time: '2 phút trước',
-                      ),
-                      _ActivityItem(
-                        icon: Icons.check_circle_outline,
-                        iconColor: AppColors.emerald,
-                        iconBg: AppColors.emeraldLight,
-                        title: 'Check-in — Phòng 305',
-                        subtitle: 'Trần Văn Nam · Đã xác nhận',
-                        time: '15 phút trước',
-                        isLast: true,
+                      bookingsAsync.when(
+                        loading: () => const SizedBox(
+                          height: 60,
+                          child: Center(child: LoadingWidget()),
+                        ),
+                        error: (_, __) => const SizedBox.shrink(),
+                        data: (bookings) {
+                          if (bookings.isEmpty) {
+                            return const EmptyStateWidget(
+                              icon: Icons.book_outlined,
+                              message: 'Chưa có booking nào',
+                            );
+                          }
+                          final recent = bookings.take(5).toList();
+                          return Column(
+                            children: recent.map((b) {
+                              final statusColor =
+                                  AppHelpers.bookingStatusColor(
+                                      b.status.value);
+                              return Padding(
+                                padding:
+                                    const EdgeInsets.only(bottom: 10),
+                                child: _BookingItem(
+                                  initials: (b.customerName ?? 'K')
+                                      .substring(0, 1)
+                                      .toUpperCase(),
+                                  name: b.customerName ?? 'Không tên',
+                                  meta:
+                                      '${b.propertyName} · ${b.nights} đêm',
+                                  status: b.status.label,
+                                  statusColor: statusColor,
+                                  statusBg:
+                                      statusColor.withValues(alpha: 0.12),
+                                  price: b.depositAmount != null
+                                      ? '${AppHelpers.formatPrice(b.depositAmount!)}đ'
+                                      : '--',
+                                ),
+                              );
+                            }).toList(),
+                          );
+                        },
                       ),
                     ],
                   ),
@@ -725,101 +720,6 @@ class _QuickAction extends StatelessWidget {
             ],
           ),
         ),
-      ),
-    );
-  }
-}
-
-// ─── Activity Item ────────────────────────────────────────────────────────────
-class _ActivityItem extends StatelessWidget {
-  final IconData icon;
-  final Color iconColor;
-  final Color iconBg;
-  final String title;
-  final String subtitle;
-  final String time;
-  final bool isLast;
-
-  const _ActivityItem({
-    required this.icon,
-    required this.iconColor,
-    required this.iconBg,
-    required this.title,
-    required this.subtitle,
-    required this.time,
-    this.isLast = false,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-
-    return IntrinsicHeight(
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Timeline
-          Column(
-            children: [
-              Container(
-                width: 36,
-                height: 36,
-                decoration: BoxDecoration(
-                  color: iconBg,
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: Icon(icon, color: iconColor, size: 18),
-              ),
-              if (!isLast)
-                Expanded(
-                  child: Container(
-                    width: 1.5,
-                    margin: const EdgeInsets.symmetric(vertical: 4),
-                    color: AppColors.border,
-                  ),
-                ),
-            ],
-          ),
-          const SizedBox(width: 12),
-          // Content
-          Expanded(
-            child: Padding(
-              padding: EdgeInsets.only(bottom: isLast ? 0 : 14),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const SizedBox(height: 2),
-                  Text(
-                    title,
-                    style: GoogleFonts.beVietnamPro(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w600,
-                      color: isDark
-                          ? AppColors.darkOnSurface
-                          : AppColors.navy,
-                    ),
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    subtitle,
-                    style: GoogleFonts.beVietnamPro(
-                      fontSize: 12,
-                      color: AppColors.muted,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    time,
-                    style: GoogleFonts.beVietnamPro(
-                      fontSize: 11,
-                      color: AppColors.slate,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ],
       ),
     );
   }

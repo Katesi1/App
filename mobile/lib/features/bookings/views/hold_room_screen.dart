@@ -27,6 +27,7 @@ class _HoldRoomScreenState extends ConsumerState<HoldRoomScreen> {
   final _notesCtrl = TextEditingController();
   DateTime? _checkinDate;
   DateTime? _checkoutDate;
+  double? _autoDeposit;
 
   @override
   void dispose() {
@@ -62,7 +63,28 @@ class _HoldRoomScreenState extends ConsumerState<HoldRoomScreen> {
       } else {
         _checkoutDate = picked;
       }
+      _updateAutoDeposit();
     });
+  }
+
+  /// Tự tính tiền cọc = 50% x giá phòng x số đêm
+  void _updateAutoDeposit() {
+    if (_checkinDate == null || _checkoutDate == null) return;
+    final room = ref.read(roomDetailProvider(widget.propertyId)).valueOrNull;
+    if (room?.price == null) return;
+    final nights = _checkoutDate!.difference(_checkinDate!).inDays;
+    if (nights <= 0) return;
+    final pricePerNight = room!.price!.weekdayPrice;
+    final deposit = (pricePerNight * nights * 0.5).round();
+    _autoDeposit = deposit.toDouble();
+    // Format VND
+    final digits = deposit.toString();
+    final buf = StringBuffer();
+    for (var i = 0; i < digits.length; i++) {
+      if (i > 0 && (digits.length - i) % 3 == 0) buf.write('.');
+      buf.write(digits[i]);
+    }
+    _depositCtrl.text = buf.toString();
   }
 
   Future<void> _holdRoom() async {
@@ -300,7 +322,10 @@ class _HoldRoomScreenState extends ConsumerState<HoldRoomScreen> {
                   textInputAction: TextInputAction.next,
                   inputFormatters: [VndInputFormatter()],
                   decoration: InputDecoration(
-                    labelText: 'Tiền cọc',
+                    labelText: 'Tiền cọc (50%)',
+                    helperText: _nights > 0
+                        ? '$_nights đêm · Cọc 50%'
+                        : 'Tự tính khi chọn ngày',
                     suffixText: '₫',
                     prefixIcon:
                         Icon(Icons.payments_outlined, color: colors.primary),

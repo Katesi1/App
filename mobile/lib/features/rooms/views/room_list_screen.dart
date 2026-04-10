@@ -8,7 +8,6 @@ import '../../../data/models/room_model.dart';
 import '../../../shared/widgets/app_scaffold.dart';
 import '../../../shared/widgets/date_picker_tile.dart';
 import '../../../shared/widgets/filter_chip_tile.dart';
-import '../../../shared/widgets/guest_counter.dart';
 import '../../../shared/widgets/loading_widget.dart';
 import '../../../shared/widgets/section_label.dart';
 import '../../auth/controllers/auth_controller.dart';
@@ -142,6 +141,12 @@ class _RoomListScreenState extends ConsumerState<RoomListScreen>
     // Filter theo view
     if (_selectedViews.isNotEmpty) {
       list = list.where((r) => _selectedViews.contains(r.view)).toList();
+    }
+
+    // Filter theo số khách: standardGuests >= tổng (người lớn + trẻ em)
+    final totalGuests = _adults + _children;
+    if (totalGuests > 0) {
+      list = list.where((r) => r.standardGuests >= totalGuests).toList();
     }
 
     return list;
@@ -398,20 +403,56 @@ class _RoomListScreenState extends ConsumerState<RoomListScreen>
                   child: Row(
                     children: [
                       Expanded(
-                        child: GuestCounter(
-                          label: 'Người lớn',
-                          value: tempAdults,
-                          onChanged: (v) =>
-                              setSheetState(() => tempAdults = v),
+                        child: TextField(
+                          keyboardType: TextInputType.number,
+                          decoration: InputDecoration(
+                            labelText: 'Người lớn',
+                            hintText: '0',
+                            prefixIcon: const Icon(
+                                Icons.person_outline_rounded,
+                                size: 20),
+                            border: OutlineInputBorder(
+                              borderRadius:
+                                  BorderRadius.circular(10),
+                            ),
+                            contentPadding:
+                                const EdgeInsets.symmetric(
+                                    horizontal: 12, vertical: 12),
+                          ),
+                          controller: TextEditingController(
+                              text: tempAdults > 0
+                                  ? '$tempAdults'
+                                  : ''),
+                          onChanged: (v) => setSheetState(() =>
+                              tempAdults =
+                                  int.tryParse(v) ?? 0),
                         ),
                       ),
                       const SizedBox(width: 16),
                       Expanded(
-                        child: GuestCounter(
-                          label: 'Trẻ em',
-                          value: tempChildren,
-                          onChanged: (v) => setSheetState(
-                              () => tempChildren = v),
+                        child: TextField(
+                          keyboardType: TextInputType.number,
+                          decoration: InputDecoration(
+                            labelText: 'Trẻ em',
+                            hintText: '0',
+                            prefixIcon: const Icon(
+                                Icons.child_care_rounded,
+                                size: 20),
+                            border: OutlineInputBorder(
+                              borderRadius:
+                                  BorderRadius.circular(10),
+                            ),
+                            contentPadding:
+                                const EdgeInsets.symmetric(
+                                    horizontal: 12, vertical: 12),
+                          ),
+                          controller: TextEditingController(
+                              text: tempChildren > 0
+                                  ? '$tempChildren'
+                                  : ''),
+                          onChanged: (v) => setSheetState(() =>
+                              tempChildren =
+                                  int.tryParse(v) ?? 0),
                         ),
                       ),
                     ],
