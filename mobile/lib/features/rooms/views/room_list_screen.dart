@@ -112,9 +112,11 @@ class _RoomListScreenState extends ConsumerState<RoomListScreen>
   /// [typeValues] null = tab "Tất cả" → không filter theo type.
   /// [typeValues] có thể chứa nhiều type (vd: Homestay = [1]).
   List<RoomModel> _filterByTab(List<RoomModel> rooms, List<int>? typeValues) {
-    var list = typeValues == null
-        ? List<RoomModel>.from(rooms)
-        : rooms.where((r) => typeValues.contains(r.type)).toList();
+    // Ẩn phòng tạm nghỉ
+    var list = rooms.where((r) => r.isActive).toList();
+    list = typeValues == null
+        ? List<RoomModel>.from(list)
+        : list.where((r) => typeValues.contains(r.type)).toList();
 
     // Search
     if (_searchQuery.isNotEmpty) {

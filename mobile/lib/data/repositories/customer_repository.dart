@@ -33,6 +33,7 @@ class CustomerRepository {
       );
       final list = (response.data['data'] as List)
           .map((e) => RoomModel.fromJson(e))
+          .where((r) => r.isActive)
           .toList();
       return ApiResponse(success: true, data: list, message: '');
     } on DioException catch (e) {

@@ -8,6 +8,7 @@ import '../../../core/theme/app_spacing.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import '../../../shared/widgets/loading_widget.dart';
 import '../../rooms/controllers/room_controller.dart';
+import '../controllers/property_controller.dart';
 
 class PropertyManageScreen extends ConsumerStatefulWidget {
   final String homestayId;
@@ -314,11 +315,13 @@ class _PropertyManageScreenState
   Future<void> _toggleActive(bool value) async {
     setState(() => _togglingActive = true);
     final ok = await ref
-        .read(roomActionsProvider.notifier)
-        .update(widget.homestayId, {'isActive': value});
+        .read(homestayActionsProvider.notifier)
+        .toggleActive(widget.homestayId, value);
     if (mounted) {
       setState(() => _togglingActive = false);
-      if (!ok) {
+      if (ok) {
+        ref.invalidate(roomDetailProvider(widget.homestayId));
+      } else {
         AppSnackBar.error(context, 'Không thể cập nhật trạng thái');
       }
     }
@@ -357,15 +360,20 @@ class _PropertyManageScreenState
     if (ok != true || !mounted) return;
 
     final result = await ref
-        .read(roomActionsProvider.notifier)
+        .read(homestayActionsProvider.notifier)
         .delete(widget.homestayId);
     if (!context.mounted) return;
 
     if (result) {
+      ref.invalidate(roomListProvider);
       AppSnackBar.success(context, 'Đã xoá thành công');
       context.pop();
     } else {
-      AppSnackBar.error(context, 'Không thể xoá');
+      final error = ref.read(homestayActionsProvider);
+      final msg = error.hasError
+          ? error.error.toString().replaceAll('Exception: ', '')
+          : 'Không thể xoá';
+      AppSnackBar.error(context, msg);
     }
   }
 
