@@ -430,16 +430,24 @@ class _CalendarGridWidgetState extends State<CalendarGridWidget> {
         ),
     };
 
+    // Disable tap cho ngày quá khứ
+    final today = DateTime.now();
+    final todayDate = DateTime(today.year, today.month, today.day);
+    final isPast = date.isBefore(todayDate);
+
     return GestureDetector(
-      onTap: widget.onCellTap != null
+      onTap: (widget.onCellTap != null && !isPast)
           ? () => widget.onCellTap!(room, date, cell)
           : null,
-      child: _calendarCellShell(
-        width: width,
-        height: height,
-        bgColor: bgColor,
-        borderColor: borderColor,
-        child: statusChild,
+      child: Opacity(
+        opacity: isPast ? 0.4 : 1.0,
+        child: _calendarCellShell(
+          width: width,
+          height: height,
+          bgColor: bgColor,
+          borderColor: borderColor,
+          child: statusChild,
+        ),
       ),
     );
   }

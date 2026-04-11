@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../data/models/calendar_model.dart';
 import '../../../data/repositories/calendar_repository.dart';
@@ -36,10 +38,20 @@ class CalendarGridParams {
       Object.hash(startDate, endDate, propertyId, type, isPublic);
 }
 
-// ─── Grid provider ────────────────────────────────────────────────────────────
+// ─── Grid provider (auto-refresh mỗi 30s khi đang watch) ────────────────────
 final calendarGridProvider =
-    FutureProvider.family<CalendarGrid, CalendarGridParams>(
+    FutureProvider.family.autoDispose<CalendarGrid, CalendarGridParams>(
   (ref, params) async {
+    // Auto-refresh mỗi 30s — timer tự huỷ khi không còn screen nào watch
+    final timer = Timer.periodic(const Duration(seconds: 30), (_) {
+      ref.invalidateSelf();
+    });
+    ref.onDispose(timer.cancel);
+
+    // Giữ cache 5 phút khi chuyển tab tránh fetch lại ngay
+    final link = ref.keepAlive();
+    Timer(const Duration(minutes: 5), link.close);
+
     final repo = ref.read(calendarRepositoryProvider);
     final result = params.isPublic
         ? await repo.getPublicGrid(
@@ -88,7 +100,7 @@ class CalendarActionsNotifier extends StateNotifier<AsyncValue<void>> {
       status: status,
     );
     if (result.success) {
-      _ref.invalidate(calendarGridProvider(gridParams));
+      _ref.invalidate(calendarGridProvider);
       state = const AsyncValue.data(null);
       return true;
     }
@@ -104,7 +116,7 @@ class CalendarActionsNotifier extends StateNotifier<AsyncValue<void>> {
     state = const AsyncValue.loading();
     final result = await _repo.unlockRoom(propertyId: propertyId, date: date);
     if (result.success) {
-      _ref.invalidate(calendarGridProvider(gridParams));
+      _ref.invalidate(calendarGridProvider);
       state = const AsyncValue.data(null);
       return true;
     }
@@ -120,7 +132,7 @@ class CalendarActionsNotifier extends StateNotifier<AsyncValue<void>> {
     state = const AsyncValue.loading();
     final result = await _repo.markAsSold(propertyId: propertyId, date: date);
     if (result.success) {
-      _ref.invalidate(calendarGridProvider(gridParams));
+      _ref.invalidate(calendarGridProvider);
       state = const AsyncValue.data(null);
       return true;
     }

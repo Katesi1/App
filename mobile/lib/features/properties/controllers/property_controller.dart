@@ -1,6 +1,8 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../data/models/homestay_model.dart';
 import '../../../data/repositories/homestay_repository.dart';
+import '../../calendar/controllers/calendar_controller.dart';
+import '../../rooms/controllers/room_controller.dart';
 
 // ─── Repository provider ──────────────────────────────────────────────────────
 final homestayRepositoryProvider = Provider<HomestayRepository>(
@@ -69,6 +71,8 @@ class HomestayActionsNotifier extends StateNotifier<AsyncValue<void>> {
       _ref.invalidate(homestayListProvider(true));
       _ref.invalidate(homestayListProvider(false));
       _ref.invalidate(homestayDetailProvider(id));
+      _ref.invalidate(calendarGridProvider);
+      _ref.invalidate(roomListProvider);
       state = const AsyncValue.data(null);
       return true;
     }
@@ -82,6 +86,8 @@ class HomestayActionsNotifier extends StateNotifier<AsyncValue<void>> {
     if (result.success) {
       _ref.invalidate(homestayListProvider(true));
       _ref.invalidate(homestayListProvider(false));
+      _ref.invalidate(calendarGridProvider);
+      _ref.invalidate(roomListProvider);
       state = const AsyncValue.data(null);
       return true;
     }

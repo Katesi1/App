@@ -451,7 +451,7 @@ class _OwnerCalendarScreenState
           propertyId: room.id,
           date: dateStr,
           gridParams: gridParams,
-          status: 1, // BOOKED (giữ chỗ)
+          status: 1, // HOLD (giữ chỗ)
         );
 
     if (!mounted) return;

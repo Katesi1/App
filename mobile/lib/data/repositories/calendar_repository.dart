@@ -63,10 +63,11 @@ class CalendarRepository {
   }
 
   /// POST /calendar/lock — khoá phòng theo ngày
+  /// status: 0=LOCKED, 1=HOLD, 2=BOOKED
   Future<ApiResponse<Map<String, dynamic>>> lockRoom({
     required String propertyId,
     required String date,
-    int status = 0, // 0=LOCKED (mặc định), 1=BOOKED
+    int status = 0,
   }) async {
     try {
       final response = await _dio.post(

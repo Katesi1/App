@@ -7,7 +7,9 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart' show DateFormat;
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
+import '../../../data/models/calendar_model.dart';
 import '../../../shared/widgets/loading_widget.dart';
+import '../../calendar/controllers/calendar_controller.dart';
 import '../../rooms/controllers/room_controller.dart';
 import '../controllers/booking_controller.dart';
 
@@ -28,6 +30,7 @@ class _HoldRoomScreenState extends ConsumerState<HoldRoomScreen> {
   DateTime? _checkinDate;
   DateTime? _checkoutDate;
   double? _autoDeposit;
+  List<String> _dateConflicts = [];
 
   @override
   void dispose() {
@@ -65,6 +68,44 @@ class _HoldRoomScreenState extends ConsumerState<HoldRoomScreen> {
       }
       _updateAutoDeposit();
     });
+    _checkDateConflicts();
+  }
+
+  /// Check xung đột ngày với calendar (đã bán, giữ, khoá)
+  Future<void> _checkDateConflicts() async {
+    if (_checkinDate == null || _checkoutDate == null) {
+      setState(() => _dateConflicts = []);
+      return;
+    }
+    final startStr = DateFormat('yyyy-MM-dd').format(_checkinDate!);
+    final endStr = DateFormat('yyyy-MM-dd').format(
+      _checkoutDate!.subtract(const Duration(days: 1)),
+    );
+    final params = CalendarGridParams(
+      startDate: startStr,
+      endDate: endStr,
+      propertyId: widget.propertyId,
+      isPublic: true,
+    );
+    final gridResult = await ref.read(calendarGridProvider(params).future);
+    if (!mounted) return;
+
+    final conflicts = <String>[];
+    for (final prop in gridResult.properties) {
+      if (prop.id != widget.propertyId) continue;
+      for (final day in prop.days) {
+        if (day.status == CalendarDayStatus.available) continue;
+        final label = switch (day.status) {
+          CalendarDayStatus.booked => 'Đã bán',
+          CalendarDayStatus.hold => 'Đang giữ',
+          CalendarDayStatus.locked => 'Đã khoá',
+          _ => '',
+        };
+        final dt = DateTime.parse(day.date);
+        conflicts.add('${dt.day}/${dt.month}: $label');
+      }
+    }
+    setState(() => _dateConflicts = conflicts);
   }
 
   /// Tự tính tiền cọc = 50% x giá phòng x số đêm
@@ -96,8 +137,8 @@ class _HoldRoomScreenState extends ConsumerState<HoldRoomScreen> {
 
     final success = await ref.read(bookingActionsProvider.notifier).hold({
       'propertyId': widget.propertyId,
-      'checkinDate': _checkinDate!.toIso8601String(),
-      'checkoutDate': _checkoutDate!.toIso8601String(),
+      'checkinDate': DateFormat('yyyy-MM-dd').format(_checkinDate!),
+      'checkoutDate': DateFormat('yyyy-MM-dd').format(_checkoutDate!),
       if (_customerNameCtrl.text.trim().isNotEmpty)
         'customerName': _customerNameCtrl.text.trim(),
       if (_customerPhoneCtrl.text.trim().isNotEmpty)
@@ -239,6 +280,53 @@ class _HoldRoomScreenState extends ConsumerState<HoldRoomScreen> {
                     ),
                   ],
                 ).animate(delay: 50.ms).fadeIn(duration: 300.ms),
+
+                // Date conflict warning
+                if (_dateConflicts.isNotEmpty) ...[
+                  const SizedBox(height: AppSpacing.sm),
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(AppSpacing.md),
+                    decoration: BoxDecoration(
+                      color: AppColors.coral.withValues(alpha: 0.08),
+                      borderRadius: BorderRadius.circular(AppRadius.md),
+                      border: Border.all(
+                        color: AppColors.coral.withValues(alpha: 0.3),
+                      ),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            const Icon(Icons.warning_amber_rounded,
+                                color: AppColors.coral, size: 18),
+                            const SizedBox(width: 6),
+                            Text(
+                              'Ngày không khả dụng',
+                              style: GoogleFonts.beVietnamPro(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w700,
+                                color: AppColors.coral,
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 6),
+                        ...(_dateConflicts.map((c) => Padding(
+                              padding: const EdgeInsets.only(bottom: 2),
+                              child: Text(
+                                '• $c',
+                                style: GoogleFonts.beVietnamPro(
+                                  fontSize: 12,
+                                  color: AppColors.coral,
+                                ),
+                              ),
+                            ))),
+                      ],
+                    ),
+                  ),
+                ],
 
                 // Night count + estimated price
                 if (_nights > 0) ...[
@@ -392,7 +480,8 @@ class _HoldRoomScreenState extends ConsumerState<HoldRoomScreen> {
                         )
                       : FilledButton.icon(
                           key: const ValueKey('hold-btn'),
-                          onPressed: _holdRoom,
+                          onPressed:
+                              _dateConflicts.isEmpty ? _holdRoom : null,
                           icon: const Icon(Icons.lock_clock_rounded),
                           label: Text(
                             'Giữ phòng 30 phút',
