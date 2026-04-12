@@ -40,8 +40,10 @@ final bookingDetailProvider =
 });
 
 // ─── List provider (optional propertyId filter) ───────────────────────────────
-final bookingListProvider =
-    FutureProvider.family<List<BookingModel>, String?>((ref, propertyId) async {
+final bookingListProvider = FutureProvider.autoDispose
+    .family<List<BookingModel>, String?>((ref, propertyId) async {
+  final link = ref.keepAlive();
+  Future.delayed(const Duration(minutes: 2), link.close);
   final repo = ref.read(bookingRepositoryProvider);
   final result = await repo.getBookings(propertyId: propertyId);
   if (result.success) return result.data!;

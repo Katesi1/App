@@ -7,6 +7,7 @@ import '../models/room_model.dart';
 class RoomRepository {
   final _dio = ApiClient.instance;
 
+  /// Lấy phòng scoped theo owner (dùng cho quản lý)
   Future<ApiResponse<List<RoomModel>>> getRooms({
     String? homestayId,
     bool includeInactive = true,
@@ -21,6 +22,20 @@ class RoomRepository {
       );
       final list = (response.data['data'] as List)
           .map((e) => RoomModel.fromJson(e))
+          .toList();
+      return ApiResponse(success: true, data: list, message: '');
+    } on DioException catch (e) {
+      return ApiResponse(success: false, message: parseDioError(e));
+    }
+  }
+
+  /// Lấy TẤT CẢ phòng active (dùng cho danh sách phòng — mọi role đều thấy)
+  Future<ApiResponse<List<RoomModel>>> getAllPublicRooms() async {
+    try {
+      final response = await _dio.get(ApiConstants.propertiesPublic);
+      final list = (response.data['data'] as List)
+          .map((e) => RoomModel.fromJson(e))
+          .where((r) => r.isActive)
           .toList();
       return ApiResponse(success: true, data: list, message: '');
     } on DioException catch (e) {
@@ -83,14 +98,23 @@ class RoomRepository {
     try {
       final formData = FormData();
       for (final path in filePaths) {
+        final fileName = path.split('/').last;
         formData.files.add(MapEntry(
           'images',
-          await MultipartFile.fromFile(path),
+          await MultipartFile.fromFile(
+            path,
+            filename: fileName,
+          ),
         ));
       }
       final response = await _dio.post(
         ApiConstants.propertyImages(roomId),
         data: formData,
+        options: Options(
+          contentType: 'multipart/form-data',
+          sendTimeout: const Duration(seconds: 60),
+          receiveTimeout: const Duration(seconds: 60),
+        ),
       );
       final list = (response.data['data'] as List)
           .map((e) => RoomImageModel.fromJson(e))

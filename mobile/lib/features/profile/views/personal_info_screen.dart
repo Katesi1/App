@@ -131,6 +131,8 @@ class _PersonalInfoScreenState
     final isDark =
         Theme.of(context).brightness == Brightness.dark;
     final topPad = MediaQuery.of(context).padding.top;
+    final user = ref.watch(currentUserProvider);
+    final isAdmin = user?.isAdmin ?? false;
     final initial = _nameController.text.isNotEmpty
         ? _nameController.text[0].toUpperCase()
         : 'U';
@@ -199,10 +201,15 @@ class _PersonalInfoScreenState
                             label: 'Email',
                             field: TextFormField(
                               controller: _emailController,
+                              enabled: isAdmin,
                               keyboardType:
                                   TextInputType.emailAddress,
                               decoration: _inputDecoration(
-                                hintText: 'Nhập email',
+                                hintText: isAdmin
+                                    ? 'Nhập email'
+                                    : _emailController.text.isEmpty
+                                        ? 'Chưa có email'
+                                        : '',
                                 prefixIcon: Icons.email_outlined,
                               ),
                             ),

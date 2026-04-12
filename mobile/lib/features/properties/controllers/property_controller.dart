@@ -37,17 +37,19 @@ class HomestayActionsNotifier extends StateNotifier<AsyncValue<void>> {
   HomestayActionsNotifier(this._repo, this._ref)
       : super(const AsyncValue.data(null));
 
-  Future<bool> create(Map<String, dynamic> data) async {
+  /// Trả về ID phòng vừa tạo, hoặc null nếu lỗi
+  Future<String?> create(Map<String, dynamic> data) async {
     state = const AsyncValue.loading();
     final result = await _repo.createHomestay(data);
     if (result.success) {
       _ref.invalidate(homestayListProvider(true));
       _ref.invalidate(homestayListProvider(false));
+      _ref.invalidate(allRoomsProvider);
       state = const AsyncValue.data(null);
-      return true;
+      return result.data!.id;
     }
     state = AsyncValue.error(result.message, StackTrace.current);
-    return false;
+    return null;
   }
 
   Future<bool> update(String id, Map<String, dynamic> data) async {

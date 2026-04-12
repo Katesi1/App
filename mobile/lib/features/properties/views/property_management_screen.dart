@@ -105,6 +105,7 @@ class _PropertyManagementScreenState extends ConsumerState<PropertyManagementScr
     final homestaysAsync = ref.watch(homestayListProvider(true));
     final user = ref.watch(currentUserProvider);
     final canEdit = user?.canEdit ?? false;
+    final canManageProperty = user?.canManageProperty ?? false;
 
     return Scaffold(
       body: NestedScrollView(
@@ -299,7 +300,7 @@ class _PropertyManagementScreenState extends ConsumerState<PropertyManagementScr
           ),
         ),
       ),
-      floatingActionButton: canEdit
+      floatingActionButton: canManageProperty
           ? FloatingActionButton(
               onPressed: () => context.push('/properties/new'),
               backgroundColor: AppColors.ocean,

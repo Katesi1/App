@@ -9,6 +9,7 @@ class UserModel {
   final bool isActive;
   final int? gender;
   final String? dateOfBirth;
+  final String? ownerId;
 
   UserModel({
     required this.id,
@@ -19,6 +20,7 @@ class UserModel {
     this.isActive = true,
     this.gender,
     this.dateOfBirth,
+    this.ownerId,
   });
 
   factory UserModel.fromJson(Map<String, dynamic> json) => UserModel(
@@ -30,6 +32,7 @@ class UserModel {
         isActive: json['isActive'] ?? true,
         gender: json['gender'],
         dateOfBirth: json['dateOfBirth'],
+        ownerId: json['ownerId'],
       );
 
   Map<String, dynamic> toJson() => {
@@ -41,6 +44,7 @@ class UserModel {
         'isActive': isActive,
         if (gender != null) 'gender': gender,
         if (dateOfBirth != null) 'dateOfBirth': dateOfBirth,
+        if (ownerId != null) 'ownerId': ownerId,
       };
 
   String toJsonString() => jsonEncode(toJson());
@@ -57,6 +61,16 @@ class UserModel {
   /// ADMIN + OWNER + SALE = quản lý (xem dashboard, CRUD phòng/booking)
   bool get isManagement => isAdmin || isOwner || isSale;
 
-  /// Có quyền chỉnh sửa (tạo/sửa phòng, homestay)
+  /// Có quyền chỉnh sửa (sửa phòng, booking, lịch)
   bool get canEdit => isAdmin || isOwner || isSale;
+
+  /// Có quyền tạo/xóa property (SALE không được)
+  bool get canManageProperty => isAdmin || isOwner;
+
+  /// SALE đã được gán cho owner chưa
+  bool get hasOwner => ownerId != null;
+
+  /// ID owner hiệu lực: OWNER → mình, SALE → ownerId
+  String? get effectiveOwnerId =>
+      isOwner ? id : (isSale ? ownerId : null);
 }

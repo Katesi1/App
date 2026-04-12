@@ -209,13 +209,9 @@ class _PropertyInfoScreenState extends ConsumerState<PropertyInfoScreen> {
                     spacing: 8,
                     runSpacing: 8,
                     children: [
-                      for (var i = 1; i <= 10; i++)
+                      for (var i = 1; i <= 20; i++)
                         _chip('$i', _standardGuests == i,
                             () => setState(() => _standardGuests = i)),
-                      _chip('15', _standardGuests == 15,
-                          () => setState(() => _standardGuests = 15)),
-                      _chip('20', _standardGuests == 20,
-                          () => setState(() => _standardGuests = 20)),
                     ],
                   ),
 
@@ -228,13 +224,9 @@ class _PropertyInfoScreenState extends ConsumerState<PropertyInfoScreen> {
                     spacing: 8,
                     runSpacing: 8,
                     children: [
-                      for (var i = 1; i <= 10; i++)
+                      for (var i = 1; i <= 20; i++)
                         _chip('$i', _maxGuests == i,
                             () => setState(() => _maxGuests = i)),
-                      _chip('15', _maxGuests == 15,
-                          () => setState(() => _maxGuests = 15)),
-                      _chip('20', _maxGuests == 20,
-                          () => setState(() => _maxGuests = 20)),
                     ],
                   ),
 

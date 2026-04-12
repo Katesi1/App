@@ -30,7 +30,7 @@ class _PropertyImagesScreenState extends ConsumerState<PropertyImagesScreen> {
 
     setState(() => _uploading = true);
     final paths = picked.map((f) => f.path).toList();
-    final ok = await ref
+    final (ok, err) = await ref
         .read(roomActionsProvider.notifier)
         .uploadImages(widget.homestayId, paths);
 
@@ -39,7 +39,7 @@ class _PropertyImagesScreenState extends ConsumerState<PropertyImagesScreen> {
     if (ok) {
       AppSnackBar.success(context, 'Đã tải lên ${picked.length} ảnh');
     } else {
-      AppSnackBar.error(context, 'Không thể tải ảnh, vui lòng thử lại');
+      AppSnackBar.error(context, 'Không thể tải ảnh: $err');
     }
   }
 
@@ -48,7 +48,7 @@ class _PropertyImagesScreenState extends ConsumerState<PropertyImagesScreen> {
     if (picked == null) return;
 
     setState(() => _uploading = true);
-    final ok = await ref
+    final (ok, err) = await ref
         .read(roomActionsProvider.notifier)
         .uploadImages(widget.homestayId, [picked.path]);
 
@@ -57,7 +57,7 @@ class _PropertyImagesScreenState extends ConsumerState<PropertyImagesScreen> {
     if (ok) {
       AppSnackBar.success(context, 'Đã tải lên ảnh');
     } else {
-      AppSnackBar.error(context, 'Không thể tải ảnh');
+      AppSnackBar.error(context, 'Không thể tải ảnh: $err');
     }
   }
 

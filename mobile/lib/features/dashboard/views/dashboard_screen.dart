@@ -47,6 +47,44 @@ class DashboardScreen extends ConsumerWidget {
                   formattedDate: formattedDate,
                 ),
 
+                // ── Cảnh báo SALE chưa gán owner ─────────────────────
+                if (user != null && user.isSale && !user.hasOwner)
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 0, 16, 0),
+                    child: Transform.translate(
+                      offset: const Offset(0, -16),
+                      child: Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.all(14),
+                        margin: const EdgeInsets.only(bottom: 12),
+                        decoration: BoxDecoration(
+                          color: AppColors.amber.withValues(alpha: 0.1),
+                          borderRadius: BorderRadius.circular(14),
+                          border: Border.all(
+                            color: AppColors.amber.withValues(alpha: 0.3),
+                          ),
+                        ),
+                        child: Row(
+                          children: [
+                            const Icon(Icons.warning_amber_rounded,
+                                color: AppColors.amber, size: 20),
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: Text(
+                                'Bạn chưa được gán cho chủ nhà nào. Hãy liên hệ chủ nhà để được thêm vào đội.',
+                                style: GoogleFonts.beVietnamPro(
+                                  fontSize: 12,
+                                  color: AppColors.amber,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+
                 // ── KPI Grid — overlaps header by 16px ─────────────────
                 Transform.translate(
                   offset: const Offset(0, -16),
@@ -60,8 +98,8 @@ class DashboardScreen extends ConsumerWidget {
                               child: _KpiCard(
                                 label: 'Tổng phòng',
                                 value: AppHelpers.formatIntOrDash(
-                                    stats.totalRooms),
-                                sub: '${AppHelpers.formatIntOrDash(stats.activeRooms)} hoạt động',
+                                    stats.globalTotalRooms),
+                                sub: '${AppHelpers.formatIntOrDash(stats.totalRooms)} của tôi',
                                 accentColor: AppColors.ocean,
                                 icon: Icons.apartment_rounded,
                               ),
@@ -71,8 +109,8 @@ class DashboardScreen extends ConsumerWidget {
                               child: _KpiCard(
                                 label: 'Phòng trống',
                                 value: AppHelpers.formatIntOrDash(
-                                    stats.emptyRooms),
-                                sub: 'Sẵn sàng check-in',
+                                    stats.globalEmptyRooms),
+                                sub: '${AppHelpers.formatIntOrDash(stats.emptyRooms)} của tôi',
                                 accentColor: AppColors.emerald,
                                 icon: Icons.check_circle_outline_rounded,
                               ),
@@ -154,13 +192,14 @@ class DashboardScreen extends ConsumerWidget {
                             onTap: () {},
                           ),
                           const SizedBox(width: 10),
-                          _QuickAction(
-                            icon: Icons.add_home_rounded,
-                            label: 'Thêm phòng',
-                            color: AppColors.emerald,
-                            onTap: () =>
-                                context.push('/properties/new'),
-                          ),
+                          if (user?.canManageProperty ?? false)
+                            _QuickAction(
+                              icon: Icons.add_home_rounded,
+                              label: 'Thêm phòng',
+                              color: AppColors.emerald,
+                              onTap: () =>
+                                  context.push('/properties/new'),
+                            ),
                         ],
                       ),
                     ],
@@ -226,7 +265,8 @@ class DashboardScreen extends ConsumerWidget {
                                   statusColor: statusColor,
                                   statusBg:
                                       statusColor.withValues(alpha: 0.12),
-                                  price: b.depositAmount != null
+                                  price: (b.depositAmount != null &&
+                                          b.depositAmount! > 0)
                                       ? '${AppHelpers.formatPrice(b.depositAmount!)}đ'
                                       : '--',
                                 ),

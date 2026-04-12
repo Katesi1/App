@@ -3,6 +3,11 @@ import '../../../core/storage/secure_storage.dart';
 import '../../../data/models/user_model.dart';
 import '../../../data/repositories/auth_repository.dart';
 import '../../../shared/providers/view_mode_provider.dart';
+import '../../bookings/controllers/booking_controller.dart';
+import '../../calendar/controllers/calendar_controller.dart';
+import '../../dashboard/controllers/dashboard_controller.dart';
+import '../../properties/controllers/property_controller.dart';
+import '../../rooms/controllers/room_controller.dart';
 
 final authRepositoryProvider =
     Provider<AuthRepository>((ref) => AuthRepository());
@@ -36,9 +41,23 @@ class AuthState {
 
 class AuthNotifier extends StateNotifier<AuthState> {
   final AuthRepository _repo;
+  final Ref _ref;
 
-  AuthNotifier(this._repo) : super(AuthState()) {
+  AuthNotifier(this._repo, this._ref) : super(AuthState()) {
     _init();
+  }
+
+  /// Invalidate tất cả data providers sau login/register
+  /// Để screen watch lại → tự re-fetch với token mới
+  void _invalidateDataProviders() {
+    _ref.invalidate(dashboardStatsProvider);
+    _ref.invalidate(roomListProvider);
+    _ref.invalidate(allRoomsProvider);
+    _ref.invalidate(homestayListProvider);
+    _ref.invalidate(bookingListProvider);
+    _ref.invalidate(calendarGridProvider);
+    // staffListProvider không cần invalidate — nó watch currentUserProvider
+    // nên tự re-fetch khi user thay đổi
   }
 
   Future<void> _init() async {
@@ -66,10 +85,11 @@ class AuthNotifier extends StateNotifier<AuthState> {
     }
   }
 
-  Future<String?> login(String phone, String password) async {
-    final result = await _repo.login(phone, password);
+  Future<String?> login(String email, String password) async {
+    final result = await _repo.login(email, password);
     if (result.success) {
       state = AuthState(user: result.data, isLoggedIn: true);
+      _invalidateDataProviders();
       return null;
     } else {
       state = state.copyWith(error: result.message);
@@ -79,20 +99,21 @@ class AuthNotifier extends StateNotifier<AuthState> {
 
   Future<String?> register({
     required String name,
-    required String phone,
+    required String email,
     required String password,
     required int role,
-    String? email,
+    String? phone,
   }) async {
     final result = await _repo.register(
       name: name,
-      phone: phone,
+      email: email,
       password: password,
       role: role,
-      email: email,
+      phone: phone,
     );
     if (result.success) {
       state = AuthState(user: result.data, isLoggedIn: true);
+      _invalidateDataProviders();
       return null;
     } else {
       state = state.copyWith(error: result.message);
@@ -105,6 +126,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
     final result = await _repo.loginWithGoogle(role: role);
     if (result.success) {
       state = AuthState(user: result.data, isLoggedIn: true);
+      _invalidateDataProviders();
       return null;
     } else {
       state = state.copyWith(error: result.message);
@@ -162,7 +184,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
 }
 
 final authProvider = StateNotifierProvider<AuthNotifier, AuthState>((ref) {
-  return AuthNotifier(ref.read(authRepositoryProvider));
+  return AuthNotifier(ref.read(authRepositoryProvider), ref);
 });
 
 final currentUserProvider = Provider<UserModel?>((ref) {

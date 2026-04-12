@@ -8,6 +8,7 @@ import '../../../core/theme/app_spacing.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import '../../../shared/widgets/loading_widget.dart';
 import '../../rooms/controllers/room_controller.dart';
+import '../../auth/controllers/auth_controller.dart';
 import '../controllers/property_controller.dart';
 
 class PropertyManageScreen extends ConsumerStatefulWidget {
@@ -268,7 +269,10 @@ class _PropertyManageScreenState
 
                     const SizedBox(height: 24),
 
-                    // ── Delete button ───────────────────────
+                    // ── Delete button (ADMIN + OWNER only) ──
+                    if (ref.watch(currentUserProvider)
+                            ?.canManageProperty ??
+                        false)
                     Padding(
                       padding: const EdgeInsets.symmetric(
                         horizontal: 20,

@@ -8,7 +8,7 @@ class SecureStorage {
   static const _accessToken = 'access_token';
   static const _refreshToken = 'refresh_token';
   static const _userData = 'user_data';
-  static const _savedPhone = 'saved_phone';
+  static const _savedPhone = 'saved_email';
   static const _savedPassword = 'saved_password';
 
   static Future<void> saveAccessToken(String token) =>
@@ -28,16 +28,16 @@ class SecureStorage {
 
   /// Lưu thông tin đăng nhập (phone + password) khi user tick "Ghi nhớ".
   /// Tách riêng khỏi auth tokens để [clear] khi logout không xoá.
-  static Future<void> saveCredentials(String phone, String password) async {
-    await _storage.write(key: _savedPhone, value: phone);
+  static Future<void> saveCredentials(String email, String password) async {
+    await _storage.write(key: _savedPhone, value: email);
     await _storage.write(key: _savedPassword, value: password);
   }
 
-  static Future<({String phone, String password})?> getSavedCredentials() async {
-    final phone = await _storage.read(key: _savedPhone);
+  static Future<({String email, String password})?> getSavedCredentials() async {
+    final email = await _storage.read(key: _savedPhone);
     final password = await _storage.read(key: _savedPassword);
-    if (phone == null || password == null) return null;
-    return (phone: phone, password: password);
+    if (email == null || password == null) return null;
+    return (email: email, password: password);
   }
 
   static Future<void> clearCredentials() async {

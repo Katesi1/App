@@ -18,7 +18,8 @@ class AdminScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final user = ref.watch(currentUserProvider);
-    final usersAsync = ref.watch(userListProvider(null));
+    final isAdmin = user?.isAdmin ?? false;
+    final usersAsync = ref.watch(staffListProvider);
     final homestaysAsync = ref.watch(homestayListProvider(true));
     final bookingsAsync = ref.watch(bookingListProvider(null));
 
@@ -78,7 +79,7 @@ class AdminScreen extends ConsumerWidget {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            'Quản lý hệ thống',
+                            isAdmin ? 'Quản lý hệ thống' : 'Quản lý',
                             style: GoogleFonts.beVietnamPro(
                               fontSize: 20,
                               fontWeight: FontWeight.w700,
@@ -87,7 +88,9 @@ class AdminScreen extends ConsumerWidget {
                           ),
                           const SizedBox(height: 2),
                           Text(
-                            'Toàn quyền quản trị',
+                            isAdmin
+                                ? 'Toàn quyền quản trị'
+                                : 'Phòng & nhân viên của tôi',
                             style: GoogleFonts.beVietnamPro(
                               fontSize: 12,
                               color: Colors.white.withValues(alpha: 0.65),
@@ -111,7 +114,7 @@ class AdminScreen extends ConsumerWidget {
             child: RefreshIndicator(
               color: AppColors.ocean,
               onRefresh: () async {
-                ref.invalidate(userListProvider(null));
+                ref.invalidate(staffListProvider);
                 ref.invalidate(homestayListProvider(true));
                 ref.invalidate(bookingListProvider(null));
               },
@@ -189,7 +192,7 @@ class AdminScreen extends ConsumerWidget {
 
                   // ── Quản lý Section ─────────────────────────
                   Text(
-                    'QUẢN LÝ HỆ THỐNG',
+                    isAdmin ? 'QUẢN LÝ HỆ THỐNG' : 'QUẢN LÝ',
                     style: GoogleFonts.beVietnamPro(
                       fontSize: 11,
                       fontWeight: FontWeight.w600,
@@ -203,8 +206,12 @@ class AdminScreen extends ConsumerWidget {
                     icon: Icons.people_rounded,
                     iconBg: AppColors.oceanLight,
                     iconColor: AppColors.ocean,
-                    title: 'Quản lý nhân viên',
-                    subtitle: 'Thêm, sửa, vô hiệu hoá tài khoản',
+                    title: isAdmin
+                        ? 'Quản lý nhân viên'
+                        : 'Nhân viên của tôi',
+                    subtitle: isAdmin
+                        ? 'Thêm, sửa, vô hiệu hoá tài khoản'
+                        : 'Thêm, gỡ nhân viên khỏi đội',
                     trailing: usersAsync.whenOrNull(
                       data: (users) => '${users.length} người',
                     ),
@@ -267,15 +274,17 @@ class AdminScreen extends ConsumerWidget {
 
                   Row(
                     children: [
-                      Expanded(
-                        child: _QuickAction(
-                          icon: Icons.person_add_rounded,
-                          label: 'Thêm\nnhân viên',
-                          color: AppColors.ocean,
-                          onTap: () => context.push('/admin/users/new'),
+                      if (isAdmin) ...[
+                        Expanded(
+                          child: _QuickAction(
+                            icon: Icons.person_add_rounded,
+                            label: 'Thêm\nnhân viên',
+                            color: AppColors.ocean,
+                            onTap: () => context.push('/admin/users/new'),
+                          ),
                         ),
-                      ),
-                      const SizedBox(width: 10),
+                        const SizedBox(width: 10),
+                      ],
                       Expanded(
                         child: _QuickAction(
                           icon: Icons.add_home_work_rounded,
@@ -308,7 +317,8 @@ class AdminScreen extends ConsumerWidget {
                     ),
                     error: (e, _) => ErrorStateWidget(
                       message: e.toString().replaceAll('Exception: ', ''),
-                      onRetry: () => ref.invalidate(userListProvider(null)),
+                      onRetry: () =>
+                          ref.invalidate(staffListProvider),
                     ),
                     data: (users) {
                       if (users.isEmpty) {

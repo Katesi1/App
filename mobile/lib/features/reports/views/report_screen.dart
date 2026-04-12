@@ -204,7 +204,9 @@ class ReportScreen extends ConsumerWidget {
                               iconBg: AppColors.goldLight,
                               iconColor: AppColors.gold,
                               label: 'Tiền cọc thu',
-                              value: AppHelpers.formatPrice(totalDeposit),
+                              value: totalDeposit > 0
+                                  ? AppHelpers.formatPrice(totalDeposit)
+                                  : '--',
                               sub: 'Đã xác nhận + hoàn thành',
                             ),
                           ),

@@ -23,7 +23,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen>
     with TickerProviderStateMixin {
   final _formKey = GlobalKey<FormState>();
   final _nameCtrl = TextEditingController();
-  final _phoneCtrl = TextEditingController();
+  final _emailCtrl = TextEditingController();
   final _passwordCtrl = TextEditingController();
   final _confirmPasswordCtrl = TextEditingController();
 
@@ -33,8 +33,8 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen>
   bool _obscureConfirm = true;
   bool _isLoading = false;
 
-  // Đăng ký mặc định là CUSTOMER
-  final UserRole _role = UserRole.customer;
+  // Chọn role: Chủ nhà hoặc Nhân viên
+  UserRole _role = UserRole.owner;
 
   @override
   void initState() {
@@ -48,7 +48,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen>
   @override
   void dispose() {
     _nameCtrl.dispose();
-    _phoneCtrl.dispose();
+    _emailCtrl.dispose();
     _passwordCtrl.dispose();
     _confirmPasswordCtrl.dispose();
     _waveCtrl.dispose();
@@ -61,7 +61,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen>
 
     final error = await ref.read(authProvider.notifier).register(
           name: _nameCtrl.text.trim(),
-          phone: _phoneCtrl.text.trim(),
+          email: _emailCtrl.text.trim(),
           password: _passwordCtrl.text,
           role: _role.value,
         );
@@ -298,8 +298,12 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen>
                               ),
                             ),
 
-                            // Role badge
-                            _StaffBadge()
+                            // Role selector
+                            _RoleSelector(
+                              selected: _role,
+                              onChanged: (role) =>
+                                  setState(() => _role = role),
+                            )
                                 .animate(delay: 350.ms)
                                 .fadeIn(duration: 400.ms)
                                 .slideX(begin: -0.1, end: 0),
@@ -333,27 +337,27 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen>
 
                             const SizedBox(height: 14),
 
-                            // Số điện thoại
+                            // Email
                             _buildField(
                               delay: 460.ms,
                               child: TextFormField(
-                                controller: _phoneCtrl,
-                                keyboardType: TextInputType.phone,
+                                controller: _emailCtrl,
+                                keyboardType: TextInputType.emailAddress,
                                 textInputAction: TextInputAction.next,
                                 style: GoogleFonts.beVietnamPro(
                                     fontSize: 15, color: AppColors.ink),
                                 decoration: _inputDecor(
-                                  label: 'Số điện thoại',
-                                  hint: '0912 345 678',
-                                  icon: Icons.phone_outlined,
+                                  label: 'Email',
+                                  hint: 'example@gmail.com',
+                                  icon: Icons.email_outlined,
                                 ),
                                 validator: (v) {
                                   if (v == null || v.trim().isEmpty) {
-                                    return 'Nhập số điện thoại';
+                                    return 'Nhập email';
                                   }
-                                  if (!RegExp(r'^0\d{9,10}$')
+                                  if (!RegExp(r'^[\w\.\-]+@[\w\.\-]+\.\w+$')
                                       .hasMatch(v.trim())) {
-                                    return 'Số điện thoại không hợp lệ';
+                                    return 'Email không hợp lệ';
                                   }
                                   return null;
                                 },
@@ -587,60 +591,116 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen>
   }
 }
 
-// ── Staff badge ──────────────────────────────────────────────────────────────
+// ── Role selector ────────────────────────────────────────────────────────────
 
-class _StaffBadge extends StatelessWidget {
+class _RoleSelector extends StatelessWidget {
+  final UserRole selected;
+  final ValueChanged<UserRole> onChanged;
+
+  const _RoleSelector({required this.selected, required this.onChanged});
+
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-      decoration: BoxDecoration(
-        color: AppColors.ocean.withValues(alpha: 0.06),
-        borderRadius: BorderRadius.circular(12),
-        border:
-            Border.all(color: AppColors.ocean.withValues(alpha: 0.2), width: 1),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Container(
-            width: 32,
-            height: 32,
-            decoration: BoxDecoration(
-              color: AppColors.ocean.withValues(alpha: 0.12),
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: const Icon(
-              Icons.manage_accounts_outlined,
-              color: AppColors.ocean,
-              size: 18,
-            ),
+    return Row(
+      children: [
+        Expanded(
+          child: _RoleCard(
+            icon: Icons.home_work_rounded,
+            label: 'Chủ nhà',
+            sub: 'Đăng phòng & quản lý',
+            isSelected: selected == UserRole.owner,
+            onTap: () => onChanged(UserRole.owner),
           ),
-          const SizedBox(width: 10),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'Tài khoản Quản lý',
-                style: GoogleFonts.beVietnamPro(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w600,
-                  color: AppColors.ocean,
-                ),
-              ),
-              Text(
-                'Quản lý phòng & booking',
-                style: GoogleFonts.beVietnamPro(
-                  fontSize: 11,
-                  color: AppColors.muted,
-                ),
-              ),
-            ],
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: _RoleCard(
+            icon: Icons.badge_rounded,
+            label: 'Nhân viên',
+            sub: 'Hỗ trợ chủ nhà',
+            isSelected: selected == UserRole.sale,
+            onTap: () => onChanged(UserRole.sale),
           ),
-          const Spacer(),
-          const Icon(Icons.check_circle_rounded,
-              color: AppColors.ocean, size: 18),
-        ],
+        ),
+      ],
+    );
+  }
+}
+
+class _RoleCard extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final String sub;
+  final bool isSelected;
+  final VoidCallback onTap;
+
+  const _RoleCard({
+    required this.icon,
+    required this.label,
+    required this.sub,
+    required this.isSelected,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final color = isSelected ? AppColors.ocean : AppColors.slate;
+    return GestureDetector(
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+        decoration: BoxDecoration(
+          color: isSelected
+              ? AppColors.ocean.withValues(alpha: 0.06)
+              : AppColors.background,
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(
+            color: isSelected
+                ? AppColors.ocean.withValues(alpha: 0.4)
+                : AppColors.border,
+            width: isSelected ? 1.5 : 1,
+          ),
+        ),
+        child: Column(
+          children: [
+            Container(
+              width: 40,
+              height: 40,
+              decoration: BoxDecoration(
+                color: color.withValues(alpha: 0.12),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Icon(icon, color: color, size: 20),
+            ),
+            const SizedBox(height: 10),
+            Text(
+              label,
+              style: GoogleFonts.beVietnamPro(
+                fontSize: 13,
+                fontWeight: FontWeight.w700,
+                color: isSelected ? AppColors.ocean : AppColors.navy,
+              ),
+            ),
+            const SizedBox(height: 2),
+            Text(
+              sub,
+              style: GoogleFonts.beVietnamPro(
+                fontSize: 11,
+                color: AppColors.muted,
+              ),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 8),
+            Icon(
+              isSelected
+                  ? Icons.check_circle_rounded
+                  : Icons.radio_button_unchecked_rounded,
+              color: isSelected ? AppColors.ocean : AppColors.border,
+              size: 20,
+            ),
+          ],
+        ),
       ),
     );
   }

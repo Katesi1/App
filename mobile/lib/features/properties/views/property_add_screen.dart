@@ -10,6 +10,7 @@ import 'package:image_picker/image_picker.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../shared/widgets/loading_widget.dart';
+import '../../rooms/controllers/room_controller.dart';
 import '../controllers/property_controller.dart';
 
 class PropertyAddScreen extends ConsumerStatefulWidget {
@@ -185,15 +186,31 @@ class _PropertyAddScreenState extends ConsumerState<PropertyAddScreen> {
         'childSurcharge': _parsePrice(_childSurchargeCtrl.text),
     };
 
-    final ok = await ref.read(homestayActionsProvider.notifier).create(data);
+    final propertyId =
+        await ref.read(homestayActionsProvider.notifier).create(data);
 
     if (!mounted) return;
-    setState(() => _isLoading = false);
 
-    if (ok) {
+    if (propertyId != null) {
+      // Upload ảnh nếu có
+      if (_pickedImages.isNotEmpty) {
+        final paths = _pickedImages.map((f) => f.path).toList();
+        final (imgOk, imgErr) = await ref
+            .read(roomActionsProvider.notifier)
+            .uploadImages(propertyId, paths);
+        if (mounted && !imgOk) {
+          AppSnackBar.error(
+            context,
+            'Tạo phòng OK nhưng upload ảnh thất bại: $imgErr',
+          );
+        }
+      }
+      if (!mounted) return;
+      setState(() => _isLoading = false);
       AppSnackBar.success(context, 'Tạo phòng thành công');
       context.pop();
     } else {
+      setState(() => _isLoading = false);
       final err = ref.read(homestayActionsProvider);
       AppSnackBar.error(
           context, err.hasError ? err.error.toString() : 'Có lỗi xảy ra');

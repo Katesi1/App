@@ -516,7 +516,7 @@ class _RoomListScreenState extends ConsumerState<RoomListScreen>
   Widget build(BuildContext context) {
     final user = ref.watch(currentUserProvider);
     final userName = user?.name ?? user?.phone ?? '';
-    final roomsAsync = ref.watch(roomListProvider(null));
+    final roomsAsync = ref.watch(allRoomsProvider);
 
     return AppScaffold(
       title: '',
@@ -525,7 +525,7 @@ class _RoomListScreenState extends ConsumerState<RoomListScreen>
       body: RefreshIndicator(
         color: AppColors.ocean,
         onRefresh: () async {
-          ref.invalidate(roomListProvider(null));
+          ref.invalidate(allRoomsProvider);
         },
         child: NestedScrollView(
           headerSliverBuilder: (context, innerBoxIsScrolled) => [
@@ -806,7 +806,7 @@ class _RoomListScreenState extends ConsumerState<RoomListScreen>
                 message:
                     e.toString().replaceAll('Exception: ', ''),
                 onRetry: () =>
-                    ref.invalidate(roomListProvider(null)),
+                    ref.invalidate(allRoomsProvider),
               ),
             ),
             data: (rooms) => TabBarView(

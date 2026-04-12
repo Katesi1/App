@@ -5,11 +5,22 @@ import '../../../data/repositories/room_repository.dart';
 final roomRepositoryProvider =
     Provider<RoomRepository>((ref) => RoomRepository());
 
-// Provider lấy danh sách phòng
+// Provider lấy danh sách phòng (scoped theo owner — dùng cho quản lý)
 final roomListProvider =
     FutureProvider.family<List<RoomModel>, String?>((ref, homestayId) async {
   final repo = ref.read(roomRepositoryProvider);
   final result = await repo.getRooms(homestayId: homestayId);
+  if (result.success) return result.data!;
+  throw Exception(result.message);
+});
+
+// Provider lấy TẤT CẢ phòng active (dùng cho danh sách phòng — mọi role)
+final allRoomsProvider =
+    FutureProvider.autoDispose<List<RoomModel>>((ref) async {
+  final link = ref.keepAlive();
+  Future.delayed(const Duration(minutes: 2), link.close);
+  final repo = ref.read(roomRepositoryProvider);
+  final result = await repo.getAllPublicRooms();
   if (result.success) return result.data!;
   throw Exception(result.message);
 });
@@ -73,13 +84,13 @@ class RoomActionsNotifier extends StateNotifier<AsyncValue<void>> {
     return false;
   }
 
-  Future<bool> uploadImages(String roomId, List<String> filePaths) async {
+  Future<(bool, String)> uploadImages(String roomId, List<String> filePaths) async {
     final result = await _repo.uploadImages(roomId, filePaths);
     if (result.success) {
       _ref.invalidate(roomDetailProvider(roomId));
-      return true;
+      return (true, '');
     }
-    return false;
+    return (false, result.message);
   }
 
   Future<bool> deleteImage(String roomId, String imageId) async {

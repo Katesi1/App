@@ -29,22 +29,24 @@ class _UserListScreenState extends ConsumerState<UserListScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final usersAsync = ref.watch(userListProvider(_roleFilter));
     final currentUser = ref.watch(currentUserProvider);
+    final isAdmin = currentUser?.isAdmin ?? false;
     final userName = currentUser?.name ?? currentUser?.phone ?? '';
+
+    final usersAsync = ref.watch(staffListProvider);
 
     return AppScaffold(
       title: 'Nhân viên',
       selectedIndex: 4,
       showAppBar: false,
-      floatingActionButton: _buildFab(context),
+      floatingActionButton: _buildFab(context, isAdmin),
       body: Column(
         children: [
           // ── Gradient header ──────────────────────────────────────
-          _buildHeader(context, userName),
+          _buildHeader(context, userName, isAdmin),
 
-          // ── Filter chips ─────────────────────────────────────────
-          _buildFilterChips(context),
+          // ── Filter chips (ADMIN only) ───────────────────────────
+          if (isAdmin) _buildFilterChips(context),
 
           // ── List ────────────────────────────────────────────────
           Expanded(
@@ -55,7 +57,8 @@ class _UserListScreenState extends ConsumerState<UserListScreen> {
               ),
               error: (e, _) => ErrorStateWidget(
                 message: e.toString().replaceAll('Exception: ', ''),
-                onRetry: () => ref.invalidate(userListProvider),
+                onRetry: () =>
+                    ref.invalidate(staffListProvider),
               ),
               data: (allUsers) {
                 // Loại Admin ra khỏi danh sách quản lý
@@ -66,18 +69,22 @@ class _UserListScreenState extends ConsumerState<UserListScreen> {
                 if (users.isEmpty) {
                   return EmptyStateWidget(
                     icon: Icons.people_outline_rounded,
-                    message: _roleFilter == null
-                        ? 'Chưa có nhân viên nào'
-                        : 'Không có ${AppHelpers.roleLabel(_roleFilter)} nào',
-                    onAction: () => context.push('/admin/users/new'),
-                    actionLabel: 'Thêm nhân viên',
+                    message: isAdmin
+                        ? (_roleFilter == null
+                            ? 'Chưa có nhân viên nào'
+                            : 'Không có ${AppHelpers.roleLabel(_roleFilter)} nào')
+                        : 'Chưa có nhân viên trong đội',
+                    onAction: isAdmin
+                        ? () => context.push('/admin/users/new')
+                        : () => _showAvailableStaffSheet(context),
+                    actionLabel: isAdmin ? 'Thêm nhân viên' : 'Thêm vào đội',
                   );
                 }
 
                 return RefreshIndicator(
                   color: AppColors.ocean,
                   onRefresh: () async =>
-                      ref.invalidate(userListProvider),
+                      ref.invalidate(staffListProvider),
                   child: ListView.separated(
                     padding: const EdgeInsets.fromLTRB(
                       AppSpacing.md,
@@ -91,10 +98,17 @@ class _UserListScreenState extends ConsumerState<UserListScreen> {
                     itemBuilder: (_, i) => _UserCard(
                       user: users[i],
                       animIndex: i,
-                      onTap: () => context
-                          .push('/admin/users/${users[i].id}/edit'),
-                      onToggleActive: () =>
-                          _toggleActive(context, users[i]),
+                      isAdmin: isAdmin,
+                      onTap: isAdmin
+                          ? () => context
+                              .push('/admin/users/${users[i].id}/edit')
+                          : null,
+                      onToggleActive: isAdmin
+                          ? () => _toggleActive(context, users[i])
+                          : null,
+                      onRemoveStaff: !isAdmin
+                          ? () => _removeStaff(context, users[i])
+                          : null,
                     ),
                   ),
                 );
@@ -106,7 +120,7 @@ class _UserListScreenState extends ConsumerState<UserListScreen> {
     );
   }
 
-  Widget _buildHeader(BuildContext context, String userName) {
+  Widget _buildHeader(BuildContext context, String userName, bool isAdmin) {
     return Container(
       width: double.infinity,
       padding: EdgeInsets.only(
@@ -173,7 +187,7 @@ class _UserListScreenState extends ConsumerState<UserListScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'Quản lý nhân viên',
+                      isAdmin ? 'Quản lý nhân viên' : 'Nhân viên của tôi',
                       style: GoogleFonts.beVietnamPro(
                         fontSize: 20,
                         fontWeight: FontWeight.w700,
@@ -182,7 +196,9 @@ class _UserListScreenState extends ConsumerState<UserListScreen> {
                     ),
                     const SizedBox(height: 2),
                     Text(
-                      'Gán vai trò · Kích hoạt tài khoản',
+                      isAdmin
+                          ? 'Gán vai trò · Kích hoạt tài khoản'
+                          : 'Thêm nhân viên bằng số điện thoại',
                       style: GoogleFonts.beVietnamPro(
                         fontSize: 12,
                         color: Colors.white.withValues(alpha: 0.65),
@@ -282,7 +298,7 @@ class _UserListScreenState extends ConsumerState<UserListScreen> {
     );
   }
 
-  Widget _buildFab(BuildContext context) {
+  Widget _buildFab(BuildContext context, bool isAdmin) {
     return Container(
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(16),
@@ -298,10 +314,12 @@ class _UserListScreenState extends ConsumerState<UserListScreen> {
         ],
       ),
       child: FloatingActionButton.extended(
-        onPressed: () => context.push('/admin/users/new'),
+        onPressed: isAdmin
+            ? () => context.push('/admin/users/new')
+            : () => _showAvailableStaffSheet(context),
         icon: const Icon(Icons.person_add_rounded, size: 20),
         label: Text(
-          'Thêm nhân viên',
+          isAdmin ? 'Thêm nhân viên' : 'Thêm vào đội',
           style: GoogleFonts.beVietnamPro(
             fontWeight: FontWeight.w700,
             fontSize: 14,
@@ -313,6 +331,249 @@ class _UserListScreenState extends ConsumerState<UserListScreen> {
         highlightElevation: 0,
       ),
     );
+  }
+
+  /// OWNER xem danh sách SALE chưa gán → tap để thêm vào đội
+  Future<void> _showAvailableStaffSheet(BuildContext context) async {
+    final repo = ref.read(userRepositoryProvider);
+    final result = await repo.getAvailableStaff();
+
+    if (!context.mounted) return;
+
+    if (!result.success) {
+      AppSnackBar.error(context, result.message);
+      return;
+    }
+
+    final available = result.data ?? [];
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => Container(
+        constraints: BoxConstraints(
+          maxHeight: MediaQuery.of(ctx).size.height * 0.7,
+        ),
+        decoration: const BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.vertical(
+            top: Radius.circular(AppRadius.xl),
+          ),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // Handle
+            Padding(
+              padding: const EdgeInsets.only(top: 12, bottom: 8),
+              child: Container(
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: AppColors.border,
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+            ),
+            // Title
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 8, 20, 16),
+              child: Row(
+                children: [
+                  const Icon(Icons.person_add_rounded,
+                      color: AppColors.ocean, size: 22),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Thêm nhân viên vào đội',
+                          style: GoogleFonts.beVietnamPro(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w700,
+                            color: AppColors.navy,
+                          ),
+                        ),
+                        Text(
+                          '${available.length} nhân viên có thể thêm',
+                          style: GoogleFonts.beVietnamPro(
+                            fontSize: 12,
+                            color: AppColors.muted,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const Divider(height: 1, color: AppColors.border),
+            // List
+            if (available.isEmpty)
+              Padding(
+                padding: const EdgeInsets.all(40),
+                child: Column(
+                  children: [
+                    const Icon(Icons.people_outline_rounded,
+                        size: 48, color: AppColors.slate),
+                    const SizedBox(height: 12),
+                    Text(
+                      'Không có nhân viên nào sẵn sàng',
+                      style: GoogleFonts.beVietnamPro(
+                        fontSize: 14,
+                        color: AppColors.muted,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      'Nhân viên cần đăng ký tài khoản trước',
+                      style: GoogleFonts.beVietnamPro(
+                        fontSize: 12,
+                        color: AppColors.slate,
+                      ),
+                    ),
+                  ],
+                ),
+              )
+            else
+              Flexible(
+                child: ListView.separated(
+                  shrinkWrap: true,
+                  padding: const EdgeInsets.symmetric(vertical: 8),
+                  itemCount: available.length,
+                  separatorBuilder: (_, __) => const Divider(
+                    height: 1,
+                    color: AppColors.border,
+                    indent: 68,
+                  ),
+                  itemBuilder: (_, i) {
+                    final sale = available[i];
+                    return ListTile(
+                      leading: CircleAvatar(
+                        backgroundColor:
+                            AppColors.teal.withValues(alpha: 0.12),
+                        child: Text(
+                          sale.name.isNotEmpty
+                              ? sale.name[0].toUpperCase()
+                              : 'S',
+                          style: GoogleFonts.beVietnamPro(
+                            color: AppColors.teal,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ),
+                      title: Text(
+                        sale.name.isNotEmpty ? sale.name : 'Chưa đặt tên',
+                        style: GoogleFonts.beVietnamPro(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                          color: AppColors.navy,
+                        ),
+                      ),
+                      subtitle: Text(
+                        sale.email ?? sale.phone,
+                        style: GoogleFonts.beVietnamPro(
+                          fontSize: 12,
+                          color: AppColors.muted,
+                        ),
+                      ),
+                      trailing: FilledButton.icon(
+                        onPressed: () async {
+                          Navigator.pop(ctx);
+                          await _addStaffByEmail(context, sale.email ?? '');
+                        },
+                        icon: const Icon(Icons.add_rounded, size: 16),
+                        label: Text('Thêm',
+                            style: GoogleFonts.beVietnamPro(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w600)),
+                        style: FilledButton.styleFrom(
+                          backgroundColor: AppColors.ocean,
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 12, vertical: 6),
+                          minimumSize: Size.zero,
+                          shape: RoundedRectangleBorder(
+                            borderRadius:
+                                BorderRadius.circular(AppRadius.md),
+                          ),
+                        ),
+                      ),
+                    );
+                  },
+                ),
+              ),
+            SizedBox(height: MediaQuery.of(ctx).padding.bottom + 8),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _addStaffByEmail(BuildContext context, String email) async {
+    final repo = ref.read(userRepositoryProvider);
+    final response = await repo.addMyStaff(email);
+    if (!context.mounted) return;
+
+    if (response.success) {
+      ref.invalidate(staffListProvider);
+      AppSnackBar.success(context, 'Đã thêm nhân viên thành công');
+    } else {
+      AppSnackBar.error(context, response.message);
+    }
+  }
+
+  /// OWNER gỡ nhân viên khỏi đội
+  Future<void> _removeStaff(BuildContext context, UserModel user) async {
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (_) => AlertDialog(
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(AppRadius.lg),
+        ),
+        title: Text(
+          'Gỡ nhân viên',
+          style: GoogleFonts.beVietnamPro(fontWeight: FontWeight.w700),
+        ),
+        content: Text(
+          'Gỡ "${user.name}" khỏi đội của bạn? Nhân viên này sẽ không thể xem phòng và lịch của bạn nữa.',
+          style: GoogleFonts.beVietnamPro(),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: Text('Huỷ',
+                style: GoogleFonts.beVietnamPro(color: AppColors.muted)),
+          ),
+          FilledButton(
+            style: FilledButton.styleFrom(
+              backgroundColor: AppColors.coral,
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(AppRadius.md),
+              ),
+            ),
+            onPressed: () => Navigator.pop(context, true),
+            child: Text('Gỡ',
+                style: GoogleFonts.beVietnamPro(fontWeight: FontWeight.w600)),
+          ),
+        ],
+      ),
+    );
+    if (ok != true || !context.mounted) return;
+
+    final repo = ref.read(userRepositoryProvider);
+    final response = await repo.removeMyStaff(user.id);
+    if (!context.mounted) return;
+
+    if (response.success) {
+      ref.invalidate(staffListProvider);
+      AppSnackBar.success(context, 'Đã gỡ ${user.name} khỏi đội');
+    } else {
+      AppSnackBar.error(context, response.message);
+    }
   }
 
   Future<void> _toggleActive(
@@ -378,14 +639,18 @@ class _UserListScreenState extends ConsumerState<UserListScreen> {
 class _UserCard extends StatelessWidget {
   final UserModel user;
   final int animIndex;
-  final VoidCallback onTap;
-  final VoidCallback onToggleActive;
+  final bool isAdmin;
+  final VoidCallback? onTap;
+  final VoidCallback? onToggleActive;
+  final VoidCallback? onRemoveStaff;
 
   const _UserCard({
     required this.user,
     required this.animIndex,
-    required this.onTap,
-    required this.onToggleActive,
+    this.isAdmin = true,
+    this.onTap,
+    this.onToggleActive,
+    this.onRemoveStaff,
   });
 
   Color get _roleColor => AppHelpers.roleColor(user.role);
@@ -501,40 +766,59 @@ class _UserCard extends StatelessWidget {
               const SizedBox(width: AppSpacing.sm),
 
               // Actions
-              Column(
-                children: [
-                  // Toggle active button
-                  GestureDetector(
-                    onTap: onToggleActive,
-                    child: Container(
-                      width: 34,
-                      height: 34,
-                      decoration: BoxDecoration(
-                        color: user.isActive
-                            ? AppColors.error.withValues(alpha: 0.08)
-                            : AppColors.emerald.withValues(alpha: 0.08),
-                        borderRadius: BorderRadius.circular(AppRadius.md),
+              if (isAdmin) ...[
+                Column(
+                  children: [
+                    if (onToggleActive != null)
+                      GestureDetector(
+                        onTap: onToggleActive,
+                        child: Container(
+                          width: 34,
+                          height: 34,
+                          decoration: BoxDecoration(
+                            color: user.isActive
+                                ? AppColors.error.withValues(alpha: 0.08)
+                                : AppColors.emerald.withValues(alpha: 0.08),
+                            borderRadius:
+                                BorderRadius.circular(AppRadius.md),
+                          ),
+                          child: Icon(
+                            user.isActive
+                                ? Icons.block_rounded
+                                : Icons.check_circle_outline_rounded,
+                            size: 18,
+                            color: user.isActive
+                                ? AppColors.error
+                                : AppColors.emerald,
+                          ),
+                        ),
                       ),
-                      child: Icon(
-                        user.isActive
-                            ? Icons.block_rounded
-                            : Icons.check_circle_outline_rounded,
-                        size: 18,
-                        color: user.isActive
-                            ? AppColors.error
-                            : AppColors.emerald,
-                      ),
+                    const SizedBox(height: 6),
+                    const Icon(
+                      Icons.chevron_right_rounded,
+                      color: AppColors.slate,
+                      size: 18,
+                    ),
+                  ],
+                ),
+              ] else if (onRemoveStaff != null) ...[
+                GestureDetector(
+                  onTap: onRemoveStaff,
+                  child: Container(
+                    width: 34,
+                    height: 34,
+                    decoration: BoxDecoration(
+                      color: AppColors.coral.withValues(alpha: 0.08),
+                      borderRadius: BorderRadius.circular(AppRadius.md),
+                    ),
+                    child: const Icon(
+                      Icons.person_remove_rounded,
+                      size: 18,
+                      color: AppColors.coral,
                     ),
                   ),
-                  const SizedBox(height: 6),
-                  // Chevron
-                  const Icon(
-                    Icons.chevron_right_rounded,
-                    color: AppColors.slate,
-                    size: 18,
-                  ),
-                ],
-              ),
+                ),
+              ],
             ],
           ),
         ),

@@ -197,12 +197,12 @@ class _BottomNavState extends ConsumerState<_BottomNav> {
     // Chế độ khách (CUSTOMER thuần hoặc ADMIN/STAFF toggle)
     if (isCustomerMode) return _customerNavItems;
 
-    // ADMIN: staff tabs + quản lý tab
-    if (user.isAdmin) {
+    // ADMIN + OWNER: staff tabs + quản lý tab
+    if (user.isAdmin || user.isOwner) {
       return [..._staffNavItems, _adminExtraItem];
     }
 
-    // STAFF: chỉ staff tabs
+    // SALE: chỉ staff tabs
     return _staffNavItems;
   }
 

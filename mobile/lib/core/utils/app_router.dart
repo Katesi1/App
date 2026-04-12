@@ -114,8 +114,8 @@ final routerProvider = Provider<GoRouter>((ref) {
           if (isCustomerRoute) return '/dashboard';
         }
 
-        // Staff/Customer không vào route admin
-        if (user != null && !user.isAdmin) {
+        // Chỉ ADMIN và OWNER vào route admin
+        if (user != null && !(user.isAdmin || user.isOwner)) {
           if (path.startsWith('/admin')) return '/dashboard';
         }
       }
