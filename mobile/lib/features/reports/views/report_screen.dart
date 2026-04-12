@@ -331,7 +331,10 @@ class ReportScreen extends ConsumerWidget {
                         ...report.recentBookings.map(
                           (b) => Padding(
                             padding: const EdgeInsets.only(bottom: 8),
-                            child: _RecentBookingCard(booking: b),
+                            child: GestureDetector(
+                              onTap: () => context.push('/bookings'),
+                              child: _RecentBookingCard(booking: b),
+                            ),
                           ),
                         ),
 

@@ -1,6 +1,9 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../data/models/booking_model.dart';
 import '../../../data/repositories/booking_repository.dart';
+import '../../calendar/controllers/calendar_controller.dart';
+import '../../dashboard/controllers/dashboard_controller.dart';
+import '../../reports/controllers/report_controller.dart';
 
 // ─── Repository provider ──────────────────────────────────────────────────────
 final bookingRepositoryProvider = Provider<BookingRepository>(
@@ -69,11 +72,19 @@ class BookingActionsNotifier extends StateNotifier<AsyncValue<void>> {
   BookingActionsNotifier(this._repo, this._ref)
       : super(const AsyncValue.data(null));
 
+  void _refreshAll() {
+    _ref.invalidate(bookingListProvider);
+    _ref.invalidate(calendarProvider);
+    _ref.invalidate(calendarGridProvider);
+    _ref.invalidate(dashboardStatsProvider);
+    _ref.invalidate(reportDataProvider);
+  }
+
   Future<bool> hold(Map<String, dynamic> data) async {
     state = const AsyncValue.loading();
     final result = await _repo.holdRoom(data);
     if (result.success) {
-      _ref.invalidate(bookingListProvider(null));
+      _refreshAll();
       state = const AsyncValue.data(null);
       return true;
     }
@@ -85,9 +96,7 @@ class BookingActionsNotifier extends StateNotifier<AsyncValue<void>> {
     state = const AsyncValue.loading();
     final result = await _repo.confirmBooking(id);
     if (result.success) {
-      _ref.invalidate(bookingListProvider(null));
-      if (propertyId != null) _ref.invalidate(bookingListProvider(propertyId));
-      _ref.invalidate(calendarProvider);
+      _refreshAll();
       state = const AsyncValue.data(null);
       return true;
     }
@@ -99,9 +108,7 @@ class BookingActionsNotifier extends StateNotifier<AsyncValue<void>> {
     state = const AsyncValue.loading();
     final result = await _repo.cancelBooking(id);
     if (result.success) {
-      _ref.invalidate(bookingListProvider(null));
-      if (propertyId != null) _ref.invalidate(bookingListProvider(propertyId));
-      _ref.invalidate(calendarProvider);
+      _refreshAll();
       state = const AsyncValue.data(null);
       return true;
     }
@@ -113,8 +120,7 @@ class BookingActionsNotifier extends StateNotifier<AsyncValue<void>> {
     state = const AsyncValue.loading();
     final result = await _repo.updateBooking(id, data);
     if (result.success) {
-      _ref.invalidate(bookingListProvider(null));
-      _ref.invalidate(calendarProvider);
+      _refreshAll();
       state = const AsyncValue.data(null);
       return true;
     }

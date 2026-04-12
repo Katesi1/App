@@ -1,6 +1,8 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../data/models/room_model.dart';
 import '../../../data/repositories/room_repository.dart';
+import '../../dashboard/controllers/dashboard_controller.dart';
+import '../../reports/controllers/report_controller.dart';
 
 final roomRepositoryProvider =
     Provider<RoomRepository>((ref) => RoomRepository());
@@ -47,11 +49,19 @@ class RoomActionsNotifier extends StateNotifier<AsyncValue<void>> {
   RoomActionsNotifier(this._repo, this._ref)
       : super(const AsyncValue.data(null));
 
+  void _refreshAll({String? id}) {
+    _ref.invalidate(roomListProvider);
+    _ref.invalidate(allRoomsProvider);
+    if (id != null) _ref.invalidate(roomDetailProvider(id));
+    _ref.invalidate(dashboardStatsProvider);
+    _ref.invalidate(reportDataProvider);
+  }
+
   Future<RoomModel?> create(Map<String, dynamic> data) async {
     state = const AsyncValue.loading();
     final result = await _repo.createRoom(data);
     if (result.success) {
-      _ref.invalidate(roomListProvider);
+      _refreshAll();
       state = const AsyncValue.data(null);
       return result.data;
     }
@@ -63,8 +73,7 @@ class RoomActionsNotifier extends StateNotifier<AsyncValue<void>> {
     state = const AsyncValue.loading();
     final result = await _repo.updateRoom(id, data);
     if (result.success) {
-      _ref.invalidate(roomListProvider);
-      _ref.invalidate(roomDetailProvider(id));
+      _refreshAll(id: id);
       state = const AsyncValue.data(null);
       return true;
     }
@@ -76,7 +85,7 @@ class RoomActionsNotifier extends StateNotifier<AsyncValue<void>> {
     state = const AsyncValue.loading();
     final result = await _repo.deleteRoom(id);
     if (result.success) {
-      _ref.invalidate(roomListProvider);
+      _refreshAll();
       state = const AsyncValue.data(null);
       return true;
     }
@@ -88,6 +97,7 @@ class RoomActionsNotifier extends StateNotifier<AsyncValue<void>> {
     final result = await _repo.uploadImages(roomId, filePaths);
     if (result.success) {
       _ref.invalidate(roomDetailProvider(roomId));
+      _ref.invalidate(allRoomsProvider);
       return (true, '');
     }
     return (false, result.message);
@@ -97,6 +107,7 @@ class RoomActionsNotifier extends StateNotifier<AsyncValue<void>> {
     final result = await _repo.deleteImage(roomId, imageId);
     if (result.success) {
       _ref.invalidate(roomDetailProvider(roomId));
+      _ref.invalidate(allRoomsProvider);
       return true;
     }
     return false;
@@ -106,6 +117,7 @@ class RoomActionsNotifier extends StateNotifier<AsyncValue<void>> {
     final result = await _repo.setCoverImage(roomId, imageId);
     if (result.success) {
       _ref.invalidate(roomDetailProvider(roomId));
+      _ref.invalidate(allRoomsProvider);
       return true;
     }
     return false;
@@ -115,7 +127,7 @@ class RoomActionsNotifier extends StateNotifier<AsyncValue<void>> {
       String roomId, Map<String, dynamic> data) async {
     final result = await _repo.upsertPrice(roomId, data);
     if (result.success) {
-      _ref.invalidate(roomDetailProvider(roomId));
+      _refreshAll(id: roomId);
       return true;
     }
     return false;

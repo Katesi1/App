@@ -269,6 +269,8 @@ class DashboardScreen extends ConsumerWidget {
                                           b.depositAmount! > 0)
                                       ? '${AppHelpers.formatPrice(b.depositAmount!)}đ'
                                       : '--',
+                                  onTap: () =>
+                                      context.push('/bookings'),
                                 ),
                               );
                             }).toList(),
@@ -774,6 +776,7 @@ class _BookingItem extends StatelessWidget {
   final Color statusColor;
   final Color statusBg;
   final String price;
+  final VoidCallback? onTap;
 
   const _BookingItem({
     required this.initials,
@@ -783,13 +786,16 @@ class _BookingItem extends StatelessWidget {
     required this.statusColor,
     required this.statusBg,
     required this.price,
+    this.onTap,
   });
 
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
-    return Container(
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
       decoration: BoxDecoration(
         color: isDark ? AppColors.darkContainer : Colors.white,
         borderRadius: BorderRadius.circular(14),
@@ -893,6 +899,7 @@ class _BookingItem extends StatelessWidget {
           ],
         ),
       ),
+    ),
     );
   }
 }
