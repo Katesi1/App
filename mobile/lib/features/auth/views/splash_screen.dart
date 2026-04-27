@@ -112,7 +112,7 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
                 end: Alignment.bottomRight,
                 colors: [
                   AppColors.oceanDeep,
-                  Color(0xFF083550),
+                  Color(0xFF083550), // custom interpolation, không thuộc token brand
                   AppColors.ocean,
                 ],
                 stops: [0.0, 0.5, 1.0],
@@ -283,7 +283,7 @@ class _SplashWavePainter extends CustomPainter {
     final t = progress * math.pi * 2;
 
     // Tần số 1
-    paint.color = const Color(0x0AFFFFFF);
+    paint.color = Colors.white.withValues(alpha: 0.04);
     canvas.drawCircle(
         Offset(size.width * 0.85 + math.sin(t) * 25,
             size.height * 0.12 + math.cos(t) * 30),
@@ -291,7 +291,7 @@ class _SplashWavePainter extends CustomPainter {
         paint);
 
     // Tần số 1, phase +π (ngược chiều → trông tự nhiên hơn)
-    paint.color = const Color(0x07FFFFFF);
+    paint.color = Colors.white.withValues(alpha: 0.03);
     canvas.drawCircle(
         Offset(size.width * 0.1 + math.sin(t + math.pi) * 20,
             size.height * 0.8 + math.cos(t + math.pi) * 20),
@@ -299,7 +299,7 @@ class _SplashWavePainter extends CustomPainter {
         paint);
 
     // Tần số 2, phase +π/2
-    paint.color = const Color(0x1000B4D8);
+    paint.color = AppColors.jadeBright.withValues(alpha: 0.06);
     canvas.drawCircle(
         Offset(size.width * 0.6 + math.sin(t * 2 + math.pi / 2) * 25,
             size.height * 0.75 + math.cos(t * 2 + math.pi / 2) * 15),

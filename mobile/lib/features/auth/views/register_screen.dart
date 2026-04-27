@@ -126,7 +126,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen>
                 end: Alignment.bottomRight,
                 colors: [
                   AppColors.oceanDeep,
-                  Color(0xFF0A3D5C),
+                  Color(0xFF0A3D5C), // custom interpolation, không thuộc token brand
                   AppColors.ocean,
                 ],
                 stops: [0.0, 0.5, 1.0],
@@ -908,7 +908,7 @@ class _RegisterWavePainter extends CustomPainter {
     final t = progress * math.pi * 2;
 
     // Tần số 1
-    paint.color = const Color(0x0AFFFFFF);
+    paint.color = Colors.white.withValues(alpha: 0.04);
     canvas.drawCircle(
         Offset(size.width * 0.9 + math.sin(t) * 20,
             size.height * 0.08 + math.cos(t) * 20),
@@ -916,7 +916,7 @@ class _RegisterWavePainter extends CustomPainter {
         paint);
 
     // Tần số 1, phase +π
-    paint.color = const Color(0x08FFFFFF);
+    paint.color = Colors.white.withValues(alpha: 0.03);
     canvas.drawCircle(
         Offset(-40 + math.sin(t + math.pi) * 25,
             size.height * 0.25 + math.cos(t + math.pi) * 15),
@@ -924,7 +924,7 @@ class _RegisterWavePainter extends CustomPainter {
         paint);
 
     // Tần số 2
-    paint.color = const Color(0x0D00B4D8);
+    paint.color = AppColors.jadeBright.withValues(alpha: 0.05);
     canvas.drawCircle(
         Offset(size.width * 0.5 + math.sin(t * 2) * 20,
             size.height * 0.18 + math.cos(t * 2) * 10),

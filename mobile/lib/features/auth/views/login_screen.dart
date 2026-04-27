@@ -145,7 +145,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
                 end: Alignment.bottomRight,
                 colors: [
                   AppColors.oceanDeep,
-                  Color(0xFF0A3D5C),
+                  Color(0xFF0A3D5C), // custom interpolation, không thuộc token brand
                   AppColors.ocean,
                 ],
                 stops: [0.0, 0.5, 1.0],
@@ -647,7 +647,7 @@ class _WavePainter extends CustomPainter {
     final t = progress * math.pi * 2;
 
     // Large circle top-right — tần số 1 (1 vòng đầy đủ)
-    paint.color = const Color(0x0DFFFFFF);
+    paint.color = Colors.white.withValues(alpha: 0.05);
     canvas.drawCircle(
       Offset(size.width + 40 + math.sin(t) * 20,
           -60 + math.cos(t) * 30),
@@ -656,7 +656,7 @@ class _WavePainter extends CustomPainter {
     );
 
     // Medium circle bottom-left — tần số 1, phase +π (ngược chiều)
-    paint.color = const Color(0x08FFFFFF);
+    paint.color = Colors.white.withValues(alpha: 0.03);
     canvas.drawCircle(
       Offset(-60 + math.sin(t + math.pi) * 40,
           size.height * 0.35 + math.cos(t + math.pi) * 20),
@@ -665,7 +665,7 @@ class _WavePainter extends CustomPainter {
     );
 
     // Small teal accent — tần số 2 (2 vòng, nhanh hơn)
-    paint.color = const Color(0x1200B4D8);
+    paint.color = AppColors.jadeBright.withValues(alpha: 0.07);
     canvas.drawCircle(
       Offset(size.width * 0.7 + math.sin(t * 2) * 18,
           size.height * 0.25 + math.cos(t * 2) * 14),
@@ -674,7 +674,7 @@ class _WavePainter extends CustomPainter {
     );
 
     // Gold accent dot — tần số 1, phase +π/2
-    paint.color = const Color(0x15C9A84C);
+    paint.color = AppColors.gold500.withValues(alpha: 0.08);
     canvas.drawCircle(
       Offset(size.width * 0.15 + math.cos(t + math.pi / 2) * 10,
           size.height * 0.2 + math.sin(t + math.pi / 2) * 10),
