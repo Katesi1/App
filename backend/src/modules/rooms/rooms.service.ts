@@ -4,118 +4,154 @@ import {
   ForbiddenException,
   ConflictException,
 } from '@nestjs/common';
-import { PrismaService } from '../../prisma/prisma.service';
+import { RoomsRepository } from './rooms.repository';
+import { PropertiesRepository } from '../properties/properties.repository';
+import { RoomTypesRepository } from '../room-types/room-types.repository';
 import { CloudinaryService } from '../../config/cloudinary.service';
 import { CreateRoomDto } from './dto/create-room.dto';
 import { UpdateRoomDto } from './dto/update-room.dto';
 import { Messages } from '../../i18n';
-import { Role } from '@prisma/client';
+import { Role, RoomStatus } from '@prisma/client';
 
 @Injectable()
 export class RoomsService {
   constructor(
-    private prisma: PrismaService,
+    private repo: RoomsRepository,
+    private propertiesRepo: PropertiesRepository,
+    private roomTypesRepo: RoomTypesRepository,
     private cloudinary: CloudinaryService,
   ) {}
 
-  async findAll(user: { id: string; role: Role }, msg: Messages, homestayId?: string) {
+  async findAll(
+    user: any,
+    msg: Messages,
+    query: {
+      propertyId?: string; status?: RoomStatus; roomTypeId?: string;
+      floor?: number; minPrice?: number; maxPrice?: number;
+      capacity?: number; page?: number; limit?: number; sort?: string;
+    },
+  ) {
     const where: any = { isActive: true };
-    if (homestayId) where.homestayId = homestayId;
-
-    if (user.role === Role.OWNER) {
-      where.homestay = { ownerId: user.id };
+    if (query.propertyId) where.propertyId = query.propertyId;
+    if (query.status) where.status = query.status;
+    if (query.roomTypeId) where.roomTypeId = query.roomTypeId;
+    if (query.floor) where.floor = query.floor;
+    if (query.capacity) where.capacity = { gte: query.capacity };
+    if (query.minPrice || query.maxPrice) {
+      where.pricePerNight = {};
+      if (query.minPrice) where.pricePerNight.gte = query.minPrice;
+      if (query.maxPrice) where.pricePerNight.lte = query.maxPrice;
     }
 
-    const rooms = await this.prisma.room.findMany({
-      where,
-      include: {
-        homestay: { select: { id: true, name: true, address: true } },
-        images: { orderBy: { order: 'asc' }, take: 1 },
-        price: true,
-        _count: { select: { bookings: true } },
-      },
-      orderBy: { createdAt: 'desc' },
-    });
+    if (user.role === Role.OWNER) {
+      where.property = { ownerId: user.id };
+    } else if ([Role.MANAGER, Role.SALE, Role.RECEPTIONIST].includes(user.role)) {
+      where.propertyId = user.propertyId;
+    }
 
-    return { message: msg.rooms.listSuccess, data: rooms };
+    const orderBy: any = {};
+    if (query.sort === 'price_asc') orderBy.pricePerNight = 'asc';
+    else if (query.sort === 'price_desc') orderBy.pricePerNight = 'desc';
+    else orderBy.createdAt = 'desc';
+
+    const result = await this.repo.findAll(where, { page: query.page, limit: query.limit }, orderBy);
+    return { message: msg.rooms.listSuccess, ...result };
   }
 
   async findOne(id: string, msg: Messages) {
-    const room = await this.prisma.room.findUnique({
-      where: { id },
-      include: {
-        homestay: {
-          select: {
-            id: true, name: true, address: true,
-            latitude: true, longitude: true, mapLink: true,
-            owner: { select: { id: true, name: true, phone: true } },
-          },
-        },
-        images: { orderBy: { order: 'asc' } },
-        price: true,
-      },
-    });
-
+    const room = await this.repo.findById(id);
     if (!room) throw new NotFoundException(msg.rooms.notFound);
     return { message: msg.rooms.getSuccess, data: room };
   }
 
-  async create(dto: CreateRoomDto, user: { id: string; role: Role }, msg: Messages) {
-    const homestay = await this.prisma.homestay.findUnique({
-      where: { id: dto.homestayId },
-    });
-    if (!homestay) throw new NotFoundException(msg.homestays.notFound);
-    if (user.role === Role.OWNER && homestay.ownerId !== user.id) {
+  async create(dto: CreateRoomDto, user: any, msg: Messages) {
+    const property = await this.propertiesRepo.findRaw(dto.propertyId);
+    if (!property) throw new NotFoundException(msg.properties.notFound);
+    if (user.role === Role.OWNER && property.ownerId !== user.id) {
       throw new ForbiddenException(msg.rooms.forbiddenAdd);
     }
 
-    const existing = await this.prisma.room.findUnique({ where: { code: dto.code } });
-    if (existing) throw new ConflictException(msg.rooms.codeDuplicate);
+    const roomType = await this.roomTypesRepo.findById(dto.roomTypeId);
+    if (!roomType) throw new NotFoundException(msg.roomTypes.notFound);
 
-    const room = await this.prisma.room.create({
-      data: dto,
-      include: { homestay: { select: { id: true, name: true } } },
+    const { amenityIds, propertyId, roomTypeId, ...roomData } = dto;
+
+    const room = await this.repo.create({
+      ...roomData,
+      property: { connect: { id: propertyId } },
+      roomType: { connect: { id: roomTypeId } },
+      ...(amenityIds?.length ? {
+        amenities: { create: amenityIds.map((amenityId) => ({ amenity: { connect: { id: amenityId } } })) },
+      } : {}),
     });
 
     return { message: msg.rooms.createSuccess, data: room };
   }
 
-  async update(id: string, dto: UpdateRoomDto, user: { id: string; role: Role }, msg: Messages) {
-    const room = await this.getRoomWithAccess(id, user, msg);
+  async update(id: string, dto: UpdateRoomDto, user: any, msg: Messages) {
+    await this.getRoomWithAccess(id, user, msg);
+    const { amenityIds, roomTypeId, ...roomData } = dto;
 
-    if (dto.code && dto.code !== room.code) {
-      const existing = await this.prisma.room.findUnique({ where: { code: dto.code } });
-      if (existing) throw new ConflictException(msg.rooms.codeDuplicate);
-    }
-
-    const updated = await this.prisma.room.update({
-      where: { id },
-      data: dto,
+    const updated = await this.repo.update(id, {
+      ...roomData,
+      ...(roomTypeId ? { roomType: { connect: { id: roomTypeId } } } : {}),
+      ...(amenityIds !== undefined ? {
+        amenities: {
+          deleteMany: {},
+          create: amenityIds.map((amenityId) => ({ amenity: { connect: { id: amenityId } } })),
+        },
+      } : {}),
     });
 
     return { message: msg.rooms.updateSuccess, data: updated };
   }
 
-  async remove(id: string, user: { id: string; role: Role }, msg: Messages) {
+  async updateStatus(id: string, status: RoomStatus, user: any, msg: Messages) {
+    await this.getRoomWithAccess(id, user, msg);
+    const updated = await this.repo.updateStatus(id, status);
+    return { message: msg.rooms.updateSuccess, data: updated };
+  }
+
+  async remove(id: string, user: any, msg: Messages) {
     await this.getRoomWithAccess(id, user, msg);
 
-    await this.prisma.room.update({
-      where: { id },
-      data: { isActive: false },
-    });
+    const activeBookings = await this.repo.countActiveBookings(id);
+    if (activeBookings > 0) {
+      throw new ConflictException(msg.rooms.hasActiveBookings);
+    }
 
+    await this.repo.softDelete(id);
     return { message: msg.rooms.deleteSuccess, data: null };
   }
 
-  async uploadImages(
-    roomId: string,
-    files: Express.Multer.File[],
-    user: { id: string; role: Role },
-    msg: Messages,
-  ) {
+  async getBookings(id: string, msg: Messages, startDate?: string, endDate?: string) {
+    const room = await this.repo.findRaw(id);
+    if (!room) throw new NotFoundException(msg.rooms.notFound);
+
+    const where: any = {};
+    if (startDate) where.checkinDate = { gte: new Date(startDate) };
+    if (endDate) where.checkoutDate = { ...where.checkoutDate, lte: new Date(endDate) };
+
+    const bookings = await this.repo.findRoomBookings(id, where);
+    return { message: msg.rooms.listSuccess, data: bookings };
+  }
+
+  async checkAvailability(id: string, checkinDate: string, checkoutDate: string, msg: Messages) {
+    const room = await this.repo.findRaw(id);
+    if (!room) throw new NotFoundException(msg.rooms.notFound);
+
+    const conflicting = await this.repo.countConflictingBookings(id, new Date(checkinDate), new Date(checkoutDate));
+
+    return {
+      message: msg.rooms.getSuccess,
+      data: { available: conflicting === 0, roomId: id, checkinDate, checkoutDate },
+    };
+  }
+
+  async uploadImages(roomId: string, files: Express.Multer.File[], user: any, msg: Messages) {
     await this.getRoomWithAccess(roomId, user, msg);
 
-    const currentCount = await this.prisma.roomImage.count({ where: { roomId } });
+    const currentCount = await this.repo.countImages(roomId);
     const maxImages = 20;
     if (currentCount + files.length > maxImages) {
       throw new ConflictException(msg.rooms.maxImages(maxImages));
@@ -123,77 +159,51 @@ export class RoomsService {
 
     const uploadedImages = await Promise.all(
       files.map(async (file, index) => {
-        const result = await this.cloudinary.uploadImage(
-          file,
-          `homestay/rooms/${roomId}`,
-        );
+        const result = await this.cloudinary.uploadImage(file, `halong24h/rooms/${roomId}`);
         return {
           roomId,
-          imageUrl: result.secure_url,
+          url: result.secure_url,
           publicId: result.public_id,
           isCover: currentCount === 0 && index === 0,
-          order: currentCount + index,
+          sortOrder: currentCount + index,
         };
       }),
     );
 
-    const images = await this.prisma.$transaction(
-      uploadedImages.map((img) => this.prisma.roomImage.create({ data: img })),
-    );
-
+    const images = await this.repo.createImages(uploadedImages);
     return { message: msg.rooms.uploadSuccess(images.length), data: images };
   }
 
-  async deleteImage(roomId: string, imageId: string, user: { id: string; role: Role }, msg: Messages) {
+  async deleteImage(roomId: string, imageId: string, user: any, msg: Messages) {
     await this.getRoomWithAccess(roomId, user, msg);
 
-    const image = await this.prisma.roomImage.findFirst({
-      where: { id: imageId, roomId },
-    });
+    const image = await this.repo.findImage(imageId, roomId);
     if (!image) throw new NotFoundException(msg.rooms.imageNotFound);
 
     await this.cloudinary.deleteImage(image.publicId);
-    await this.prisma.roomImage.delete({ where: { id: imageId } });
+    await this.repo.deleteImage(imageId);
 
     if (image.isCover) {
-      const firstImage = await this.prisma.roomImage.findFirst({
-        where: { roomId },
-        orderBy: { order: 'asc' },
-      });
+      const firstImage = await this.repo.getFirstImage(roomId);
       if (firstImage) {
-        await this.prisma.roomImage.update({
-          where: { id: firstImage.id },
-          data: { isCover: true },
-        });
+        await this.repo.setCoverImage(firstImage.id);
       }
     }
 
     return { message: msg.rooms.deleteImageSuccess, data: null };
   }
 
-  async setCoverImage(roomId: string, imageId: string, user: { id: string; role: Role }, msg: Messages) {
+  async setCoverImage(roomId: string, imageId: string, user: any, msg: Messages) {
     await this.getRoomWithAccess(roomId, user, msg);
-
-    await this.prisma.roomImage.updateMany({
-      where: { roomId },
-      data: { isCover: false },
-    });
-
-    const image = await this.prisma.roomImage.update({
-      where: { id: imageId },
-      data: { isCover: true },
-    });
-
+    await this.repo.resetCoverImages(roomId);
+    const image = await this.repo.setCoverImage(imageId);
     return { message: msg.rooms.setCoverSuccess, data: image };
   }
 
-  private async getRoomWithAccess(id: string, user: { id: string; role: Role }, msg: Messages) {
-    const room = await this.prisma.room.findUnique({
-      where: { id },
-      include: { homestay: { select: { ownerId: true } } },
-    });
+  private async getRoomWithAccess(id: string, user: any, msg: Messages) {
+    const room = await this.repo.findWithProperty(id);
     if (!room) throw new NotFoundException(msg.rooms.notFound);
-    if (user.role === Role.OWNER && room.homestay.ownerId !== user.id) {
+    if (user.role === Role.OWNER && room.property.ownerId !== user.id) {
       throw new ForbiddenException(msg.rooms.forbidden);
     }
     return room;

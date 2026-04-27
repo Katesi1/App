@@ -48,9 +48,20 @@ dependencies:
   # Share
   share_plus: ^10.1.4
 
+  # Splash
+  flutter_native_splash: ^2.4.0
+
+  # Auth
+  google_sign_in: ^6.2.2
+
+  # SVG
+  flutter_svg: ^2.0.10+1
+
   # Utils
   equatable: ^2.0.7
   json_annotation: ^4.9.0
+  screenshot: ^3.0.0
+  path_provider: ^2.1.5
 
 dev_dependencies:
   flutter_test:
@@ -61,8 +72,17 @@ dev_dependencies:
   riverpod_generator: ^2.6.5
   custom_lint: ^0.7.5
   riverpod_lint: ^2.6.5
+  mocktail: ^1.0.4
 
 flutter:
   uses-material-design: true
   assets:
     - assets/images/
+
+flutter_native_splash:
+  color: "#062D42"
+  image: assets/images/splash.png
+  android_12:
+    color: "#062D42"
+    image: assets/images/splash_android12.png
+    icon_background_color: "#062D42"

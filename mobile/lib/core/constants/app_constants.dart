@@ -1,5 +1,5 @@
 class AppConstants {
-  static const String appName = 'Homestay Manager';
+  static const String appName = 'Halong24h';
   static const int holdDurationMinutes = 30;
   static const int accessTokenKey = 900; // 15 phút
 
@@ -7,57 +7,98 @@ class AppConstants {
   static const String accessTokenKey_ = 'access_token';
   static const String refreshTokenKey = 'refresh_token';
   static const String userKey = 'user_data';
+
+  // TODO: Cập nhật các link bên dưới khi app được publish lên store.
+  // playStoreUrl: lấy từ Google Play Console → trang app → "Xem trên Google Play"
+  // appStoreUrl: lấy từ App Store Connect → trang app → "App URL"
+  // appDownloadPage: trang web riêng (nếu có) để redirect theo platform
+  static const String playStoreUrl =
+      'https://play.google.com/store/apps/details?id=com.halong24h.app';
+  static const String appStoreUrl =
+      'https://apps.apple.com/app/halong24h/id000000000';
+  static const String appDownloadPage = 'https://halong24h.vn/download';
 }
 
-enum UserRole { admin, owner, sale }
+// 0=ADMIN, 1=OWNER, 2=SALE, 3=CUSTOMER
+enum UserRole { admin, owner, sale, customer }
 
 extension UserRoleExtension on UserRole {
-  String get value {
+  int get value {
     switch (this) {
       case UserRole.admin:
-        return 'ADMIN';
+        return 0;
       case UserRole.owner:
-        return 'OWNER';
+        return 1;
       case UserRole.sale:
-        return 'SALE';
+        return 2;
+      case UserRole.customer:
+        return 3;
     }
   }
 
-  static UserRole fromString(String role) {
-    switch (role.toUpperCase()) {
-      case 'ADMIN':
+  String get label {
+    switch (this) {
+      case UserRole.admin:
+        return 'Admin';
+      case UserRole.owner:
+        return 'Chủ nhà';
+      case UserRole.sale:
+        return 'Sale';
+      case UserRole.customer:
+        return 'Khách hàng';
+    }
+  }
+
+  /// Role cho phép đăng ký (không cho ADMIN)
+  static const registrableRoles = [
+    UserRole.owner,
+    UserRole.sale,
+    UserRole.customer,
+  ];
+
+  /// Có phải role quản lý không (ADMIN + OWNER + SALE)
+  bool get isManagement => this != UserRole.customer;
+
+  static UserRole fromInt(int role) {
+    switch (role) {
+      case 0:
         return UserRole.admin;
-      case 'OWNER':
+      case 1:
         return UserRole.owner;
-      default:
+      case 2:
         return UserRole.sale;
+      case 3:
+        return UserRole.customer;
+      default:
+        return UserRole.customer;
     }
   }
 }
 
+// 0=HOLD, 1=CONFIRMED, 2=CANCELLED, 3=COMPLETED
 enum BookingStatus { hold, confirmed, cancelled, completed }
 
 extension BookingStatusExtension on BookingStatus {
-  String get value {
+  int get value {
     switch (this) {
       case BookingStatus.hold:
-        return 'HOLD';
+        return 0;
       case BookingStatus.confirmed:
-        return 'CONFIRMED';
+        return 1;
       case BookingStatus.cancelled:
-        return 'CANCELLED';
+        return 2;
       case BookingStatus.completed:
-        return 'COMPLETED';
+        return 3;
     }
   }
 
-  static BookingStatus fromString(String status) {
-    switch (status.toUpperCase()) {
-      case 'CONFIRMED':
+  static BookingStatus fromInt(int status) {
+    switch (status) {
+      case 1:
         return BookingStatus.confirmed;
-      case 'CANCELLED':
+      case 2:
         return BookingStatus.cancelled;
-      case 'COMPLETED':
+      case 3:
         return BookingStatus.completed;
       default:
         return BookingStatus.hold;

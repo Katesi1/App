@@ -1,12 +1,13 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
-import '../providers/auth_provider.dart';
+import '../../data/models/user_model.dart';
+import '../../features/auth/controllers/auth_controller.dart';
 import '../providers/theme_provider.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_spacing.dart';
+import '../../features/notifications/controllers/notification_controller.dart';
 
 class AppScaffold extends ConsumerWidget {
   final String title;
@@ -39,7 +40,6 @@ class AppScaffold extends ConsumerWidget {
     final user = ref.watch(currentUserProvider);
     final themeMode = ref.watch(themeProvider);
     final isDark = themeMode == ThemeMode.dark;
-    final colors = Theme.of(context).colorScheme;
 
     return Scaffold(
       resizeToAvoidBottomInset: resizeToAvoidBottomInset,
@@ -49,8 +49,7 @@ class AppScaffold extends ConsumerWidget {
                   title: Text(title),
                   actions: [
                     ...?actions,
-
-                    // Theme toggle
+                    _NotificationBell(),
                     IconButton(
                       tooltip: isDark ? 'Chế độ sáng' : 'Chế độ tối',
                       icon: AnimatedSwitcher(
@@ -58,113 +57,49 @@ class AppScaffold extends ConsumerWidget {
                         transitionBuilder: (child, anim) =>
                             RotationTransition(
                           turns: anim,
-                          child:
-                              FadeTransition(opacity: anim, child: child),
+                          child: FadeTransition(
+                              opacity: anim, child: child),
                         ),
                         child: Icon(
                           isDark
                               ? Icons.light_mode_rounded
                               : Icons.dark_mode_rounded,
                           key: ValueKey(isDark),
-                          color: colors.primary,
+                          color: isDark
+                              ? AppColors.oceanBright
+                              : Colors.white,
                         ),
                       ),
                       onPressed: () =>
                           ref.read(themeProvider.notifier).toggle(),
                     ),
-
-                    // User avatar + menu
                     Padding(
-                      padding: const EdgeInsets.only(right: AppSpacing.sm),
-                      child: PopupMenuButton<String>(
-                        tooltip: 'Tài khoản',
-                        offset: const Offset(0, 48),
-                        shape: RoundedRectangleBorder(
-                          borderRadius:
-                              BorderRadius.circular(AppSpacing.md),
-                        ),
-                        icon: CircleAvatar(
-                          backgroundColor: colors.primary,
-                          radius: 18,
-                          child: Text(
-                            user?.name.isNotEmpty == true
-                                ? user!.name[0].toUpperCase()
-                                : 'U',
-                            style: GoogleFonts.nunito(
-                              color: colors.onPrimary,
-                              fontWeight: FontWeight.w700,
-                              fontSize: 15,
+                      padding:
+                          const EdgeInsets.only(right: AppSpacing.sm),
+                      child: GestureDetector(
+                        onTap: () => context.push('/profile'),
+                        child: Container(
+                          width: 36,
+                          height: 36,
+                          decoration: const BoxDecoration(
+                            shape: BoxShape.circle,
+                            gradient: LinearGradient(
+                              colors: [AppColors.teal, AppColors.gold],
+                            ),
+                          ),
+                          child: Center(
+                            child: Text(
+                              user?.name.isNotEmpty == true
+                                  ? user!.name[0].toUpperCase()
+                                  : 'U',
+                              style: GoogleFonts.beVietnamPro(
+                                color: Colors.white,
+                                fontWeight: FontWeight.w700,
+                                fontSize: 13,
+                              ),
                             ),
                           ),
                         ),
-                        itemBuilder: (_) => [
-                          // User info header
-                          PopupMenuItem<String>(
-                            enabled: false,
-                            child: Column(
-                              crossAxisAlignment:
-                                  CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  user?.name ?? '',
-                                  style: GoogleFonts.nunito(
-                                    fontWeight: FontWeight.w700,
-                                    fontSize: 15,
-                                    color: colors.onSurface,
-                                  ),
-                                ),
-                                const SizedBox(height: 2),
-                                Container(
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: AppSpacing.sm,
-                                    vertical: 2,
-                                  ),
-                                  decoration: BoxDecoration(
-                                    color: _roleColor(user?.role)
-                                        .withValues(alpha: 0.1),
-                                    borderRadius: BorderRadius.circular(
-                                        AppRadius.full),
-                                  ),
-                                  child: Text(
-                                    _roleLabel(user?.role),
-                                    style: GoogleFonts.nunito(
-                                      color: _roleColor(user?.role),
-                                      fontSize: 11,
-                                      fontWeight: FontWeight.w600,
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                          const PopupMenuDivider(),
-                          // Logout
-                          PopupMenuItem<String>(
-                            value: 'logout',
-                            child: Row(
-                              children: [
-                                const Icon(Icons.logout_rounded,
-                                    color: AppColors.error, size: 20),
-                                const SizedBox(width: AppSpacing.sm),
-                                Text(
-                                  'Đăng xuất',
-                                  style: GoogleFonts.nunito(
-                                    color: AppColors.error,
-                                    fontWeight: FontWeight.w600,
-                                  ),
-                                ),
-                              ],
-                            ),
-                            onTap: () async {
-                              await ref
-                                  .read(authProvider.notifier)
-                                  .logout();
-                              if (context.mounted) {
-                                context.go('/login');
-                              }
-                            },
-                          ),
-                        ],
                       ),
                     ),
                   ],
@@ -172,41 +107,17 @@ class AppScaffold extends ConsumerWidget {
               : null),
       body: body,
       floatingActionButton: floatingActionButton,
-      bottomNavigationBar:
-          showBottomNav ? _BottomNav(selectedIndex: selectedIndex ?? 0) : null,
-      floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
+      bottomNavigationBar: showBottomNav
+          ? _BottomNav(selectedIndex: selectedIndex ?? 0)
+          : null,
       bottomSheet: bottomSheet,
     );
   }
 
-  String _roleLabel(String? role) {
-    switch (role?.toUpperCase()) {
-      case 'ADMIN':
-        return 'Admin';
-      case 'OWNER':
-        return 'Chủ nhà';
-      case 'SALE':
-        return 'Sale';
-      default:
-        return role ?? '';
-    }
-  }
-
-  Color _roleColor(String? role) {
-    switch (role?.toUpperCase()) {
-      case 'ADMIN':
-        return AppColors.error;
-      case 'OWNER':
-        return AppColors.completed;
-      case 'SALE':
-        return AppColors.primary;
-      default:
-        return AppColors.primary;
-    }
-  }
 }
 
-// ─── Bottom Navigation Bar ────────────────────────────────────────────────────
+// ─── Bottom Navigation — dynamic tabs based on user role ────────────────────
+
 class _BottomNav extends ConsumerStatefulWidget {
   final int selectedIndex;
   const _BottomNav({required this.selectedIndex});
@@ -215,38 +126,85 @@ class _BottomNav extends ConsumerStatefulWidget {
   ConsumerState<_BottomNav> createState() => _BottomNavState();
 }
 
-class _BottomNavState extends ConsumerState<_BottomNav>
-    with SingleTickerProviderStateMixin {
+class _BottomNavState extends ConsumerState<_BottomNav> {
   late int _current;
 
-  // Tab items (excluding center + button)
-  static const _navItems = <_NavItem>[
+  // ── Nav items theo role ────────────────────────────────────────────
+  static const _staffNavItems = <_NavItem>[
     _NavItem(
       icon: Icons.home_outlined,
       activeIcon: Icons.home_rounded,
-      label: 'Trang chủ',
+      label: 'Tổng quan',
+      route: '/dashboard',
+    ),
+    _NavItem(
+      icon: Icons.apartment_outlined,
+      activeIcon: Icons.apartment_rounded,
+      label: 'Phòng',
       route: '/rooms',
     ),
     _NavItem(
       icon: Icons.calendar_month_outlined,
       activeIcon: Icons.calendar_month_rounded,
       label: 'Lịch',
-      route: '/bookings',
+      route: '/calendar',
     ),
-    // Index 2 is the center + button (placeholder, not rendered here)
     _NavItem(
-      icon: Icons.chat_bubble_outline_rounded,
-      activeIcon: Icons.chat_bubble_rounded,
-      label: 'Liên hệ',
-      route: '/homestays',
+      icon: Icons.bar_chart_outlined,
+      activeIcon: Icons.bar_chart_rounded,
+      label: 'Báo cáo',
+      route: '/reports',
+    ),
+  ];
+
+  static const _adminExtraItem = _NavItem(
+    icon: Icons.admin_panel_settings_outlined,
+    activeIcon: Icons.admin_panel_settings_rounded,
+    label: 'Quản lý',
+    route: '/admin',
+  );
+
+  static const _customerNavItems = <_NavItem>[
+    _NavItem(
+      icon: Icons.home_outlined,
+      activeIcon: Icons.home_rounded,
+      label: 'Trang chủ',
+      route: '/home',
+    ),
+    _NavItem(
+      icon: Icons.search_outlined,
+      activeIcon: Icons.search_rounded,
+      label: 'Tìm phòng',
+      route: '/search',
+    ),
+    _NavItem(
+      icon: Icons.book_outlined,
+      activeIcon: Icons.book_rounded,
+      label: 'Booking',
+      route: '/my-bookings',
     ),
     _NavItem(
       icon: Icons.person_outline_rounded,
       activeIcon: Icons.person_rounded,
-      label: 'Cá nhân',
-      route: '/admin/users',
+      label: 'Tài khoản',
+      route: '/account',
     ),
   ];
+
+  List<_NavItem> _getNavItems(UserModel? user, bool isCustomerMode) {
+    if (user == null) return _staffNavItems;
+
+    // Chế độ khách (CUSTOMER thuần hoặc ADMIN/STAFF toggle)
+    if (isCustomerMode) return _customerNavItems;
+
+    // ADMIN + OWNER: staff tabs + quản lý tab
+    if (user.isAdmin || user.isOwner) {
+      return [..._staffNavItems, _adminExtraItem];
+    }
+
+    // SALE: chỉ staff tabs
+    return _staffNavItems;
+  }
 
   @override
   void initState() {
@@ -264,53 +222,61 @@ class _BottomNavState extends ConsumerState<_BottomNav>
 
   @override
   Widget build(BuildContext context) {
-    final colors = Theme.of(context).colorScheme;
+    final user = ref.watch(currentUserProvider);
+    final isCustomerMode = ref.watch(isCustomerModeProvider);
+    final navItems = _getNavItems(user, isCustomerMode);
+
+    // Clamp index to valid range
+    if (_current >= navItems.length) {
+      _current = 0;
+    }
+
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Container(
-      decoration: BoxDecoration(
-        color: colors.surface,
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.08),
-            blurRadius: 20,
-            offset: const Offset(0, -4),
-          ),
-        ],
-        borderRadius: const BorderRadius.only(
-          topLeft: Radius.circular(24),
-          topRight: Radius.circular(24),
-        ),
-      ),
+      color: isDark ? AppColors.darkBackground : AppColors.background,
       child: SafeArea(
         top: false,
         child: Padding(
-          padding: const EdgeInsets.only(
-            top: AppSpacing.sm,
-            bottom: AppSpacing.xs,
-          ),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceAround,
-            children: [
-              // Left tabs (Home, Calendar)
-              _buildNavItem(0, _navItems[0], colors),
-              _buildNavItem(1, _navItems[1], colors),
-
-              // Center FAB (+ button)
-              _buildCenterFab(context, colors, isDark),
-
-              // Right tabs (Contact, Profile)
-              _buildNavItem(2, _navItems[2], colors),
-              _buildNavItem(3, _navItems[3], colors),
-            ],
+          padding: const EdgeInsets.fromLTRB(14, 8, 14, 12),
+          child: Container(
+            padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 4),
+            decoration: BoxDecoration(
+              color: isDark ? AppColors.darkSurface : Colors.white,
+              borderRadius: BorderRadius.circular(28),
+              boxShadow: [
+                BoxShadow(
+                  color: isDark
+                      ? Colors.black.withValues(alpha: 0.4)
+                      : AppColors.ink.withValues(alpha: 0.1),
+                  blurRadius: 24,
+                  offset: const Offset(0, 6),
+                ),
+                BoxShadow(
+                  color: isDark
+                      ? Colors.black.withValues(alpha: 0.15)
+                      : AppColors.ocean.withValues(alpha: 0.06),
+                  blurRadius: 8,
+                  offset: const Offset(0, 2),
+                ),
+              ],
+            ),
+            child: Row(
+              children: List.generate(navItems.length, (i) {
+                return _buildNavItem(i, navItems[i]);
+              }),
+            ),
           ),
         ),
       ),
     );
   }
 
-  Widget _buildNavItem(int index, _NavItem item, ColorScheme colors) {
+  Widget _buildNavItem(int index, _NavItem item) {
     final isSelected = _current == index;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final activeColor = isDark ? AppColors.oceanBright : AppColors.ocean;
+    final inactiveColor = isDark ? AppColors.darkHint : AppColors.slate;
 
     return Expanded(
       child: GestureDetector(
@@ -323,153 +289,33 @@ class _BottomNavState extends ConsumerState<_BottomNav>
           mainAxisSize: MainAxisSize.min,
           children: [
             AnimatedContainer(
-              duration: const Duration(milliseconds: 300),
-              curve: Curves.easeOutCubic,
-              padding: const EdgeInsets.symmetric(
-                horizontal: 14,
-                vertical: 6,
-              ),
+              duration: const Duration(milliseconds: 200),
+              curve: Curves.easeOut,
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
               decoration: BoxDecoration(
                 color: isSelected
-                    ? colors.primary.withValues(alpha: 0.12)
+                    ? isDark
+                        ? AppColors.oceanBright.withValues(alpha: 0.15)
+                        : AppColors.oceanLight
                     : Colors.transparent,
-                borderRadius: BorderRadius.circular(AppRadius.full),
+                borderRadius: BorderRadius.circular(14),
               ),
               child: Icon(
                 isSelected ? item.activeIcon : item.icon,
-                color: isSelected ? colors.primary : colors.outline,
-                size: 24,
+                color: isSelected ? activeColor : inactiveColor,
+                size: 22,
               ),
             ),
-            const SizedBox(height: 2),
-            AnimatedDefaultTextStyle(
-              duration: const Duration(milliseconds: 200),
-              style: GoogleFonts.nunito(
-                fontSize: 11,
-                fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
-                color: isSelected ? colors.primary : colors.outline,
-              ),
-              child: Text(item.label),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildCenterFab(
-    BuildContext context,
-    ColorScheme colors,
-    bool isDark,
-  ) {
-    return GestureDetector(
-      onTap: () => _showAddOptions(context, colors),
-      child: Container(
-        margin: const EdgeInsets.only(bottom: 8),
-        child: Container(
-          width: 56,
-          height: 56,
-          decoration: BoxDecoration(
-            gradient: const LinearGradient(
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-              colors: [
-                AppColors.primaryLight,
-                AppColors.primary,
-              ],
-            ),
-            shape: BoxShape.circle,
-            boxShadow: [
-              BoxShadow(
-                color: AppColors.primary.withValues(alpha: 0.35),
-                blurRadius: 12,
-                offset: const Offset(0, 4),
-              ),
-            ],
-          ),
-          child: const Icon(
-            Icons.add_rounded,
-            color: Colors.white,
-            size: 30,
-          ),
-        ),
-      ),
-    ).animate().scale(
-          begin: const Offset(0.8, 0.8),
-          end: const Offset(1, 1),
-          duration: 400.ms,
-          curve: Curves.elasticOut,
-          delay: 200.ms,
-        );
-  }
-
-  void _showAddOptions(BuildContext context, ColorScheme colors) {
-    final user = ref.read(currentUserProvider);
-
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: Colors.transparent,
-      builder: (ctx) => Container(
-        margin: const EdgeInsets.all(AppSpacing.md),
-        decoration: BoxDecoration(
-          color: colors.surface,
-          borderRadius: BorderRadius.circular(AppRadius.xl),
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const SizedBox(height: AppSpacing.sm),
-            Container(
-              width: 40,
-              height: 4,
-              decoration: BoxDecoration(
-                color: colors.outline.withValues(alpha: 0.3),
-                borderRadius: BorderRadius.circular(2),
-              ),
-            ),
-            const SizedBox(height: AppSpacing.md),
+            const SizedBox(height: 3),
             Text(
-              'Tạo mới',
-              style: GoogleFonts.nunito(
-                fontSize: 18,
-                fontWeight: FontWeight.w700,
-                color: colors.onSurface,
+              item.label,
+              style: GoogleFonts.beVietnamPro(
+                fontSize: 10,
+                fontWeight:
+                    isSelected ? FontWeight.w700 : FontWeight.w500,
+                color: isSelected ? activeColor : inactiveColor,
               ),
             ),
-            const SizedBox(height: AppSpacing.md),
-            if (user?.canEdit == true)
-              _AddOptionTile(
-                icon: Icons.bed_rounded,
-                iconColor: AppColors.primary,
-                title: 'Thêm phòng',
-                subtitle: 'Tạo phòng mới cho homestay',
-                onTap: () {
-                  Navigator.pop(ctx);
-                  context.push('/rooms/new');
-                },
-              ),
-            if (user?.canEdit == true)
-              _AddOptionTile(
-                icon: Icons.home_work_rounded,
-                iconColor: AppColors.info,
-                title: 'Thêm homestay',
-                subtitle: 'Tạo homestay mới',
-                onTap: () {
-                  Navigator.pop(ctx);
-                  context.push('/homestays/new');
-                },
-              ),
-            _AddOptionTile(
-              icon: Icons.event_available_rounded,
-              iconColor: AppColors.secondary,
-              title: 'Đặt phòng',
-              subtitle: 'Tạo booking mới',
-              onTap: () {
-                Navigator.pop(ctx);
-                context.go('/bookings');
-              },
-            ),
-            const SizedBox(height: AppSpacing.md),
           ],
         ),
       ),
@@ -477,59 +323,51 @@ class _BottomNavState extends ConsumerState<_BottomNav>
   }
 }
 
-class _AddOptionTile extends StatelessWidget {
-  final IconData icon;
-  final Color iconColor;
-  final String title;
-  final String subtitle;
-  final VoidCallback onTap;
-
-  const _AddOptionTile({
-    required this.icon,
-    required this.iconColor,
-    required this.title,
-    required this.subtitle,
-    required this.onTap,
-  });
-
+class _NotificationBell extends ConsumerWidget {
   @override
-  Widget build(BuildContext context) {
-    final colors = Theme.of(context).colorScheme;
-    return ListTile(
-      onTap: onTap,
-      leading: Container(
-        width: 44,
-        height: 44,
-        decoration: BoxDecoration(
-          color: iconColor.withValues(alpha: 0.1),
-          borderRadius: BorderRadius.circular(AppRadius.md),
-        ),
-        child: Icon(icon, color: iconColor, size: 24),
+  Widget build(BuildContext context, WidgetRef ref) {
+    final unreadAsync = ref.watch(unreadCountProvider);
+    final count = unreadAsync.valueOrNull ?? 0;
+
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    return IconButton(
+      tooltip: 'Thông báo',
+      icon: Stack(
+        clipBehavior: Clip.none,
+        children: [
+          Icon(
+            Icons.notifications_outlined,
+            color: isDark ? AppColors.oceanBright : Colors.white,
+          ),
+          if (count > 0)
+            Positioned(
+              top: -4,
+              right: -4,
+              child: Container(
+                padding: const EdgeInsets.all(2),
+                decoration: const BoxDecoration(
+                  color: AppColors.coral,
+                  shape: BoxShape.circle,
+                ),
+                constraints: const BoxConstraints(
+                  minWidth: 16,
+                  minHeight: 16,
+                ),
+                child: Text(
+                  count > 9 ? '9+' : '$count',
+                  style: GoogleFonts.beVietnamPro(
+                    fontSize: 9,
+                    fontWeight: FontWeight.w700,
+                    color: Colors.white,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+              ),
+            ),
+        ],
       ),
-      title: Text(
-        title,
-        style: GoogleFonts.nunito(
-          fontWeight: FontWeight.w700,
-          fontSize: 15,
-          color: colors.onSurface,
-        ),
-      ),
-      subtitle: Text(
-        subtitle,
-        style: GoogleFonts.nunito(
-          fontSize: 12,
-          color: colors.outline,
-        ),
-      ),
-      trailing: Icon(
-        Icons.arrow_forward_ios_rounded,
-        size: 16,
-        color: colors.outline,
-      ),
-      contentPadding: const EdgeInsets.symmetric(
-        horizontal: AppSpacing.lg,
-        vertical: AppSpacing.xs,
-      ),
+      onPressed: () => context.push('/notifications'),
     );
   }
 }
