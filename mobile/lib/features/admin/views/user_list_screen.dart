@@ -3,6 +3,7 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
+import '../../../core/theme/app_color_scheme.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../core/utils/helpers.dart';
@@ -29,6 +30,7 @@ class _UserListScreenState extends ConsumerState<UserListScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.colors;
     final currentUser = ref.watch(currentUserProvider);
     final isAdmin = currentUser?.isAdmin ?? false;
     final userName = currentUser?.name ?? currentUser?.phone ?? '';
@@ -82,7 +84,7 @@ class _UserListScreenState extends ConsumerState<UserListScreen> {
                 }
 
                 return RefreshIndicator(
-                  color: AppColors.ocean,
+                  color: colors.brand,
                   onRefresh: () async =>
                       ref.invalidate(staffListProvider),
                   child: ListView.separated(
@@ -133,7 +135,7 @@ class _UserListScreenState extends ConsumerState<UserListScreen> {
         gradient: LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
-          colors: [AppColors.oceanDeep, AppColors.ocean],
+          colors: [AppColors.jade900, AppColors.jade500],
         ),
       ),
       child: Stack(
@@ -148,7 +150,7 @@ class _UserListScreenState extends ConsumerState<UserListScreen> {
               height: 160,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                color: AppColors.teal.withValues(alpha: 0.10),
+                color: AppColors.jade300.withValues(alpha: 0.10),
               ),
             ),
           ),
@@ -160,7 +162,7 @@ class _UserListScreenState extends ConsumerState<UserListScreen> {
               height: 100,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                color: AppColors.gold.withValues(alpha: 0.08),
+                color: AppColors.gold500.withValues(alpha: 0.08),
               ),
             ),
           ),
@@ -215,7 +217,7 @@ class _UserListScreenState extends ConsumerState<UserListScreen> {
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
                     gradient: const LinearGradient(
-                      colors: [AppColors.teal, AppColors.gold],
+                      colors: [AppColors.jade300, AppColors.gold500],
                     ),
                     border: Border.all(
                       color: Colors.white.withValues(alpha: 0.3),
@@ -244,7 +246,7 @@ class _UserListScreenState extends ConsumerState<UserListScreen> {
   }
 
   Widget _buildFilterChips(BuildContext context) {
-    final colors = Theme.of(context).colorScheme;
+    final colors = context.colors;
     return SizedBox(
       height: 48,
       child: ListView(
@@ -258,15 +260,15 @@ class _UserListScreenState extends ConsumerState<UserListScreen> {
               label: const Text('Tất cả'),
               selected: _roleFilter == null,
               onSelected: (_) => setState(() => _roleFilter = null),
-              selectedColor: colors.primary.withValues(alpha: 0.15),
-              checkmarkColor: colors.primary,
+              selectedColor: colors.brand.withValues(alpha: 0.15),
+              checkmarkColor: colors.brand,
               labelStyle: GoogleFonts.beVietnamPro(
                 fontWeight: _roleFilter == null
                     ? FontWeight.w700
                     : FontWeight.w500,
                 color: _roleFilter == null
-                    ? colors.primary
-                    : colors.onSurface,
+                    ? colors.brand
+                    : colors.textPrimary,
                 fontSize: 12,
               ),
             ),
@@ -287,7 +289,7 @@ class _UserListScreenState extends ConsumerState<UserListScreen> {
                 labelStyle: GoogleFonts.beVietnamPro(
                   fontWeight:
                       selected ? FontWeight.w700 : FontWeight.w500,
-                  color: selected ? color : colors.onSurface,
+                  color: selected ? color : colors.textPrimary,
                   fontSize: 12,
                 ),
               ),
@@ -299,15 +301,16 @@ class _UserListScreenState extends ConsumerState<UserListScreen> {
   }
 
   Widget _buildFab(BuildContext context, bool isAdmin) {
+    final colors = context.colors;
     return Container(
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(16),
-        gradient: const LinearGradient(
-          colors: [AppColors.oceanMid, AppColors.ocean],
+        gradient: LinearGradient(
+          colors: [colors.brandLight, colors.brand],
         ),
         boxShadow: [
           BoxShadow(
-            color: AppColors.ocean.withValues(alpha: 0.35),
+            color: colors.brand.withValues(alpha: 0.35),
             blurRadius: 16,
             offset: const Offset(0, 6),
           ),
@@ -351,164 +354,170 @@ class _UserListScreenState extends ConsumerState<UserListScreen> {
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (ctx) => Container(
-        constraints: BoxConstraints(
-          maxHeight: MediaQuery.of(ctx).size.height * 0.7,
-        ),
-        decoration: const BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.vertical(
-            top: Radius.circular(AppRadius.xl),
+      builder: (ctx) {
+        final colors = ctx.colors;
+        return Container(
+          constraints: BoxConstraints(
+            maxHeight: MediaQuery.of(ctx).size.height * 0.7,
           ),
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            // Handle
-            Padding(
-              padding: const EdgeInsets.only(top: 12, bottom: 8),
-              child: Container(
-                width: 40,
-                height: 4,
-                decoration: BoxDecoration(
-                  color: AppColors.border,
-                  borderRadius: BorderRadius.circular(2),
+          decoration: BoxDecoration(
+            color: colors.bgSurface,
+            borderRadius: const BorderRadius.vertical(
+              top: Radius.circular(AppRadius.xl),
+            ),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Handle
+              Padding(
+                padding: const EdgeInsets.only(top: 12, bottom: 8),
+                child: Container(
+                  width: 40,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: colors.borderDefault,
+                    borderRadius: BorderRadius.circular(2),
+                  ),
                 ),
               ),
-            ),
-            // Title
-            Padding(
-              padding: const EdgeInsets.fromLTRB(20, 8, 20, 16),
-              child: Row(
-                children: [
-                  const Icon(Icons.person_add_rounded,
-                      color: AppColors.ocean, size: 22),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Thêm nhân viên vào đội',
-                          style: GoogleFonts.beVietnamPro(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w700,
-                            color: AppColors.navy,
-                          ),
-                        ),
-                        Text(
-                          '${available.length} nhân viên có thể thêm',
-                          style: GoogleFonts.beVietnamPro(
-                            fontSize: 12,
-                            color: AppColors.muted,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            const Divider(height: 1, color: AppColors.border),
-            // List
-            if (available.isEmpty)
+              // Title
               Padding(
-                padding: const EdgeInsets.all(40),
-                child: Column(
+                padding: const EdgeInsets.fromLTRB(20, 8, 20, 16),
+                child: Row(
                   children: [
-                    const Icon(Icons.people_outline_rounded,
-                        size: 48, color: AppColors.slate),
-                    const SizedBox(height: 12),
-                    Text(
-                      'Không có nhân viên nào sẵn sàng',
-                      style: GoogleFonts.beVietnamPro(
-                        fontSize: 14,
-                        color: AppColors.muted,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      'Nhân viên cần đăng ký tài khoản trước',
-                      style: GoogleFonts.beVietnamPro(
-                        fontSize: 12,
-                        color: AppColors.slate,
+                    Icon(Icons.person_add_rounded,
+                        color: colors.brand, size: 22),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Thêm nhân viên vào đội',
+                            style: GoogleFonts.beVietnamPro(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w700,
+                              color: colors.textPrimary,
+                            ),
+                          ),
+                          Text(
+                            '${available.length} nhân viên có thể thêm',
+                            style: GoogleFonts.beVietnamPro(
+                              fontSize: 12,
+                              color: colors.textSecondary,
+                            ),
+                          ),
+                        ],
                       ),
                     ),
                   ],
                 ),
-              )
-            else
-              Flexible(
-                child: ListView.separated(
-                  shrinkWrap: true,
-                  padding: const EdgeInsets.symmetric(vertical: 8),
-                  itemCount: available.length,
-                  separatorBuilder: (_, __) => const Divider(
-                    height: 1,
-                    color: AppColors.border,
-                    indent: 68,
-                  ),
-                  itemBuilder: (_, i) {
-                    final sale = available[i];
-                    return ListTile(
-                      leading: CircleAvatar(
-                        backgroundColor:
-                            AppColors.teal.withValues(alpha: 0.12),
-                        child: Text(
-                          sale.name.isNotEmpty
-                              ? sale.name[0].toUpperCase()
-                              : 'S',
-                          style: GoogleFonts.beVietnamPro(
-                            color: AppColors.teal,
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
-                      ),
-                      title: Text(
-                        sale.name.isNotEmpty ? sale.name : 'Chưa đặt tên',
+              ),
+              Divider(height: 1, color: colors.borderDefault),
+              // List
+              if (available.isEmpty)
+                Padding(
+                  padding: const EdgeInsets.all(40),
+                  child: Column(
+                    children: [
+                      Icon(Icons.people_outline_rounded,
+                          size: 48, color: colors.textTertiary),
+                      const SizedBox(height: 12),
+                      Text(
+                        'Không có nhân viên nào sẵn sàng',
                         style: GoogleFonts.beVietnamPro(
                           fontSize: 14,
-                          fontWeight: FontWeight.w600,
-                          color: AppColors.navy,
+                          color: colors.textSecondary,
                         ),
                       ),
-                      subtitle: Text(
-                        sale.email ?? sale.phone,
+                      const SizedBox(height: 4),
+                      Text(
+                        'Nhân viên cần đăng ký tài khoản trước',
                         style: GoogleFonts.beVietnamPro(
                           fontSize: 12,
-                          color: AppColors.muted,
+                          color: colors.textTertiary,
                         ),
                       ),
-                      trailing: FilledButton.icon(
-                        onPressed: () async {
-                          Navigator.pop(ctx);
-                          await _addStaffByEmail(context, sale.email ?? '');
-                        },
-                        icon: const Icon(Icons.add_rounded, size: 16),
-                        label: Text('Thêm',
+                    ],
+                  ),
+                )
+              else
+                Flexible(
+                  child: ListView.separated(
+                    shrinkWrap: true,
+                    padding: const EdgeInsets.symmetric(vertical: 8),
+                    itemCount: available.length,
+                    separatorBuilder: (_, __) => Divider(
+                      height: 1,
+                      color: colors.borderDefault,
+                      indent: 68,
+                    ),
+                    itemBuilder: (_, i) {
+                      final sale = available[i];
+                      return ListTile(
+                        leading: CircleAvatar(
+                          backgroundColor:
+                              colors.brand.withValues(alpha: 0.12),
+                          child: Text(
+                            sale.name.isNotEmpty
+                                ? sale.name[0].toUpperCase()
+                                : 'S',
                             style: GoogleFonts.beVietnamPro(
-                                fontSize: 12,
-                                fontWeight: FontWeight.w600)),
-                        style: FilledButton.styleFrom(
-                          backgroundColor: AppColors.ocean,
-                          foregroundColor: Colors.white,
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 12, vertical: 6),
-                          minimumSize: Size.zero,
-                          shape: RoundedRectangleBorder(
-                            borderRadius:
-                                BorderRadius.circular(AppRadius.md),
+                              color: colors.brand,
+                              fontWeight: FontWeight.w700,
+                            ),
                           ),
                         ),
-                      ),
-                    );
-                  },
+                        title: Text(
+                          sale.name.isNotEmpty
+                              ? sale.name
+                              : 'Chưa đặt tên',
+                          style: GoogleFonts.beVietnamPro(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w600,
+                            color: colors.textPrimary,
+                          ),
+                        ),
+                        subtitle: Text(
+                          sale.email ?? sale.phone,
+                          style: GoogleFonts.beVietnamPro(
+                            fontSize: 12,
+                            color: colors.textSecondary,
+                          ),
+                        ),
+                        trailing: FilledButton.icon(
+                          onPressed: () async {
+                            Navigator.pop(ctx);
+                            await _addStaffByEmail(
+                                context, sale.email ?? '');
+                          },
+                          icon: const Icon(Icons.add_rounded, size: 16),
+                          label: Text('Thêm',
+                              style: GoogleFonts.beVietnamPro(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w600)),
+                          style: FilledButton.styleFrom(
+                            backgroundColor: colors.brand,
+                            foregroundColor: Colors.white,
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 12, vertical: 6),
+                            minimumSize: Size.zero,
+                            shape: RoundedRectangleBorder(
+                              borderRadius:
+                                  BorderRadius.circular(AppRadius.md),
+                            ),
+                          ),
+                        ),
+                      );
+                    },
+                  ),
                 ),
-              ),
-            SizedBox(height: MediaQuery.of(ctx).padding.bottom + 8),
-          ],
-        ),
-      ),
+              SizedBox(height: MediaQuery.of(ctx).padding.bottom + 8),
+            ],
+          ),
+        );
+      },
     );
   }
 
@@ -529,38 +538,43 @@ class _UserListScreenState extends ConsumerState<UserListScreen> {
   Future<void> _removeStaff(BuildContext context, UserModel user) async {
     final ok = await showDialog<bool>(
       context: context,
-      builder: (_) => AlertDialog(
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(AppRadius.lg),
-        ),
-        title: Text(
-          'Gỡ nhân viên',
-          style: GoogleFonts.beVietnamPro(fontWeight: FontWeight.w700),
-        ),
-        content: Text(
-          'Gỡ "${user.name}" khỏi đội của bạn? Nhân viên này sẽ không thể xem phòng và lịch của bạn nữa.',
-          style: GoogleFonts.beVietnamPro(),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: Text('Huỷ',
-                style: GoogleFonts.beVietnamPro(color: AppColors.muted)),
+      builder: (ctx) {
+        final colors = ctx.colors;
+        return AlertDialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(AppRadius.lg),
           ),
-          FilledButton(
-            style: FilledButton.styleFrom(
-              backgroundColor: AppColors.coral,
-              foregroundColor: Colors.white,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(AppRadius.md),
-              ),
+          title: Text(
+            'Gỡ nhân viên',
+            style: GoogleFonts.beVietnamPro(fontWeight: FontWeight.w700),
+          ),
+          content: Text(
+            'Gỡ "${user.name}" khỏi đội của bạn? Nhân viên này sẽ không thể xem phòng và lịch của bạn nữa.',
+            style: GoogleFonts.beVietnamPro(),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: Text('Huỷ',
+                  style: GoogleFonts.beVietnamPro(
+                      color: colors.textSecondary)),
             ),
-            onPressed: () => Navigator.pop(context, true),
-            child: Text('Gỡ',
-                style: GoogleFonts.beVietnamPro(fontWeight: FontWeight.w600)),
-          ),
-        ],
-      ),
+            FilledButton(
+              style: FilledButton.styleFrom(
+                backgroundColor: colors.error,
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(AppRadius.md),
+                ),
+              ),
+              onPressed: () => Navigator.pop(context, true),
+              child: Text('Gỡ',
+                  style:
+                      GoogleFonts.beVietnamPro(fontWeight: FontWeight.w600)),
+            ),
+          ],
+        );
+      },
     );
     if (ok != true || !context.mounted) return;
 
@@ -581,41 +595,46 @@ class _UserListScreenState extends ConsumerState<UserListScreen> {
     final action = user.isActive ? 'vô hiệu hoá' : 'kích hoạt';
     final ok = await showDialog<bool>(
       context: context,
-      builder: (_) => AlertDialog(
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(AppRadius.lg),
-        ),
-        title: Text(
-          '${user.isActive ? 'Vô hiệu hoá' : 'Kích hoạt'} tài khoản',
-          style: GoogleFonts.beVietnamPro(fontWeight: FontWeight.w700),
-        ),
-        content: Text(
-          'Bạn có chắc muốn $action tài khoản của "${user.name}"?',
-          style: GoogleFonts.beVietnamPro(),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: Text('Huỷ',
-                style: GoogleFonts.beVietnamPro(color: AppColors.muted)),
+      builder: (ctx) {
+        final colors = ctx.colors;
+        return AlertDialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(AppRadius.lg),
           ),
-          FilledButton(
-            style: FilledButton.styleFrom(
-              backgroundColor:
-                  user.isActive ? AppColors.error : AppColors.emerald,
-              foregroundColor: Colors.white,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(AppRadius.md),
+          title: Text(
+            '${user.isActive ? 'Vô hiệu hoá' : 'Kích hoạt'} tài khoản',
+            style: GoogleFonts.beVietnamPro(fontWeight: FontWeight.w700),
+          ),
+          content: Text(
+            'Bạn có chắc muốn $action tài khoản của "${user.name}"?',
+            style: GoogleFonts.beVietnamPro(),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: Text('Huỷ',
+                  style: GoogleFonts.beVietnamPro(
+                      color: colors.textSecondary)),
+            ),
+            FilledButton(
+              style: FilledButton.styleFrom(
+                backgroundColor:
+                    user.isActive ? colors.error : colors.success,
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(AppRadius.md),
+                ),
+              ),
+              onPressed: () => Navigator.pop(context, true),
+              child: Text(
+                user.isActive ? 'Vô hiệu hoá' : 'Kích hoạt',
+                style:
+                    GoogleFonts.beVietnamPro(fontWeight: FontWeight.w600),
               ),
             ),
-            onPressed: () => Navigator.pop(context, true),
-            child: Text(
-              user.isActive ? 'Vô hiệu hoá' : 'Kích hoạt',
-              style: GoogleFonts.beVietnamPro(fontWeight: FontWeight.w600),
-            ),
-          ),
-        ],
-      ),
+          ],
+        );
+      },
     );
     if (ok != true || !context.mounted) return;
 
@@ -658,8 +677,9 @@ class _UserCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.colors;
     return Material(
-      color: AppColors.surface,
+      color: colors.bgSurface,
       borderRadius: BorderRadius.circular(AppRadius.lg),
       elevation: 0,
       child: InkWell(
@@ -668,7 +688,7 @@ class _UserCard extends StatelessWidget {
         child: Container(
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(AppRadius.lg),
-            border: Border.all(color: AppColors.border),
+            border: Border.all(color: colors.borderDefault),
           ),
           padding: const EdgeInsets.symmetric(
               horizontal: AppSpacing.md, vertical: 14),
@@ -694,8 +714,8 @@ class _UserCard extends StatelessWidget {
                               fontWeight: FontWeight.w700,
                               fontSize: 14,
                               color: user.isActive
-                                  ? AppColors.navy
-                                  : AppColors.muted,
+                                  ? colors.textPrimary
+                                  : colors.textSecondary,
                             ),
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
@@ -728,13 +748,14 @@ class _UserCard extends StatelessWidget {
                       children: [
                         Icon(Icons.phone_outlined,
                             size: 12,
-                            color: AppColors.muted.withValues(alpha: 0.7)),
+                            color: colors.textSecondary
+                                .withValues(alpha: 0.7)),
                         const SizedBox(width: 4),
                         Text(
                           user.phone.isNotEmpty ? user.phone : '-',
                           style: GoogleFonts.beVietnamPro(
                             fontSize: 12,
-                            color: AppColors.muted,
+                            color: colors.textSecondary,
                           ),
                         ),
                         if (!user.isActive) ...[
@@ -743,14 +764,14 @@ class _UserCard extends StatelessWidget {
                             padding: const EdgeInsets.symmetric(
                                 horizontal: 6, vertical: 1),
                             decoration: BoxDecoration(
-                              color: AppColors.error.withValues(alpha: 0.1),
+                              color: colors.errorBg,
                               borderRadius:
                                   BorderRadius.circular(AppRadius.full),
                             ),
                             child: Text(
                               'Vô hiệu',
                               style: GoogleFonts.beVietnamPro(
-                                color: AppColors.error,
+                                color: colors.error,
                                 fontSize: 10,
                                 fontWeight: FontWeight.w700,
                               ),
@@ -777,8 +798,8 @@ class _UserCard extends StatelessWidget {
                           height: 34,
                           decoration: BoxDecoration(
                             color: user.isActive
-                                ? AppColors.error.withValues(alpha: 0.08)
-                                : AppColors.emerald.withValues(alpha: 0.08),
+                                ? colors.errorBg
+                                : colors.successBg,
                             borderRadius:
                                 BorderRadius.circular(AppRadius.md),
                           ),
@@ -788,15 +809,15 @@ class _UserCard extends StatelessWidget {
                                 : Icons.check_circle_outline_rounded,
                             size: 18,
                             color: user.isActive
-                                ? AppColors.error
-                                : AppColors.emerald,
+                                ? colors.error
+                                : colors.success,
                           ),
                         ),
                       ),
                     const SizedBox(height: 6),
-                    const Icon(
+                    Icon(
                       Icons.chevron_right_rounded,
-                      color: AppColors.slate,
+                      color: colors.textTertiary,
                       size: 18,
                     ),
                   ],
@@ -808,13 +829,13 @@ class _UserCard extends StatelessWidget {
                     width: 34,
                     height: 34,
                     decoration: BoxDecoration(
-                      color: AppColors.coral.withValues(alpha: 0.08),
+                      color: colors.errorBg,
                       borderRadius: BorderRadius.circular(AppRadius.md),
                     ),
-                    child: const Icon(
+                    child: Icon(
                       Icons.person_remove_rounded,
                       size: 18,
-                      color: AppColors.coral,
+                      color: colors.error,
                     ),
                   ),
                 ),
@@ -843,6 +864,7 @@ class _Avatar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.colors;
     return Stack(
       children: [
         Container(
@@ -852,13 +874,13 @@ class _Avatar extends StatelessWidget {
             shape: BoxShape.circle,
             color: isActive
                 ? color.withValues(alpha: 0.12)
-                : AppColors.slateLight,
+                : colors.bgSurfaceContainer,
           ),
           child: Center(
             child: Text(
               name.isNotEmpty ? name[0].toUpperCase() : '?',
               style: GoogleFonts.beVietnamPro(
-                color: isActive ? color : AppColors.slate,
+                color: isActive ? color : colors.textTertiary,
                 fontWeight: FontWeight.w800,
                 fontSize: 18,
               ),
@@ -874,9 +896,8 @@ class _Avatar extends StatelessWidget {
             height: 13,
             decoration: BoxDecoration(
               shape: BoxShape.circle,
-              color:
-                  isActive ? AppColors.emerald : AppColors.slate,
-              border: Border.all(color: AppColors.surface, width: 2),
+              color: isActive ? colors.success : colors.textTertiary,
+              border: Border.all(color: colors.bgSurface, width: 2),
             ),
           ),
         ),
@@ -891,14 +912,15 @@ class _UserCardSkeleton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.colors;
     return Container(
       margin: const EdgeInsets.only(bottom: AppSpacing.sm),
       padding: const EdgeInsets.symmetric(
           horizontal: AppSpacing.md, vertical: 14),
       decoration: BoxDecoration(
-        color: AppColors.surface,
+        color: colors.bgSurface,
         borderRadius: BorderRadius.circular(AppRadius.lg),
-        border: Border.all(color: AppColors.border),
+        border: Border.all(color: colors.borderDefault),
       ),
       child: Row(
         children: [
@@ -907,7 +929,7 @@ class _UserCardSkeleton extends StatelessWidget {
             height: 48,
             decoration: BoxDecoration(
               shape: BoxShape.circle,
-              color: AppColors.slateLight,
+              color: colors.bgSurfaceContainer,
             ),
           ),
           const SizedBox(width: AppSpacing.md),
@@ -916,10 +938,14 @@ class _UserCardSkeleton extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Container(
-                    width: 120, height: 14, color: AppColors.slateLight),
+                    width: 120,
+                    height: 14,
+                    color: colors.bgSurfaceContainer),
                 const SizedBox(height: 6),
                 Container(
-                    width: 90, height: 12, color: AppColors.slateLight),
+                    width: 90,
+                    height: 12,
+                    color: colors.bgSurfaceContainer),
               ],
             ),
           ),

@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:image_picker/image_picker.dart';
 
+import '../../../core/theme/app_color_scheme.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../data/models/room_model.dart';
@@ -64,19 +65,22 @@ class _PropertyImagesScreenState extends ConsumerState<PropertyImagesScreen> {
   Future<void> _deleteImage(RoomImageModel img) async {
     final confirm = await showDialog<bool>(
       context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Xoá ảnh'),
-        content: const Text('Bạn chắc chắn muốn xoá ảnh này?'),
-        actions: [
-          TextButton(
-              onPressed: () => Navigator.pop(ctx, false),
-              child: const Text('Huỷ')),
-          TextButton(
-              onPressed: () => Navigator.pop(ctx, true),
-              child: const Text('Xoá',
-                  style: TextStyle(color: AppColors.coral))),
-        ],
-      ),
+      builder: (ctx) {
+        final colors = ctx.colors;
+        return AlertDialog(
+          title: const Text('Xoá ảnh'),
+          content: const Text('Bạn chắc chắn muốn xoá ảnh này?'),
+          actions: [
+            TextButton(
+                onPressed: () => Navigator.pop(ctx, false),
+                child: const Text('Huỷ')),
+            TextButton(
+                onPressed: () => Navigator.pop(ctx, true),
+                child: Text('Xoá',
+                    style: TextStyle(color: colors.error))),
+          ],
+        );
+      },
     );
     if (confirm != true) return;
 
@@ -111,84 +115,94 @@ class _PropertyImagesScreenState extends ConsumerState<PropertyImagesScreen> {
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
-      builder: (_) => SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: AppSpacing.md),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
-                width: 40, height: 4,
-                decoration: BoxDecoration(
-                  color: AppColors.border,
-                  borderRadius: BorderRadius.circular(2),
-                ),
-              ),
-              const SizedBox(height: AppSpacing.md),
-              Text('Thêm ảnh',
-                  style: GoogleFonts.beVietnamPro(
-                    fontSize: 16, fontWeight: FontWeight.w700,
-                    color: AppColors.navy,
-                  )),
-              const SizedBox(height: AppSpacing.sm),
-              ListTile(
-                leading: Container(
-                  width: 44, height: 44,
+      builder: (ctx) {
+        final colors = ctx.colors;
+        final isDark = Theme.of(ctx).brightness == Brightness.dark;
+        return SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: AppSpacing.md),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  width: 40, height: 4,
                   decoration: BoxDecoration(
-                    color: AppColors.oceanLight,
-                    borderRadius: BorderRadius.circular(AppRadius.md),
+                    color: colors.borderDefault,
+                    borderRadius: BorderRadius.circular(2),
                   ),
-                  child: const Icon(Icons.camera_alt_outlined,
-                      color: AppColors.ocean),
                 ),
-                title: Text('Chụp ảnh',
+                const SizedBox(height: AppSpacing.md),
+                Text('Thêm ảnh',
                     style: GoogleFonts.beVietnamPro(
-                        fontWeight: FontWeight.w600, color: AppColors.navy)),
-                onTap: () {
-                  Navigator.pop(context);
-                  _takePhoto();
-                },
-              ),
-              ListTile(
-                leading: Container(
-                  width: 44, height: 44,
-                  decoration: BoxDecoration(
-                    color: AppColors.tealLight,
-                    borderRadius: BorderRadius.circular(AppRadius.md),
+                      fontSize: 16, fontWeight: FontWeight.w700,
+                      color: colors.textPrimary,
+                    )),
+                const SizedBox(height: AppSpacing.sm),
+                ListTile(
+                  leading: Container(
+                    width: 44, height: 44,
+                    decoration: BoxDecoration(
+                      color:
+                          colors.brand.withValues(alpha: isDark ? 0.18 : 0.12),
+                      borderRadius: BorderRadius.circular(AppRadius.md),
+                    ),
+                    child: Icon(Icons.camera_alt_outlined,
+                        color: colors.brand),
                   ),
-                  child: const Icon(Icons.photo_library_outlined,
-                      color: AppColors.teal),
+                  title: Text('Chụp ảnh',
+                      style: GoogleFonts.beVietnamPro(
+                          fontWeight: FontWeight.w600,
+                          color: colors.textPrimary)),
+                  onTap: () {
+                    Navigator.pop(context);
+                    _takePhoto();
+                  },
                 ),
-                title: Text('Chọn từ thư viện',
-                    style: GoogleFonts.beVietnamPro(
-                        fontWeight: FontWeight.w600, color: AppColors.navy)),
-                onTap: () {
-                  Navigator.pop(context);
-                  _pickAndUpload();
-                },
-              ),
-            ],
+                ListTile(
+                  leading: Container(
+                    width: 44, height: 44,
+                    decoration: BoxDecoration(
+                      color: colors.brandSecondary
+                          .withValues(alpha: isDark ? 0.22 : 0.18),
+                      borderRadius: BorderRadius.circular(AppRadius.md),
+                    ),
+                    child: Icon(Icons.photo_library_outlined,
+                        color: colors.brandSecondary),
+                  ),
+                  title: Text('Chọn từ thư viện',
+                      style: GoogleFonts.beVietnamPro(
+                          fontWeight: FontWeight.w600,
+                          color: colors.textPrimary)),
+                  onTap: () {
+                    Navigator.pop(context);
+                    _pickAndUpload();
+                  },
+                ),
+              ],
+            ),
           ),
-        ),
-      ),
+        );
+      },
     );
   }
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.colors;
     final roomAsync = ref.watch(roomDetailProvider(widget.homestayId));
 
     return Scaffold(
+      backgroundColor: colors.bgCanvas,
       appBar: AppBar(
         title: const Text('Ảnh căn'),
         actions: [
           if (_uploading)
-            const Padding(
-              padding: EdgeInsets.only(right: AppSpacing.md),
+            Padding(
+              padding: const EdgeInsets.only(right: AppSpacing.md),
               child: SizedBox(
                 width: 20, height: 20,
                 child: CircularProgressIndicator(
-                    strokeWidth: 2, color: AppColors.ocean),
+                    strokeWidth: 2, color: colors.brand),
               ),
             ),
         ],
@@ -202,14 +216,14 @@ class _PropertyImagesScreenState extends ConsumerState<PropertyImagesScreen> {
         ),
         data: (room) {
           if (room.images.isEmpty) {
-            return _buildEmptyState();
+            return _buildEmptyState(context);
           }
-          return _buildImageGrid(room.images);
+          return _buildImageGrid(context, room.images);
         },
       ),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: _uploading ? null : _showPickerSheet,
-        backgroundColor: AppColors.ocean,
+        backgroundColor: colors.brand,
         icon: const Icon(Icons.add_photo_alternate_outlined,
             color: Colors.white),
         label: Text('Thêm ảnh',
@@ -221,7 +235,9 @@ class _PropertyImagesScreenState extends ConsumerState<PropertyImagesScreen> {
     );
   }
 
-  Widget _buildEmptyState() {
+  Widget _buildEmptyState(BuildContext context) {
+    final colors = context.colors;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Center(
       child: Column(
         mainAxisSize: MainAxisSize.min,
@@ -229,30 +245,31 @@ class _PropertyImagesScreenState extends ConsumerState<PropertyImagesScreen> {
           Container(
             width: 100, height: 100,
             decoration: BoxDecoration(
-              color: AppColors.oceanLight,
+              color: colors.brand.withValues(alpha: isDark ? 0.18 : 0.12),
               borderRadius: BorderRadius.circular(AppRadius.full),
             ),
-            child: const Icon(Icons.photo_library_outlined,
-                size: 48, color: AppColors.ocean),
+            child: Icon(Icons.photo_library_outlined,
+                size: 48, color: colors.brand),
           ),
           const SizedBox(height: AppSpacing.lg),
           Text('Chưa có ảnh nào',
               style: GoogleFonts.beVietnamPro(
                 fontSize: 18, fontWeight: FontWeight.w700,
-                color: AppColors.navy,
+                color: colors.textPrimary,
               )),
           const SizedBox(height: AppSpacing.sm),
           Text('Thêm ảnh để khách hàng hình dung\nvề căn phòng của bạn.',
               textAlign: TextAlign.center,
               style: GoogleFonts.beVietnamPro(
-                fontSize: 14, color: AppColors.muted, height: 1.5,
+                fontSize: 14, color: colors.textSecondary, height: 1.5,
               )),
         ],
       ),
     );
   }
 
-  Widget _buildImageGrid(List<RoomImageModel> images) {
+  Widget _buildImageGrid(BuildContext context, List<RoomImageModel> images) {
+    final colors = context.colors;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -263,7 +280,7 @@ class _PropertyImagesScreenState extends ConsumerState<PropertyImagesScreen> {
           child: Text('Nhấn "Đặt ảnh chính" để chọn ảnh hiển thị · X = xoá',
               style: GoogleFonts.beVietnamPro(
                 fontSize: 12, fontStyle: FontStyle.italic,
-                color: AppColors.muted,
+                color: colors.textSecondary,
               )),
         ),
         Expanded(
@@ -275,24 +292,28 @@ class _PropertyImagesScreenState extends ConsumerState<PropertyImagesScreen> {
               mainAxisSpacing: AppSpacing.sm,
             ),
             itemCount: images.length,
-            itemBuilder: (_, i) => _buildImageCard(images[i]),
+            itemBuilder: (_, i) => _buildImageCard(context, images[i]),
           ),
         ),
       ],
     );
   }
 
-  Widget _buildImageCard(RoomImageModel img) {
+  Widget _buildImageCard(BuildContext context, RoomImageModel img) {
+    final colors = context.colors;
     return Stack(
       children: [
         ClipRRect(
           borderRadius: BorderRadius.circular(AppRadius.md),
-          child: CachedNetworkImage(
-            imageUrl: img.imageUrl,
-            width: double.infinity,
-            height: double.infinity,
-            fit: BoxFit.cover,
-            memCacheWidth: 400,
+          child: Container(
+            color: colors.bgSurfaceContainer,
+            child: CachedNetworkImage(
+              imageUrl: img.imageUrl,
+              width: double.infinity,
+              height: double.infinity,
+              fit: BoxFit.cover,
+              memCacheWidth: 400,
+            ),
           ),
         ),
         // Delete button
@@ -303,8 +324,8 @@ class _PropertyImagesScreenState extends ConsumerState<PropertyImagesScreen> {
             onTap: () => _deleteImage(img),
             child: Container(
               width: 28, height: 28,
-              decoration: const BoxDecoration(
-                color: AppColors.coral,
+              decoration: BoxDecoration(
+                color: colors.error,
                 shape: BoxShape.circle,
               ),
               child: const Icon(Icons.close, size: 16,
@@ -322,14 +343,14 @@ class _PropertyImagesScreenState extends ConsumerState<PropertyImagesScreen> {
                     horizontal: AppSpacing.sm, vertical: 4,
                   ),
                   decoration: BoxDecoration(
-                    color: AppColors.ocean.withValues(alpha: 0.85),
+                    color: AppColors.jade500.withValues(alpha: 0.85),
                     borderRadius: BorderRadius.circular(AppRadius.xs),
                   ),
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       const Icon(Icons.star_rounded,
-                          size: 14, color: AppColors.gold),
+                          size: 14, color: AppColors.gold500),
                       const SizedBox(width: 4),
                       Text('Ảnh chính',
                           style: GoogleFonts.beVietnamPro(

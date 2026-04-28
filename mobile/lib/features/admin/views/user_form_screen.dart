@@ -3,6 +3,7 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
+import '../../../core/theme/app_color_scheme.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../core/utils/helpers.dart';
@@ -130,9 +131,10 @@ class _UserFormScreenState extends ConsumerState<UserFormScreen> {
 
   // ── Detail view (xem thông tin + gán vai trò) ──────────────────────────────
   Widget _buildDetailView() {
+    final colors = context.colors;
     final roleColor = AppHelpers.roleColor(_role);
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: colors.bgCanvas,
       body: CustomScrollView(
         slivers: [
           // ── Gradient header với avatar ──────────────────
@@ -186,7 +188,7 @@ class _UserFormScreenState extends ConsumerState<UserFormScreen> {
                     'Chỉ có thể gán vai trò Sale hoặc Chủ nhà',
                     style: GoogleFonts.beVietnamPro(
                       fontSize: 12,
-                      color: AppColors.muted,
+                      color: colors.textSecondary,
                     ),
                   ),
                   const SizedBox(height: AppSpacing.md),
@@ -196,7 +198,7 @@ class _UserFormScreenState extends ConsumerState<UserFormScreen> {
                         label: 'Sale',
                         value: 2,
                         icon: Icons.headset_mic_outlined,
-                        color: AppColors.ocean,
+                        color: colors.brand,
                         selected: _role == 2,
                         onTap: () => setState(() => _role = 2),
                       ),
@@ -205,7 +207,7 @@ class _UserFormScreenState extends ConsumerState<UserFormScreen> {
                         label: 'Chủ nhà',
                         value: 1,
                         icon: Icons.home_outlined,
-                        color: AppColors.amber,
+                        color: colors.warning,
                         selected: _role == 1,
                         onTap: () => setState(() => _role = 1),
                       ),
@@ -232,8 +234,8 @@ class _UserFormScreenState extends ConsumerState<UserFormScreen> {
                               decoration: BoxDecoration(
                                 shape: BoxShape.circle,
                                 color: _isActive
-                                    ? AppColors.emerald
-                                    : AppColors.slate,
+                                    ? colors.success
+                                    : colors.textTertiary,
                               ),
                             ),
                             const SizedBox(width: 10),
@@ -249,7 +251,7 @@ class _UserFormScreenState extends ConsumerState<UserFormScreen> {
                                     style: GoogleFonts.beVietnamPro(
                                       fontWeight: FontWeight.w600,
                                       fontSize: 14,
-                                      color: AppColors.navy,
+                                      color: colors.textPrimary,
                                     ),
                                   ),
                                   Text(
@@ -258,7 +260,7 @@ class _UserFormScreenState extends ConsumerState<UserFormScreen> {
                                         : 'Nhân viên không thể đăng nhập',
                                     style: GoogleFonts.beVietnamPro(
                                       fontSize: 12,
-                                      color: AppColors.muted,
+                                      color: colors.textSecondary,
                                     ),
                                   ),
                                 ],
@@ -266,7 +268,7 @@ class _UserFormScreenState extends ConsumerState<UserFormScreen> {
                             ),
                             Switch(
                               value: _isActive,
-                              activeTrackColor: AppColors.emerald,
+                              activeTrackColor: colors.success,
                               onChanged: (v) =>
                                   setState(() => _isActive = v),
                             ),
@@ -303,7 +305,7 @@ class _UserFormScreenState extends ConsumerState<UserFormScreen> {
         gradient: LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
-          colors: [AppColors.oceanDeep, AppColors.oceanMid],
+          colors: [AppColors.jade900, AppColors.jade300],
         ),
       ),
       child: Column(
@@ -402,8 +404,9 @@ class _UserFormScreenState extends ConsumerState<UserFormScreen> {
 
   // ── Create view (tạo nhân viên mới) ───────────────────────────────────────
   Widget _buildCreateView() {
+    final colors = context.colors;
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: colors.bgCanvas,
       appBar: AppBar(
         title: Text(
           'Thêm nhân viên',
@@ -475,7 +478,7 @@ class _UserFormScreenState extends ConsumerState<UserFormScreen> {
                     label: 'Sale',
                     value: 2,
                     icon: Icons.headset_mic_outlined,
-                    color: AppColors.ocean,
+                    color: colors.brand,
                     selected: _role == 2,
                     onTap: () => setState(() => _role = 2),
                   ),
@@ -484,7 +487,7 @@ class _UserFormScreenState extends ConsumerState<UserFormScreen> {
                     label: 'Chủ nhà',
                     value: 1,
                     icon: Icons.home_outlined,
-                    color: AppColors.amber,
+                    color: colors.warning,
                     selected: _role == 1,
                     onTap: () => setState(() => _role = 1),
                   ),
@@ -514,12 +517,13 @@ class _SectionTitle extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.colors;
     return Text(
       text,
       style: GoogleFonts.beVietnamPro(
         fontSize: 13,
         fontWeight: FontWeight.w700,
-        color: AppColors.navy,
+        color: colors.textPrimary,
       ),
     );
   }
@@ -531,13 +535,15 @@ class _InfoCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.colors;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Container(
       decoration: BoxDecoration(
-        color: AppColors.surface,
+        color: colors.bgSurface,
         borderRadius: BorderRadius.circular(AppRadius.lg),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.04),
+            color: Colors.black.withValues(alpha: isDark ? 0.30 : 0.04),
             blurRadius: 8,
             offset: const Offset(0, 2),
           ),
@@ -557,11 +563,12 @@ class _InfoRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.colors;
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
       child: Row(
         children: [
-          Icon(icon, size: 18, color: AppColors.ocean),
+          Icon(icon, size: 18, color: colors.brand),
           const SizedBox(width: 12),
           Expanded(
             child: Column(
@@ -571,7 +578,7 @@ class _InfoRow extends StatelessWidget {
                   label,
                   style: GoogleFonts.beVietnamPro(
                     fontSize: 11,
-                    color: AppColors.muted,
+                    color: colors.textSecondary,
                     fontWeight: FontWeight.w500,
                   ),
                 ),
@@ -581,7 +588,9 @@ class _InfoRow extends StatelessWidget {
                   style: GoogleFonts.beVietnamPro(
                     fontSize: 14,
                     fontWeight: FontWeight.w600,
-                    color: value == '-' ? AppColors.slate : AppColors.navy,
+                    color: value == '-'
+                        ? colors.textTertiary
+                        : colors.textPrimary,
                   ),
                 ),
               ],
@@ -616,6 +625,7 @@ class _FormField extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.colors;
     return Padding(
       padding:
           const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
@@ -626,18 +636,18 @@ class _FormField extends StatelessWidget {
         obscureText: obscureText,
         decoration: InputDecoration(
           labelText: label,
-          prefixIcon: Icon(icon, color: AppColors.ocean),
+          prefixIcon: Icon(icon, color: colors.brand),
           suffixIcon: suffixIcon,
           border: InputBorder.none,
           labelStyle: GoogleFonts.beVietnamPro(
             fontSize: 13,
-            color: AppColors.muted,
+            color: colors.textSecondary,
           ),
         ),
         style: GoogleFonts.beVietnamPro(
           fontSize: 14,
           fontWeight: FontWeight.w600,
-          color: AppColors.navy,
+          color: colors.textPrimary,
         ),
         validator: validator,
       ),
@@ -650,7 +660,8 @@ class _Divider extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const Divider(height: 1, color: AppColors.border, indent: 52);
+    final colors = context.colors;
+    return Divider(height: 1, color: colors.borderDefault, indent: 52);
   }
 }
 
@@ -673,6 +684,8 @@ class _RoleCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.colors;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Expanded(
       child: GestureDetector(
         onTap: onTap,
@@ -682,10 +695,10 @@ class _RoleCard extends StatelessWidget {
           decoration: BoxDecoration(
             color: selected
                 ? color.withValues(alpha: 0.08)
-                : AppColors.surface,
+                : colors.bgSurface,
             borderRadius: BorderRadius.circular(AppRadius.lg),
             border: Border.all(
-              color: selected ? color : AppColors.border,
+              color: selected ? color : colors.borderDefault,
               width: selected ? 2 : 1,
             ),
             boxShadow: selected
@@ -698,7 +711,8 @@ class _RoleCard extends StatelessWidget {
                   ]
                 : [
                     BoxShadow(
-                      color: Colors.black.withValues(alpha: 0.03),
+                      color: Colors.black
+                          .withValues(alpha: isDark ? 0.30 : 0.03),
                       blurRadius: 4,
                     ),
                   ],
@@ -712,11 +726,11 @@ class _RoleCard extends StatelessWidget {
                   shape: BoxShape.circle,
                   color: selected
                       ? color.withValues(alpha: 0.15)
-                      : AppColors.slateLight,
+                      : colors.bgSurfaceContainer,
                 ),
                 child: Icon(
                   icon,
-                  color: selected ? color : AppColors.slate,
+                  color: selected ? color : colors.textTertiary,
                   size: 22,
                 ),
               ),
@@ -726,7 +740,7 @@ class _RoleCard extends StatelessWidget {
                 style: GoogleFonts.beVietnamPro(
                   fontWeight: FontWeight.w700,
                   fontSize: 14,
-                  color: selected ? color : AppColors.muted,
+                  color: selected ? color : colors.textSecondary,
                 ),
               ),
               const SizedBox(height: 2),
@@ -760,22 +774,23 @@ class _SaveButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.colors;
     return SizedBox(
       width: double.infinity,
       height: 52,
       child: isLoading
-          ? const Center(
-              child: CircularProgressIndicator(color: AppColors.ocean),
+          ? Center(
+              child: CircularProgressIndicator(color: colors.brand),
             )
           : Container(
               decoration: BoxDecoration(
-                gradient: const LinearGradient(
-                  colors: [AppColors.oceanMid, AppColors.ocean],
+                gradient: LinearGradient(
+                  colors: [colors.brandLight, colors.brand],
                 ),
                 borderRadius: BorderRadius.circular(AppRadius.lg),
                 boxShadow: [
                   BoxShadow(
-                    color: AppColors.ocean.withValues(alpha: 0.3),
+                    color: colors.brand.withValues(alpha: 0.3),
                     blurRadius: 12,
                     offset: const Offset(0, 4),
                   ),

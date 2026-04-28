@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
+import '../../../core/theme/app_color_scheme.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../data/models/room_model.dart';
 import '../../../shared/widgets/app_scaffold.dart';
@@ -193,6 +194,7 @@ class _RoomListScreenState extends ConsumerState<RoomListScreen>
       isScrollControlled: true,
       builder: (ctx) => StatefulBuilder(
         builder: (ctx, setSheetState) {
+          final colors = ctx.colors;
           void toggleSet(Set<String> set, String key) {
             setSheetState(() {
               if (set.contains(key)) {
@@ -213,10 +215,12 @@ class _RoomListScreenState extends ConsumerState<RoomListScreen>
               lastDate: now.add(const Duration(days: 365)),
               builder: (c, child) => Theme(
                 data: Theme.of(c).copyWith(
-                  colorScheme: const ColorScheme.light(
-                    primary: AppColors.ocean,
-                    onPrimary: Colors.white,
-                    surface: Colors.white,
+                  colorScheme: ColorScheme.fromSeed(
+                    seedColor: colors.brand,
+                    brightness: Theme.of(c).brightness,
+                    primary: colors.brand,
+                    onPrimary: colors.textOnPrimary,
+                    surface: colors.bgSurface,
                   ),
                 ),
                 child: child!,
@@ -246,9 +250,9 @@ class _RoomListScreenState extends ConsumerState<RoomListScreen>
           }
 
           return Container(
-            decoration: const BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.vertical(
+            decoration: BoxDecoration(
+              color: colors.bgSurface,
+              borderRadius: const BorderRadius.vertical(
                 top: Radius.circular(20),
               ),
             ),
@@ -263,7 +267,7 @@ class _RoomListScreenState extends ConsumerState<RoomListScreen>
                     width: 40,
                     height: 4,
                     decoration: BoxDecoration(
-                      color: AppColors.border,
+                      color: colors.borderDefault,
                       borderRadius: BorderRadius.circular(2),
                     ),
                   ),
@@ -279,7 +283,7 @@ class _RoomListScreenState extends ConsumerState<RoomListScreen>
                         style: GoogleFonts.beVietnamPro(
                           fontSize: 17,
                           fontWeight: FontWeight.w700,
-                          color: AppColors.ink,
+                          color: colors.textPrimary,
                         ),
                       ),
                       const Spacer(),
@@ -299,14 +303,14 @@ class _RoomListScreenState extends ConsumerState<RoomListScreen>
                           style: GoogleFonts.beVietnamPro(
                             fontSize: 13,
                             fontWeight: FontWeight.w500,
-                            color: AppColors.ocean,
+                            color: colors.textBrand,
                           ),
                         ),
                       ),
                     ],
                   ),
                 ),
-                const Divider(height: 1, color: AppColors.border),
+                Divider(height: 1, color: colors.borderDefault),
 
                 // ── View ──
                 SectionLabel(label: 'VIEW'),
@@ -484,8 +488,8 @@ class _RoomListScreenState extends ConsumerState<RoomListScreen>
                         Navigator.pop(ctx);
                       },
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: AppColors.ocean,
-                        foregroundColor: Colors.white,
+                        backgroundColor: colors.brand,
+                        foregroundColor: colors.textOnPrimary,
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(12),
                         ),
@@ -517,13 +521,18 @@ class _RoomListScreenState extends ConsumerState<RoomListScreen>
     final user = ref.watch(currentUserProvider);
     final userName = user?.name ?? user?.phone ?? '';
     final roomsAsync = ref.watch(allRoomsProvider);
+    final colors = context.colors;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final headerGradient = isDark
+        ? const [AppColors.darkBg, AppColors.darkBorder]
+        : const [AppColors.jade900, AppColors.jade500];
 
     return AppScaffold(
       title: '',
       selectedIndex: 1,
       showAppBar: false,
       body: RefreshIndicator(
-        color: AppColors.ocean,
+        color: colors.brand,
         onRefresh: () async {
           ref.invalidate(allRoomsProvider);
         },
@@ -538,11 +547,11 @@ class _RoomListScreenState extends ConsumerState<RoomListScreen>
                   right: 20,
                   bottom: 4,
                 ),
-                decoration: const BoxDecoration(
+                decoration: BoxDecoration(
                   gradient: LinearGradient(
                     begin: Alignment.topLeft,
                     end: Alignment.bottomRight,
-                    colors: [AppColors.oceanDeep, AppColors.ocean],
+                    colors: headerGradient,
                   ),
                 ),
                 child: Column(
@@ -558,7 +567,7 @@ class _RoomListScreenState extends ConsumerState<RoomListScreen>
                             height: 140,
                             decoration: BoxDecoration(
                               shape: BoxShape.circle,
-                              color: AppColors.teal.withValues(alpha: 0.10),
+                              color: AppColors.jade300.withValues(alpha: 0.10),
                             ),
                           ),
                         ),
@@ -570,7 +579,7 @@ class _RoomListScreenState extends ConsumerState<RoomListScreen>
                             height: 90,
                             decoration: BoxDecoration(
                               shape: BoxShape.circle,
-                              color: AppColors.gold.withValues(alpha: 0.08),
+                              color: AppColors.gold500.withValues(alpha: 0.08),
                             ),
                           ),
                         ),
@@ -620,7 +629,7 @@ class _RoomListScreenState extends ConsumerState<RoomListScreen>
                                 decoration: BoxDecoration(
                                   shape: BoxShape.circle,
                                   gradient: const LinearGradient(
-                                      colors: [AppColors.teal, AppColors.gold]),
+                                      colors: [AppColors.jade500, AppColors.gold500]),
                                   border: Border.all(
                                       color: Colors.white.withValues(alpha: 0.3),
                                       width: 1.5),
@@ -751,10 +760,11 @@ class _RoomListScreenState extends ConsumerState<RoomListScreen>
                               style: GoogleFonts.beVietnamPro(
                                 fontSize: 12,
                                 fontWeight: FontWeight.w500,
-                                color: AppColors.ocean,
+                                color: colors.textBrand,
                               ),
                             ),
-                            backgroundColor: AppColors.oceanPale,
+                            backgroundColor:
+                                colors.brand.withValues(alpha: 0.10),
                             side: BorderSide.none,
                             shape: RoundedRectangleBorder(
                               borderRadius:
@@ -772,15 +782,15 @@ class _RoomListScreenState extends ConsumerState<RoomListScreen>
                             style: GoogleFonts.beVietnamPro(
                               fontSize: 12,
                               fontWeight: FontWeight.w500,
-                              color: AppColors.coral,
+                              color: colors.error,
                             ),
                           ),
-                          avatar: const Icon(
+                          avatar: Icon(
                             Icons.close_rounded,
                             size: 14,
-                            color: AppColors.coral,
+                            color: colors.error,
                           ),
-                          backgroundColor: AppColors.coralLight,
+                          backgroundColor: colors.errorBg,
                           side: BorderSide.none,
                           shape: RoundedRectangleBorder(
                             borderRadius:
@@ -878,8 +888,8 @@ class _HeaderIconBtn extends StatelessWidget {
               child: Container(
                 width: 8,
                 height: 8,
-                decoration: const BoxDecoration(
-                  color: AppColors.coral,
+                decoration: BoxDecoration(
+                  color: context.colors.error,
                   shape: BoxShape.circle,
                 ),
               ),

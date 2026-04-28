@@ -3,12 +3,14 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../../core/constants/app_constants.dart';
-import '../../../core/theme/app_colors.dart';
+import '../../../core/theme/app_color_scheme.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../core/utils/helpers.dart';
 import '../../../data/models/booking_model.dart';
+import '../../../shared/widgets/ai_insight_card.dart';
 import '../../../shared/widgets/app_scaffold.dart';
 import '../../../shared/widgets/loading_widget.dart';
+import '../../../shared/widgets/status_strip.dart';
 import '../controllers/customer_controller.dart';
 
 class MyBookingsScreen extends ConsumerStatefulWidget {
@@ -45,65 +47,70 @@ class _MyBookingsScreenState extends ConsumerState<MyBookingsScreen>
   void _cancelBooking(String bookingId) {
     showDialog(
       context: context,
-      builder: (ctx) => AlertDialog(
-        title: Text(
-          'Huỷ đặt phòng?',
-          style: GoogleFonts.beVietnamPro(fontWeight: FontWeight.w700),
-        ),
-        content: Text(
-          'Bạn có chắc muốn huỷ đặt phòng này?',
-          style: GoogleFonts.beVietnamPro(),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: Text(
-              'Không',
-              style:
-                  GoogleFonts.beVietnamPro(color: AppColors.muted),
-            ),
+      builder: (ctx) {
+        final colors = ctx.colors;
+        return AlertDialog(
+          title: Text(
+            'Huỷ đặt phòng?',
+            style: GoogleFonts.beVietnamPro(fontWeight: FontWeight.w700),
           ),
-          TextButton(
-            onPressed: () async {
-              Navigator.pop(ctx);
-              final success = await ref
-                  .read(customerBookingProvider.notifier)
-                  .cancelBooking(bookingId);
-              if (mounted) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text(
-                      success
-                          ? 'Đã huỷ đặt phòng'
-                          : 'Không thể huỷ, thử lại sau',
-                    ),
-                    backgroundColor:
-                        success ? AppColors.emerald : AppColors.coral,
-                    behavior: SnackBarBehavior.floating,
-                    shape: RoundedRectangleBorder(
-                      borderRadius:
-                          BorderRadius.circular(AppSpacing.sm),
-                    ),
-                    margin: const EdgeInsets.all(AppSpacing.md),
-                  ),
-                );
-              }
-            },
-            child: Text(
-              'Huỷ đặt phòng',
-              style: GoogleFonts.beVietnamPro(
-                color: AppColors.coral,
-                fontWeight: FontWeight.w600,
+          content: Text(
+            'Bạn có chắc muốn huỷ đặt phòng này?',
+            style: GoogleFonts.beVietnamPro(),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: Text(
+                'Không',
+                style: GoogleFonts.beVietnamPro(color: colors.textSecondary),
               ),
             ),
-          ),
-        ],
-      ),
+            TextButton(
+              onPressed: () async {
+                Navigator.pop(ctx);
+                final success = await ref
+                    .read(customerBookingProvider.notifier)
+                    .cancelBooking(bookingId);
+                if (mounted) {
+                  final snackColors = context.colors;
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text(
+                        success
+                            ? 'Đã huỷ đặt phòng'
+                            : 'Không thể huỷ, thử lại sau',
+                      ),
+                      backgroundColor:
+                          success ? snackColors.success : snackColors.error,
+                      behavior: SnackBarBehavior.floating,
+                      shape: RoundedRectangleBorder(
+                        borderRadius:
+                            BorderRadius.circular(AppSpacing.sm),
+                      ),
+                      margin: const EdgeInsets.all(AppSpacing.md),
+                    ),
+                  );
+                }
+              },
+              child: Text(
+                'Huỷ đặt phòng',
+                style: GoogleFonts.beVietnamPro(
+                  color: colors.error,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+          ],
+        );
+      },
     );
   }
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.colors;
+
     return AppScaffold(
       title: 'Booking của tôi',
       selectedIndex: 2,
@@ -111,10 +118,10 @@ class _MyBookingsScreenState extends ConsumerState<MyBookingsScreen>
         children: [
           // ── Tab bar ──────────────────────────────────────────
           Container(
-            decoration: const BoxDecoration(
-              color: AppColors.surface,
+            decoration: BoxDecoration(
+              color: colors.bgSurface,
               border: Border(
-                bottom: BorderSide(color: AppColors.border),
+                bottom: BorderSide(color: colors.borderDefault),
               ),
             ),
             child: TabBar(
@@ -129,9 +136,9 @@ class _MyBookingsScreenState extends ConsumerState<MyBookingsScreen>
                 fontSize: 13,
                 fontWeight: FontWeight.w500,
               ),
-              labelColor: AppColors.ocean,
-              unselectedLabelColor: AppColors.muted,
-              indicatorColor: AppColors.ocean,
+              labelColor: colors.brand,
+              unselectedLabelColor: colors.textSecondary,
+              indicatorColor: colors.brand,
               indicatorWeight: 2.5,
               padding: const EdgeInsets.symmetric(horizontal: 8),
               tabs: _tabs.map((t) => Tab(text: t.$1)).toList(),
@@ -176,10 +183,29 @@ class _BookingTabState extends ConsumerState<_BookingTab>
   @override
   bool get wantKeepAlive => true;
 
+  String _computeInsight(List<BookingModel> bookings) {
+    final pending =
+        bookings.where((b) => b.status == BookingStatus.hold).length;
+    final now = DateTime.now();
+    final upcoming = bookings.where((b) {
+      return b.status == BookingStatus.confirmed &&
+          b.checkinDate.isAfter(now);
+    }).length;
+
+    if (pending > 0) {
+      return 'Bạn có $pending booking đang chờ xác nhận. Đặt cọc sớm để giữ chỗ.';
+    }
+    if (upcoming > 0) {
+      return 'Còn $upcoming chuyến sắp tới. Kiểm tra thông tin nhận phòng trước 1 ngày để chuẩn bị tốt nhất.';
+    }
+    return 'Cảm ơn đã đồng hành cùng Halong24h. Hành trình tốt đẹp tới Hạ Long!';
+  }
+
   @override
   Widget build(BuildContext context) {
     super.build(context); // Required by AutomaticKeepAliveClientMixin
     final bookingsAsync = ref.watch(myBookingsProvider(widget.status));
+    final colors = context.colors;
 
     return bookingsAsync.when(
       data: (bookings) {
@@ -188,14 +214,14 @@ class _BookingTabState extends ConsumerState<_BookingTab>
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                const Icon(Icons.book_outlined,
-                    size: 48, color: AppColors.slate),
+                Icon(Icons.book_outlined,
+                    size: 48, color: colors.textTertiary),
                 const SizedBox(height: 12),
                 Text(
                   'Chưa có booking nào',
                   style: GoogleFonts.beVietnamPro(
                     fontSize: 15,
-                    color: AppColors.muted,
+                    color: colors.textSecondary,
                   ),
                 ),
               ],
@@ -203,20 +229,30 @@ class _BookingTabState extends ConsumerState<_BookingTab>
           );
         }
 
+        // AI Insight chỉ hiện ở tab "Tất cả" (status null) để tránh spam
+        final showInsight = widget.status == null;
+        final insightMessage = _computeInsight(bookings);
+
         return RefreshIndicator(
-          color: AppColors.ocean,
+          color: colors.brand,
           onRefresh: () async =>
               ref.invalidate(myBookingsProvider(widget.status)),
           child: ListView.separated(
             padding: const EdgeInsets.all(16),
-            itemCount: bookings.length,
+            itemCount: bookings.length + (showInsight ? 1 : 0),
             separatorBuilder: (_, __) =>
                 const SizedBox(height: 12),
-            itemBuilder: (_, i) => _MyBookingCard(
-              booking: bookings[i],
-              index: i,
-              onCancel: widget.onCancel,
-            ),
+            itemBuilder: (_, i) {
+              if (showInsight && i == 0) {
+                return AIInsightCard(message: insightMessage);
+              }
+              final idx = showInsight ? i - 1 : i;
+              return _MyBookingCard(
+                booking: bookings[idx],
+                index: idx,
+                onCancel: widget.onCancel,
+              );
+            },
           ),
         );
       },
@@ -230,7 +266,7 @@ class _BookingTabState extends ConsumerState<_BookingTab>
           children: [
             Text(
               e.toString().replaceAll('Exception: ', ''),
-              style: GoogleFonts.beVietnamPro(color: AppColors.coral),
+              style: GoogleFonts.beVietnamPro(color: colors.error),
             ),
             const SizedBox(height: 12),
             TextButton(
@@ -261,24 +297,108 @@ class _MyBookingCard extends StatelessWidget {
   String _formatDate(DateTime date) =>
       '${date.day}/${date.month}/${date.year}';
 
+  ({IconData icon, String label, String? subtitle, StatusStripVariant variant})
+      _stripData() {
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final ci = DateTime(booking.checkinDate.year, booking.checkinDate.month,
+        booking.checkinDate.day);
+    final co = DateTime(booking.checkoutDate.year,
+        booking.checkoutDate.month, booking.checkoutDate.day);
+    final daysUntil = ci.difference(today).inDays;
+    final isOngoing = !today.isBefore(ci) && today.isBefore(co);
+
+    switch (booking.status) {
+      case BookingStatus.cancelled:
+        return (
+          icon: Icons.cancel_outlined,
+          label: 'Đã huỷ',
+          subtitle: null,
+          variant: StatusStripVariant.error,
+        );
+      case BookingStatus.completed:
+        return (
+          icon: Icons.check_circle_outline,
+          label: 'Đã hoàn tất',
+          subtitle: 'Cảm ơn đã chọn Halong24h',
+          variant: StatusStripVariant.neutral,
+        );
+      case BookingStatus.hold:
+        return (
+          icon: Icons.access_time_rounded,
+          label: 'Đang giữ chỗ',
+          subtitle: 'Xác nhận sớm để giữ phòng',
+          variant: StatusStripVariant.warning,
+        );
+      case BookingStatus.confirmed:
+        if (isOngoing) {
+          return (
+            icon: Icons.hotel_outlined,
+            label: 'Đang ở phòng',
+            subtitle: null,
+            variant: StatusStripVariant.success,
+          );
+        }
+        if (daysUntil >= 0 && daysUntil <= 3) {
+          return (
+            icon: Icons.schedule_rounded,
+            label: daysUntil == 0
+                ? 'Nhận phòng hôm nay'
+                : 'Còn $daysUntil ngày nhận phòng',
+            subtitle: null,
+            variant: StatusStripVariant.brand,
+          );
+        }
+        if (daysUntil > 3) {
+          return (
+            icon: Icons.event_outlined,
+            label: 'Sắp tới: $daysUntil ngày nữa',
+            subtitle: null,
+            variant: StatusStripVariant.info,
+          );
+        }
+        return (
+          icon: Icons.check_circle_outline,
+          label: 'Đã hoàn tất',
+          subtitle: null,
+          variant: StatusStripVariant.neutral,
+        );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
+    final colors = context.colors;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     final statusColor = AppHelpers.bookingStatusColor(booking.status.value);
+    final strip = _stripData();
 
     return Container(
       decoration: BoxDecoration(
-        color: AppColors.surface,
+        color: colors.bgSurface,
         borderRadius: BorderRadius.circular(AppRadius.lg),
+        border: Border.all(color: colors.borderDefault),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.04),
+            color: Colors.black.withValues(alpha: isDark ? 0.30 : 0.04),
             blurRadius: 12,
             offset: const Offset(0, 2),
           ),
         ],
       ),
       child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
+          // Status strip — context info ngay top card
+          Padding(
+            padding: const EdgeInsets.fromLTRB(12, 12, 12, 0),
+            child: StatusStrip(
+              icon: strip.icon,
+              label: strip.label,
+              subtitle: strip.subtitle,
+              variant: strip.variant,
+            ),
+          ),
           // Header: room name + status
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 14, 16, 0),
@@ -290,7 +410,7 @@ class _MyBookingCard extends StatelessWidget {
                     style: GoogleFonts.beVietnamPro(
                       fontSize: 15,
                       fontWeight: FontWeight.w700,
-                      color: AppColors.navy,
+                      color: colors.textPrimary,
                     ),
                   ),
                 ),
@@ -298,7 +418,7 @@ class _MyBookingCard extends StatelessWidget {
                   padding: const EdgeInsets.symmetric(
                       horizontal: 10, vertical: 4),
                   decoration: BoxDecoration(
-                    color: statusColor.withValues(alpha: 0.1),
+                    color: statusColor.withValues(alpha: isDark ? 0.18 : 0.1),
                     borderRadius: BorderRadius.circular(AppRadius.full),
                   ),
                   child: Text(
@@ -320,21 +440,25 @@ class _MyBookingCard extends StatelessWidget {
                 const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
             child: Row(
               children: [
-                const Icon(Icons.location_on_outlined,
-                    size: 14, color: AppColors.muted),
+                Icon(Icons.location_on_outlined,
+                    size: 14, color: colors.textSecondary),
                 const SizedBox(width: 4),
                 Text(
                   booking.propertyName,
                   style: GoogleFonts.beVietnamPro(
                     fontSize: 12,
-                    color: AppColors.muted,
+                    color: colors.textSecondary,
                   ),
                 ),
               ],
             ),
           ),
 
-          const Divider(indent: 16, endIndent: 16),
+          Divider(
+            indent: 16,
+            endIndent: 16,
+            color: colors.borderSubtle,
+          ),
 
           // Dates
           Padding(
@@ -346,10 +470,10 @@ class _MyBookingCard extends StatelessWidget {
                   label: 'Nhận phòng',
                   date: _formatDate(booking.checkinDate),
                 ),
-                const Padding(
-                  padding: EdgeInsets.symmetric(horizontal: 12),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 12),
                   child: Icon(Icons.arrow_forward_rounded,
-                      size: 16, color: AppColors.slate),
+                      size: 16, color: colors.textTertiary),
                 ),
                 _DateInfo(
                   label: 'Trả phòng',
@@ -364,7 +488,7 @@ class _MyBookingCard extends StatelessWidget {
                       style: GoogleFonts.beVietnamPro(
                         fontSize: 14,
                         fontWeight: FontWeight.w700,
-                        color: AppColors.ocean,
+                        color: colors.textBrand,
                       ),
                     ),
                   ],
@@ -383,8 +507,8 @@ class _MyBookingCard extends StatelessWidget {
                 child: OutlinedButton(
                   onPressed: () => onCancel(booking.id),
                   style: OutlinedButton.styleFrom(
-                    foregroundColor: AppColors.coral,
-                    side: const BorderSide(color: AppColors.coral),
+                    foregroundColor: colors.error,
+                    side: BorderSide(color: colors.error),
                     shape: RoundedRectangleBorder(
                       borderRadius:
                           BorderRadius.circular(AppRadius.md),
@@ -421,6 +545,7 @@ class _DateInfo extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.colors;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -429,7 +554,7 @@ class _DateInfo extends StatelessWidget {
           style: GoogleFonts.beVietnamPro(
             fontSize: 10,
             fontWeight: FontWeight.w600,
-            color: AppColors.muted,
+            color: colors.textSecondary,
             letterSpacing: 0.3,
           ),
         ),
@@ -439,7 +564,7 @@ class _DateInfo extends StatelessWidget {
           style: GoogleFonts.beVietnamPro(
             fontSize: 13,
             fontWeight: FontWeight.w600,
-            color: AppColors.navy,
+            color: colors.textPrimary,
           ),
         ),
       ],

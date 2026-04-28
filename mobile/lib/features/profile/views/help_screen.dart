@@ -3,9 +3,13 @@ import 'package:flutter/services.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:url_launcher/url_launcher.dart';
+import '../../../core/theme/app_color_scheme.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../shared/widgets/loading_widget.dart';
+
+// gradient.brandHero stop "jade-mid" theo spec section 3.7 — chưa có token sẵn
+const _jadeMidLight = Color(0xFF1B7E94);
 
 class HelpScreen extends StatefulWidget {
   const HelpScreen({super.key});
@@ -51,8 +55,13 @@ class _HelpScreenState extends State<HelpScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.colors;
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final filtered = _filteredCategories;
+
+    final headerGradient = isDark
+        ? const [AppColors.darkBg, AppColors.darkBorder]
+        : const [AppColors.jade500, _jadeMidLight];
 
     return Scaffold(
       appBar: AppBar(
@@ -65,10 +74,10 @@ class _HelpScreenState extends State<HelpScreen> {
             child: Container(
               padding: const EdgeInsets.fromLTRB(20, 20, 20, 24),
               decoration: BoxDecoration(
-                gradient: const LinearGradient(
+                gradient: LinearGradient(
                   begin: Alignment.topCenter,
                   end: Alignment.bottomCenter,
-                  colors: [AppColors.ocean, AppColors.oceanMid],
+                  colors: headerGradient,
                 ),
                 borderRadius: const BorderRadius.only(
                   bottomLeft: Radius.circular(24),
@@ -98,15 +107,18 @@ class _HelpScreenState extends State<HelpScreen> {
                   TextField(
                     controller: _searchController,
                     onChanged: (v) => setState(() => _query = v),
-                    style: GoogleFonts.beVietnamPro(fontSize: 14),
+                    style: GoogleFonts.beVietnamPro(
+                      fontSize: 14,
+                      color: colors.textPrimary,
+                    ),
                     decoration: InputDecoration(
                       hintText: 'Tìm kiếm câu hỏi...',
                       hintStyle: GoogleFonts.beVietnamPro(
-                        color: AppColors.slate,
+                        color: colors.textTertiary,
                       ),
-                      prefixIcon: const Icon(
+                      prefixIcon: Icon(
                         Icons.search_rounded,
-                        color: AppColors.muted,
+                        color: colors.textSecondary,
                       ),
                       suffixIcon: _query.isNotEmpty
                           ? IconButton(
@@ -119,8 +131,7 @@ class _HelpScreenState extends State<HelpScreen> {
                             )
                           : null,
                       filled: true,
-                      fillColor:
-                          isDark ? AppColors.darkSurface : Colors.white,
+                      fillColor: colors.bgSurface,
                       contentPadding:
                           const EdgeInsets.symmetric(vertical: 12),
                       border: OutlineInputBorder(
@@ -148,7 +159,7 @@ class _HelpScreenState extends State<HelpScreen> {
                       icon: Icons.phone_outlined,
                       label: 'Gọi điện',
                       value: _supportPhone,
-                      color: AppColors.emerald,
+                      color: colors.success,
                       onTap: () => _launchPhone(context),
                     ),
                   ),
@@ -158,7 +169,7 @@ class _HelpScreenState extends State<HelpScreen> {
                       icon: Icons.email_outlined,
                       label: 'Email',
                       value: _supportEmail,
-                      color: AppColors.ocean,
+                      color: colors.brand,
                       onTap: () => _launchEmail(context),
                     ),
                   ),
@@ -180,16 +191,14 @@ class _HelpScreenState extends State<HelpScreen> {
                 padding: const EdgeInsets.symmetric(
                     horizontal: 16, vertical: 12),
                 decoration: BoxDecoration(
-                  color: isDark
-                      ? AppColors.darkContainer
-                      : AppColors.amberLight,
+                  color: colors.warningBg,
                   borderRadius:
                       BorderRadius.circular(AppRadius.md),
                 ),
                 child: Row(
                   children: [
-                    const Icon(Icons.access_time_rounded,
-                        color: AppColors.amber, size: 20),
+                    Icon(Icons.access_time_rounded,
+                        color: colors.warning, size: 20),
                     const SizedBox(width: 10),
                     Expanded(
                       child: Text(
@@ -197,9 +206,7 @@ class _HelpScreenState extends State<HelpScreen> {
                         style: GoogleFonts.beVietnamPro(
                           fontSize: 13,
                           fontWeight: FontWeight.w500,
-                          color: isDark
-                              ? AppColors.amber
-                              : AppColors.brownDark,
+                          color: colors.warning,
                         ),
                       ),
                     ),
@@ -222,9 +229,7 @@ class _HelpScreenState extends State<HelpScreen> {
                 style: GoogleFonts.beVietnamPro(
                   fontSize: 18,
                   fontWeight: FontWeight.w700,
-                  color: isDark
-                      ? AppColors.darkOnSurface
-                      : AppColors.navy,
+                  color: colors.textPrimary,
                 ),
               ),
             ),
@@ -241,7 +246,7 @@ class _HelpScreenState extends State<HelpScreen> {
                   children: [
                     Icon(Icons.search_off_rounded,
                         size: 48,
-                        color: AppColors.slate
+                        color: colors.textTertiary
                             .withValues(alpha: 0.5)),
                     const SizedBox(height: 12),
                     Text(
@@ -249,7 +254,7 @@ class _HelpScreenState extends State<HelpScreen> {
                       style: GoogleFonts.beVietnamPro(
                         fontSize: 15,
                         fontWeight: FontWeight.w600,
-                        color: AppColors.muted,
+                        color: colors.textSecondary,
                       ),
                     ),
                     const SizedBox(height: 4),
@@ -257,7 +262,7 @@ class _HelpScreenState extends State<HelpScreen> {
                       'Thử từ khóa khác hoặc liên hệ hỗ trợ',
                       style: GoogleFonts.beVietnamPro(
                         fontSize: 13,
-                        color: AppColors.slate,
+                        color: colors.textTertiary,
                       ),
                     ),
                   ],
@@ -293,23 +298,21 @@ class _HelpScreenState extends State<HelpScreen> {
               child: Container(
                 padding: const EdgeInsets.all(20),
                 decoration: BoxDecoration(
-                  color: isDark
-                      ? AppColors.darkContainer
-                      : AppColors.oceanPale,
+                  color: colors.bgSurfaceContainer,
                   borderRadius:
                       BorderRadius.circular(AppRadius.lg),
                 ),
                 child: Column(
                   children: [
-                    const Icon(Icons.headset_mic_outlined,
-                        color: AppColors.ocean, size: 36),
+                    Icon(Icons.headset_mic_outlined,
+                        color: colors.brand, size: 36),
                     const SizedBox(height: 12),
                     Text(
                       'Vẫn cần trợ giúp?',
                       style: GoogleFonts.beVietnamPro(
                         fontSize: 16,
                         fontWeight: FontWeight.w700,
-                        color: AppColors.ocean,
+                        color: colors.brand,
                       ),
                     ),
                     const SizedBox(height: 4),
@@ -317,7 +320,7 @@ class _HelpScreenState extends State<HelpScreen> {
                       'Đội ngũ hỗ trợ luôn sẵn sàng giúp bạn',
                       style: GoogleFonts.beVietnamPro(
                         fontSize: 13,
-                        color: AppColors.muted,
+                        color: colors.textSecondary,
                       ),
                     ),
                     const SizedBox(height: 16),
@@ -330,9 +333,9 @@ class _HelpScreenState extends State<HelpScreen> {
                                 size: 18),
                             label: const Text('Gọi ngay'),
                             style: OutlinedButton.styleFrom(
-                              foregroundColor: AppColors.ocean,
-                              side: const BorderSide(
-                                  color: AppColors.ocean),
+                              foregroundColor: colors.brand,
+                              side: BorderSide(
+                                  color: colors.brand),
                               shape: RoundedRectangleBorder(
                                 borderRadius: BorderRadius.circular(
                                     AppRadius.full),
@@ -354,7 +357,7 @@ class _HelpScreenState extends State<HelpScreen> {
                                 size: 18),
                             label: const Text('Gửi email'),
                             style: FilledButton.styleFrom(
-                              backgroundColor: AppColors.ocean,
+                              backgroundColor: colors.brand,
                               foregroundColor: Colors.white,
                               shape: RoundedRectangleBorder(
                                 borderRadius: BorderRadius.circular(
@@ -388,7 +391,7 @@ class _HelpScreenState extends State<HelpScreen> {
                 'Halong24h v1.0.0',
                 style: GoogleFonts.beVietnamPro(
                   fontSize: 12,
-                  color: AppColors.slate,
+                  color: colors.textTertiary,
                 ),
               ),
             ),
@@ -450,12 +453,14 @@ class _ContactCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.colors;
     final isDark = Theme.of(context).brightness == Brightness.dark;
     return Material(
-      color: isDark ? AppColors.darkContainer : AppColors.surface,
+      color: colors.bgSurface,
       borderRadius: BorderRadius.circular(AppRadius.lg),
       elevation: isDark ? 0 : 1,
-      shadowColor: AppColors.slate.withValues(alpha: 0.1),
+      shadowColor:
+          Colors.black.withValues(alpha: isDark ? 0.30 : 0.10),
       child: InkWell(
         onTap: onTap,
         borderRadius: BorderRadius.circular(AppRadius.lg),
@@ -478,9 +483,7 @@ class _ContactCard extends StatelessWidget {
                 style: GoogleFonts.beVietnamPro(
                   fontSize: 14,
                   fontWeight: FontWeight.w600,
-                  color: isDark
-                      ? AppColors.darkOnSurface
-                      : AppColors.navy,
+                  color: colors.textPrimary,
                 ),
               ),
               const SizedBox(height: 2),
@@ -488,7 +491,7 @@ class _ContactCard extends StatelessWidget {
                 value,
                 style: GoogleFonts.beVietnamPro(
                   fontSize: 11,
-                  color: AppColors.muted,
+                  color: colors.textSecondary,
                 ),
                 overflow: TextOverflow.ellipsis,
               ),
@@ -509,20 +512,20 @@ class _FaqCategoryCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.colors;
     final isDark = Theme.of(context).brightness == Brightness.dark;
     return Container(
       decoration: BoxDecoration(
-        color: isDark ? AppColors.darkContainer : AppColors.surface,
+        color: colors.bgSurface,
         borderRadius: BorderRadius.circular(AppRadius.lg),
-        boxShadow: isDark
-            ? null
-            : [
-                BoxShadow(
-                  color: AppColors.slate.withValues(alpha: 0.06),
-                  blurRadius: 12,
-                  offset: const Offset(0, 2),
-                ),
-              ],
+        boxShadow: [
+          BoxShadow(
+            color:
+                Colors.black.withValues(alpha: isDark ? 0.30 : 0.06),
+            blurRadius: 12,
+            offset: const Offset(0, 2),
+          ),
+        ],
       ),
       child: Theme(
         data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
@@ -531,26 +534,25 @@ class _FaqCategoryCard extends StatelessWidget {
             width: 40,
             height: 40,
             decoration: BoxDecoration(
-              color: AppColors.ocean.withValues(alpha: 0.08),
+              color: colors.brand.withValues(alpha: 0.08),
               borderRadius: BorderRadius.circular(AppRadius.md),
             ),
             child: Icon(category.icon,
-                color: AppColors.ocean, size: 20),
+                color: colors.brand, size: 20),
           ),
           title: Text(
             category.title,
             style: GoogleFonts.beVietnamPro(
               fontSize: 15,
               fontWeight: FontWeight.w600,
-              color:
-                  isDark ? AppColors.darkOnSurface : AppColors.navy,
+              color: colors.textPrimary,
             ),
           ),
           subtitle: Text(
             '${category.items.length} câu hỏi',
             style: GoogleFonts.beVietnamPro(
               fontSize: 12,
-              color: AppColors.muted,
+              color: colors.textSecondary,
             ),
           ),
           shape: RoundedRectangleBorder(
@@ -579,7 +581,7 @@ class _FaqItemTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final colors = context.colors;
     return Theme(
       data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
       child: ExpansionTile(
@@ -587,14 +589,13 @@ class _FaqItemTile extends StatelessWidget {
         childrenPadding:
             const EdgeInsets.only(left: 8, right: 8, bottom: 12),
         leading: Icon(Icons.help_outline_rounded,
-            color: AppColors.teal, size: 18),
+            color: colors.brand, size: 18),
         title: Text(
           item.question,
           style: GoogleFonts.beVietnamPro(
             fontSize: 14,
             fontWeight: FontWeight.w500,
-            color:
-                isDark ? AppColors.darkOnSurface : AppColors.ink,
+            color: colors.textPrimary,
           ),
         ),
         children: [
@@ -602,9 +603,7 @@ class _FaqItemTile extends StatelessWidget {
             width: double.infinity,
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
-              color: isDark
-                  ? AppColors.oceanDeep.withValues(alpha: 0.3)
-                  : AppColors.oceanPale,
+              color: colors.bgSurfaceContainer,
               borderRadius: BorderRadius.circular(AppRadius.sm),
             ),
             child: Text(
@@ -612,7 +611,7 @@ class _FaqItemTile extends StatelessWidget {
               style: GoogleFonts.beVietnamPro(
                 fontSize: 13,
                 height: 1.6,
-                color: isDark ? AppColors.darkOnSurface : AppColors.ink,
+                color: colors.textPrimary,
               ),
             ),
           ),

@@ -2,10 +2,14 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 
+import '../../../core/theme/app_color_scheme.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../shared/widgets/loading_widget.dart';
 import '../../rooms/controllers/room_controller.dart';
+
+// gradient.brandHero stop "jade-mid" theo spec section 3.7
+const _jadeMidLight = Color(0xFF1B7E94);
 
 class PropertyCancellationScreen extends ConsumerStatefulWidget {
   final String homestayId;
@@ -29,21 +33,21 @@ class _PropertyCancellationScreenState
       label: 'Linh hoạt',
       desc: 'Hoàn 100% nếu huỷ trước 1 ngày',
       icon: Icons.sentiment_satisfied_alt_rounded,
-      color: AppColors.emerald,
+      color: AppColors.success,
     ),
     (
       value: 1,
       label: 'Vừa phải',
       desc: 'Hoàn 100% nếu huỷ trước 7 ngày',
       icon: Icons.sentiment_neutral_rounded,
-      color: AppColors.amber,
+      color: AppColors.warning,
     ),
     (
       value: 2,
       label: 'Nghiêm ngặt',
       desc: 'Không hoàn tiền sau khi đặt',
       icon: Icons.sentiment_dissatisfied_rounded,
-      color: AppColors.coral,
+      color: AppColors.error,
     ),
   ];
 
@@ -77,9 +81,15 @@ class _PropertyCancellationScreenState
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.colors;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final gradient = isDark
+        ? const [AppColors.darkBg, AppColors.darkBorder]
+        : const [AppColors.jade500, _jadeMidLight];
     final roomAsync = ref.watch(roomDetailProvider(widget.homestayId));
 
     return Scaffold(
+      backgroundColor: colors.bgCanvas,
       appBar: AppBar(title: const Text('Chính sách huỷ')),
       body: roomAsync.when(
         loading: () => const LoadingWidget(),
@@ -103,11 +113,11 @@ class _PropertyCancellationScreenState
                     padding: const EdgeInsets.all(16),
                     decoration: BoxDecoration(
                       color: on
-                          ? p.color.withValues(alpha: 0.08)
-                          : Theme.of(context).colorScheme.surface,
+                          ? p.color.withValues(alpha: isDark ? 0.18 : 0.08)
+                          : colors.bgSurface,
                       borderRadius: BorderRadius.circular(AppRadius.md),
                       border: Border.all(
-                        color: on ? p.color : AppColors.border,
+                        color: on ? p.color : colors.borderDefault,
                         width: on ? 1.5 : 1,
                       ),
                     ),
@@ -117,7 +127,7 @@ class _PropertyCancellationScreenState
                           on
                               ? Icons.radio_button_checked_rounded
                               : Icons.radio_button_unchecked_rounded,
-                          color: on ? p.color : AppColors.muted,
+                          color: on ? p.color : colors.textSecondary,
                           size: 22,
                         ),
                         const SizedBox(width: 14),
@@ -129,13 +139,13 @@ class _PropertyCancellationScreenState
                                   style: GoogleFonts.beVietnamPro(
                                     fontSize: 15,
                                     fontWeight: FontWeight.w600,
-                                    color: on ? p.color : AppColors.ink,
+                                    color: on ? p.color : colors.textPrimary,
                                   )),
                               const SizedBox(height: 2),
                               Text(p.desc,
                                   style: GoogleFonts.beVietnamPro(
                                     fontSize: 12,
-                                    color: AppColors.muted,
+                                    color: colors.textSecondary,
                                   )),
                             ],
                           ),
@@ -157,9 +167,7 @@ class _PropertyCancellationScreenState
             width: double.infinity, height: 48,
             child: DecoratedBox(
               decoration: BoxDecoration(
-                gradient: const LinearGradient(
-                  colors: [AppColors.oceanMid, AppColors.ocean],
-                ),
+                gradient: LinearGradient(colors: gradient),
                 borderRadius: BorderRadius.circular(AppRadius.md),
               ),
               child: ElevatedButton(

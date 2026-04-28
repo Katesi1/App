@@ -2,10 +2,14 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 
+import '../../../core/theme/app_color_scheme.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../shared/widgets/loading_widget.dart';
 import '../../rooms/controllers/room_controller.dart';
+
+// gradient.brandHero stop "jade-mid" theo spec section 3.7
+const _jadeMidLight = Color(0xFF1B7E94);
 
 class PropertyServicesScreen extends ConsumerStatefulWidget {
   final String homestayId;
@@ -55,42 +59,51 @@ class _PropertyServicesScreenState
     final ctrl = TextEditingController();
     showDialog(
       context: context,
-      builder: (ctx) => AlertDialog(
-        title: Text('Thêm dịch vụ',
-            style: GoogleFonts.beVietnamPro(fontWeight: FontWeight.w700)),
-        content: TextField(
-          controller: ctrl,
-          autofocus: true,
-          style: GoogleFonts.beVietnamPro(fontSize: 14),
-          decoration: InputDecoration(
-            hintText: 'VD: Thuê xe máy',
-            hintStyle: GoogleFonts.beVietnamPro(
-                fontSize: 14, color: AppColors.muted),
+      builder: (ctx) {
+        final colors = ctx.colors;
+        return AlertDialog(
+          title: Text('Thêm dịch vụ',
+              style: GoogleFonts.beVietnamPro(fontWeight: FontWeight.w700)),
+          content: TextField(
+            controller: ctrl,
+            autofocus: true,
+            style: GoogleFonts.beVietnamPro(fontSize: 14),
+            decoration: InputDecoration(
+              hintText: 'VD: Thuê xe máy',
+              hintStyle: GoogleFonts.beVietnamPro(
+                  fontSize: 14, color: colors.textSecondary),
+            ),
           ),
-        ),
-        actions: [
-          TextButton(
-              onPressed: () => Navigator.pop(ctx),
-              child: const Text('Huỷ')),
-          TextButton(
-            onPressed: () {
-              if (ctrl.text.trim().isNotEmpty) {
-                setState(() => _services.add(ctrl.text.trim()));
-              }
-              Navigator.pop(ctx);
-            },
-            child: const Text('Thêm'),
-          ),
-        ],
-      ),
+          actions: [
+            TextButton(
+                onPressed: () => Navigator.pop(ctx),
+                child: const Text('Huỷ')),
+            TextButton(
+              onPressed: () {
+                if (ctrl.text.trim().isNotEmpty) {
+                  setState(() => _services.add(ctrl.text.trim()));
+                }
+                Navigator.pop(ctx);
+              },
+              child: const Text('Thêm'),
+            ),
+          ],
+        );
+      },
     );
   }
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.colors;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final gradient = isDark
+        ? const [AppColors.darkBg, AppColors.darkBorder]
+        : const [AppColors.jade500, _jadeMidLight];
     final roomAsync = ref.watch(roomDetailProvider(widget.homestayId));
 
     return Scaffold(
+      backgroundColor: colors.bgCanvas,
       appBar: AppBar(
         title: const Text('Dịch vụ trả phí'),
         actions: [
@@ -114,12 +127,12 @@ class _PropertyServicesScreenState
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  const Icon(Icons.room_service_outlined,
-                      size: 48, color: AppColors.slate),
+                  Icon(Icons.room_service_outlined,
+                      size: 48, color: colors.textTertiary),
                   const SizedBox(height: 12),
                   Text('Chưa có dịch vụ nào',
                       style: GoogleFonts.beVietnamPro(
-                        fontSize: 15, color: AppColors.muted,
+                        fontSize: 15, color: colors.textSecondary,
                       )),
                   const SizedBox(height: 8),
                   TextButton.icon(
@@ -135,26 +148,28 @@ class _PropertyServicesScreenState
             padding: const EdgeInsets.all(AppSpacing.md),
             itemCount: _services.length,
             separatorBuilder: (_, __) =>
-                const Divider(height: 1, color: AppColors.border),
+                Divider(height: 1, color: colors.borderDefault),
             itemBuilder: (_, i) => ListTile(
               contentPadding: EdgeInsets.zero,
               leading: Container(
                 width: 40, height: 40,
                 decoration: BoxDecoration(
-                  color: AppColors.tealLight,
+                  color: colors.brand.withValues(alpha: isDark ? 0.18 : 0.12),
                   borderRadius: BorderRadius.circular(AppRadius.sm),
                 ),
-                child: const Icon(Icons.room_service_outlined,
-                    color: AppColors.teal, size: 20),
+                child: Icon(Icons.room_service_outlined,
+                    color: colors.brand, size: 20),
               ),
               title: Text(_services[i],
                   style: GoogleFonts.beVietnamPro(
-                    fontSize: 14, fontWeight: FontWeight.w500,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w500,
+                    color: colors.textPrimary,
                   )),
               trailing: IconButton(
                 onPressed: () => setState(() => _services.removeAt(i)),
-                icon: const Icon(Icons.delete_outline_rounded,
-                    color: AppColors.coral, size: 20),
+                icon: Icon(Icons.delete_outline_rounded,
+                    color: colors.error, size: 20),
               ),
             ),
           );
@@ -167,9 +182,7 @@ class _PropertyServicesScreenState
             width: double.infinity, height: 48,
             child: DecoratedBox(
               decoration: BoxDecoration(
-                gradient: const LinearGradient(
-                  colors: [AppColors.oceanMid, AppColors.ocean],
-                ),
+                gradient: LinearGradient(colors: gradient),
                 borderRadius: BorderRadius.circular(AppRadius.md),
               ),
               child: ElevatedButton(

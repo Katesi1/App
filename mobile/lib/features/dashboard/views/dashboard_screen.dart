@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../../core/constants/app_constants.dart';
+import '../../../core/theme/app_color_scheme.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/utils/helpers.dart';
 import '../../auth/controllers/auth_controller.dart';
@@ -11,11 +12,15 @@ import '../../dashboard/controllers/dashboard_controller.dart';
 import '../../../shared/widgets/app_scaffold.dart';
 import '../../../shared/widgets/loading_widget.dart';
 
+// gradient.brandHero stop "jade-mid" theo spec section 3.7
+const _jadeMidLight = Color(0xFF1B7E94);
+
 class DashboardScreen extends ConsumerWidget {
   const DashboardScreen({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final colors = context.colors;
     final user = ref.watch(currentUserProvider);
     final statsAsync = ref.watch(dashboardStatsProvider);
     final bookingsAsync = ref.watch(bookingListProvider(null));
@@ -34,7 +39,7 @@ class DashboardScreen extends ConsumerWidget {
           onRetry: () => ref.invalidate(dashboardStatsProvider),
         ),
         data: (stats) => RefreshIndicator(
-          color: AppColors.ocean,
+          color: colors.brand,
           onRefresh: () async => ref.invalidate(dashboardStatsProvider),
           child: SingleChildScrollView(
             physics: const AlwaysScrollableScrollPhysics(),
@@ -58,23 +63,23 @@ class DashboardScreen extends ConsumerWidget {
                         padding: const EdgeInsets.all(14),
                         margin: const EdgeInsets.only(bottom: 12),
                         decoration: BoxDecoration(
-                          color: AppColors.amber.withValues(alpha: 0.1),
+                          color: colors.warningBg,
                           borderRadius: BorderRadius.circular(14),
                           border: Border.all(
-                            color: AppColors.amber.withValues(alpha: 0.3),
+                            color: colors.warning.withValues(alpha: 0.3),
                           ),
                         ),
                         child: Row(
                           children: [
-                            const Icon(Icons.warning_amber_rounded,
-                                color: AppColors.amber, size: 20),
+                            Icon(Icons.warning_amber_rounded,
+                                color: colors.warning, size: 20),
                             const SizedBox(width: 10),
                             Expanded(
                               child: Text(
                                 'Bạn chưa được gán cho chủ nhà nào. Hãy liên hệ chủ nhà để được thêm vào đội.',
                                 style: GoogleFonts.beVietnamPro(
                                   fontSize: 12,
-                                  color: AppColors.amber,
+                                  color: colors.warning,
                                   fontWeight: FontWeight.w500,
                                 ),
                               ),
@@ -100,7 +105,7 @@ class DashboardScreen extends ConsumerWidget {
                                 value: AppHelpers.formatIntOrDash(
                                     stats.globalTotalRooms),
                                 sub: '${AppHelpers.formatIntOrDash(stats.totalRooms)} của tôi',
-                                accentColor: AppColors.ocean,
+                                accentColor: colors.brand,
                                 icon: Icons.apartment_rounded,
                               ),
                             ),
@@ -111,7 +116,7 @@ class DashboardScreen extends ConsumerWidget {
                                 value: AppHelpers.formatIntOrDash(
                                     stats.globalEmptyRooms),
                                 sub: '${AppHelpers.formatIntOrDash(stats.emptyRooms)} của tôi',
-                                accentColor: AppColors.emerald,
+                                accentColor: colors.success,
                                 icon: Icons.check_circle_outline_rounded,
                               ),
                             ),
@@ -126,7 +131,7 @@ class DashboardScreen extends ConsumerWidget {
                                 value: AppHelpers.formatIntOrDash(
                                     stats.occupiedRooms),
                                 sub: 'Đang lưu trú',
-                                accentColor: AppColors.teal,
+                                accentColor: colors.brandLight,
                                 icon: Icons.people_rounded,
                               ),
                             ),
@@ -137,7 +142,7 @@ class DashboardScreen extends ConsumerWidget {
                                 value: AppHelpers.formatIntOrDash(
                                     stats.checkoutToday),
                                 sub: 'Trước 12:00',
-                                accentColor: AppColors.amber,
+                                accentColor: colors.warning,
                                 icon: Icons.logout_rounded,
                               ),
                             ),
@@ -174,21 +179,21 @@ class DashboardScreen extends ConsumerWidget {
                           _QuickAction(
                             icon: Icons.add_rounded,
                             label: 'Booking',
-                            color: AppColors.ocean,
+                            color: colors.brand,
                             onTap: () => context.push('/bookings'),
                           ),
                           const SizedBox(width: 10),
                           _QuickAction(
                             icon: Icons.login_rounded,
                             label: 'Check-in',
-                            color: AppColors.teal,
+                            color: colors.brandLight,
                             onTap: () {},
                           ),
                           const SizedBox(width: 10),
                           _QuickAction(
                             icon: Icons.logout_rounded,
                             label: 'Check-out',
-                            color: AppColors.gold,
+                            color: colors.brandSecondary,
                             onTap: () {},
                           ),
                           const SizedBox(width: 10),
@@ -196,7 +201,7 @@ class DashboardScreen extends ConsumerWidget {
                             _QuickAction(
                               icon: Icons.add_home_rounded,
                               label: 'Thêm phòng',
-                              color: AppColors.emerald,
+                              color: colors.success,
                               onTap: () =>
                                   context.push('/properties/new'),
                             ),
@@ -225,7 +230,7 @@ class DashboardScreen extends ConsumerWidget {
                               style: GoogleFonts.beVietnamPro(
                                 fontSize: 12,
                                 fontWeight: FontWeight.w600,
-                                color: AppColors.oceanMid,
+                                color: colors.textBrand,
                               ),
                             ),
                           ),
@@ -298,12 +303,13 @@ class _SectionLabel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.colors;
     return Text(
       text,
       style: GoogleFonts.beVietnamPro(
         fontSize: 11,
         fontWeight: FontWeight.w600,
-        color: AppColors.muted,
+        color: colors.textSecondary,
         letterSpacing: 1.2,
       ),
     );
@@ -322,7 +328,11 @@ class _DashHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.colors;
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final headerGradient = isDark
+        ? const [AppColors.darkBg, AppColors.darkBorder]
+        : const [AppColors.jade500, _jadeMidLight];
 
     return Container(
       padding: EdgeInsets.only(
@@ -335,9 +345,7 @@ class _DashHeader extends StatelessWidget {
         gradient: LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
-          colors: isDark
-              ? [AppColors.darkGradientStart, AppColors.darkGradientEnd]
-              : [AppColors.oceanDeep, AppColors.ocean],
+          colors: headerGradient,
         ),
       ),
       child: Stack(
@@ -351,7 +359,7 @@ class _DashHeader extends StatelessWidget {
               height: 180,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                color: AppColors.teal.withValues(alpha: 0.10),
+                color: colors.brandLight.withValues(alpha: 0.10),
               ),
             ),
           ),
@@ -363,7 +371,7 @@ class _DashHeader extends StatelessWidget {
               height: 110,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                color: AppColors.gold.withValues(alpha: 0.08),
+                color: AppColors.gold500.withValues(alpha: 0.08),
               ),
             ),
           ),
@@ -419,10 +427,10 @@ class _DashHeader extends StatelessWidget {
                         width: 8,
                         height: 8,
                         decoration: BoxDecoration(
-                          color: AppColors.gold,
+                          color: AppColors.gold500,
                           shape: BoxShape.circle,
-                          border:
-                              Border.all(color: AppColors.ocean, width: 1.5),
+                          border: Border.all(
+                              color: AppColors.jade500, width: 1.5),
                         ),
                       ),
                     ),
@@ -439,7 +447,7 @@ class _DashHeader extends StatelessWidget {
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
                     gradient: const LinearGradient(
-                        colors: [AppColors.teal, AppColors.gold]),
+                        colors: [AppColors.jade300, AppColors.gold500]),
                     border: Border.all(
                         color: Colors.white.withValues(alpha: 0.3),
                         width: 1.5),
@@ -482,16 +490,17 @@ class _KpiCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.colors;
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: isDark ? AppColors.darkContainer : Colors.white,
+        color: colors.bgSurface,
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.06),
+            color: Colors.black.withValues(alpha: isDark ? 0.30 : 0.06),
             blurRadius: 12,
             offset: const Offset(0, 4),
           ),
@@ -538,7 +547,7 @@ class _KpiCard extends StatelessWidget {
             style: GoogleFonts.beVietnamPro(
               fontSize: 13,
               fontWeight: FontWeight.w500,
-              color: isDark ? AppColors.darkOnSurface : AppColors.navy,
+              color: colors.textPrimary,
             ),
           ),
           const SizedBox(height: 2),
@@ -546,7 +555,7 @@ class _KpiCard extends StatelessWidget {
             sub,
             style: GoogleFonts.beVietnamPro(
               fontSize: 11,
-              color: AppColors.slate,
+              color: colors.textTertiary,
             ),
           ),
         ],
@@ -569,6 +578,7 @@ class _RevenueCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.colors;
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Container(
@@ -576,7 +586,7 @@ class _RevenueCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: AppColors.emerald.withValues(alpha: isDark ? 0.15 : 0.12),
+            color: colors.success.withValues(alpha: isDark ? 0.15 : 0.12),
             blurRadius: 16,
             offset: const Offset(0, 4),
           ),
@@ -586,7 +596,7 @@ class _RevenueCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(16),
         child: Container(
           decoration: BoxDecoration(
-            color: isDark ? AppColors.darkContainer : Colors.white,
+            color: colors.bgSurface,
           ),
           child: Stack(
             children: [
@@ -597,11 +607,11 @@ class _RevenueCard extends StatelessWidget {
                 bottom: 0,
                 child: Container(
                   width: 4,
-                  decoration: const BoxDecoration(
+                  decoration: BoxDecoration(
                     gradient: LinearGradient(
                       begin: Alignment.topCenter,
                       end: Alignment.bottomCenter,
-                      colors: [AppColors.emerald, AppColors.teal],
+                      colors: [colors.success, colors.brandLight],
                     ),
                   ),
                 ),
@@ -620,7 +630,7 @@ class _RevenueCard extends StatelessWidget {
                             style: GoogleFonts.beVietnamPro(
                               fontSize: 10,
                               fontWeight: FontWeight.w600,
-                              color: AppColors.muted,
+                              color: colors.textSecondary,
                               letterSpacing: 1.0,
                             ),
                           ),
@@ -630,7 +640,7 @@ class _RevenueCard extends StatelessWidget {
                             style: GoogleFonts.beVietnamPro(
                               fontSize: 28,
                               fontWeight: FontWeight.w800,
-                              color: AppColors.emerald,
+                              color: colors.success,
                               height: 1,
                             ),
                           ),
@@ -639,7 +649,7 @@ class _RevenueCard extends StatelessWidget {
                             'Tháng ${now.month}/${now.year}',
                             style: GoogleFonts.beVietnamPro(
                               fontSize: 11,
-                              color: AppColors.slate,
+                              color: colors.textTertiary,
                             ),
                           ),
                         ],
@@ -649,7 +659,7 @@ class _RevenueCard extends StatelessWidget {
                     Container(
                       width: 1,
                       height: 52,
-                      color: AppColors.border,
+                      color: colors.borderDefault,
                       margin: const EdgeInsets.symmetric(horizontal: 16),
                     ),
                     // Today revenue
@@ -661,7 +671,7 @@ class _RevenueCard extends StatelessWidget {
                           style: GoogleFonts.beVietnamPro(
                             fontSize: 10,
                             fontWeight: FontWeight.w600,
-                            color: AppColors.muted,
+                            color: colors.textSecondary,
                             letterSpacing: 1.0,
                           ),
                         ),
@@ -671,7 +681,7 @@ class _RevenueCard extends StatelessWidget {
                           style: GoogleFonts.beVietnamPro(
                             fontSize: 22,
                             fontWeight: FontWeight.w700,
-                            color: AppColors.oceanMid,
+                            color: colors.brandLight,
                             height: 1,
                           ),
                         ),
@@ -680,7 +690,7 @@ class _RevenueCard extends StatelessWidget {
                           'Thu hôm nay',
                           style: GoogleFonts.beVietnamPro(
                             fontSize: 11,
-                            color: AppColors.slate,
+                            color: colors.textTertiary,
                           ),
                         ),
                       ],
@@ -712,6 +722,7 @@ class _QuickAction extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.colors;
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Expanded(
@@ -720,11 +731,11 @@ class _QuickAction extends StatelessWidget {
         child: Container(
           padding: const EdgeInsets.symmetric(vertical: 14),
           decoration: BoxDecoration(
-            color: isDark ? AppColors.darkContainer : Colors.white,
+            color: colors.bgSurface,
             borderRadius: BorderRadius.circular(14),
             border: Border.all(
               color: isDark
-                  ? AppColors.darkBorder
+                  ? colors.borderDefault
                   : color.withValues(alpha: 0.15),
             ),
             boxShadow: [
@@ -753,7 +764,7 @@ class _QuickAction extends StatelessWidget {
                 style: GoogleFonts.beVietnamPro(
                   fontSize: 11,
                   fontWeight: FontWeight.w600,
-                  color: isDark ? AppColors.darkOnSurface : AppColors.navy,
+                  color: colors.textPrimary,
                   height: 1.2,
                 ),
                 textAlign: TextAlign.center,
@@ -791,17 +802,18 @@ class _BookingItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.colors;
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return GestureDetector(
       onTap: onTap,
       child: Container(
       decoration: BoxDecoration(
-        color: isDark ? AppColors.darkContainer : Colors.white,
+        color: colors.bgSurface,
         borderRadius: BorderRadius.circular(14),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: isDark ? 0.15 : 0.05),
+            color: Colors.black.withValues(alpha: isDark ? 0.30 : 0.05),
             blurRadius: 10,
             offset: const Offset(0, 3),
           ),
@@ -844,9 +856,7 @@ class _BookingItem extends StatelessWidget {
                       style: GoogleFonts.beVietnamPro(
                         fontSize: 14,
                         fontWeight: FontWeight.w600,
-                        color: isDark
-                            ? AppColors.darkOnSurface
-                            : AppColors.navy,
+                        color: colors.textPrimary,
                       ),
                     ),
                     const SizedBox(height: 2),
@@ -854,7 +864,7 @@ class _BookingItem extends StatelessWidget {
                       meta,
                       style: GoogleFonts.beVietnamPro(
                         fontSize: 12,
-                        color: AppColors.muted,
+                        color: colors.textSecondary,
                       ),
                     ),
                   ],
@@ -890,7 +900,7 @@ class _BookingItem extends StatelessWidget {
                     style: GoogleFonts.beVietnamPro(
                       fontSize: 13,
                       fontWeight: FontWeight.w700,
-                      color: AppColors.ocean,
+                      color: colors.textBrand,
                     ),
                   ),
                 ],

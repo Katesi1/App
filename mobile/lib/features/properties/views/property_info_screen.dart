@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 
-import '../../../core/theme/app_colors.dart';
+import '../../../core/theme/app_color_scheme.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../shared/widgets/loading_widget.dart';
 import '../../rooms/controllers/room_controller.dart';
@@ -88,6 +88,7 @@ class _PropertyInfoScreenState extends ConsumerState<PropertyInfoScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.colors;
     final roomAsync = ref.watch(roomDetailProvider(widget.homestayId));
 
     return GestureDetector(
@@ -112,23 +113,24 @@ class _PropertyInfoScreenState extends ConsumerState<PropertyInfoScreen> {
                   Container(
                     padding: const EdgeInsets.all(14),
                     decoration: BoxDecoration(
-                      color: AppColors.oceanPale,
+                      color: colors.bgSurfaceContainer,
                       borderRadius: BorderRadius.circular(AppRadius.md),
                     ),
                     child: Row(
                       children: [
-                        const Icon(Icons.tag_rounded,
-                            size: 18, color: AppColors.ocean),
+                        Icon(Icons.tag_rounded,
+                            size: 18, color: colors.brand),
                         const SizedBox(width: 10),
                         Text('Mã căn: ',
                             style: GoogleFonts.beVietnamPro(
-                              fontSize: 13, color: AppColors.muted,
+                              fontSize: 13,
+                              color: colors.textSecondary,
                             )),
                         Text(_code,
                             style: GoogleFonts.beVietnamPro(
                               fontSize: 15,
                               fontWeight: FontWeight.w700,
-                              color: AppColors.ocean,
+                              color: colors.textBrand,
                             )),
                       ],
                     ),
@@ -137,30 +139,31 @@ class _PropertyInfoScreenState extends ConsumerState<PropertyInfoScreen> {
                   const SizedBox(height: AppSpacing.lg),
 
                   // ── Mô tả ──
-                  _label('Mô tả'),
+                  _label(context, 'Mô tả'),
                   const SizedBox(height: AppSpacing.xs),
                   TextFormField(
                     controller: _descriptionCtrl,
                     maxLines: 4,
                     style: GoogleFonts.beVietnamPro(fontSize: 14),
-                    decoration: _inputDecoration('Mô tả ngắn về phòng...'),
+                    decoration:
+                        _inputDecoration(context, 'Mô tả ngắn về phòng...'),
                   ),
 
                   const SizedBox(height: AppSpacing.lg),
 
                   // ── Số phòng ngủ ──
-                  _label('Số phòng ngủ'),
+                  _label(context, 'Số phòng ngủ'),
                   const SizedBox(height: AppSpacing.xs),
                   Wrap(
                     spacing: 8,
                     runSpacing: 8,
                     children: [
-                      _chip('Studio', _bedrooms == 0,
+                      _chip(context, 'Studio', _bedrooms == 0,
                           () => setState(() => _bedrooms = 0)),
                       for (var i = 1; i <= 9; i++)
-                        _chip('${i}PN', _bedrooms == i,
+                        _chip(context, '${i}PN', _bedrooms == i,
                             () => setState(() => _bedrooms = i)),
-                      _chip('10PN+', (_bedrooms ?? 0) >= 10,
+                      _chip(context, '10PN+', (_bedrooms ?? 0) >= 10,
                           () => setState(() => _bedrooms = 10)),
                     ],
                   ),
@@ -168,16 +171,16 @@ class _PropertyInfoScreenState extends ConsumerState<PropertyInfoScreen> {
                   const SizedBox(height: AppSpacing.lg),
 
                   // ── Số nhà tắm / WC ──
-                  _label('Số nhà tắm / WC'),
+                  _label(context, 'Số nhà tắm / WC'),
                   const SizedBox(height: AppSpacing.xs),
                   Wrap(
                     spacing: 8,
                     runSpacing: 8,
                     children: [
                       for (var i = 1; i <= 9; i++)
-                        _chip('$i WC', _bathrooms == i,
+                        _chip(context, '$i WC', _bathrooms == i,
                             () => setState(() => _bathrooms = i)),
-                      _chip('10+', (_bathrooms ?? 0) >= 10,
+                      _chip(context, '10+', (_bathrooms ?? 0) >= 10,
                           () => setState(() => _bathrooms = 10)),
                     ],
                   ),
@@ -185,17 +188,17 @@ class _PropertyInfoScreenState extends ConsumerState<PropertyInfoScreen> {
                   const SizedBox(height: AppSpacing.lg),
 
                   // ── View ──
-                  _label('View'),
+                  _label(context, 'View'),
                   const SizedBox(height: AppSpacing.xs),
                   Wrap(
                     spacing: 8,
                     runSpacing: 8,
                     children: [
-                      _chip('Không có', _selectedView == null,
+                      _chip(context, 'Không có', _selectedView == null,
                           () => setState(() => _selectedView = null)),
-                      _chip('View biển', _selectedView == 'sea',
+                      _chip(context, 'View biển', _selectedView == 'sea',
                           () => setState(() => _selectedView = 'sea')),
-                      _chip('View thành phố', _selectedView == 'city',
+                      _chip(context, 'View thành phố', _selectedView == 'city',
                           () => setState(() => _selectedView = 'city')),
                     ],
                   ),
@@ -203,14 +206,14 @@ class _PropertyInfoScreenState extends ConsumerState<PropertyInfoScreen> {
                   const SizedBox(height: AppSpacing.lg),
 
                   // ── Sức chứa tiêu chuẩn ──
-                  _label('Sức chứa tiêu chuẩn (người)'),
+                  _label(context, 'Sức chứa tiêu chuẩn (người)'),
                   const SizedBox(height: AppSpacing.xs),
                   Wrap(
                     spacing: 8,
                     runSpacing: 8,
                     children: [
                       for (var i = 1; i <= 20; i++)
-                        _chip('$i', _standardGuests == i,
+                        _chip(context, '$i', _standardGuests == i,
                             () => setState(() => _standardGuests = i)),
                     ],
                   ),
@@ -218,14 +221,14 @@ class _PropertyInfoScreenState extends ConsumerState<PropertyInfoScreen> {
                   const SizedBox(height: AppSpacing.lg),
 
                   // ── Sức chứa tối đa ──
-                  _label('Sức chứa tối đa (người)'),
+                  _label(context, 'Sức chứa tối đa (người)'),
                   const SizedBox(height: AppSpacing.xs),
                   Wrap(
                     spacing: 8,
                     runSpacing: 8,
                     children: [
                       for (var i = 1; i <= 20; i++)
-                        _chip('$i', _maxGuests == i,
+                        _chip(context, '$i', _maxGuests == i,
                             () => setState(() => _maxGuests = i)),
                     ],
                   ),
@@ -244,8 +247,8 @@ class _PropertyInfoScreenState extends ConsumerState<PropertyInfoScreen> {
               height: 48,
               child: DecoratedBox(
                 decoration: BoxDecoration(
-                  gradient: const LinearGradient(
-                    colors: [AppColors.oceanMid, AppColors.ocean],
+                  gradient: LinearGradient(
+                    colors: [colors.brandLight, colors.brand],
                   ),
                   borderRadius: BorderRadius.circular(AppRadius.md),
                 ),
@@ -284,26 +287,28 @@ class _PropertyInfoScreenState extends ConsumerState<PropertyInfoScreen> {
     );
   }
 
-  Widget _label(String text) {
+  Widget _label(BuildContext context, String text) {
     return Text(
       text,
       style: GoogleFonts.beVietnamPro(
         fontSize: 13,
         fontWeight: FontWeight.w500,
+        color: context.colors.textPrimary,
       ),
     );
   }
 
-  Widget _chip(String label, bool on, VoidCallback onTap) {
+  Widget _chip(BuildContext context, String label, bool on, VoidCallback onTap) {
+    final colors = context.colors;
     return GestureDetector(
       onTap: onTap,
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
         decoration: BoxDecoration(
-          color: on ? AppColors.ocean : Colors.transparent,
+          color: on ? colors.brand : Colors.transparent,
           borderRadius: BorderRadius.circular(AppRadius.md),
           border: Border.all(
-            color: on ? AppColors.ocean : AppColors.border,
+            color: on ? colors.brand : colors.borderDefault,
           ),
         ),
         child: Text(
@@ -311,22 +316,21 @@ class _PropertyInfoScreenState extends ConsumerState<PropertyInfoScreen> {
           style: GoogleFonts.beVietnamPro(
             fontSize: 13,
             fontWeight: FontWeight.w600,
-            color: on ? Colors.white : AppColors.muted,
+            color: on ? Colors.white : colors.textSecondary,
           ),
         ),
       ),
     );
   }
 
-  InputDecoration _inputDecoration(String hint) {
+  InputDecoration _inputDecoration(BuildContext context, String hint) {
+    final colors = context.colors;
     return InputDecoration(
       hintText: hint,
       hintStyle: GoogleFonts.beVietnamPro(
         fontSize: 14,
-        color: AppColors.muted.withValues(alpha: 0.6),
+        color: colors.textTertiary,
       ),
-      filled: true,
-      fillColor: AppColors.background,
       contentPadding: const EdgeInsets.all(AppSpacing.sm),
       border: OutlineInputBorder(
         borderRadius: BorderRadius.circular(AppRadius.md),

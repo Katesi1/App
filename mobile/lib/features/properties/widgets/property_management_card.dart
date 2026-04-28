@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-import '../../../core/theme/app_colors.dart';
+import '../../../core/theme/app_color_scheme.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../data/models/homestay_model.dart';
 
@@ -19,15 +19,16 @@ class PropertyManagementCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.colors;
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Opacity(
       opacity: homestay.isActive ? 1.0 : 0.55,
       child: Material(
-      color: isDark ? AppColors.darkContainer : AppColors.surface,
+      color: colors.bgSurface,
       borderRadius: BorderRadius.circular(AppRadius.lg),
       elevation: 1,
-      shadowColor: Colors.black.withValues(alpha: 0.06),
+      shadowColor: Colors.black.withValues(alpha: isDark ? 0.30 : 0.04),
       child: InkWell(
         onTap: onTap,
         borderRadius: BorderRadius.circular(AppRadius.lg),
@@ -40,12 +41,12 @@ class PropertyManagementCard extends StatelessWidget {
                 width: 48,
                 height: 48,
                 decoration: BoxDecoration(
-                  color: AppColors.oceanLight,
+                  color: colors.brand.withValues(alpha: 0.10),
                   borderRadius: BorderRadius.circular(AppRadius.md),
                 ),
                 child: Icon(
                   _iconForName(homestay.name),
-                  color: AppColors.ocean,
+                  color: colors.brand,
                   size: 24,
                 ),
               ),
@@ -63,7 +64,7 @@ class PropertyManagementCard extends StatelessWidget {
                       style: GoogleFonts.beVietnamPro(
                         fontSize: 15,
                         fontWeight: FontWeight.w600,
-                        color: AppColors.navy,
+                        color: colors.textPrimary,
                       ),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
@@ -72,14 +73,14 @@ class PropertyManagementCard extends StatelessWidget {
                     Row(
                       children: [
                         Icon(Icons.location_on_outlined,
-                            size: 12, color: AppColors.muted),
+                            size: 12, color: colors.textSecondary),
                         const SizedBox(width: 4),
                         Expanded(
                           child: Text(
                             homestay.address,
                             style: GoogleFonts.beVietnamPro(
                               fontSize: 12,
-                              color: AppColors.muted,
+                              color: colors.textSecondary,
                             ),
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
@@ -96,8 +97,8 @@ class PropertyManagementCard extends StatelessWidget {
                               horizontal: 8, vertical: 2),
                           decoration: BoxDecoration(
                             color: homestay.isActive
-                                ? AppColors.emeraldLight
-                                : AppColors.slateLight,
+                                ? colors.successBg
+                                : colors.bgSurfaceContainer,
                             borderRadius: BorderRadius.circular(20),
                           ),
                           child: Text(
@@ -106,8 +107,8 @@ class PropertyManagementCard extends StatelessWidget {
                               fontSize: 10,
                               fontWeight: FontWeight.w600,
                               color: homestay.isActive
-                                  ? AppColors.greenForest
-                                  : AppColors.slate,
+                                  ? colors.success
+                                  : colors.textTertiary,
                             ),
                           ),
                         ),
@@ -117,7 +118,7 @@ class PropertyManagementCard extends StatelessWidget {
                             '${homestay.roomCount} phòng',
                             style: GoogleFonts.beVietnamPro(
                               fontSize: 11,
-                              color: AppColors.muted,
+                              color: colors.textSecondary,
                               fontWeight: FontWeight.w500,
                             ),
                           ),
@@ -136,12 +137,12 @@ class PropertyManagementCard extends StatelessWidget {
                     width: 36,
                     height: 36,
                     decoration: BoxDecoration(
-                      color: AppColors.ocean.withValues(alpha: 0.08),
+                      color: colors.brand.withValues(alpha: 0.08),
                       borderRadius: BorderRadius.circular(AppRadius.md),
                     ),
-                    child: const Icon(
+                    child: Icon(
                       Icons.edit_outlined,
-                      color: AppColors.ocean,
+                      color: colors.brand,
                       size: 18,
                     ),
                   ),

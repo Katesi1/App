@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
-import '../../../core/theme/app_colors.dart';
+import '../../../core/theme/app_color_scheme.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../data/models/notification_model.dart';
 import '../../../shared/widgets/loading_widget.dart';
@@ -20,8 +20,8 @@ class _NotificationScreenState extends ConsumerState<NotificationScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.colors;
     final notificationsAsync = ref.watch(notificationListProvider);
-    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Scaffold(
       appBar: AppBar(
@@ -38,7 +38,7 @@ class _NotificationScreenState extends ConsumerState<NotificationScreen> {
               style: GoogleFonts.beVietnamPro(
                 fontSize: 13,
                 fontWeight: FontWeight.w600,
-                color: AppColors.ocean,
+                color: colors.brand,
               ),
             ),
           ),
@@ -81,7 +81,6 @@ class _NotificationScreenState extends ConsumerState<NotificationScreen> {
                     final notification = filtered[index];
                     return _NotificationCard(
                       notification: notification,
-                      isDark: isDark,
                       onTap: () {
                         if (!notification.isRead) {
                           ref
@@ -122,8 +121,6 @@ class _FilterBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-
     return SingleChildScrollView(
       scrollDirection: Axis.horizontal,
       padding: const EdgeInsets.symmetric(
@@ -133,9 +130,9 @@ class _FilterBar extends StatelessWidget {
       child: Row(
         children: [
           _chip(
+            context: context,
             label: 'Tất cả',
             isActive: selected == null,
-            isDark: isDark,
             onTap: () => onChanged(null),
           ),
           const SizedBox(width: AppSpacing.xs),
@@ -143,9 +140,9 @@ class _FilterBar extends StatelessWidget {
             (type) => Padding(
               padding: const EdgeInsets.only(left: AppSpacing.xs),
               child: _chip(
+                context: context,
                 label: type.label,
                 isActive: selected == type,
-                isDark: isDark,
                 onTap: () => onChanged(type),
               ),
             ),
@@ -156,11 +153,12 @@ class _FilterBar extends StatelessWidget {
   }
 
   Widget _chip({
+    required BuildContext context,
     required String label,
     required bool isActive,
-    required bool isDark,
     required VoidCallback onTap,
   }) {
+    final colors = context.colors;
     return GestureDetector(
       onTap: onTap,
       child: AnimatedContainer(
@@ -170,16 +168,10 @@ class _FilterBar extends StatelessWidget {
           vertical: 8,
         ),
         decoration: BoxDecoration(
-          color: isActive
-              ? AppColors.ocean
-              : (isDark
-                  ? AppColors.darkContainer
-                  : AppColors.background),
+          color: isActive ? colors.brand : colors.bgSurfaceContainer,
           borderRadius: BorderRadius.circular(AppRadius.full),
           border: Border.all(
-            color: isActive
-                ? AppColors.ocean
-                : (isDark ? AppColors.darkBorder : AppColors.border),
+            color: isActive ? colors.brand : colors.borderDefault,
           ),
         ),
         child: Text(
@@ -187,9 +179,7 @@ class _FilterBar extends StatelessWidget {
           style: GoogleFonts.beVietnamPro(
             fontSize: 13,
             fontWeight: FontWeight.w600,
-            color: isActive
-                ? Colors.white
-                : (isDark ? AppColors.slateLight : AppColors.ink),
+            color: isActive ? colors.textOnPrimary : colors.textPrimary,
           ),
         ),
       ),
@@ -201,21 +191,20 @@ class _FilterBar extends StatelessWidget {
 
 class _NotificationCard extends StatelessWidget {
   final NotificationModel notification;
-  final bool isDark;
   final VoidCallback onTap;
 
   const _NotificationCard({
     required this.notification,
-    required this.isDark,
     required this.onTap,
   });
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.colors;
     return Padding(
       padding: const EdgeInsets.only(bottom: AppSpacing.sm),
       child: Material(
-        color: isDark ? AppColors.darkContainer : Colors.white,
+        color: colors.bgSurface,
         borderRadius: BorderRadius.circular(AppRadius.md),
         child: InkWell(
           onTap: onTap,
@@ -224,15 +213,11 @@ class _NotificationCard extends StatelessWidget {
             padding: const EdgeInsets.all(14),
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(AppRadius.md),
-              border: Border.all(
-                color: isDark
-                    ? AppColors.darkBorder
-                    : AppColors.border,
-              ),
+              border: Border.all(color: colors.borderDefault),
             ),
             child: Row(
               children: [
-                _buildIcon(),
+                _buildIcon(context),
                 const SizedBox(width: 12),
                 Expanded(
                   child: Column(
@@ -245,9 +230,7 @@ class _NotificationCard extends StatelessWidget {
                           fontWeight: notification.isRead
                               ? FontWeight.w500
                               : FontWeight.w700,
-                          color: isDark
-                              ? Colors.white
-                              : AppColors.navy,
+                          color: colors.textPrimary,
                         ),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
@@ -257,7 +240,7 @@ class _NotificationCard extends StatelessWidget {
                         notification.subtitle,
                         style: GoogleFonts.beVietnamPro(
                           fontSize: 12,
-                          color: AppColors.muted,
+                          color: colors.textSecondary,
                         ),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
@@ -266,11 +249,23 @@ class _NotificationCard extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(width: 8),
+                // Status dot — unread = brand, read = textTertiary
+                Container(
+                  width: 8,
+                  height: 8,
+                  margin: const EdgeInsets.only(right: 8),
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: notification.isRead
+                        ? colors.textTertiary
+                        : colors.brand,
+                  ),
+                ),
                 Text(
                   _timeAgo(notification.createdAt),
                   style: GoogleFonts.beVietnamPro(
                     fontSize: 11,
-                    color: AppColors.slate,
+                    color: colors.textTertiary,
                   ),
                 ),
               ],
@@ -281,19 +276,20 @@ class _NotificationCard extends StatelessWidget {
     );
   }
 
-  Widget _buildIcon() {
+  Widget _buildIcon(BuildContext context) {
+    final colors = context.colors;
     final (IconData icon, Color color) = switch (notification.type) {
       NotificationType.booking => (
           Icons.calendar_today_rounded,
-          AppColors.ocean,
+          colors.brand,
         ),
       NotificationType.payment => (
           Icons.receipt_long_rounded,
-          AppColors.emerald,
+          colors.success,
         ),
       NotificationType.system => (
           Icons.sync_rounded,
-          AppColors.gold,
+          colors.brandSecondary,
         ),
     };
 

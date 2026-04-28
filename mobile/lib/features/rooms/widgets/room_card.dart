@@ -2,7 +2,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:google_fonts/google_fonts.dart';
-import '../../../core/theme/app_colors.dart';
+import '../../../core/theme/app_color_scheme.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../data/models/room_model.dart';
 
@@ -32,7 +32,10 @@ class _RoomCardState extends State<RoomCard> {
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.colors;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     final room = widget.room;
+    final statusColor = room.isActive ? colors.success : colors.textTertiary;
 
     return GestureDetector(
       onTapDown: (_) => setState(() => _pressed = true),
@@ -47,11 +50,12 @@ class _RoomCardState extends State<RoomCard> {
         curve: Curves.easeOut,
         child: Container(
           decoration: BoxDecoration(
-            color: AppColors.surface,
+            color: colors.bgSurface,
             borderRadius: BorderRadius.circular(AppRadius.lg),
+            border: Border.all(color: colors.borderDefault),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withValues(alpha: 0.04),
+                color: Colors.black.withValues(alpha: isDark ? 0.30 : 0.04),
                 blurRadius: 12,
                 offset: const Offset(0, 2),
               ),
@@ -75,11 +79,11 @@ class _RoomCardState extends State<RoomCard> {
                               fit: BoxFit.cover,
                               memCacheWidth: 400,
                               placeholder: (_, __) =>
-                                  _imagePlaceholder(),
+                                  _imagePlaceholder(context),
                               errorWidget: (_, __, ___) =>
-                                  _imagePlaceholder(),
+                                  _imagePlaceholder(context),
                             )
-                          : _imagePlaceholder(),
+                          : _imagePlaceholder(context),
                     ),
                   ),
                   // Status badge top-right
@@ -90,9 +94,8 @@ class _RoomCardState extends State<RoomCard> {
                       padding: const EdgeInsets.symmetric(
                           horizontal: 8, vertical: 4),
                       decoration: BoxDecoration(
-                        color: room.isActive
-                            ? AppColors.emeraldLight
-                            : AppColors.slateLight,
+                        color: statusColor
+                            .withValues(alpha: isDark ? 0.18 : 0.10),
                         borderRadius: BorderRadius.circular(20),
                       ),
                       child: Text(
@@ -100,9 +103,7 @@ class _RoomCardState extends State<RoomCard> {
                         style: GoogleFonts.beVietnamPro(
                           fontSize: 10,
                           fontWeight: FontWeight.w600,
-                          color: room.isActive
-                              ? AppColors.greenForest
-                              : AppColors.slate,
+                          color: statusColor,
                         ),
                       ),
                     ),
@@ -130,7 +131,7 @@ class _RoomCardState extends State<RoomCard> {
                                 style: GoogleFonts.beVietnamPro(
                                   fontSize: 15,
                                   fontWeight: FontWeight.w700,
-                                  color: AppColors.navy,
+                                  color: colors.textPrimary,
                                 ),
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
@@ -140,7 +141,7 @@ class _RoomCardState extends State<RoomCard> {
                                 _buildSubtitle(room),
                                 style: GoogleFonts.beVietnamPro(
                                   fontSize: 12,
-                                  color: AppColors.muted,
+                                  color: colors.textSecondary,
                                 ),
                               ),
                             ],
@@ -151,7 +152,7 @@ class _RoomCardState extends State<RoomCard> {
                           style: GoogleFonts.beVietnamPro(
                             fontSize: 14,
                             fontWeight: FontWeight.w700,
-                            color: AppColors.ocean,
+                            color: colors.textBrand,
                           ),
                         ),
                       ],
@@ -162,7 +163,7 @@ class _RoomCardState extends State<RoomCard> {
                     Wrap(
                       spacing: 6,
                       runSpacing: 4,
-                      children: _buildAmenityChips(room),
+                      children: _buildAmenityChips(context, room),
                     ),
                   ],
                 ),
@@ -194,22 +195,23 @@ class _RoomCardState extends State<RoomCard> {
     return parts.join(' · ');
   }
 
-  List<Widget> _buildAmenityChips(RoomModel room) {
+  List<Widget> _buildAmenityChips(BuildContext context, RoomModel room) {
     if (room.amenities.isEmpty) return [];
+    final colors = context.colors;
     return room.amenities
         .take(3)
         .map((label) => Container(
               padding: const EdgeInsets.symmetric(
                   horizontal: 8, vertical: 3),
               decoration: BoxDecoration(
-                color: AppColors.slateLight,
+                color: colors.bgSurfaceContainer,
                 borderRadius: BorderRadius.circular(20),
               ),
               child: Text(
                 label,
                 style: GoogleFonts.beVietnamPro(
                   fontSize: 10,
-                  color: AppColors.muted,
+                  color: colors.textSecondary,
                   fontWeight: FontWeight.w500,
                 ),
               ),
@@ -217,18 +219,16 @@ class _RoomCardState extends State<RoomCard> {
         .toList();
   }
 
-  Widget _imagePlaceholder() => Container(
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            colors: [
-              AppColors.oceanLight,
-              AppColors.tealLight,
-            ],
-          ),
-        ),
-        child: const Center(
-          child: Icon(Icons.home_rounded,
-              size: 36, color: AppColors.oceanMid),
-        ),
-      );
+  Widget _imagePlaceholder(BuildContext context) {
+    final colors = context.colors;
+    return Container(
+      decoration: BoxDecoration(
+        color: colors.bgSurfaceContainer,
+      ),
+      child: Center(
+        child: Icon(Icons.home_rounded,
+            size: 36, color: colors.brand.withValues(alpha: 0.5)),
+      ),
+    );
+  }
 }

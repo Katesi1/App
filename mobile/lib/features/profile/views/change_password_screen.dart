@@ -3,10 +3,14 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
+import '../../../core/theme/app_color_scheme.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../features/auth/controllers/auth_controller.dart';
 import '../../../shared/widgets/loading_widget.dart';
+
+// gradient.brandHero stop "jade-mid" theo spec section 3.7 — chưa có token sẵn
+const _jadeMidLight = Color(0xFF1B7E94);
 
 class ChangePasswordScreen extends ConsumerStatefulWidget {
   const ChangePasswordScreen({super.key});
@@ -73,6 +77,7 @@ class _ChangePasswordScreenState
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.colors;
     final isDark =
         Theme.of(context).brightness == Brightness.dark;
     final topPad = MediaQuery.of(context).padding.top;
@@ -82,7 +87,7 @@ class _ChangePasswordScreenState
       body: Column(
         children: [
           // ── Custom gradient header ──────────────────────────
-          _buildHeader(context, topPad),
+          _buildHeader(context, topPad, isDark),
 
           // ── Scrollable form body ────────────────────────────
           Expanded(
@@ -97,21 +102,17 @@ class _ChangePasswordScreenState
                       width: double.infinity,
                       padding: const EdgeInsets.all(20),
                       decoration: BoxDecoration(
-                        color: isDark
-                            ? AppColors.darkContainer
-                            : AppColors.surface,
+                        color: colors.bgSurface,
                         borderRadius: BorderRadius.circular(
                             AppRadius.lg),
-                        boxShadow: isDark
-                            ? null
-                            : [
-                                BoxShadow(
-                                  color: AppColors.navy
-                                      .withValues(alpha: 0.06),
-                                  blurRadius: 20,
-                                  offset: const Offset(0, 4),
-                                ),
-                              ],
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withValues(
+                                alpha: isDark ? 0.30 : 0.06),
+                            blurRadius: 20,
+                            offset: const Offset(0, 4),
+                          ),
+                        ],
                       ),
                       child: Column(
                         crossAxisAlignment:
@@ -124,6 +125,7 @@ class _ChangePasswordScreenState
                             controller: _currentPwController,
                             obscureText: !_showCurrent,
                             decoration: _pwDecoration(
+                              context: context,
                               hintText:
                                   'Nhập mật khẩu hiện tại',
                               visible: _showCurrent,
@@ -148,6 +150,7 @@ class _ChangePasswordScreenState
                             obscureText: !_showNew,
                             onChanged: (_) => setState(() {}),
                             decoration: _pwDecoration(
+                              context: context,
                               hintText: 'Nhập mật khẩu mới',
                               visible: _showNew,
                               onToggle: () => setState(
@@ -193,6 +196,7 @@ class _ChangePasswordScreenState
                             controller: _confirmPwController,
                             obscureText: !_showConfirm,
                             decoration: _pwDecoration(
+                              context: context,
                               hintText:
                                   'Nhập lại mật khẩu mới',
                               visible: _showConfirm,
@@ -217,9 +221,9 @@ class _ChangePasswordScreenState
                             crossAxisAlignment:
                                 CrossAxisAlignment.start,
                             children: [
-                              const Icon(
+                              Icon(
                                 Icons.info_outline_rounded,
-                                color: AppColors.muted,
+                                color: colors.textSecondary,
                                 size: 16,
                               ),
                               const SizedBox(width: 6),
@@ -230,7 +234,7 @@ class _ChangePasswordScreenState
                                   style:
                                       GoogleFonts.beVietnamPro(
                                     fontSize: 12,
-                                    color: AppColors.muted,
+                                    color: colors.textSecondary,
                                   ),
                                 ),
                               ),
@@ -264,7 +268,11 @@ class _ChangePasswordScreenState
     );
   }
 
-  Widget _buildHeader(BuildContext context, double topPad) {
+  Widget _buildHeader(BuildContext context, double topPad, bool isDark) {
+    final headerGradient = isDark
+        ? const [AppColors.darkBg, AppColors.darkBorder]
+        : const [AppColors.jade500, _jadeMidLight];
+
     return Container(
       width: double.infinity,
       padding: EdgeInsets.only(
@@ -273,13 +281,13 @@ class _ChangePasswordScreenState
         right: 20,
         bottom: 28,
       ),
-      decoration: const BoxDecoration(
+      decoration: BoxDecoration(
         gradient: LinearGradient(
-          begin: Alignment(-0.4, -1),
-          end: Alignment(0.6, 1),
-          colors: [AppColors.oceanDeep, AppColors.ocean],
+          begin: const Alignment(-0.4, -1),
+          end: const Alignment(0.6, 1),
+          colors: headerGradient,
         ),
-        borderRadius: BorderRadius.only(
+        borderRadius: const BorderRadius.only(
           bottomLeft: Radius.circular(32),
           bottomRight: Radius.circular(32),
         ),
@@ -347,28 +355,31 @@ class _ChangePasswordScreenState
   }
 
   Widget _buildLabel(String text) {
+    final colors = context.colors;
     return Text(
       text,
       style: GoogleFonts.beVietnamPro(
         fontSize: 13,
         fontWeight: FontWeight.w600,
-        color: AppColors.muted,
+        color: colors.textSecondary,
       ),
     );
   }
 
   InputDecoration _pwDecoration({
+    required BuildContext context,
     required String hintText,
     required bool visible,
     required VoidCallback onToggle,
   }) {
+    final colors = context.colors;
     return InputDecoration(
       hintText: hintText,
       hintStyle:
-          GoogleFonts.beVietnamPro(color: AppColors.slate),
-      prefixIcon: const Icon(
+          GoogleFonts.beVietnamPro(color: colors.textTertiary),
+      prefixIcon: Icon(
         Icons.lock_outline_rounded,
-        color: AppColors.muted,
+        color: colors.textSecondary,
         size: 20,
       ),
       suffixIcon: IconButton(
@@ -377,7 +388,7 @@ class _ChangePasswordScreenState
           visible
               ? Icons.visibility_rounded
               : Icons.visibility_off_rounded,
-          color: AppColors.slate,
+          color: colors.textTertiary,
           size: 20,
         ),
       ),
@@ -385,16 +396,16 @@ class _ChangePasswordScreenState
           horizontal: 16, vertical: 14),
       border: OutlineInputBorder(
         borderRadius: BorderRadius.circular(AppRadius.md),
-        borderSide: const BorderSide(color: AppColors.border),
+        borderSide: BorderSide(color: colors.borderDefault),
       ),
       enabledBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(AppRadius.md),
-        borderSide: const BorderSide(color: AppColors.border),
+        borderSide: BorderSide(color: colors.borderDefault),
       ),
       focusedBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(AppRadius.md),
-        borderSide: const BorderSide(
-            color: AppColors.ocean, width: 1.5),
+        borderSide: BorderSide(
+            color: colors.brand, width: 1.5),
       ),
     );
   }
@@ -411,22 +422,23 @@ class _StrengthBar extends StatelessWidget {
     required this.password,
   });
 
-  Color _segmentColor(int index) {
+  Color _segmentColor(BuildContext context, int index) {
+    final colors = context.colors;
     if (password.isEmpty || strength == 0) {
-      return AppColors.border;
+      return colors.borderDefault;
     }
-    if (index >= strength) return AppColors.border;
+    if (index >= strength) return colors.borderDefault;
     switch (strength) {
       case 1:
-        return AppColors.coral; // weak
+        return colors.error; // weak
       case 2:
-        return AppColors.amber; // ok
+        return colors.warning; // ok
       case 3:
-        return AppColors.teal; // good
+        return colors.brand; // good
       case 4:
-        return AppColors.emerald; // strong
+        return colors.success; // strong
       default:
-        return AppColors.border;
+        return colors.borderDefault;
     }
   }
 
@@ -446,18 +458,19 @@ class _StrengthBar extends StatelessWidget {
     }
   }
 
-  Color get _labelColor {
+  Color _labelColor(BuildContext context) {
+    final colors = context.colors;
     switch (strength) {
       case 1:
-        return AppColors.coral;
+        return colors.error;
       case 2:
-        return AppColors.amber;
+        return colors.warning;
       case 3:
-        return AppColors.teal;
+        return colors.brand;
       case 4:
-        return AppColors.emerald;
+        return colors.success;
       default:
-        return AppColors.muted;
+        return colors.textSecondary;
     }
   }
 
@@ -474,7 +487,7 @@ class _StrengthBar extends StatelessWidget {
                 height: 4,
                 margin: EdgeInsets.only(right: i < 3 ? 4 : 0),
                 decoration: BoxDecoration(
-                  color: _segmentColor(i),
+                  color: _segmentColor(context, i),
                   borderRadius:
                       BorderRadius.circular(AppRadius.full),
                 ),
@@ -489,7 +502,7 @@ class _StrengthBar extends StatelessWidget {
             style: GoogleFonts.beVietnamPro(
               fontSize: 11,
               fontWeight: FontWeight.w600,
-              color: _labelColor,
+              color: _labelColor(context),
             ),
           ),
         ],
@@ -513,6 +526,7 @@ class _GradientButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.colors;
     return SizedBox(
       width: double.infinity,
       height: 52,
@@ -520,12 +534,12 @@ class _GradientButton extends StatelessWidget {
         decoration: BoxDecoration(
           gradient: onPressed == null
               ? null
-              : const LinearGradient(
-                  colors: [AppColors.ocean, AppColors.teal],
+              : LinearGradient(
+                  colors: [colors.brand, AppColors.jade300],
                   begin: Alignment.centerLeft,
                   end: Alignment.centerRight,
                 ),
-          color: onPressed == null ? AppColors.slate : null,
+          color: onPressed == null ? colors.textTertiary : null,
           borderRadius: BorderRadius.circular(14),
         ),
         child: ElevatedButton(

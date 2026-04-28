@@ -4,11 +4,16 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
+import '../../../core/theme/app_color_scheme.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../features/auth/controllers/auth_controller.dart';
+import '../../../shared/widgets/ai_insight_card.dart';
 import '../../../shared/widgets/app_scaffold.dart';
 import '../controllers/customer_controller.dart';
+
+// gradient.brandHero stop "jade-mid" theo spec section 3.7
+const _jadeMidLight = Color(0xFF1B7E94);
 
 class CustomerHomeScreen extends ConsumerWidget {
   const CustomerHomeScreen({super.key});
@@ -17,12 +22,13 @@ class CustomerHomeScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final user = ref.watch(currentUserProvider);
     final roomsAsync = ref.watch(publicRoomsProvider(null));
+    final colors = context.colors;
 
     return AppScaffold(
       title: 'Halong24h',
       selectedIndex: 0,
       body: RefreshIndicator(
-        color: AppColors.ocean,
+        color: colors.brand,
         onRefresh: () async {
           ref.invalidate(publicRoomsProvider(null));
         },
@@ -42,27 +48,46 @@ class CustomerHomeScreen extends ConsumerWidget {
                     _QuickAction(
                       icon: Icons.search_rounded,
                       label: 'Tìm phòng',
-                      color: AppColors.ocean,
+                      color: colors.brand,
                       onTap: () => context.go('/search'),
                     ),
                     const SizedBox(width: 12),
                     _QuickAction(
                       icon: Icons.book_outlined,
                       label: 'Booking',
-                      color: AppColors.teal,
+                      color: colors.brandWarm,
                       onTap: () => context.go('/my-bookings'),
                     ),
                     const SizedBox(width: 12),
                     _QuickAction(
                       icon: Icons.phone_outlined,
                       label: 'Liên hệ',
-                      color: AppColors.gold,
+                      color: colors.brandSecondary,
                       onTap: () {},
                     ),
                   ],
                 ),
               )
                   .animate(delay: 200.ms)
+                  .fadeIn(duration: 400.ms)
+                  .slideY(begin: 0.05, end: 0),
+
+              // ── AI Insight Card ───────────────────────────────
+              Padding(
+                padding: const EdgeInsets.fromLTRB(20, 24, 20, 0),
+                child: AIInsightCard(
+                  message: roomsAsync.maybeWhen(
+                    data: (rooms) => rooms.isEmpty
+                        ? 'Đang chuẩn bị danh sách phòng cho bạn. Hãy quay lại sau ít phút.'
+                        : 'Có ${rooms.length} phòng phù hợp tại Hạ Long. Đặt trước 7 ngày để tiết kiệm tới 15%.',
+                    orElse: () =>
+                        'Đặt phòng trước 7 ngày để tiết kiệm tới 15%. Khám phá ưu đãi tại Hạ Long.',
+                  ),
+                  primaryActionLabel: 'Tìm phòng',
+                  onPrimaryAction: () => context.go('/search'),
+                ),
+              )
+                  .animate(delay: 300.ms)
                   .fadeIn(duration: 400.ms)
                   .slideY(begin: 0.05, end: 0),
 
@@ -77,7 +102,7 @@ class CustomerHomeScreen extends ConsumerWidget {
                       style: GoogleFonts.beVietnamPro(
                         fontSize: 18,
                         fontWeight: FontWeight.w700,
-                        color: AppColors.navy,
+                        color: colors.textPrimary,
                       ),
                     ),
                     GestureDetector(
@@ -87,7 +112,7 @@ class CustomerHomeScreen extends ConsumerWidget {
                         style: GoogleFonts.beVietnamPro(
                           fontSize: 13,
                           fontWeight: FontWeight.w600,
-                          color: AppColors.oceanMid,
+                          color: colors.textBrand,
                         ),
                       ),
                     ),
@@ -104,7 +129,7 @@ class CustomerHomeScreen extends ConsumerWidget {
                         child: Text(
                           'Chưa có phòng nào',
                           style: GoogleFonts.beVietnamPro(
-                            color: AppColors.muted,
+                            color: colors.textSecondary,
                           ),
                         ),
                       ),
@@ -128,11 +153,11 @@ class CustomerHomeScreen extends ConsumerWidget {
                     ),
                   );
                 },
-                loading: () => const SizedBox(
+                loading: () => SizedBox(
                   height: 260,
                   child: Center(
                     child: CircularProgressIndicator(
-                      color: AppColors.ocean,
+                      color: colors.brand,
                       strokeWidth: 3,
                     ),
                   ),
@@ -143,7 +168,7 @@ class CustomerHomeScreen extends ConsumerWidget {
                     child: Text(
                       e.toString().replaceAll('Exception: ', ''),
                       style: GoogleFonts.beVietnamPro(
-                        color: AppColors.coral,
+                        color: colors.error,
                         fontSize: 13,
                       ),
                     ),
@@ -159,7 +184,7 @@ class CustomerHomeScreen extends ConsumerWidget {
                   style: GoogleFonts.beVietnamPro(
                     fontSize: 18,
                     fontWeight: FontWeight.w700,
-                    color: AppColors.navy,
+                    color: colors.textPrimary,
                   ),
                 ),
               ),
@@ -168,16 +193,17 @@ class CustomerHomeScreen extends ConsumerWidget {
                 child: Container(
                   padding: const EdgeInsets.all(AppSpacing.md),
                   decoration: BoxDecoration(
-                    color: AppColors.oceanPale,
+                    color: colors.bgSurfaceContainer,
                     borderRadius: BorderRadius.circular(AppRadius.lg),
+                    border: Border.all(color: colors.borderSubtle),
                   ),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Row(
                         children: [
-                          const Icon(Icons.location_on_outlined,
-                              color: AppColors.ocean, size: 20),
+                          Icon(Icons.location_on_outlined,
+                              color: colors.textBrand, size: 20),
                           const SizedBox(width: 8),
                           Expanded(
                             child: Text(
@@ -185,7 +211,7 @@ class CustomerHomeScreen extends ConsumerWidget {
                               style: GoogleFonts.beVietnamPro(
                                 fontSize: 14,
                                 fontWeight: FontWeight.w600,
-                                color: AppColors.navy,
+                                color: colors.textPrimary,
                               ),
                             ),
                           ),
@@ -197,7 +223,7 @@ class CustomerHomeScreen extends ConsumerWidget {
                         'Đặt phòng dễ dàng, xác nhận nhanh chóng.',
                         style: GoogleFonts.beVietnamPro(
                           fontSize: 13,
-                          color: AppColors.muted,
+                          color: colors.textSecondary,
                           height: 1.5,
                         ),
                       ),
@@ -225,16 +251,21 @@ class _WelcomeHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final headerGradient = isDark
+        ? const [AppColors.darkBg, AppColors.darkBorder]
+        : const [AppColors.jade500, _jadeMidLight];
+
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.fromLTRB(20, 20, 20, 24),
-      decoration: const BoxDecoration(
+      decoration: BoxDecoration(
         gradient: LinearGradient(
-          begin: Alignment(-0.4, -1),
-          end: Alignment(0.4, 1),
-          colors: [AppColors.oceanDeep, AppColors.ocean],
+          begin: const Alignment(-0.4, -1),
+          end: const Alignment(0.4, 1),
+          colors: headerGradient,
         ),
-        borderRadius: BorderRadius.only(
+        borderRadius: const BorderRadius.only(
           bottomLeft: Radius.circular(24),
           bottomRight: Radius.circular(24),
         ),
@@ -339,16 +370,21 @@ class _FeaturedRoomCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.colors;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return GestureDetector(
       onTap: onTap,
       child: Container(
         width: 200,
         decoration: BoxDecoration(
-          color: AppColors.surface,
+          color: colors.bgSurface,
           borderRadius: BorderRadius.circular(AppRadius.lg),
+          border: Border.all(color: colors.borderDefault),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withValues(alpha: 0.05),
+              color: Colors.black
+                  .withValues(alpha: isDark ? 0.30 : 0.05),
               blurRadius: 12,
               offset: const Offset(0, 2),
             ),
@@ -367,10 +403,10 @@ class _FeaturedRoomCard extends StatelessWidget {
                       imageUrl: room.coverImageUrl!,
                       fit: BoxFit.cover,
                       memCacheWidth: 400,
-                      placeholder: (_, __) => _placeholder(),
-                      errorWidget: (_, __, ___) => _placeholder(),
+                      placeholder: (_, __) => _placeholder(context),
+                      errorWidget: (_, __, ___) => _placeholder(context),
                     )
-                  : _placeholder(),
+                  : _placeholder(context),
             ),
             // Info
             Padding(
@@ -383,7 +419,7 @@ class _FeaturedRoomCard extends StatelessWidget {
                     style: GoogleFonts.beVietnamPro(
                       fontSize: 14,
                       fontWeight: FontWeight.w700,
-                      color: AppColors.navy,
+                      color: colors.textPrimary,
                     ),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
@@ -394,7 +430,7 @@ class _FeaturedRoomCard extends StatelessWidget {
                       room.homestay!.name,
                       style: GoogleFonts.beVietnamPro(
                         fontSize: 11,
-                        color: AppColors.muted,
+                        color: colors.textSecondary,
                       ),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
@@ -407,21 +443,21 @@ class _FeaturedRoomCard extends StatelessWidget {
                         style: GoogleFonts.beVietnamPro(
                           fontSize: 14,
                           fontWeight: FontWeight.w700,
-                          color: AppColors.ocean,
+                          color: colors.textBrand,
                         ),
                       ),
                       const Spacer(),
                       Icon(
                         Icons.people_outline_rounded,
                         size: 14,
-                        color: AppColors.muted,
+                        color: colors.textSecondary,
                       ),
                       const SizedBox(width: 3),
                       Text(
                         '${room.maxGuests}',
                         style: GoogleFonts.beVietnamPro(
                           fontSize: 11,
-                          color: AppColors.muted,
+                          color: colors.textSecondary,
                         ),
                       ),
                     ],
@@ -438,15 +474,16 @@ class _FeaturedRoomCard extends StatelessWidget {
         .slideX(begin: 0.1, end: 0);
   }
 
-  Widget _placeholder() => Container(
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            colors: [AppColors.oceanLight, AppColors.tealLight],
-          ),
-        ),
-        child: const Center(
-          child: Icon(Icons.home_rounded,
-              size: 36, color: AppColors.oceanMid),
-        ),
-      );
+  Widget _placeholder(BuildContext context) {
+    final colors = context.colors;
+    return Container(
+      decoration: BoxDecoration(
+        color: colors.bgSurfaceContainer,
+      ),
+      child: Center(
+        child: Icon(Icons.home_rounded,
+            size: 36, color: colors.brand.withValues(alpha: 0.5)),
+      ),
+    );
+  }
 }

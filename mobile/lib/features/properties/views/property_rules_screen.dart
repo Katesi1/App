@@ -2,10 +2,14 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 
+import '../../../core/theme/app_color_scheme.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../shared/widgets/loading_widget.dart';
 import '../../rooms/controllers/room_controller.dart';
+
+// gradient.brandHero stop "jade-mid" theo spec section 3.7
+const _jadeMidLight = Color(0xFF1B7E94);
 
 class PropertyRulesScreen extends ConsumerStatefulWidget {
   final String homestayId;
@@ -87,11 +91,17 @@ class _PropertyRulesScreenState extends ConsumerState<PropertyRulesScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.colors;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final gradient = isDark
+        ? const [AppColors.darkBg, AppColors.darkBorder]
+        : const [AppColors.jade500, _jadeMidLight];
     final roomAsync = ref.watch(roomDetailProvider(widget.homestayId));
 
     return GestureDetector(
       onTap: () => FocusScope.of(context).unfocus(),
       child: Scaffold(
+        backgroundColor: colors.bgCanvas,
         appBar: AppBar(title: const Text('Quy định')),
         body: roomAsync.when(
           loading: () => const LoadingWidget(),
@@ -107,19 +117,23 @@ class _PropertyRulesScreenState extends ConsumerState<PropertyRulesScreen> {
               children: [
                 Text('Nội quy phòng',
                     style: GoogleFonts.beVietnamPro(
-                        fontSize: 13, fontWeight: FontWeight.w500)),
+                        fontSize: 13,
+                        fontWeight: FontWeight.w500,
+                        color: colors.textPrimary)),
                 const SizedBox(height: AppSpacing.xs),
                 TextFormField(
                   controller: _rulesCtrl,
                   maxLines: 12,
-                  style: GoogleFonts.beVietnamPro(fontSize: 14, height: 1.6),
+                  style: GoogleFonts.beVietnamPro(
+                      fontSize: 14,
+                      height: 1.6,
+                      color: colors.textPrimary),
                   decoration: InputDecoration(
                     hintText: 'Nhập quy định...',
                     hintStyle: GoogleFonts.beVietnamPro(
                         fontSize: 14,
-                        color: AppColors.muted.withValues(alpha: 0.6)),
+                        color: colors.textSecondary.withValues(alpha: 0.6)),
                     filled: true,
-                    fillColor: AppColors.background,
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(AppRadius.md),
                       borderSide: BorderSide.none,
@@ -131,20 +145,20 @@ class _PropertyRulesScreenState extends ConsumerState<PropertyRulesScreen> {
                 Container(
                   padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
-                    color: AppColors.amberLight,
+                    color: colors.warningBg,
                     borderRadius: BorderRadius.circular(AppRadius.md),
                   ),
                   child: Row(
                     children: [
-                      const Icon(Icons.info_outline_rounded,
-                          size: 18, color: AppColors.brownDark),
+                      Icon(Icons.info_outline_rounded,
+                          size: 18, color: colors.warning),
                       const SizedBox(width: 10),
                       Expanded(
                         child: Text(
                           'Nội dung quy định sẽ hiển thị cho khách hàng khi xem chi tiết phòng.',
                           style: GoogleFonts.beVietnamPro(
                             fontSize: 12,
-                            color: AppColors.brownDark,
+                            color: colors.textPrimary,
                           ),
                         ),
                       ),
@@ -154,19 +168,23 @@ class _PropertyRulesScreenState extends ConsumerState<PropertyRulesScreen> {
                 const SizedBox(height: AppSpacing.xl),
                 Text('Lưu ý bán phòng',
                     style: GoogleFonts.beVietnamPro(
-                        fontSize: 13, fontWeight: FontWeight.w500)),
+                        fontSize: 13,
+                        fontWeight: FontWeight.w500,
+                        color: colors.textPrimary)),
                 const SizedBox(height: AppSpacing.xs),
                 TextFormField(
                   controller: _notesCtrl,
                   maxLines: 6,
-                  style: GoogleFonts.beVietnamPro(fontSize: 14, height: 1.6),
+                  style: GoogleFonts.beVietnamPro(
+                      fontSize: 14,
+                      height: 1.6,
+                      color: colors.textPrimary),
                   decoration: InputDecoration(
                     hintText: 'VD: Ưu tiên bán cặp cuối tuần...',
                     hintStyle: GoogleFonts.beVietnamPro(
                         fontSize: 14,
-                        color: AppColors.muted.withValues(alpha: 0.6)),
+                        color: colors.textSecondary.withValues(alpha: 0.6)),
                     filled: true,
-                    fillColor: AppColors.background,
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(AppRadius.md),
                       borderSide: BorderSide.none,
@@ -185,9 +203,7 @@ class _PropertyRulesScreenState extends ConsumerState<PropertyRulesScreen> {
               width: double.infinity, height: 48,
               child: DecoratedBox(
                 decoration: BoxDecoration(
-                  gradient: const LinearGradient(
-                    colors: [AppColors.oceanMid, AppColors.ocean],
-                  ),
+                  gradient: LinearGradient(colors: gradient),
                   borderRadius: BorderRadius.circular(AppRadius.md),
                 ),
                 child: ElevatedButton(

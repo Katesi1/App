@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 
-import '../../../core/theme/app_colors.dart';
+import '../../../core/theme/app_color_scheme.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../shared/widgets/loading_widget.dart';
 import '../../rooms/controllers/room_controller.dart';
@@ -64,6 +64,7 @@ class _PropertyLocationScreenState
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.colors;
     final roomAsync = ref.watch(roomDetailProvider(widget.homestayId));
 
     return GestureDetector(
@@ -82,40 +83,40 @@ class _PropertyLocationScreenState
             return ListView(
               padding: const EdgeInsets.all(AppSpacing.md),
               children: [
-                _label('Khu vực / Địa chỉ'),
+                _label(context, 'Khu vực / Địa chỉ'),
                 const SizedBox(height: 6),
                 TextFormField(
                   controller: _addressCtrl,
                   style: GoogleFonts.beVietnamPro(fontSize: 14),
-                  decoration: _inputDeco('VD: Bãi Cháy, Hạ Long'),
+                  decoration: _inputDeco(context, 'VD: Bãi Cháy, Hạ Long'),
                 ),
                 const SizedBox(height: AppSpacing.lg),
-                _label('Link Google Maps'),
+                _label(context, 'Link Google Maps'),
                 const SizedBox(height: 6),
                 TextFormField(
                   controller: _mapLinkCtrl,
                   style: GoogleFonts.beVietnamPro(fontSize: 14),
                   decoration:
-                      _inputDeco('Dán link Google Maps tại đây'),
+                      _inputDeco(context, 'Dán link Google Maps tại đây'),
                 ),
                 const SizedBox(height: AppSpacing.md),
                 Container(
                   padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
-                    color: AppColors.oceanPale,
+                    color: colors.bgSurfaceContainer,
                     borderRadius: BorderRadius.circular(AppRadius.md),
                   ),
                   child: Row(
                     children: [
-                      const Icon(Icons.info_outline_rounded,
-                          size: 18, color: AppColors.ocean),
+                      Icon(Icons.info_outline_rounded,
+                          size: 18, color: colors.brand),
                       const SizedBox(width: 10),
                       Expanded(
                         child: Text(
                           'Mở Google Maps, tìm vị trí phòng, nhấn "Chia sẻ" rồi dán link vào đây.',
                           style: GoogleFonts.beVietnamPro(
                             fontSize: 12,
-                            color: AppColors.ocean,
+                            color: colors.textBrand,
                           ),
                         ),
                       ),
@@ -133,8 +134,8 @@ class _PropertyLocationScreenState
               width: double.infinity, height: 48,
               child: DecoratedBox(
                 decoration: BoxDecoration(
-                  gradient: const LinearGradient(
-                    colors: [AppColors.oceanMid, AppColors.ocean],
+                  gradient: LinearGradient(
+                    colors: [colors.brandLight, colors.brand],
                   ),
                   borderRadius: BorderRadius.circular(AppRadius.md),
                 ),
@@ -165,21 +166,24 @@ class _PropertyLocationScreenState
     );
   }
 
-  Widget _label(String t) => Text(t,
+  Widget _label(BuildContext context, String t) => Text(t,
       style: GoogleFonts.beVietnamPro(
-          fontSize: 13, fontWeight: FontWeight.w500));
+          fontSize: 13,
+          fontWeight: FontWeight.w500,
+          color: context.colors.textPrimary));
 
-  InputDecoration _inputDeco(String hint) => InputDecoration(
-        hintText: hint,
-        hintStyle: GoogleFonts.beVietnamPro(
-            fontSize: 14, color: AppColors.muted.withValues(alpha: 0.6)),
-        filled: true,
-        fillColor: AppColors.background,
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(AppRadius.md),
-          borderSide: BorderSide.none,
-        ),
-        contentPadding:
-            const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
-      );
+  InputDecoration _inputDeco(BuildContext context, String hint) {
+    final colors = context.colors;
+    return InputDecoration(
+      hintText: hint,
+      hintStyle: GoogleFonts.beVietnamPro(
+          fontSize: 14, color: colors.textTertiary),
+      border: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(AppRadius.md),
+        borderSide: BorderSide.none,
+      ),
+      contentPadding:
+          const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+    );
+  }
 }

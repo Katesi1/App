@@ -7,6 +7,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:image_picker/image_picker.dart';
+import '../../../core/theme/app_color_scheme.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../shared/widgets/loading_widget.dart';
@@ -239,6 +240,7 @@ class _PropertyAddScreenState extends ConsumerState<PropertyAddScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.colors;
     return Scaffold(
       appBar: AppBar(title: const Text('Thêm phòng')),
       body: GestureDetector(
@@ -272,14 +274,14 @@ class _PropertyAddScreenState extends ConsumerState<PropertyAddScreen> {
                                   const EdgeInsets.symmetric(vertical: 14),
                               decoration: BoxDecoration(
                                 color: on
-                                    ? AppColors.ocean
+                                    ? colors.brand
                                     : Colors.transparent,
                                 borderRadius:
                                     BorderRadius.circular(AppRadius.md),
                                 border: Border.all(
                                     color: on
-                                        ? AppColors.ocean
-                                        : AppColors.border),
+                                        ? colors.brand
+                                        : colors.borderDefault),
                               ),
                               child: Column(
                                 children: [
@@ -287,7 +289,7 @@ class _PropertyAddScreenState extends ConsumerState<PropertyAddScreen> {
                                       size: 26,
                                       color: on
                                           ? Colors.white
-                                          : AppColors.muted),
+                                          : colors.textSecondary),
                                   const SizedBox(height: 6),
                                   Text(t.label,
                                       style: GoogleFonts.beVietnamPro(
@@ -295,7 +297,7 @@ class _PropertyAddScreenState extends ConsumerState<PropertyAddScreen> {
                                         fontWeight: FontWeight.w600,
                                         color: on
                                             ? Colors.white
-                                            : AppColors.muted,
+                                            : colors.textSecondary,
                                       )),
                                 ],
                               ),
@@ -321,14 +323,14 @@ class _PropertyAddScreenState extends ConsumerState<PropertyAddScreen> {
                       Text('${_pickedImages.length}/20',
                           style: GoogleFonts.beVietnamPro(
                               fontSize: 13,
-                              color: AppColors.muted,
+                              color: colors.textSecondary,
                               fontWeight: FontWeight.w500)),
                     ],
                   ),
                   Text('Ảnh đầu tiên sẽ là ảnh bìa',
                       style: GoogleFonts.beVietnamPro(
                           fontSize: 12,
-                          color: AppColors.muted,
+                          color: colors.textSecondary,
                           fontStyle: FontStyle.italic)),
                   const SizedBox(height: AppSpacing.sm),
                   Wrap(
@@ -353,8 +355,8 @@ class _PropertyAddScreenState extends ConsumerState<PropertyAddScreen> {
                                       () => _pickedImages.removeAt(e.key)),
                                   child: Container(
                                     padding: const EdgeInsets.all(2),
-                                    decoration: const BoxDecoration(
-                                        color: AppColors.coral,
+                                    decoration: BoxDecoration(
+                                        color: colors.error,
                                         shape: BoxShape.circle),
                                     child: const Icon(Icons.close,
                                         size: 14, color: Colors.white),
@@ -370,7 +372,7 @@ class _PropertyAddScreenState extends ConsumerState<PropertyAddScreen> {
                                     padding: const EdgeInsets.symmetric(
                                         vertical: 2),
                                     decoration: BoxDecoration(
-                                      color: AppColors.ocean
+                                      color: colors.brand
                                           .withValues(alpha: 0.8),
                                       borderRadius: const BorderRadius.only(
                                         bottomLeft:
@@ -397,21 +399,21 @@ class _PropertyAddScreenState extends ConsumerState<PropertyAddScreen> {
                             height: 80,
                             decoration: BoxDecoration(
                               border: Border.all(
-                                  color: AppColors.teal, width: 1.5),
+                                  color: colors.brand, width: 1.5),
                               borderRadius:
                                   BorderRadius.circular(AppRadius.sm),
                             ),
                             child: Column(
                               mainAxisAlignment: MainAxisAlignment.center,
                               children: [
-                                const Icon(
+                                Icon(
                                     Icons.add_photo_alternate_outlined,
-                                    color: AppColors.teal,
+                                    color: colors.brand,
                                     size: 28),
                                 Text('Thêm ảnh',
                                     style: GoogleFonts.beVietnamPro(
                                         fontSize: 10,
-                                        color: AppColors.teal,
+                                        color: colors.brand,
                                         fontWeight: FontWeight.w500)),
                               ],
                             ),
@@ -536,7 +538,7 @@ class _PropertyAddScreenState extends ConsumerState<PropertyAddScreen> {
                   const SizedBox(height: 6),
                   Text('Khách vượt tiêu chuẩn sẽ tính phụ thu',
                       style: GoogleFonts.beVietnamPro(fontSize: 11,
-                          color: AppColors.muted,
+                          color: colors.textSecondary,
                           fontStyle: FontStyle.italic)),
                 ],
               ),
@@ -592,7 +594,7 @@ class _PropertyAddScreenState extends ConsumerState<PropertyAddScreen> {
                   const SizedBox(height: 6),
                   Text('Trẻ em dưới 6 tuổi: Miễn phí',
                       style: GoogleFonts.beVietnamPro(fontSize: 11,
-                          color: AppColors.muted,
+                          color: colors.textSecondary,
                           fontStyle: FontStyle.italic)),
                 ],
               ),
@@ -609,7 +611,7 @@ class _PropertyAddScreenState extends ConsumerState<PropertyAddScreen> {
                       const Spacer(),
                       Text('${_selectedAmenities.length} đã chọn',
                           style: GoogleFonts.beVietnamPro(fontSize: 13,
-                              color: AppColors.muted,
+                              color: colors.textSecondary,
                               fontWeight: FontWeight.w500)),
                     ],
                   ),
@@ -622,7 +624,7 @@ class _PropertyAddScreenState extends ConsumerState<PropertyAddScreen> {
                               Text(g.key,
                                   style: GoogleFonts.beVietnamPro(fontSize: 12,
                                       fontWeight: FontWeight.w500,
-                                      color: AppColors.muted)),
+                                      color: colors.textSecondary)),
                               const Spacer(),
                               GestureDetector(
                                 onTap: () => _toggleGroup(g.value),
@@ -635,13 +637,13 @@ class _PropertyAddScreenState extends ConsumerState<PropertyAddScreen> {
                                       height: 18,
                                       decoration: BoxDecoration(
                                         color: _isGroupAllSelected(g.value)
-                                            ? AppColors.teal
+                                            ? colors.brand
                                             : Colors.transparent,
                                         borderRadius: BorderRadius.circular(4),
                                         border: Border.all(
                                           color: _isGroupAllSelected(g.value)
-                                              ? AppColors.teal
-                                              : AppColors.slate,
+                                              ? colors.brand
+                                              : colors.borderStrong,
                                           width: 1.5,
                                         ),
                                       ),
@@ -659,8 +661,8 @@ class _PropertyAddScreenState extends ConsumerState<PropertyAddScreen> {
                                         fontSize: 11,
                                         fontWeight: FontWeight.w500,
                                         color: _isGroupAllSelected(g.value)
-                                            ? AppColors.teal
-                                            : AppColors.muted,
+                                            ? colors.brand
+                                            : colors.textSecondary,
                                       ),
                                     ),
                                   ],
@@ -684,25 +686,23 @@ class _PropertyAddScreenState extends ConsumerState<PropertyAddScreen> {
                                       horizontal: 12, vertical: 8),
                                   decoration: BoxDecoration(
                                     color: on
-                                        ? AppColors.teal
+                                        ? colors.brand
                                             .withValues(alpha: 0.1)
-                                        : Theme.of(context)
-                                            .colorScheme
-                                            .surface,
+                                        : colors.bgSurface,
                                     borderRadius: BorderRadius.circular(
                                         AppRadius.full),
                                     border: Border.all(
                                         color: on
-                                            ? AppColors.teal
-                                            : AppColors.border),
+                                            ? colors.brand
+                                            : colors.borderDefault),
                                   ),
                                   child: Row(
                                     mainAxisSize: MainAxisSize.min,
                                     children: [
                                       if (on) ...[
-                                        const Icon(Icons.check_rounded,
+                                        Icon(Icons.check_rounded,
                                             size: 14,
-                                            color: AppColors.teal),
+                                            color: colors.brand),
                                         const SizedBox(width: 4),
                                       ],
                                       Text(a,
@@ -712,10 +712,8 @@ class _PropertyAddScreenState extends ConsumerState<PropertyAddScreen> {
                                                 ? FontWeight.w600
                                                 : FontWeight.w400,
                                             color: on
-                                                ? AppColors.teal
-                                                : Theme.of(context)
-                                                    .colorScheme
-                                                    .onSurface,
+                                                ? colors.brand
+                                                : colors.textPrimary,
                                           )),
                                     ],
                                   ),
@@ -748,13 +746,14 @@ class _PropertyAddScreenState extends ConsumerState<PropertyAddScreen> {
                               horizontal: 16, vertical: 14),
                           decoration: BoxDecoration(
                             color: on
-                                ? AppColors.teal.withValues(alpha: 0.08)
-                                : Theme.of(context).colorScheme.surface,
+                                ? colors.brand.withValues(alpha: 0.08)
+                                : colors.bgSurface,
                             borderRadius:
                                 BorderRadius.circular(AppRadius.md),
                             border: Border.all(
-                              color:
-                                  on ? AppColors.teal : AppColors.border,
+                              color: on
+                                  ? colors.brand
+                                  : colors.borderDefault,
                               width: on ? 1.5 : 1,
                             ),
                           ),
@@ -765,8 +764,9 @@ class _PropertyAddScreenState extends ConsumerState<PropertyAddScreen> {
                                     ? Icons.radio_button_checked_rounded
                                     : Icons
                                         .radio_button_unchecked_rounded,
-                                color:
-                                    on ? AppColors.teal : AppColors.muted,
+                                color: on
+                                    ? colors.brand
+                                    : colors.textSecondary,
                                 size: 20,
                               ),
                               const SizedBox(width: 12),
@@ -777,11 +777,12 @@ class _PropertyAddScreenState extends ConsumerState<PropertyAddScreen> {
                                   Text(p.label,
                                       style: GoogleFonts.beVietnamPro(
                                           fontSize: 14,
-                                          fontWeight: FontWeight.w600)),
+                                          fontWeight: FontWeight.w600,
+                                          color: colors.textPrimary)),
                                   Text(p.desc,
                                       style: GoogleFonts.beVietnamPro(
                                           fontSize: 12,
-                                          color: AppColors.muted)),
+                                          color: colors.textSecondary)),
                                 ],
                               ),
                             ],
@@ -824,17 +825,17 @@ class _PropertyAddScreenState extends ConsumerState<PropertyAddScreen> {
               child: AnimatedSwitcher(
                 duration: const Duration(milliseconds: 200),
                 child: _isLoading
-                    ? const Center(
+                    ? Center(
                         child: SizedBox(
                             height: 52,
                             child: Center(
                                 child: CircularProgressIndicator(
-                                    color: AppColors.ocean))))
+                                    color: colors.brand))))
                     : FilledButton(
                         key: const ValueKey('save-btn'),
                         onPressed: _save,
                         style: FilledButton.styleFrom(
-                          backgroundColor: AppColors.ocean,
+                          backgroundColor: colors.brand,
                           foregroundColor: Colors.white,
                           minimumSize: const Size(double.infinity, 52),
                           shape: RoundedRectangleBorder(
@@ -867,6 +868,7 @@ class _Section extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.colors;
     final isDark = Theme.of(context).brightness == Brightness.dark;
     return Container(
       margin: const EdgeInsets.fromLTRB(16, 12, 16, 0),
@@ -874,16 +876,17 @@ class _Section extends StatelessWidget {
       decoration: BoxDecoration(
         color: highlighted
             ? (isDark
-                ? AppColors.teal.withValues(alpha: 0.05)
-                : AppColors.tealLight.withValues(alpha: 0.3))
-            : (isDark ? AppColors.darkContainer : Colors.white),
+                ? colors.brand.withValues(alpha: 0.05)
+                : AppColors.jade100.withValues(alpha: 0.3))
+            : colors.bgSurface,
         borderRadius: BorderRadius.circular(AppRadius.lg),
         border: highlighted
-            ? Border.all(color: AppColors.teal.withValues(alpha: 0.3))
+            ? Border.all(color: colors.brand.withValues(alpha: 0.3))
             : null,
         boxShadow: highlighted
             ? null
-            : [BoxShadow(color: Colors.black.withValues(alpha: 0.03),
+            : [BoxShadow(
+                color: Colors.black.withValues(alpha: isDark ? 0.30 : 0.04),
                 blurRadius: 8, offset: const Offset(0, 2))],
       ),
       child: child,
@@ -898,7 +901,7 @@ class _Title extends StatelessWidget {
   Widget build(BuildContext context) => Text(text,
       style: GoogleFonts.beVietnamPro(
           fontSize: 13, fontWeight: FontWeight.w700,
-          color: AppColors.ocean, letterSpacing: 0.5));
+          color: context.colors.textBrand, letterSpacing: 0.5));
 }
 
 class _Field extends StatelessWidget {
@@ -924,12 +927,14 @@ class _Field extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final colors = context.colors;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(label, style: GoogleFonts.beVietnamPro(
-            fontSize: 13, fontWeight: FontWeight.w500)),
+            fontSize: 13,
+            fontWeight: FontWeight.w500,
+            color: colors.textPrimary)),
         const SizedBox(height: 6),
         TextFormField(
           controller: ctrl,
@@ -944,14 +949,12 @@ class _Field extends StatelessWidget {
             hintText: hint,
             hintStyle: GoogleFonts.beVietnamPro(
                 fontSize: 14,
-                color: AppColors.muted.withValues(alpha: 0.6)),
+                color: colors.textTertiary),
             suffixText: suffix,
             suffixStyle: GoogleFonts.beVietnamPro(
                 fontSize: 13,
                 fontWeight: FontWeight.w600,
-                color: AppColors.muted),
-            filled: true,
-            fillColor: isDark ? AppColors.darkContainer : AppColors.background,
+                color: colors.textSecondary),
             border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(AppRadius.md),
                 borderSide: BorderSide.none),
@@ -972,20 +975,24 @@ class _Chip extends StatelessWidget {
   const _Chip({required this.label, required this.on, required this.onTap});
 
   @override
-  Widget build(BuildContext context) => GestureDetector(
-        onTap: onTap,
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 150),
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-          decoration: BoxDecoration(
-            color: on ? AppColors.ocean : Colors.transparent,
-            borderRadius: BorderRadius.circular(AppRadius.full),
-            border: Border.all(color: on ? AppColors.ocean : AppColors.border),
-          ),
-          child: Text(label,
-              style: GoogleFonts.beVietnamPro(
-                  fontSize: 13, fontWeight: FontWeight.w600,
-                  color: on ? Colors.white : AppColors.ink)),
+  Widget build(BuildContext context) {
+    final colors = context.colors;
+    return GestureDetector(
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 150),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+        decoration: BoxDecoration(
+          color: on ? colors.brand : Colors.transparent,
+          borderRadius: BorderRadius.circular(AppRadius.full),
+          border:
+              Border.all(color: on ? colors.brand : colors.borderDefault),
         ),
-      );
+        child: Text(label,
+            style: GoogleFonts.beVietnamPro(
+                fontSize: 13, fontWeight: FontWeight.w600,
+                color: on ? Colors.white : colors.textPrimary)),
+      ),
+    );
+  }
 }

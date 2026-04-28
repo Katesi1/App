@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 
-import '../../../core/theme/app_colors.dart';
+import '../../../core/theme/app_color_scheme.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../shared/widgets/loading_widget.dart';
 import '../../rooms/controllers/room_controller.dart';
@@ -80,6 +80,7 @@ class _PropertyAmenitiesScreenState
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.colors;
     final roomAsync = ref.watch(roomDetailProvider(widget.homestayId));
 
     return GestureDetector(
@@ -97,7 +98,7 @@ class _PropertyAmenitiesScreenState
                   vertical: 2,
                 ),
                 decoration: BoxDecoration(
-                  color: AppColors.oceanLight,
+                  color: colors.bgSurfaceContainer,
                   borderRadius: BorderRadius.circular(AppRadius.full),
                 ),
                 child: Text(
@@ -105,7 +106,7 @@ class _PropertyAmenitiesScreenState
                   style: GoogleFonts.beVietnamPro(
                     fontSize: 12,
                     fontWeight: FontWeight.w600,
-                    color: AppColors.ocean,
+                    color: colors.textBrand,
                   ),
                 ),
               ),
@@ -151,7 +152,7 @@ class _PropertyAmenitiesScreenState
                                   style: GoogleFonts.beVietnamPro(
                                     fontSize: 11,
                                     fontWeight: FontWeight.w600,
-                                    color: AppColors.muted,
+                                    color: colors.textSecondary,
                                     letterSpacing: 1.2,
                                   ),
                                 ),
@@ -185,7 +186,7 @@ class _PropertyAmenitiesScreenState
                             style: GoogleFonts.beVietnamPro(
                               fontSize: 11,
                               fontWeight: FontWeight.w600,
-                              color: AppColors.muted,
+                              color: colors.textSecondary,
                               letterSpacing: 1.2,
                             ),
                           ),
@@ -211,8 +212,8 @@ class _PropertyAmenitiesScreenState
                       height: 48,
                       child: DecoratedBox(
                         decoration: BoxDecoration(
-                          gradient: const LinearGradient(
-                            colors: [AppColors.ocean, AppColors.oceanMid],
+                          gradient: LinearGradient(
+                            colors: [colors.brand, colors.brandLight],
                           ),
                           borderRadius:
                               BorderRadius.circular(AppRadius.md),
@@ -271,13 +272,14 @@ class _AmenityRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.colors;
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 2),
       child: Row(
         children: [
           Icon(
             enabled ? Icons.check_circle : Icons.cancel,
-            color: enabled ? AppColors.emerald : AppColors.slate,
+            color: enabled ? colors.success : colors.textTertiary,
             size: 22,
           ),
           const SizedBox(width: AppSpacing.sm + 4),
@@ -287,14 +289,14 @@ class _AmenityRow extends StatelessWidget {
               style: GoogleFonts.beVietnamPro(
                 fontSize: 14,
                 fontWeight: FontWeight.w400,
-                color: enabled ? AppColors.ink : AppColors.muted,
+                color: enabled ? colors.textPrimary : colors.textSecondary,
               ),
             ),
           ),
           Switch(
             value: enabled,
             onChanged: (_) => onToggle(),
-            activeTrackColor: AppColors.ocean,
+            activeTrackColor: colors.brand,
             activeThumbColor: Colors.white,
           ),
         ],

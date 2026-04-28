@@ -3,12 +3,16 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
+import '../../../core/theme/app_color_scheme.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../data/models/homestay_model.dart';
 import '../../../shared/widgets/loading_widget.dart';
 import '../../auth/controllers/auth_controller.dart';
 import '../../properties/controllers/property_controller.dart';
 import '../widgets/property_management_card.dart';
+
+// gradient.brandHero stop "jade-mid" theo spec section 3.7
+const _jadeMidLight = Color(0xFF1B7E94);
 
 /// Trang quản lý phòng (Admin) — 3 tabs: Villa, Homestay, Khách sạn
 /// Dùng homestay data — mỗi homestay là 1 căn (villa/homestay/khách sạn).
@@ -106,6 +110,11 @@ class _PropertyManagementScreenState extends ConsumerState<PropertyManagementScr
     final user = ref.watch(currentUserProvider);
     final canEdit = user?.canEdit ?? false;
     final canManageProperty = user?.canManageProperty ?? false;
+    final colors = context.colors;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final headerGradient = isDark
+        ? const [AppColors.darkBg, AppColors.darkBorder]
+        : const [AppColors.jade500, _jadeMidLight];
 
     return Scaffold(
       body: NestedScrollView(
@@ -117,11 +126,11 @@ class _PropertyManagementScreenState extends ConsumerState<PropertyManagementScr
                 left: 20,
                 right: 20,
               ),
-              decoration: const BoxDecoration(
+              decoration: BoxDecoration(
                 gradient: LinearGradient(
-                  begin: Alignment(-0.4, -1),
-                  end: Alignment(0.4, 1),
-                  colors: [AppColors.oceanDeep, AppColors.ocean],
+                  begin: const Alignment(-0.4, -1),
+                  end: const Alignment(0.4, 1),
+                  colors: headerGradient,
                 ),
               ),
               child: Column(
@@ -250,7 +259,7 @@ class _PropertyManagementScreenState extends ConsumerState<PropertyManagementScr
           ),
         ],
         body: RefreshIndicator(
-          color: AppColors.ocean,
+          color: colors.brand,
           onRefresh: () async {
             ref.invalidate(homestayListProvider(true));
           },
@@ -303,7 +312,7 @@ class _PropertyManagementScreenState extends ConsumerState<PropertyManagementScr
       floatingActionButton: canManageProperty
           ? FloatingActionButton(
               onPressed: () => context.push('/properties/new'),
-              backgroundColor: AppColors.ocean,
+              backgroundColor: colors.brand,
               child: const Icon(Icons.add_rounded, color: Colors.white),
             )
           : null,

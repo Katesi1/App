@@ -10,7 +10,7 @@ import 'package:share_plus/share_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../../core/constants/app_constants.dart';
-import '../../../core/theme/app_colors.dart';
+import '../../../core/theme/app_color_scheme.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../data/models/calendar_model.dart';
 import '../../../shared/widgets/app_scaffold.dart';
@@ -206,19 +206,6 @@ class _BookingCalendarScreenState
     DayCell cell,
     AdminContact? contact,
   ) {
-    final statusLabel = switch (cell.status) {
-      DayCellStatus.available => 'Trống',
-      DayCellStatus.booked => 'Đã bán',
-      DayCellStatus.hold => 'Đang giữ',
-      DayCellStatus.locked => 'Đã khoá',
-    };
-    final statusColor = switch (cell.status) {
-      DayCellStatus.available => AppColors.emerald,
-      DayCellStatus.booked => AppColors.coral,
-      DayCellStatus.hold => AppColors.amber,
-      DayCellStatus.locked => AppColors.slate,
-    };
-
     showModalBottomSheet(
       context: context,
       backgroundColor: Colors.transparent,
@@ -228,22 +215,25 @@ class _BookingCalendarScreenState
         ),
       ),
       builder: (ctx) {
+        final colors = ctx.colors;
         final isDark = Theme.of(ctx).brightness == Brightness.dark;
-        final bgColor = isDark ? AppColors.darkSurface : Colors.white;
-        final titleColor =
-            isDark ? AppColors.darkTextPrimary : AppColors.navy;
-        final subtitleColor = isDark ? AppColors.darkHint : AppColors.muted;
-        final dividerColor = isDark ? AppColors.darkBorder : AppColors.border;
-        final dragColor = isDark ? AppColors.darkBorder : AppColors.border;
-        final roomIconBg =
-            isDark ? AppColors.ocean.withValues(alpha: 0.2) : AppColors.oceanLight;
-        final roomIconColor =
-            isDark ? AppColors.oceanBright : AppColors.ocean;
-        final priceColor = isDark ? AppColors.oceanBright : AppColors.ocean;
+
+        final statusLabel = switch (cell.status) {
+          DayCellStatus.available => 'Trống',
+          DayCellStatus.booked => 'Đã bán',
+          DayCellStatus.hold => 'Đang giữ',
+          DayCellStatus.locked => 'Đã khoá',
+        };
+        final statusColor = switch (cell.status) {
+          DayCellStatus.available => colors.success,
+          DayCellStatus.booked => colors.error,
+          DayCellStatus.hold => colors.warning,
+          DayCellStatus.locked => colors.textTertiary,
+        };
 
         return Container(
           decoration: BoxDecoration(
-            color: bgColor,
+            color: colors.bgSurface,
             borderRadius: const BorderRadius.vertical(
               top: Radius.circular(AppRadius.xl),
             ),
@@ -256,7 +246,7 @@ class _BookingCalendarScreenState
                 width: 40,
                 height: 4,
                 decoration: BoxDecoration(
-                  color: dragColor,
+                  color: colors.borderDefault,
                   borderRadius: BorderRadius.circular(2),
                 ),
               ),
@@ -268,12 +258,13 @@ class _BookingCalendarScreenState
                     width: 48,
                     height: 48,
                     decoration: BoxDecoration(
-                      color: roomIconBg,
+                      color: colors.brand
+                          .withValues(alpha: isDark ? 0.18 : 0.10),
                       borderRadius: BorderRadius.circular(AppRadius.md),
                     ),
                     child: Icon(
                       Icons.meeting_room_rounded,
-                      color: roomIconColor,
+                      color: colors.brand,
                       size: 24,
                     ),
                   ),
@@ -287,7 +278,7 @@ class _BookingCalendarScreenState
                           style: GoogleFonts.beVietnamPro(
                             fontSize: 16,
                             fontWeight: FontWeight.w700,
-                            color: titleColor,
+                            color: colors.textPrimary,
                           ),
                         ),
                         const SizedBox(height: 2),
@@ -295,7 +286,7 @@ class _BookingCalendarScreenState
                           '${date.day}/${date.month}/${date.year}',
                           style: GoogleFonts.beVietnamPro(
                             fontSize: 13,
-                            color: subtitleColor,
+                            color: colors.textSecondary,
                           ),
                         ),
                       ],
@@ -307,7 +298,8 @@ class _BookingCalendarScreenState
                       vertical: 4,
                     ),
                     decoration: BoxDecoration(
-                      color: statusColor.withValues(alpha: 0.12),
+                      color: statusColor
+                          .withValues(alpha: isDark ? 0.18 : 0.10),
                       borderRadius: BorderRadius.circular(AppRadius.full),
                       border: Border.all(
                         color: statusColor.withValues(alpha: 0.4),
@@ -326,7 +318,7 @@ class _BookingCalendarScreenState
               ),
 
               const SizedBox(height: 20),
-              Divider(height: 1, color: dividerColor),
+              Divider(height: 1, color: colors.borderDefault),
               const SizedBox(height: 20),
 
               Row(
@@ -336,7 +328,7 @@ class _BookingCalendarScreenState
                     'Giá phòng',
                     style: GoogleFonts.beVietnamPro(
                       fontSize: 14,
-                      color: subtitleColor,
+                      color: colors.textSecondary,
                     ),
                   ),
                   Text(
@@ -344,7 +336,7 @@ class _BookingCalendarScreenState
                     style: GoogleFonts.beVietnamPro(
                       fontSize: 16,
                       fontWeight: FontWeight.w700,
-                      color: priceColor,
+                      color: colors.textBrand,
                     ),
                   ),
                 ],
@@ -369,9 +361,8 @@ class _BookingCalendarScreenState
                     ),
                   ),
                   style: ElevatedButton.styleFrom(
-                    backgroundColor:
-                        isDark ? AppColors.oceanMid : AppColors.oceanDeep,
-                    foregroundColor: Colors.white,
+                    backgroundColor: colors.brand,
+                    foregroundColor: colors.textOnPrimary,
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(AppRadius.md),
                     ),
@@ -399,11 +390,8 @@ class _BookingCalendarScreenState
                     ),
                   ),
                   style: OutlinedButton.styleFrom(
-                    foregroundColor:
-                        isDark ? AppColors.oceanBright : AppColors.ocean,
-                    side: BorderSide(
-                      color: isDark ? AppColors.oceanBright : AppColors.ocean,
-                    ),
+                    foregroundColor: colors.brand,
+                    side: BorderSide(color: colors.brand),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(AppRadius.md),
                     ),
@@ -451,93 +439,88 @@ class _BookingCalendarScreenState
   }
 
   void _shareCalendar() {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final bgColor = isDark ? AppColors.darkSurface : Colors.white;
-    final titleColor = isDark ? AppColors.darkTextPrimary : AppColors.navy;
-    final subColor = isDark ? AppColors.darkHint : AppColors.muted;
-    final divColor = isDark ? AppColors.darkBorder : AppColors.border;
-
     showModalBottomSheet(
       context: context,
       backgroundColor: Colors.transparent,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(AppRadius.xl)),
       ),
-      builder: (ctx) => Container(
-        decoration: BoxDecoration(
-          color: bgColor,
-          borderRadius: const BorderRadius.vertical(
-            top: Radius.circular(AppRadius.xl),
+      builder: (ctx) {
+        final colors = ctx.colors;
+        final isDark = Theme.of(ctx).brightness == Brightness.dark;
+
+        return Container(
+          decoration: BoxDecoration(
+            color: colors.bgSurface,
+            borderRadius: const BorderRadius.vertical(
+              top: Radius.circular(AppRadius.xl),
+            ),
           ),
-        ),
-        padding: const EdgeInsets.fromLTRB(24, 16, 24, 36),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // drag handle
-            Center(
-              child: Container(
-                width: 40,
-                height: 4,
-                decoration: BoxDecoration(
-                  color: divColor,
-                  borderRadius: BorderRadius.circular(2),
+          padding: const EdgeInsets.fromLTRB(24, 16, 24, 36),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // drag handle
+              Center(
+                child: Container(
+                  width: 40,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: colors.borderDefault,
+                    borderRadius: BorderRadius.circular(2),
+                  ),
                 ),
               ),
-            ),
-            const SizedBox(height: 20),
-            Text(
-              'Chia sẻ lịch booking',
-              style: GoogleFonts.beVietnamPro(
-                fontSize: 17,
-                fontWeight: FontWeight.w700,
-                color: titleColor,
+              const SizedBox(height: 20),
+              Text(
+                'Chia sẻ lịch booking',
+                style: GoogleFonts.beVietnamPro(
+                  fontSize: 17,
+                  fontWeight: FontWeight.w700,
+                  color: colors.textPrimary,
+                ),
               ),
-            ),
-            const SizedBox(height: 4),
-            Text(
-              _rangeLabel,
-              style: GoogleFonts.beVietnamPro(
-                fontSize: 13,
-                color: subColor,
+              const SizedBox(height: 4),
+              Text(
+                _rangeLabel,
+                style: GoogleFonts.beVietnamPro(
+                  fontSize: 13,
+                  color: colors.textSecondary,
+                ),
               ),
-            ),
-            const SizedBox(height: 20),
-            Divider(height: 1, color: divColor),
-            const SizedBox(height: 16),
-            _ShareOption(
-              icon: Icons.image_rounded,
-              iconColor: AppColors.teal,
-              iconBg: isDark
-                  ? AppColors.teal.withValues(alpha: 0.15)
-                  : AppColors.tealLight,
-              title: 'Chia sẻ ảnh chụp lịch',
-              subtitle: 'Gửi ngay qua Zalo, nhắn tin — ai cũng xem được',
-              isDark: isDark,
-              onTap: () {
-                Navigator.pop(ctx);
-                _doShareImage();
-              },
-            ),
-            const SizedBox(height: 12),
-            _ShareOption(
-              icon: Icons.download_rounded,
-              iconColor: AppColors.ocean,
-              iconBg: isDark
-                  ? AppColors.ocean.withValues(alpha: 0.2)
-                  : AppColors.oceanLight,
-              title: 'Gửi link app & lịch',
-              subtitle: 'Nhân viên mở link để tải app và xem lịch realtime',
-              isDark: isDark,
-              onTap: () {
-                Navigator.pop(ctx);
-                _doShareAppLink();
-              },
-            ),
-          ],
-        ),
-      ),
+              const SizedBox(height: 20),
+              Divider(height: 1, color: colors.borderDefault),
+              const SizedBox(height: 16),
+              _ShareOption(
+                icon: Icons.image_rounded,
+                iconColor: colors.brandLight,
+                iconBg: colors.brandLight
+                    .withValues(alpha: isDark ? 0.18 : 0.12),
+                title: 'Chia sẻ ảnh chụp lịch',
+                subtitle: 'Gửi ngay qua Zalo, nhắn tin — ai cũng xem được',
+                onTap: () {
+                  Navigator.pop(ctx);
+                  _doShareImage();
+                },
+              ),
+              const SizedBox(height: 12),
+              _ShareOption(
+                icon: Icons.download_rounded,
+                iconColor: colors.brand,
+                iconBg:
+                    colors.brand.withValues(alpha: isDark ? 0.18 : 0.10),
+                title: 'Gửi link app & lịch',
+                subtitle: 'Nhân viên mở link để tải app và xem lịch realtime',
+                onTap: () {
+                  Navigator.pop(ctx);
+                  _doShareAppLink();
+                },
+              ),
+            ],
+          ),
+        );
+      },
     );
   }
 
@@ -583,7 +566,6 @@ class _ShareOption extends StatelessWidget {
   final Color iconBg;
   final String title;
   final String subtitle;
-  final bool isDark;
   final VoidCallback onTap;
 
   const _ShareOption({
@@ -592,14 +574,14 @@ class _ShareOption extends StatelessWidget {
     required this.iconBg,
     required this.title,
     required this.subtitle,
-    required this.isDark,
     required this.onTap,
   });
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.colors;
     return Material(
-      color: isDark ? AppColors.darkContainer : AppColors.slateLight,
+      color: colors.bgSurfaceContainer,
       borderRadius: BorderRadius.circular(AppRadius.md),
       child: InkWell(
         onTap: onTap,
@@ -627,9 +609,7 @@ class _ShareOption extends StatelessWidget {
                       style: GoogleFonts.beVietnamPro(
                         fontSize: 14,
                         fontWeight: FontWeight.w600,
-                        color: isDark
-                            ? AppColors.darkTextPrimary
-                            : AppColors.navy,
+                        color: colors.textPrimary,
                       ),
                     ),
                     const SizedBox(height: 2),
@@ -637,7 +617,7 @@ class _ShareOption extends StatelessWidget {
                       subtitle,
                       style: GoogleFonts.beVietnamPro(
                         fontSize: 12,
-                        color: isDark ? AppColors.darkHint : AppColors.muted,
+                        color: colors.textSecondary,
                       ),
                     ),
                   ],
@@ -645,7 +625,7 @@ class _ShareOption extends StatelessWidget {
               ),
               Icon(
                 Icons.chevron_right_rounded,
-                color: isDark ? AppColors.darkHint : AppColors.slate,
+                color: colors.textTertiary,
                 size: 20,
               ),
             ],

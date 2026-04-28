@@ -3,6 +3,7 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
+import '../../../core/theme/app_color_scheme.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../core/utils/helpers.dart';
@@ -10,6 +11,9 @@ import '../../../features/auth/controllers/auth_controller.dart';
 import '../../../shared/providers/theme_provider.dart';
 import '../../../shared/providers/view_mode_provider.dart';
 import '../../../shared/widgets/app_scaffold.dart';
+
+// gradient.brandHero stop "jade-mid" theo spec section 3.7 — chưa có token sẵn
+const _jadeMidLight = Color(0xFF1B7E94);
 
 class AccountScreen extends ConsumerWidget {
   const AccountScreen({super.key});
@@ -19,6 +23,11 @@ class AccountScreen extends ConsumerWidget {
     final user = ref.watch(currentUserProvider);
     final themeMode = ref.watch(themeProvider);
     final isDark = themeMode == ThemeMode.dark;
+    final colors = context.colors;
+
+    final headerGradient = isDark
+        ? const [AppColors.darkBg, AppColors.darkBorder]
+        : const [AppColors.jade500, _jadeMidLight];
 
     return AppScaffold(
       title: 'Tài khoản',
@@ -36,13 +45,13 @@ class AccountScreen extends ConsumerWidget {
                 right: 24,
                 bottom: 28,
               ),
-              decoration: const BoxDecoration(
+              decoration: BoxDecoration(
                 gradient: LinearGradient(
-                  begin: Alignment(-0.4, -1),
-                  end: Alignment(0.4, 1),
-                  colors: [AppColors.oceanDeep, AppColors.ocean],
+                  begin: const Alignment(-0.4, -1),
+                  end: const Alignment(0.4, 1),
+                  colors: headerGradient,
                 ),
-                borderRadius: BorderRadius.only(
+                borderRadius: const BorderRadius.only(
                   bottomLeft: Radius.circular(24),
                   bottomRight: Radius.circular(24),
                 ),
@@ -116,9 +125,7 @@ class AccountScreen extends ConsumerWidget {
                   ],
                 ],
               ),
-            )
-                .animate()
-                .fadeIn(duration: 400.ms),
+            ).animate().fadeIn(duration: 400.ms),
 
             const SizedBox(height: 20),
 
@@ -132,7 +139,7 @@ class AccountScreen extends ConsumerWidget {
                     _MenuItem(
                       icon: Icons.admin_panel_settings_outlined,
                       label: 'Chuyển sang quản lý',
-                      color: AppColors.ocean,
+                      color: colors.brand,
                       onTap: () {
                         ref
                             .read(viewModeProvider.notifier)
@@ -145,22 +152,21 @@ class AccountScreen extends ConsumerWidget {
                           vertical: 3,
                         ),
                         decoration: BoxDecoration(
-                          color: AppColors.ocean
-                              .withValues(alpha: 0.1),
-                          borderRadius: BorderRadius.circular(
-                              AppRadius.full),
+                          color: colors.brand.withValues(alpha: 0.1),
+                          borderRadius:
+                              BorderRadius.circular(AppRadius.full),
                         ),
                         child: Text(
                           AppHelpers.roleLabel(user?.role),
                           style: GoogleFonts.beVietnamPro(
                             fontSize: 10,
                             fontWeight: FontWeight.w600,
-                            color: AppColors.ocean,
+                            color: colors.brand,
                           ),
                         ),
                       ),
                     ),
-                    const Divider(height: 1, color: AppColors.border),
+                    Divider(height: 1, color: colors.borderDefault),
                     const SizedBox(height: 4),
                   ],
                   _MenuItem(
@@ -188,7 +194,7 @@ class AccountScreen extends ConsumerWidget {
                         ref.read(themeProvider.notifier).toggle(),
                     trailing: Switch(
                       value: isDark,
-                      activeThumbColor: AppColors.ocean,
+                      activeThumbColor: colors.brand,
                       onChanged: (_) =>
                           ref.read(themeProvider.notifier).toggle(),
                     ),
@@ -196,46 +202,48 @@ class AccountScreen extends ConsumerWidget {
                   _MenuItem(
                     icon: Icons.help_outline_rounded,
                     label: 'Trợ giúp',
-                    onTap: () =>
-                        context.push('/profile/help'),
+                    onTap: () => context.push('/profile/help'),
                   ),
                   const SizedBox(height: 8),
                   _MenuItem(
                     icon: Icons.logout_rounded,
                     label: 'Đăng xuất',
-                    color: AppColors.coral,
+                    color: colors.error,
                     onTap: () async {
                       final confirmed = await showDialog<bool>(
                         context: context,
-                        builder: (ctx) => AlertDialog(
-                          title: Text(
-                            'Đăng xuất?',
-                            style: GoogleFonts.beVietnamPro(
-                                fontWeight: FontWeight.w700),
-                          ),
-                          actions: [
-                            TextButton(
-                              onPressed: () =>
-                                  Navigator.pop(ctx, false),
-                              child: Text(
-                                'Huỷ',
-                                style: GoogleFonts.beVietnamPro(
-                                    color: AppColors.muted),
-                              ),
+                        builder: (ctx) {
+                          final dialogColors = ctx.colors;
+                          return AlertDialog(
+                            title: Text(
+                              'Đăng xuất?',
+                              style: GoogleFonts.beVietnamPro(
+                                  fontWeight: FontWeight.w700),
                             ),
-                            TextButton(
-                              onPressed: () =>
-                                  Navigator.pop(ctx, true),
-                              child: Text(
-                                'Đăng xuất',
-                                style: GoogleFonts.beVietnamPro(
-                                  color: AppColors.coral,
-                                  fontWeight: FontWeight.w600,
+                            actions: [
+                              TextButton(
+                                onPressed: () =>
+                                    Navigator.pop(ctx, false),
+                                child: Text(
+                                  'Huỷ',
+                                  style: GoogleFonts.beVietnamPro(
+                                      color: dialogColors.textSecondary),
                                 ),
                               ),
-                            ),
-                          ],
-                        ),
+                              TextButton(
+                                onPressed: () =>
+                                    Navigator.pop(ctx, true),
+                                child: Text(
+                                  'Đăng xuất',
+                                  style: GoogleFonts.beVietnamPro(
+                                    color: dialogColors.error,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          );
+                        },
                       );
                       if (confirmed == true && context.mounted) {
                         await ref
@@ -281,7 +289,8 @@ class _MenuItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final c = color ?? AppColors.navy;
+    final colors = context.colors;
+    final c = color ?? colors.textPrimary;
 
     return Material(
       color: Colors.transparent,
@@ -309,7 +318,7 @@ class _MenuItem extends StatelessWidget {
                 trailing!
               else
                 Icon(Icons.chevron_right_rounded,
-                    color: AppColors.slate, size: 22),
+                    color: colors.textTertiary, size: 22),
             ],
           ),
         ),
