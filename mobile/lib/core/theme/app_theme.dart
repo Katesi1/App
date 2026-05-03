@@ -264,29 +264,31 @@ class AppTheme {
   static ThemeData get dark {
     const scheme = AppColorScheme.dark();
 
+    // CALM OPERATIONS palette: primary = jadeText (light blue) làm bg,
+    // text on primary = darkBg (dark canvas). KHÔNG dùng jadeMuted+white.
     const colorScheme = ColorScheme(
       brightness: Brightness.dark,
-      primary: AppColors.jadeBright,
-      onPrimary: AppColors.jade900,
-      primaryContainer: AppColors.jade700,
-      onPrimaryContainer: AppColors.jade50,
-      secondary: AppColors.goldBright,
-      onSecondary: AppColors.gold900,
-      secondaryContainer: Color(0xFF3D2A00),
-      onSecondaryContainer: AppColors.gold50,
-      tertiary: AppColors.coralBright,
-      onTertiary: AppColors.coral900,
-      tertiaryContainer: AppColors.coral700,
-      onTertiaryContainer: AppColors.coral50,
+      primary: AppColors.jadeText, // #B5D4DA — light, dùng làm BG button
+      onPrimary: AppColors.darkBg, // #16252B — dark text trên primary
+      primaryContainer: AppColors.jadeBg,
+      onPrimaryContainer: AppColors.jadeText,
+      secondary: AppColors.goldText,
+      onSecondary: AppColors.darkBg,
+      secondaryContainer: AppColors.goldBg,
+      onSecondaryContainer: AppColors.goldText,
+      tertiary: AppColors.coralText,
+      onTertiary: AppColors.darkBg,
+      tertiaryContainer: AppColors.coralBg,
+      onTertiaryContainer: AppColors.coralText,
       surface: AppColors.darkSurface,
       onSurface: AppColors.darkTextPrimary,
       surfaceContainerHighest: AppColors.darkContainer,
       surfaceContainerHigh: AppColors.darkElevated,
-      error: AppColors.errorDark,
-      onError: Color(0xFF7F1D1D),
-      errorContainer: Color(0xFF7F1D1D),
-      onErrorContainer: AppColors.errorBg,
-      outline: AppColors.darkSubtext,
+      error: AppColors.errorText,
+      onError: AppColors.darkBg,
+      errorContainer: AppColors.errorBgDark,
+      onErrorContainer: AppColors.errorText,
+      outline: AppColors.darkTextTertiary,
       outlineVariant: AppColors.darkBorder,
     );
 
@@ -317,48 +319,49 @@ class AppTheme {
       ),
 
       // ── Buttons ─────────────────────────────────────────────────────────
+      // CALM OPERATIONS: bg jadeText (#B5D4DA, light) + text darkBg (#16252B).
       elevatedButtonTheme: ElevatedButtonThemeData(
         style: ElevatedButton.styleFrom(
-          backgroundColor: AppColors.jadeBright,
-          foregroundColor: AppColors.jade900,
+          backgroundColor: AppColors.jadeText,
+          foregroundColor: AppColors.darkBg,
           minimumSize: const Size(double.infinity, 52),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(AppRadius.md),
           ),
           textStyle: GoogleFonts.beVietnamPro(
-              fontSize: 16, fontWeight: FontWeight.w600),
+              fontSize: 16, fontWeight: FontWeight.w700),
           elevation: 0,
         ),
       ),
       filledButtonTheme: FilledButtonThemeData(
         style: FilledButton.styleFrom(
-          backgroundColor: AppColors.jadeBright,
-          foregroundColor: AppColors.jade900,
+          backgroundColor: AppColors.jadeText,
+          foregroundColor: AppColors.darkBg,
           minimumSize: const Size(double.infinity, 52),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(AppRadius.md),
           ),
           textStyle: GoogleFonts.beVietnamPro(
-              fontSize: 16, fontWeight: FontWeight.w600),
+              fontSize: 16, fontWeight: FontWeight.w700),
         ),
       ),
       outlinedButtonTheme: OutlinedButtonThemeData(
         style: OutlinedButton.styleFrom(
-          foregroundColor: AppColors.jadeBright,
+          foregroundColor: AppColors.jadeText,
           minimumSize: const Size(double.infinity, 52),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(AppRadius.md),
           ),
-          side: const BorderSide(color: AppColors.jadeBright, width: 1.5),
+          side: const BorderSide(color: AppColors.jadeText, width: 1.5),
           textStyle: GoogleFonts.beVietnamPro(
-              fontSize: 16, fontWeight: FontWeight.w600),
+              fontSize: 16, fontWeight: FontWeight.w700),
         ),
       ),
       textButtonTheme: TextButtonThemeData(
         style: TextButton.styleFrom(
-          foregroundColor: AppColors.jadeBright,
+          foregroundColor: AppColors.jadeMuted,
           textStyle: GoogleFonts.beVietnamPro(
-              fontSize: 14, fontWeight: FontWeight.w600),
+              fontSize: 14, fontWeight: FontWeight.w700),
         ),
       ),
 
@@ -377,16 +380,16 @@ class AppTheme {
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(AppRadius.md),
           borderSide:
-              const BorderSide(color: AppColors.jadeBright, width: 2),
+              const BorderSide(color: AppColors.jadeMuted, width: 2),
         ),
         errorBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(AppRadius.md),
-          borderSide: const BorderSide(color: AppColors.errorDark),
+          borderSide: const BorderSide(color: AppColors.errorText),
         ),
         focusedErrorBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(AppRadius.md),
           borderSide:
-              const BorderSide(color: AppColors.errorDark, width: 2),
+              const BorderSide(color: AppColors.errorText, width: 2),
         ),
         contentPadding: const EdgeInsets.symmetric(
           horizontal: AppSpacing.md,
@@ -415,8 +418,8 @@ class AppTheme {
       // ── Chip ────────────────────────────────────────────────────────────
       chipTheme: ChipThemeData(
         backgroundColor: AppColors.darkContainer,
-        selectedColor: AppColors.jade700,
-        checkmarkColor: AppColors.jadeBright,
+        selectedColor: AppColors.jadeBg,
+        checkmarkColor: AppColors.jadeText,
         side: const BorderSide(color: AppColors.darkBorder),
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(AppRadius.full),
@@ -435,21 +438,22 @@ class AppTheme {
       ),
 
       // ── FAB ─────────────────────────────────────────────────────────────
+      // FAB là widget duy nhất ĐƯỢC PHÉP có glow shadow trong calm operations.
       floatingActionButtonTheme: FloatingActionButtonThemeData(
-        backgroundColor: AppColors.jadeBright,
-        foregroundColor: AppColors.jade900,
+        backgroundColor: AppColors.jadeText,
+        foregroundColor: AppColors.darkBg,
         elevation: 4,
         extendedTextStyle: GoogleFonts.beVietnamPro(
-          fontWeight: FontWeight.w600,
-          color: AppColors.jade900,
+          fontWeight: FontWeight.w700,
+          color: AppColors.darkBg,
         ),
       ),
 
       // ── Bottom Nav ──────────────────────────────────────────────────────
       bottomNavigationBarTheme: BottomNavigationBarThemeData(
-        backgroundColor: AppColors.darkSurface,
-        selectedItemColor: AppColors.jadeBright,
-        unselectedItemColor: AppColors.darkSubtext,
+        backgroundColor: AppColors.darkSurfaceAlt,
+        selectedItemColor: AppColors.jadeText,
+        unselectedItemColor: AppColors.darkTextTertiary,
         selectedLabelStyle: GoogleFonts.beVietnamPro(
           fontSize: 11,
           fontWeight: FontWeight.w700,
@@ -463,11 +467,11 @@ class AppTheme {
       switchTheme: SwitchThemeData(
         thumbColor: WidgetStateProperty.resolveWith((s) =>
             s.contains(WidgetState.selected)
-                ? AppColors.jadeBright
-                : AppColors.darkSubtext),
+                ? AppColors.jadeText
+                : AppColors.darkTextTertiary),
         trackColor: WidgetStateProperty.resolveWith((s) =>
             s.contains(WidgetState.selected)
-                ? AppColors.jade700
+                ? AppColors.jadeBg
                 : AppColors.darkContainer),
         trackOutlineColor: WidgetStateProperty.all(Colors.transparent),
       ),

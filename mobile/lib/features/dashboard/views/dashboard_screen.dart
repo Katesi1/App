@@ -9,6 +9,9 @@ import '../../../core/utils/helpers.dart';
 import '../../auth/controllers/auth_controller.dart';
 import '../../bookings/controllers/booking_controller.dart';
 import '../../dashboard/controllers/dashboard_controller.dart';
+import '../../verify/controllers/verify_flow_controller.dart';
+import '../../verify/data/models/verify_enums.dart';
+import '../../verify/views/paywall_modal.dart';
 import '../../../shared/widgets/app_scaffold.dart';
 import '../../../shared/widgets/loading_widget.dart';
 
@@ -52,42 +55,90 @@ class DashboardScreen extends ConsumerWidget {
                   formattedDate: formattedDate,
                 ),
 
-                // ── Cảnh báo SALE chưa gán owner ─────────────────────
-                if (user != null && user.isSale && !user.hasOwner)
+                // ── Verify CTA cho Owner chưa verify ────────────────
+                if (user != null && user.isOwner)
                   Padding(
                     padding: const EdgeInsets.fromLTRB(16, 0, 16, 0),
                     child: Transform.translate(
                       offset: const Offset(0, -16),
-                      child: Container(
-                        width: double.infinity,
-                        padding: const EdgeInsets.all(14),
-                        margin: const EdgeInsets.only(bottom: 12),
-                        decoration: BoxDecoration(
-                          color: colors.warningBg,
-                          borderRadius: BorderRadius.circular(14),
-                          border: Border.all(
-                            color: colors.warning.withValues(alpha: 0.3),
-                          ),
-                        ),
-                        child: Row(
-                          children: [
-                            Icon(Icons.warning_amber_rounded,
-                                color: colors.warning, size: 20),
-                            const SizedBox(width: 10),
-                            Expanded(
-                              child: Text(
-                                'Bạn chưa được gán cho chủ nhà nào. Hãy liên hệ chủ nhà để được thêm vào đội.',
-                                style: GoogleFonts.beVietnamPro(
-                                  fontSize: 12,
-                                  color: colors.warning,
-                                  fontWeight: FontWeight.w500,
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
+                      child: Consumer(
+                        builder: (context, ref, _) {
+                          final s = ref.watch(verifyFlowControllerProvider);
+                          // Hiện banner khi chưa approved (kể cả pending /
+                          // rejected → đẩy về screen tương ứng).
+                          if (s.status == VerifyStatus.approved) {
+                            return const SizedBox.shrink();
+                          }
+                          return _VerifyCTABanner(status: s.status);
+                        },
                       ),
                     ),
+                  ),
+
+                // ── Cảnh báo SALE chưa gán owner ─────────────────────
+                if (user != null && user.isSale && !user.hasOwner)
+                  Consumer(
+                    builder: (context, ref, _) {
+                      final dismissed =
+                          ref.watch(unassignedBannerDismissedProvider);
+                      if (dismissed) return const SizedBox.shrink();
+                      return Padding(
+                        padding: const EdgeInsets.fromLTRB(16, 0, 16, 0),
+                        child: Transform.translate(
+                          offset: const Offset(0, -16),
+                          child: Container(
+                            width: double.infinity,
+                            padding: const EdgeInsets.fromLTRB(14, 14, 8, 14),
+                            margin: const EdgeInsets.only(bottom: 12),
+                            decoration: BoxDecoration(
+                              color: colors.warningBg,
+                              borderRadius: BorderRadius.circular(14),
+                              border: Border.all(
+                                color: colors.warning.withValues(alpha: 0.3),
+                              ),
+                            ),
+                            child: Row(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Icon(Icons.warning_amber_rounded,
+                                    color: colors.warning, size: 20),
+                                const SizedBox(width: 10),
+                                Expanded(
+                                  child: Padding(
+                                    padding: const EdgeInsets.only(top: 1),
+                                    child: Text(
+                                      'Bạn chưa được gán cho chủ nhà nào. Hãy liên hệ chủ nhà để được thêm vào đội.',
+                                      style: GoogleFonts.beVietnamPro(
+                                        fontSize: 12,
+                                        color: colors.warning,
+                                        fontWeight: FontWeight.w500,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(width: 4),
+                                InkWell(
+                                  onTap: () => ref
+                                      .read(unassignedBannerDismissedProvider
+                                          .notifier)
+                                      .state = true,
+                                  borderRadius: BorderRadius.circular(20),
+                                  child: Padding(
+                                    padding: const EdgeInsets.all(4),
+                                    child: Icon(
+                                      Icons.close_rounded,
+                                      size: 18,
+                                      color: colors.warning
+                                          .withValues(alpha: 0.7),
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      );
+                    },
                   ),
 
                 // ── KPI Grid — overlaps header by 16px ─────────────────
@@ -210,6 +261,43 @@ class DashboardScreen extends ConsumerWidget {
                     ],
                   ),
                 ),
+
+                // ── Shortcut quản lý phòng + lịch CHỈ cho SALE ──────────
+                // OWNER/ADMIN đã có bottom nav + admin tab nên không cần.
+                // SALE chưa được gán owner → lock; có owner → vào dữ liệu
+                // của owner (backend auto-scope theo ownerId của SALE).
+                if (user != null && user.isSale) ...[
+                  const SizedBox(height: 28),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        _SectionLabel('QUẢN LÝ'),
+                        const SizedBox(height: 12),
+                        _ManageShortcut(
+                          icon: Icons.apartment_rounded,
+                          iconColor: colors.brand,
+                          title: 'Quản lý phòng',
+                          subtitle:
+                              'Xem & cập nhật phòng của chủ nhà bạn phụ trách',
+                          locked: !user.hasOwner,
+                          onTap: () => context.go('/rooms'),
+                        ),
+                        const SizedBox(height: 10),
+                        _ManageShortcut(
+                          icon: Icons.calendar_month_rounded,
+                          iconColor: colors.brandLight,
+                          title: 'Lịch booking',
+                          subtitle:
+                              'Xem lịch booking các phòng của chủ nhà',
+                          locked: !user.hasOwner,
+                          onTap: () => context.go('/calendar'),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
 
                 const SizedBox(height: 28),
 
@@ -783,6 +871,120 @@ class _QuickAction extends StatelessWidget {
   }
 }
 
+// ─── Manage Shortcut (row card lớn, dùng cho /rooms + /calendar) ──────────────
+class _ManageShortcut extends StatelessWidget {
+  final IconData icon;
+  final Color iconColor;
+  final String title;
+  final String subtitle;
+  final VoidCallback onTap;
+  final bool locked;
+
+  const _ManageShortcut({
+    required this.icon,
+    required this.iconColor,
+    required this.title,
+    required this.subtitle,
+    required this.onTap,
+    this.locked = false,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.colors;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    return GestureDetector(
+      onTap: locked
+          ? () => AppSnackBar.info(
+                context,
+                'Bạn cần được chủ nhà thêm vào đội trước khi quản lý phòng & lịch.',
+              )
+          : onTap,
+      behavior: HitTestBehavior.opaque,
+      child: Opacity(
+        opacity: locked ? 0.55 : 1,
+        child: Container(
+          padding: const EdgeInsets.all(14),
+          decoration: BoxDecoration(
+            color: colors.bgSurface,
+            borderRadius: BorderRadius.circular(14),
+            border: locked
+                ? Border.all(
+                    color: colors.borderDefault,
+                    style: BorderStyle.solid,
+                  )
+                : null,
+            boxShadow: locked
+                ? null
+                : [
+                    BoxShadow(
+                      color: Colors.black
+                          .withValues(alpha: isDark ? 0.30 : 0.05),
+                      blurRadius: 10,
+                      offset: const Offset(0, 3),
+                    ),
+                  ],
+          ),
+          child: Row(
+            children: [
+              Container(
+                width: 44,
+                height: 44,
+                decoration: BoxDecoration(
+                  color: (locked ? colors.textTertiary : iconColor)
+                      .withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Icon(
+                  icon,
+                  color: locked ? colors.textTertiary : iconColor,
+                  size: 22,
+                ),
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      title,
+                      style: GoogleFonts.beVietnamPro(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w700,
+                        color: colors.textPrimary,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      locked
+                          ? 'Chờ chủ nhà thêm bạn vào đội để mở khoá'
+                          : subtitle,
+                      style: GoogleFonts.beVietnamPro(
+                        fontSize: 11,
+                        color: colors.textSecondary,
+                        height: 1.3,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Icon(
+                locked
+                    ? Icons.lock_outline_rounded
+                    : Icons.chevron_right_rounded,
+                color: colors.textTertiary,
+                size: 22,
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 // ─── Booking Item ──────────────────────────────────────────────────────────────
 class _BookingItem extends StatelessWidget {
   final String initials;
@@ -915,6 +1117,172 @@ class _BookingItem extends StatelessWidget {
         ),
       ),
     ),
+    );
+  }
+}
+
+/// Banner nổi bật trên dashboard cho Owner chưa verify (hoặc đang chờ /
+/// bị reject). Tap → showPaywallModal hoặc đẩy thẳng về screen tương ứng
+/// với status hiện tại.
+class _VerifyCTABanner extends StatelessWidget {
+  final VerifyStatus status;
+  const _VerifyCTABanner({required this.status});
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.colors;
+
+    // Mọi màu derive từ `context.colors` (theme-aware) thay vì hardcode
+    // *Dark constants — banner phải đẹp ở cả light và dark.
+    final (
+      Color bg,
+      Color borderColor,
+      Color iconBg,
+      IconData icon,
+      Color iconColor,
+      String title,
+      String subtitle,
+      String cta,
+      String route,
+      bool useModal,
+    ) = switch (status) {
+      VerifyStatus.awaitingApproval => (
+          colors.bgSurfaceContainer,
+          colors.borderBrand.withValues(alpha: 0.4),
+          colors.brand.withValues(alpha: 0.15),
+          Icons.access_time,
+          colors.brand,
+          'Hồ sơ đang chờ admin duyệt',
+          'Trong vòng 24h sẽ có kết quả.',
+          'Xem trạng thái',
+          '/verify/pending',
+          false,
+        ),
+      VerifyStatus.rejected => (
+          colors.errorBg,
+          colors.error.withValues(alpha: 0.4),
+          colors.error.withValues(alpha: 0.15),
+          Icons.priority_high,
+          colors.error,
+          'Hồ sơ chưa được duyệt',
+          'Cần bổ sung thông tin để được kích hoạt.',
+          'Bổ sung ngay',
+          '/verify/rejected',
+          false,
+        ),
+      _ => (
+          colors.bgWarm,
+          colors.borderGold,
+          colors.borderGold.withValues(alpha: 0.3),
+          Icons.workspace_premium,
+          colors.textBrandAccent,
+          'Verify để bắt đầu nhận booking',
+          '4 bước · Trial 7 ngày miễn phí khi xong.',
+          'Bắt đầu',
+          '/verify/cccd-front',
+          true,
+        ),
+    };
+
+    return Container(
+      padding: const EdgeInsets.all(14),
+      margin: const EdgeInsets.only(bottom: 12),
+      decoration: BoxDecoration(
+        color: bg,
+        border: Border.all(color: borderColor),
+        borderRadius: BorderRadius.circular(14),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 40,
+            height: 40,
+            decoration: BoxDecoration(
+              color: iconBg,
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Icon(icon, size: 20, color: iconColor),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: GoogleFonts.beVietnamPro(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w700,
+                    color: colors.textPrimary,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  subtitle,
+                  style: GoogleFonts.beVietnamPro(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w500,
+                    color: colors.textSecondary,
+                    height: 1.4,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 10),
+          _CTAButton(
+            label: cta,
+            onTap: () async {
+              if (useModal) {
+                final ok = await showPaywallModal(context);
+                if (ok == true && context.mounted) {
+                  context.push(route);
+                }
+              } else {
+                context.push(route);
+              }
+            },
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _CTAButton extends StatelessWidget {
+  final String label;
+  final VoidCallback onTap;
+  const _CTAButton({required this.label, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.colors;
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(8),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        decoration: BoxDecoration(
+          color: colors.brand,
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              label,
+              style: GoogleFonts.beVietnamPro(
+                fontSize: 11,
+                fontWeight: FontWeight.w700,
+                color: colors.textOnPrimary,
+              ),
+            ),
+            const SizedBox(width: 4),
+            Icon(Icons.arrow_forward,
+                size: 12, color: colors.textOnPrimary),
+          ],
+        ),
+      ),
     );
   }
 }

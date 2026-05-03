@@ -47,6 +47,10 @@ class DashboardStats {
 final dashboardRepositoryProvider =
     Provider<DashboardRepository>((ref) => DashboardRepository());
 
+/// Trạng thái dismiss của banner "STAFF chưa được gán owner".
+/// Reset (invalidate) sau mỗi lần login mới để banner hiện lại 1 lần / phiên.
+final unassignedBannerDismissedProvider = StateProvider<bool>((ref) => false);
+
 /// Provider lấy KPI dashboard từ real API /dashboard/stats
 final dashboardStatsProvider =
     FutureProvider.autoDispose<DashboardStats>((ref) async {

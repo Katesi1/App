@@ -169,7 +169,14 @@ class _UserListScreenState extends ConsumerState<UserListScreen> {
           Row(
             children: [
               GestureDetector(
-                onTap: () => context.pop(),
+                // /admin/users top-level — fallback /admin nếu stack rỗng.
+                onTap: () {
+                  if (context.canPop()) {
+                    context.pop();
+                  } else {
+                    context.go('/admin');
+                  }
+                },
                 child: Container(
                   width: 36,
                   height: 36,

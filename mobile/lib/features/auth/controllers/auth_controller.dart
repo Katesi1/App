@@ -56,6 +56,8 @@ class AuthNotifier extends StateNotifier<AuthState> {
     _ref.invalidate(homestayListProvider);
     _ref.invalidate(bookingListProvider);
     _ref.invalidate(calendarGridProvider);
+    // Reset banner "STAFF chưa được gán owner" — hiện lại 1 lần / phiên login
+    _ref.invalidate(unassignedBannerDismissedProvider);
     // staffListProvider không cần invalidate — nó watch currentUserProvider
     // nên tự re-fetch khi user thay đổi
   }

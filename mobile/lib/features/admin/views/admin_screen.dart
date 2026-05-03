@@ -11,6 +11,7 @@ import '../../../shared/widgets/loading_widget.dart';
 import '../../auth/controllers/auth_controller.dart';
 import '../../bookings/controllers/booking_controller.dart';
 import '../../properties/controllers/property_controller.dart';
+import '../controllers/kyc_approval_controller.dart';
 import '../controllers/user_controller.dart';
 
 class AdminScreen extends ConsumerWidget {
@@ -24,6 +25,8 @@ class AdminScreen extends ConsumerWidget {
     final usersAsync = ref.watch(staffListProvider);
     final homestaysAsync = ref.watch(homestayListProvider(true));
     final bookingsAsync = ref.watch(bookingListProvider(null));
+    final pendingKycCount =
+        ref.watch(pendingKycCountProvider).valueOrNull ?? 0;
 
     return AppScaffold(
       title: '',
@@ -261,6 +264,20 @@ class AdminScreen extends ConsumerWidget {
                     onTap: () => context.push('/admin/owner-calendar'),
                   ),
 
+                  if (isAdmin) ...[
+                    const SizedBox(height: 10),
+                    _MenuCard(
+                      icon: Icons.verified_user_rounded,
+                      iconBg: AppColors.goldBg,
+                      iconColor: AppColors.goldText,
+                      title: 'Duyệt KYC',
+                      subtitle: 'Xét duyệt CCCD + selfie chủ nhà mới',
+                      trailing: pendingKycCount > 0
+                          ? '$pendingKycCount chờ'
+                          : 'Trống',
+                      onTap: () => context.push('/admin/kyc'),
+                    ),
+                  ],
 
                   const SizedBox(height: 28),
 

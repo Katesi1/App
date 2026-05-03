@@ -95,39 +95,46 @@ class AppColorScheme {
         errorBg = AppColors.errorBg,
         info = AppColors.jade500;
 
+  /// Dark mode — CALM OPERATIONS palette.
+  ///
+  /// Quy tắc QUAN TRỌNG (calm operations):
+  /// - `brand` = `jadeText` (#B5D4DA, light blue) → dùng làm BG cho button primary,
+  ///   text trên đó là `bgCanvas` (#16252B, dark). KHÔNG phải bg jadeBright/text white như v2 cũ.
+  /// - `brandLight` = `jadeMuted` (#7AB5BD) → dùng cho icon, accent, link.
+  /// - Status text dùng sage/mustard/rose, KHÔNG neon.
   const AppColorScheme.dark()
-      : bgCanvas = AppColors.darkBg,
-        bgSurface = AppColors.darkSurface,
-        bgSurfaceContainer = AppColors.darkContainer,
-        bgSurfaceElevated = AppColors.darkElevated,
+      : bgCanvas = AppColors.darkBg, // #16252B
+        bgSurface = AppColors.darkSurface, // #1E343A
+        bgSurfaceContainer = AppColors.darkContainer, // #243439
+        bgSurfaceElevated = AppColors.darkElevated, // #243B42
         bgWarm = AppColors.darkSurface,
-        textPrimary = AppColors.darkTextPrimary,
-        textSecondary = AppColors.darkTextSecondary,
-        textTertiary = AppColors.darkHint,
-        textDisabled = AppColors.darkSubtext,
-        textBrand = AppColors.jadeBright,
-        textBrandAccent = AppColors.goldBright,
-        textBrandWarm = AppColors.coralBright,
-        textOnPrimary = AppColors.jade900,
-        textOnSecondary = AppColors.gold900,
-        textOnCoral = AppColors.coral900,
-        borderSubtle = AppColors.darkDivider,
-        borderDefault = AppColors.darkBorder,
-        borderStrong = const Color(0xFF2A6F80),
-        borderBrand = AppColors.jadeBright,
-        borderGold = AppColors.goldBright,
-        borderCoral = AppColors.coralBright,
-        brand = AppColors.jadeBright,
-        brandLight = AppColors.jade300,
-        brandSecondary = AppColors.goldBright,
-        brandWarm = AppColors.coralBright,
-        success = AppColors.successDark,
-        successBg = const Color(0x294ADE80),
-        warning = AppColors.warningDark,
-        warningBg = const Color(0x29FBBF24),
-        error = AppColors.errorDark,
-        errorBg = const Color(0x29F87171),
-        info = AppColors.jadeBright;
+        textPrimary = AppColors.darkTextPrimary, // #D6DDE0
+        textSecondary = AppColors.darkTextSecondary, // #A8B0B4
+        textTertiary = AppColors.darkTextTertiary, // #8FB0B8
+        textDisabled = AppColors.darkDisabled, // #6A7378
+        textBrand = AppColors.jadeText, // #B5D4DA — text brand on dark
+        textBrandAccent = AppColors.goldText, // #C9A567
+        textBrandWarm = AppColors.coralText, // #C9A084
+        textOnPrimary = AppColors.darkBg, // #16252B — text on jadeText button BG
+        textOnSecondary = AppColors.darkBg,
+        textOnCoral = AppColors.darkBg,
+        borderSubtle = AppColors.darkDivider, // #243439
+        borderDefault = AppColors.darkBorder, // #2A4147
+        borderStrong = const Color(0xFF3A5258),
+        borderBrand = AppColors.jadeMuted, // #7AB5BD
+        borderGold = AppColors.goldMuted,
+        borderCoral = AppColors.coralMuted,
+        brand = AppColors.jadeText, // #B5D4DA — button primary BG
+        brandLight = AppColors.jadeMuted, // #7AB5BD — icon/accent
+        brandSecondary = AppColors.goldText,
+        brandWarm = AppColors.coralText,
+        success = AppColors.successText, // sage #6FA88B
+        successBg = AppColors.successBgDark, // #1F3A2D
+        warning = AppColors.warningText, // mustard #C9A567
+        warningBg = AppColors.warningBgDark, // #2A2419
+        error = AppColors.errorText, // rose #C97A6F
+        errorBg = AppColors.errorBgDark, // #3A2421
+        info = AppColors.jadeMuted;
 }
 
 /// ThemeExtension gắn `AppColorScheme` vào `ThemeData.extensions`.

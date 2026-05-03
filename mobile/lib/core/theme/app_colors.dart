@@ -60,23 +60,81 @@ class AppColors {
   static const limestone100 = Color(0xFFF5EFE3);
 
   // ═══════════════════════════════════════════════════════════════
-  // DARK MODE — Deep Jade base
+  // DARK MODE — CALM OPERATIONS v2 (replace old "vibe coding" dark)
+  //
+  // Vì sao đổi: old palette quá tối (#0A1F26) + saturation cao + glow
+  // shadow → mỏi mắt khi quản lý dùng nhiều giờ. Calm operations: lighter
+  // bg, muted saturation, glow chỉ cho FAB/active state, w700 default.
   // ═══════════════════════════════════════════════════════════════
-  static const darkBg = Color(0xFF0A1F26);
-  static const darkSurface = Color(0xFF0F2F38);
-  static const darkContainer = Color(0xFF143E48);
-  static const darkElevated = Color(0xFF1A4D58);
-  static const darkBorder = Color(0xFF1B5664);
-  static const darkDivider = Color(0xFF143E48);
-  static const darkHint = Color(0xFF8FB8C2);
-  static const darkSubtext = Color(0xFF6F9AA5);
-  static const darkTextPrimary = Color(0xFFE6F4F7);
-  static const darkTextSecondary = Color(0xFFB5C9D0);
 
-  // Bright accents on dark
-  static const jadeBright = Color(0xFF5BCEDC);
-  static const goldBright = Color(0xFFF4CD7A);
-  static const coralBright = Color(0xFFF7AB94);
+  // Canvas & surface — sáng hơn, contrast vừa phải
+  static const darkBg = Color(0xFF16252B); // canvas (was #0A1F26)
+  static const darkSurface = Color(0xFF1E343A); // card (was #0F2F38)
+  static const darkSurfaceAlt = Color(0xFF1B2D33); // appbar, bottomnav
+  static const darkContainer = Color(0xFF243439); // icon container, search bg
+  static const darkElevated = Color(0xFF243B42); // dialog, bottomsheet
+  static const darkBorder = Color(0xFF2A4147); // border default (was #1B5664)
+  static const darkDivider = Color(0xFF243439); // item separator
+
+  // Text — ấm hơn, bớt chói trên dark
+  static const darkTextPrimary = Color(0xFFD6DDE0); // (was #E6F4F7)
+  static const darkTextSecondary = Color(0xFFA8B0B4);
+  static const darkTextTertiary = Color(0xFF8FB0B8);
+  static const darkHint = Color(0xFF8A9398); // placeholder
+  static const darkSubtext = Color(0xFF8A9398);
+  static const darkDisabled = Color(0xFF6A7378);
+
+  // ── Camera / scanner overlay (KYC scanner UI) ──
+  // Màu fixed trên live camera preview — KHÔNG theme-aware vì preview luôn
+  // là dark content (camera feed), light/dark mode app không ảnh hưởng.
+  static const cameraScrim = Color(0xB3000000); // 70% black quanh khung CCCD/oval
+  static const cameraOverlay = Color(0xCC000000); // 80% black gradient + uploading overlay
+  static const cameraStatusPillBg = Color(0xCC0F1F23); // dark teal status pill bg
+
+  // Brand jade — muted, không neon
+  static const jadeText = Color(0xFFB5D4DA); // light blue, dùng làm button primary BG
+  static const jadeMuted = Color(0xFF7AB5BD); // icon, accent (was jadeBright #5BCEDC)
+  static const jadeBg = Color(0xFF2A4147); // selected pill bg
+  static const jadePillBg = Color(0xFF1F353A); // info card, status strip bg
+
+  // Gold — muted
+  static const goldText = Color(0xFFC9A567); // (was goldBright #F4CD7A)
+  static const goldMuted = Color(0xFFB89C59);
+  static const goldBg = Color(0xFF383021); // icon container bg
+  static const goldBorder = Color(0xFF4A3F25);
+  static const goldPillBg = Color(0xFF2A2419);
+
+  // Coral — muted
+  static const coralText = Color(0xFFC9A084); // (was coralBright #F7AB94)
+  static const coralMuted = Color(0xFFB86D5A); // notification badge
+  static const coralBg = Color(0xFF3A2820);
+
+  // Status — calmer (sage, mustard, rose thay neon green/amber/red)
+  static const successText = Color(0xFF6FA88B); // sage (was #4ADE80)
+  static const successBgDark = Color(0xFF1F3A2D);
+  static const successBorder = Color(0xFF2D4D3D);
+
+  static const warningText = Color(0xFFC9A567); // mustard (was #FBBF24)
+  static const warningBgDark = Color(0xFF2A2419);
+  static const warningBorder = Color(0xFF4A3F25);
+
+  static const errorText = Color(0xFFC97A6F); // rose (was #F87171)
+  static const errorBgDark = Color(0xFF3A2421);
+  static const errorBorder = Color(0xFF4D2E29);
+
+  static const infoText = Color(0xFF7AB5BD);
+  static const infoBgDark = Color(0xFF1F353A);
+
+  static const vipText = Color(0xFFA488B8); // (was #C084FC)
+  static const vipBgDark = Color(0xFF2D2438);
+
+  // Backward-compat aliases (will remove next sprint)
+  @Deprecated('Use AppColors.jadeMuted (calm operations). Will be removed in v2.1')
+  static const jadeBright = jadeMuted;
+  @Deprecated('Use AppColors.goldText (calm operations). Will be removed in v2.1')
+  static const goldBright = goldText;
+  @Deprecated('Use AppColors.coralText (calm operations). Will be removed in v2.1')
+  static const coralBright = coralText;
 
   // ═══════════════════════════════════════════════════════════════
   // SEMANTIC
@@ -89,11 +147,11 @@ class AppColors {
   static const errorBg = Color(0xFFFEE2E2);
   static const info = jade500;
 
-  // Dark variants
-  static const successDark = Color(0xFF4ADE80);
-  static const warningDark = Color(0xFFFBBF24);
-  static const errorDark = Color(0xFFF87171);
-  static const infoDark = jadeBright;
+  // Dark variants (calm operations — sage/mustard/rose, no neon)
+  static const successDark = successText;
+  static const warningDark = warningText;
+  static const errorDark = errorText;
+  static const infoDark = jadeMuted;
 
   // ═══════════════════════════════════════════════════════════════
   // STATUS — Booking

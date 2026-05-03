@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../features/admin/views/admin_screen.dart';
+import '../../features/admin/views/kyc_approval_detail_screen.dart';
+import '../../features/admin/views/kyc_approval_list_screen.dart';
 import '../../features/properties/views/property_management_screen.dart';
 import '../../features/admin/views/user_form_screen.dart';
 import '../../features/admin/views/user_list_screen.dart';
@@ -37,6 +39,14 @@ import '../../features/profile/views/profile_screen.dart';
 import '../../features/rooms/views/room_detail_screen.dart';
 import '../../features/rooms/views/room_list_screen.dart';
 import '../../features/reports/views/report_screen.dart';
+import '../../features/verify/data/models/verify_enums.dart';
+import '../../features/verify/views/cccd_capture_screen.dart';
+import '../../features/verify/views/payment_screen.dart';
+import '../../features/verify/views/pending_approval_screen.dart';
+import '../../features/verify/views/rejected_screen.dart';
+import '../../features/verify/views/select_plan_screen.dart';
+import '../../features/verify/views/selfie_capture_screen.dart';
+import '../../features/verify/views/trial_active_screen.dart';
 import '../../shared/providers/view_mode_provider.dart';
 import 'app_transitions.dart';
 
@@ -362,6 +372,76 @@ final routerProvider = Provider<GoRouter>((ref) {
         ],
       ),
 
+      // ── Verify + Subscription Flow ──────────────────────────────────
+      // 8 screens — paywall (modal, không nằm trong router) + 7 screens dưới đây.
+      // Trigger paywall: gọi `showPaywallModal(context)` từ bất kỳ feature
+      // bị lock nào (property management, room management...). Sau khi user
+      // tap "Bắt đầu ngay" → push `/verify/cccd-front`.
+      GoRoute(
+        path: '/verify/cccd-front',
+        pageBuilder: (_, state) => slideUpPage(
+          key: state.pageKey,
+          child: CCCDCaptureScreen(
+            side: CCCDSide.front,
+            isResubmit: state.uri.queryParameters['resubmit'] == '1',
+          ),
+        ),
+      ),
+      GoRoute(
+        path: '/verify/cccd-back',
+        pageBuilder: (_, state) => slideUpPage(
+          key: state.pageKey,
+          child: CCCDCaptureScreen(
+            side: CCCDSide.back,
+            isResubmit: state.uri.queryParameters['resubmit'] == '1',
+          ),
+        ),
+      ),
+      GoRoute(
+        path: '/verify/selfie',
+        pageBuilder: (_, state) => slideUpPage(
+          key: state.pageKey,
+          child: SelfieCaptureScreen(
+            isResubmit: state.uri.queryParameters['resubmit'] == '1',
+          ),
+        ),
+      ),
+      GoRoute(
+        path: '/verify/select-plan',
+        pageBuilder: (_, state) => slideUpPage(
+          key: state.pageKey,
+          child: const SelectPlanScreen(),
+        ),
+      ),
+      GoRoute(
+        path: '/verify/payment',
+        pageBuilder: (_, state) => slideUpPage(
+          key: state.pageKey,
+          child: const PaymentScreen(),
+        ),
+      ),
+      GoRoute(
+        path: '/verify/pending',
+        pageBuilder: (_, state) => fadeScalePage(
+          key: state.pageKey,
+          child: const PendingApprovalScreen(),
+        ),
+      ),
+      GoRoute(
+        path: '/verify/approved',
+        pageBuilder: (_, state) => fadeScalePage(
+          key: state.pageKey,
+          child: const TrialActiveScreen(),
+        ),
+      ),
+      GoRoute(
+        path: '/verify/rejected',
+        pageBuilder: (_, state) => fadeScalePage(
+          key: state.pageKey,
+          child: const RejectedScreen(),
+        ),
+      ),
+
       // ── Admin Hub ───────────────────────────────────────────────────
       GoRoute(
         path: '/admin',
@@ -387,6 +467,26 @@ final routerProvider = Provider<GoRouter>((ref) {
           key: state.pageKey,
           child: const OwnerCalendarScreen(),
         ),
+      ),
+
+      // ── Admin – KYC approval queue ────────────────────────────────
+      GoRoute(
+        path: '/admin/kyc',
+        pageBuilder: (_, state) => slideUpPage(
+          key: state.pageKey,
+          child: const KYCApprovalListScreen(),
+        ),
+        routes: [
+          GoRoute(
+            path: ':id',
+            pageBuilder: (_, state) => slideUpPage(
+              key: state.pageKey,
+              child: KYCApprovalDetailScreen(
+                submissionId: state.pathParameters['id']!,
+              ),
+            ),
+          ),
+        ],
       ),
 
       // ── Admin – Users ──────────────────────────────────────────────

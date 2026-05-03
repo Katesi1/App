@@ -9,6 +9,9 @@ import '../../../core/theme/app_spacing.dart';
 import '../../../core/utils/helpers.dart';
 import '../../../features/auth/controllers/auth_controller.dart';
 import '../../../shared/providers/theme_provider.dart';
+import '../../verify/controllers/verify_flow_controller.dart';
+import '../../verify/data/models/verify_enums.dart';
+import '../../verify/views/paywall_modal.dart';
 
 // gradient.brandHero stop "jade-mid" theo spec section 3.7 — chưa có token sẵn
 const _jadeMidLight = Color(0xFF1B7E94);
@@ -23,6 +26,8 @@ class ProfileScreen extends ConsumerWidget {
     final themeMode = ref.watch(themeProvider);
     final isDark = themeMode == ThemeMode.dark;
     final topPad = MediaQuery.of(context).padding.top;
+    final verifyState = ref.watch(verifyFlowControllerProvider);
+    final showVerifySection = user?.isOwner ?? false;
 
     return Scaffold(
       body: SingleChildScrollView(
@@ -73,6 +78,30 @@ class ProfileScreen extends ConsumerWidget {
                 .slideX(begin: 0.05, end: 0),
 
             const SizedBox(height: 16),
+
+            // ── Section: KYC + SUBSCRIPTION (chỉ cho Owner) ───────
+            if (showVerifySection)
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 20),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _SectionLabel('XÁC THỰC + GÓI ĐĂNG KÝ'),
+                    const SizedBox(height: 8),
+                    _MenuCard(
+                      isDark: isDark,
+                      items: [
+                        _verifyMenuItem(context, ref, verifyState.status, colors),
+                      ],
+                    ),
+                  ],
+                ),
+              )
+                  .animate(delay: 150.ms)
+                  .fadeIn(duration: 300.ms)
+                  .slideX(begin: 0.05, end: 0),
+
+            if (showVerifySection) const SizedBox(height: 16),
 
             // ── Section: CÀI ĐẶT ──────────────────────────────────
             Padding(
@@ -238,6 +267,60 @@ class ProfileScreen extends ConsumerWidget {
       if (context.mounted) {
         context.go('/login');
       }
+    }
+  }
+
+  /// Build KYC menu item theo verify status hiện tại của owner.
+  ///
+  /// 4 trạng thái khác nhau → label + icon + route khác nhau:
+  /// - `approved`: "Gói + Trial" (xanh) → /verify/approved
+  /// - `awaitingApproval`: "Đang chờ duyệt" (vàng) → /verify/pending
+  /// - `rejected`: "Cần bổ sung" (đỏ) → /verify/rejected
+  /// - draft / chưa start: "Verify CCCD" (gold) → showPaywallModal
+  _MenuItemData _verifyMenuItem(
+    BuildContext context,
+    WidgetRef ref,
+    VerifyStatus status,
+    AppColorScheme colors,
+  ) {
+    switch (status) {
+      case VerifyStatus.approved:
+        return _MenuItemData(
+          icon: Icons.workspace_premium_rounded,
+          label: 'Gói đăng ký + Trial',
+          subtitle: 'Đã verify · Trial 7 ngày đang chạy',
+          iconColor: colors.success,
+          onTap: () => context.push('/verify/approved'),
+        );
+      case VerifyStatus.awaitingApproval:
+        return _MenuItemData(
+          icon: Icons.access_time_rounded,
+          label: 'Hồ sơ đang chờ duyệt',
+          subtitle: 'Admin sẽ phản hồi trong 24h',
+          iconColor: colors.brandSecondary,
+          onTap: () => context.push('/verify/pending'),
+        );
+      case VerifyStatus.rejected:
+        return _MenuItemData(
+          icon: Icons.error_outline_rounded,
+          label: 'Cần bổ sung hồ sơ',
+          subtitle: 'Admin yêu cầu chụp lại một số item',
+          iconColor: colors.error,
+          onTap: () => context.push('/verify/rejected'),
+        );
+      default:
+        return _MenuItemData(
+          icon: Icons.verified_user_outlined,
+          label: 'Verify CCCD để đăng phòng',
+          subtitle: '4 bước · Trial 7 ngày miễn phí',
+          iconColor: AppColors.goldText,
+          onTap: () async {
+            final ok = await showPaywallModal(context);
+            if (ok == true && context.mounted) {
+              context.push('/verify/cccd-front');
+            }
+          },
+        );
     }
   }
 }
