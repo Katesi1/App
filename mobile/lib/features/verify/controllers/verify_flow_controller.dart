@@ -8,14 +8,16 @@ import '../data/models/plan.dart';
 import '../data/models/selfie_upload.dart';
 import '../data/models/verify_enums.dart';
 import '../data/models/verify_state.dart';
-import '../data/repositories/mock_verify_repository.dart';
 import '../data/repositories/verify_repository.dart';
+import '../data/repositories/verify_repository_impl.dart';
 
-/// Provider trả về [VerifyRepository]. Hiện đang return mock — khi backend
-/// ready, swap thành `VerifyRepositoryImpl(ref.read(dioProvider))` ở đây
-/// (KHÔNG đụng vào controller / view code).
+/// Provider trả về [VerifyRepository]. Backend đã sẵn sàng (xem
+/// `BACKEND_CHANGES_REPORT.md`) — wire vào real impl.
+///
+/// Test/QA muốn dùng mock thì override provider này:
+/// `verifyRepositoryProvider.overrideWithValue(MockVerifyRepository(...))`.
 final verifyRepositoryProvider = Provider<VerifyRepository>(
-  (ref) => MockVerifyRepository(),
+  (ref) => VerifyRepositoryImpl(),
 );
 
 /// Catalog 3 plan — load 1 lần khi vào Select Plan screen.
@@ -37,6 +39,30 @@ class VerifyFlowController extends StateNotifier<VerifyFlowState> {
   final VerifyRepository _repo;
 
   VerifyFlowController(this._repo) : super(const VerifyFlowState());
+
+  // ════════════════════════════════════════════════════════════
+  // Hydrate — load state từ backend khi vào lại flow
+  // ════════════════════════════════════════════════════════════
+
+  /// Đồng bộ trạng thái KYC với backend (`GET /kyc/status`).
+  ///
+  /// Gọi khi user mở app lại / vào paywall modal — để resume đúng step
+  /// thay vì luôn bắt đầu từ CCCD trước. Idempotent, an toàn để gọi nhiều lần.
+  Future<void> hydrate() async {
+    try {
+      final snap = await _repo.getKycStatus();
+      state = state.copyWith(
+        status: snap.status,
+        submissionId: snap.submissionId,
+        rejectReason: snap.rejectReason,
+        rejectedItems: snap.rejectedItems,
+        approvedAt: snap.approvedAt,
+        trialEndsAt: snap.trialEndsAt,
+      );
+    } catch (_) {
+      // Hydrate fail không nên crash flow — user vẫn có thể start lại từ đầu.
+    }
+  }
 
   // ════════════════════════════════════════════════════════════
   // KYC — Step 1, 2, 3

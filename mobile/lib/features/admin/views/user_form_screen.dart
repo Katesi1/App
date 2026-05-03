@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -7,6 +8,7 @@ import '../../../core/theme/app_color_scheme.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../core/utils/helpers.dart';
+import '../../../core/utils/phone_input.dart';
 import '../../../shared/widgets/loading_widget.dart';
 import '../controllers/user_controller.dart';
 
@@ -435,12 +437,12 @@ class _UserFormScreenState extends ConsumerState<UserFormScreen> {
                   _FormField(
                     controller: _phoneCtrl,
                     label: 'Số điện thoại *',
+                    hintText: '0xxxxxxxxx (10 số)',
                     icon: Icons.phone_outlined,
                     keyboardType: TextInputType.phone,
                     textInputAction: TextInputAction.next,
-                    validator: (v) => v?.trim().isEmpty == true
-                        ? 'Nhập số điện thoại'
-                        : null,
+                    inputFormatters: PhoneInput.formatters,
+                    validator: PhoneInput.validate,
                   ),
                   const _Divider(),
                   _FormField(
@@ -611,6 +613,8 @@ class _FormField extends StatelessWidget {
   final bool obscureText;
   final Widget? suffixIcon;
   final String? Function(String?)? validator;
+  final List<TextInputFormatter>? inputFormatters;
+  final String? hintText;
 
   const _FormField({
     required this.controller,
@@ -621,6 +625,8 @@ class _FormField extends StatelessWidget {
     this.obscureText = false,
     this.suffixIcon,
     this.validator,
+    this.inputFormatters,
+    this.hintText,
   });
 
   @override
@@ -634,11 +640,14 @@ class _FormField extends StatelessWidget {
         keyboardType: keyboardType,
         textInputAction: textInputAction,
         obscureText: obscureText,
+        inputFormatters: inputFormatters,
         decoration: InputDecoration(
           labelText: label,
+          hintText: hintText,
           prefixIcon: Icon(icon, color: colors.brand),
           suffixIcon: suffixIcon,
           border: InputBorder.none,
+          counterText: '',
           labelStyle: GoogleFonts.beVietnamPro(
             fontSize: 13,
             color: colors.textSecondary,

@@ -128,6 +128,15 @@ final routerProvider = Provider<GoRouter>((ref) {
         if (user != null && !(user.isAdmin || user.isOwner)) {
           if (path.startsWith('/admin')) return '/dashboard';
         }
+
+        // OWNER chưa hoàn thành KYC → chặn mọi mutate page dưới /properties.
+        // Cho phép /properties (list) để user xem state hiện tại + banner CTA.
+        // Backend sẽ trả 403 nếu lọt qua, đây chỉ là UX guard.
+        if (user != null && user.needsKyc) {
+          if (path != '/properties' && path.startsWith('/properties/')) {
+            return '/verify/cccd-front';
+          }
+        }
       }
 
       return null;

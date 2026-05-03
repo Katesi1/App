@@ -2,7 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../verify/data/models/verify_enums.dart';
 import '../data/models/kyc_submission.dart';
-import '../data/repositories/mock_admin_kyc_repository.dart';
+import '../data/repositories/admin_kyc_repository.dart';
 
 /// Filter cho admin KYC list.
 enum KYCQueueFilter { pending, all, approved, rejected }

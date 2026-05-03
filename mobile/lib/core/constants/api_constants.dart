@@ -45,6 +45,36 @@ class ApiConstants {
   // Public properties (cho customer)
   static const String propertiesPublic = '/properties/public';
 
+  // Property share (public, không trả giá)
+  static String propertyShare(String id) => '/properties/share/$id';
+
+  // KYC (verify identity cho OWNER)
+  static const String kycUploadCccdFront = '/kyc/upload-cccd-front';
+  static const String kycUploadCccdBack = '/kyc/upload-cccd-back';
+  static const String kycUploadSelfie = '/kyc/upload-selfie';
+  static const String kycSubmit = '/kyc/submit';
+  static const String kycStatus = '/kyc/status';
+  static String kycSubmissionDetail(String id) => '/kyc/submissions/$id';
+  static String kycSubmissionResubmit(String id) =>
+      '/kyc/submissions/$id/resubmit';
+
+  // Billing
+  static const String billingPlans = '/billing/plans';
+
+  // Payment
+  static const String paymentInitiate = '/payments/initiate';
+  static String paymentStatus(String sessionId) =>
+      '/payments/$sessionId/status';
+  static String paymentRefund(String sessionId) =>
+      '/payments/$sessionId/refund';
+
+  // Admin KYC (chỉ ADMIN)
+  static const String adminKycQueue = '/admin/kyc/queue';
+  static String adminKycApprove(String id) =>
+      '/admin/kyc/submissions/$id/approve';
+  static String adminKycReject(String id) =>
+      '/admin/kyc/submissions/$id/reject';
+
   // Calendar
   static const String calendarPublicGrid = '/calendar/public-grid'; // GET — public, no auth
   static const String calendarGrid = '/calendar/grid'; // GET — management, Bearer token

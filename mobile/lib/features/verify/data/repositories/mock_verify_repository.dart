@@ -85,6 +85,12 @@ class MockVerifyRepository implements VerifyRepository {
   }
 
   @override
+  Future<KycStatusSnapshot> getKycStatus() async {
+    await Future.delayed(const Duration(milliseconds: 200));
+    return const KycStatusSnapshot(status: VerifyStatus.draft);
+  }
+
+  @override
   Future<List<Plan>> fetchPlans() async {
     await Future.delayed(const Duration(milliseconds: 400));
     return kDefaultPlans;
@@ -108,7 +114,12 @@ class MockVerifyRepository implements VerifyRepository {
           ? 'https://placehold.co/300x300/FFFFFF/16252B?text=VNPay+QR'
           : null,
       bankInfo: method == PaymentMethod.bankTransfer
-          ? 'Vietcombank · 0123456789 · CTY HALONG24H · NĐ: VERIFY pay_${_randomId()}'
+          ? BankInfo(
+              bankName: 'Vietcombank',
+              accountNumber: '0123456789',
+              accountName: 'CTY HALONG24H',
+              content: 'VERIFY pay_${_randomId()}',
+            )
           : null,
       redirectUrl: method == PaymentMethod.card
           ? 'https://sandbox.vnpay.vn/checkout?session=pay_${_randomId()}'

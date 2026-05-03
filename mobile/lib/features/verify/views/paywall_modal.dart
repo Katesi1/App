@@ -13,14 +13,30 @@ import '../controllers/verify_flow_controller.dart';
 /// Báo cáo doanh thu). Modal hiện giải thích flow + 4 step preview.
 ///
 /// Anatomy theo spec section 5.1.
-class PaywallModal extends ConsumerWidget {
+class PaywallModal extends ConsumerStatefulWidget {
   final VoidCallback? onProceed;
   final VoidCallback? onDefer;
 
   const PaywallModal({super.key, this.onProceed, this.onDefer});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<PaywallModal> createState() => _PaywallModalState();
+}
+
+class _PaywallModalState extends ConsumerState<PaywallModal> {
+  @override
+  void initState() {
+    super.initState();
+    // Hydrate trạng thái KYC từ backend khi mở modal — để hiện đúng
+    // "Tiếp tục bước X" thay vì luôn "Bắt đầu ngay" dù đã làm dở.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      ref.read(verifyFlowControllerProvider.notifier).hydrate();
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final colors = context.colors;
     final state = ref.watch(verifyFlowControllerProvider);
     final hasDraft = state.currentStep > 1;
@@ -142,7 +158,7 @@ class PaywallModal extends ConsumerWidget {
               Expanded(
                 child: _SecondaryButton(
                   label: 'Để sau',
-                  onTap: () => onDefer?.call(),
+                  onTap: () => widget.onDefer?.call(),
                 ),
               ),
               const SizedBox(width: 10),
@@ -153,7 +169,7 @@ class PaywallModal extends ConsumerWidget {
                       ? 'Tiếp tục bước $draftStep'
                       : 'Bắt đầu ngay',
                   trailingIcon: Icons.arrow_forward,
-                  onTap: () => onProceed?.call(),
+                  onTap: () => widget.onProceed?.call(),
                 ),
               ),
             ],

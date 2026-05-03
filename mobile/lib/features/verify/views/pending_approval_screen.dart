@@ -9,6 +9,7 @@ import '../../../core/theme/app_color_scheme.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../shared/widgets/status_strip.dart';
+import '../../auth/controllers/auth_controller.dart';
 import '../controllers/verify_flow_controller.dart';
 import '../data/models/verify_enums.dart';
 import 'widgets/status_timeline.dart';
@@ -52,9 +53,15 @@ class _PendingApprovalScreenState
       if (!mounted) return;
       if (status == VerifyStatus.approved) {
         _poll?.cancel();
+        // Sync user.kycStatus → 'approved' để dashboard banner biến mất ngay
+        // sau khi user navigate về (không phải pull-to-refresh).
+        await ref.read(authProvider.notifier).refreshProfile();
+        if (!mounted) return;
         context.pushReplacement('/verify/approved');
       } else if (status == VerifyStatus.rejected) {
         _poll?.cancel();
+        await ref.read(authProvider.notifier).refreshProfile();
+        if (!mounted) return;
         context.pushReplacement('/verify/rejected');
       }
     } catch (_) {

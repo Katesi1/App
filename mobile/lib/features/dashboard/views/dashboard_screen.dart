@@ -5,11 +5,12 @@ import 'package:google_fonts/google_fonts.dart';
 import '../../../core/constants/app_constants.dart';
 import '../../../core/theme/app_color_scheme.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../core/theme/app_spacing.dart';
 import '../../../core/utils/helpers.dart';
+import '../../../data/models/user_model.dart';
 import '../../auth/controllers/auth_controller.dart';
 import '../../bookings/controllers/booking_controller.dart';
 import '../../dashboard/controllers/dashboard_controller.dart';
-import '../../verify/controllers/verify_flow_controller.dart';
 import '../../verify/data/models/verify_enums.dart';
 import '../../verify/views/paywall_modal.dart';
 import '../../../shared/widgets/app_scaffold.dart';
@@ -17,6 +18,22 @@ import '../../../shared/widgets/loading_widget.dart';
 
 // gradient.brandHero stop "jade-mid" theo spec section 3.7
 const _jadeMidLight = Color(0xFF1B7E94);
+
+/// Map field `kycStatus` từ backend (`none|pending|rejected|approved`) sang
+/// [VerifyStatus] để [_VerifyCTABanner] biết hiển thị variant nào.
+VerifyStatus _verifyStatusFromUserKyc(String kycStatus) {
+  switch (kycStatus) {
+    case 'pending':
+      return VerifyStatus.awaitingApproval;
+    case 'rejected':
+      return VerifyStatus.rejected;
+    case 'approved':
+      return VerifyStatus.approved;
+    case 'none':
+    default:
+      return VerifyStatus.draft;
+  }
+}
 
 class DashboardScreen extends ConsumerWidget {
   const DashboardScreen({super.key});
@@ -43,7 +60,12 @@ class DashboardScreen extends ConsumerWidget {
         ),
         data: (stats) => RefreshIndicator(
           color: colors.brand,
-          onRefresh: () async => ref.invalidate(dashboardStatsProvider),
+          onRefresh: () async {
+            // Refresh stats + user profile cùng lúc để bắt KYC/subscription
+            // status thay đổi từ backend (vd: admin vừa approve KYC).
+            ref.invalidate(dashboardStatsProvider);
+            await ref.read(authProvider.notifier).refreshProfile();
+          },
           child: SingleChildScrollView(
             physics: const AlwaysScrollableScrollPhysics(),
             child: Column(
@@ -56,22 +78,30 @@ class DashboardScreen extends ConsumerWidget {
                 ),
 
                 // ── Verify CTA cho Owner chưa verify ────────────────
-                if (user != null && user.isOwner)
+                // Source of truth: user.kycStatus từ /auth/profile (backend),
+                // KHÔNG dựa vào verifyFlowController (local, non-persisted).
+                if (user != null && user.isOwner && !user.isKycApproved)
                   Padding(
                     padding: const EdgeInsets.fromLTRB(16, 0, 16, 0),
                     child: Transform.translate(
                       offset: const Offset(0, -16),
-                      child: Consumer(
-                        builder: (context, ref, _) {
-                          final s = ref.watch(verifyFlowControllerProvider);
-                          // Hiện banner khi chưa approved (kể cả pending /
-                          // rejected → đẩy về screen tương ứng).
-                          if (s.status == VerifyStatus.approved) {
-                            return const SizedBox.shrink();
-                          }
-                          return _VerifyCTABanner(status: s.status);
-                        },
+                      child: _VerifyCTABanner(
+                        status: _verifyStatusFromUserKyc(user.kycStatus),
                       ),
+                    ),
+                  ),
+
+                // ── Subscription banner cho OWNER đã KYC approved ─────
+                // Trial / past_due / cancelled — active thì không hiện.
+                if (user != null &&
+                    user.isOwner &&
+                    user.isKycApproved &&
+                    !user.isSubscriptionActive)
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 0, 16, 0),
+                    child: Transform.translate(
+                      offset: const Offset(0, -16),
+                      child: _SubscriptionBanner(user: user),
                     ),
                   ),
 
@@ -1117,6 +1147,266 @@ class _BookingItem extends StatelessWidget {
         ),
       ),
     ),
+    );
+  }
+}
+
+/// Banner subscription cho OWNER đã verify approved.
+/// 3 variant: trial countdown / past_due (cần thanh toán) / cancelled.
+/// Active không hiện (caller đã guard).
+class _SubscriptionBanner extends StatelessWidget {
+  final UserModel user;
+  const _SubscriptionBanner({required this.user});
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.colors;
+
+    final (
+      Color bg,
+      Color borderColor,
+      IconData icon,
+      Color iconColor,
+      String title,
+      String subtitle,
+    ) = _resolveVariant(colors);
+
+    return InkWell(
+      onTap: () => _showDetailSheet(context),
+      borderRadius: BorderRadius.circular(14),
+      child: Container(
+        padding: const EdgeInsets.all(14),
+        margin: const EdgeInsets.only(bottom: 12),
+        decoration: BoxDecoration(
+          color: bg,
+          border: Border.all(color: borderColor),
+          borderRadius: BorderRadius.circular(14),
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 40,
+              height: 40,
+              decoration: BoxDecoration(
+                color: iconColor.withValues(alpha: 0.15),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Icon(icon, size: 20, color: iconColor),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    style: GoogleFonts.beVietnamPro(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w700,
+                      color: colors.textPrimary,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    subtitle,
+                    style: GoogleFonts.beVietnamPro(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w500,
+                      color: colors.textSecondary,
+                      height: 1.4,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Icon(
+              Icons.chevron_right_rounded,
+              size: 20,
+              color: colors.textTertiary,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// Bottom sheet chi tiết subscription. Tap "Liên hệ hỗ trợ" → /profile/help.
+  void _showDetailSheet(BuildContext context) {
+    final colors = context.colors;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final (title, body, ctaLabel) = _sheetContent();
+
+    showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (sheetCtx) => Container(
+        decoration: BoxDecoration(
+          color: isDark ? AppColors.darkSurface : Colors.white,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+        ),
+        padding: EdgeInsets.fromLTRB(
+          AppSpacing.lg,
+          AppSpacing.md,
+          AppSpacing.lg,
+          MediaQuery.of(sheetCtx).viewInsets.bottom + AppSpacing.lg,
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Center(
+              child: Container(
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: colors.borderStrong,
+                  borderRadius: BorderRadius.circular(100),
+                ),
+              ),
+            ),
+            const SizedBox(height: AppSpacing.md),
+            Text(
+              title,
+              style: GoogleFonts.beVietnamPro(
+                fontSize: 18,
+                fontWeight: FontWeight.w700,
+                color: colors.textPrimary,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              body,
+              style: GoogleFonts.beVietnamPro(
+                fontSize: 13,
+                fontWeight: FontWeight.w500,
+                height: 1.5,
+                color: colors.textSecondary,
+              ),
+            ),
+            const SizedBox(height: AppSpacing.lg),
+            SizedBox(
+              width: double.infinity,
+              height: 48,
+              child: ElevatedButton.icon(
+                onPressed: () {
+                  Navigator.of(sheetCtx).maybePop();
+                  context.push('/profile/help');
+                },
+                icon: const Icon(Icons.support_agent_rounded, size: 18),
+                label: Text(ctaLabel),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: colors.brand,
+                  foregroundColor: AppColors.darkBg,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  textStyle: GoogleFonts.beVietnamPro(
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// Nội dung bottom sheet theo variant: title / body / CTA label.
+  (String, String, String) _sheetContent() {
+    final plan = user.subscriptionPlanId ?? '—';
+    final cycle = switch (user.subscriptionCycle) {
+      'monthly' => 'Hàng tháng',
+      'yearly' => 'Hàng năm',
+      _ => '',
+    };
+    final planText = cycle.isEmpty ? plan : '$plan · $cycle';
+
+    if (user.isInTrial) {
+      final days = user.trialDaysLeft ?? 0;
+      return (
+        'Đang dùng thử miễn phí',
+        'Gói: $planText\n'
+            'Còn $days ngày trial.\n'
+            'Khi trial kết thúc, hệ thống tự động trừ tiền theo gói đã chọn. '
+            'Bạn có thể đổi gói hoặc huỷ bất cứ lúc nào.',
+        'Liên hệ hỗ trợ',
+      );
+    }
+    if (user.isSubscriptionPastDue) {
+      return (
+        'Thanh toán quá hạn',
+        'Gói: $planText\n\n'
+            'Lần thanh toán gần nhất bị từ chối. Vui lòng cập nhật phương thức '
+            'thanh toán mới hoặc liên hệ hỗ trợ để tránh gián đoạn dịch vụ.',
+        'Liên hệ hỗ trợ ngay',
+      );
+    }
+    if (user.isSubscriptionCancelled) {
+      return (
+        'Subscription đã huỷ',
+        'Gói: $planText\n\n'
+            'Tài khoản đã bị tạm ngưng nhận booking. Liên hệ hỗ trợ để kích '
+            'hoạt lại.',
+        'Liên hệ hỗ trợ',
+      );
+    }
+    return (
+      'Subscription chưa kích hoạt',
+      'Liên hệ hỗ trợ để được tư vấn gói phù hợp.',
+      'Liên hệ hỗ trợ',
+    );
+  }
+
+  (Color, Color, IconData, Color, String, String) _resolveVariant(
+    AppColorScheme colors,
+  ) {
+    // Trial — gold info, đếm ngược ngày
+    if (user.isInTrial) {
+      final days = user.trialDaysLeft ?? 0;
+      final daysText = days > 0 ? 'còn $days ngày' : 'kết thúc hôm nay';
+      return (
+        AppColors.goldBg,
+        AppColors.goldBorder,
+        Icons.workspace_premium_outlined,
+        AppColors.goldText,
+        'Đang dùng thử miễn phí · $daysText',
+        days > 0
+            ? 'Sau khi trial kết thúc, hệ thống tự động trừ tiền theo gói đã chọn.'
+            : 'Hệ thống sẽ tự động charge theo gói đã chọn vào ngày mai.',
+      );
+    }
+    // Past due — payment fail, cần update
+    if (user.isSubscriptionPastDue) {
+      return (
+        AppColors.errorBgDark,
+        AppColors.errorBorder,
+        Icons.priority_high_rounded,
+        colors.error,
+        'Thanh toán quá hạn',
+        'Tài khoản sẽ bị khoá nếu không cập nhật phương thức thanh toán.',
+      );
+    }
+    // Cancelled — subscription đã huỷ
+    if (user.isSubscriptionCancelled) {
+      return (
+        AppColors.darkContainer,
+        AppColors.darkBorder,
+        Icons.cancel_outlined,
+        colors.textSecondary,
+        'Subscription đã huỷ',
+        'Liên hệ hỗ trợ nếu muốn tiếp tục sử dụng.',
+      );
+    }
+    // Fallback (subscription_status='none' nhưng KYC approved — edge case)
+    return (
+      AppColors.infoBgDark,
+      AppColors.darkBorder,
+      Icons.info_outline,
+      colors.brandLight,
+      'Chưa kích hoạt subscription',
+      'Vui lòng liên hệ hỗ trợ.',
     );
   }
 }

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../core/utils/phone_input.dart';
 import '../../../core/utils/vnd_input_formatter.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -391,8 +392,12 @@ class _HoldRoomScreenState extends ConsumerState<HoldRoomScreen> {
                   controller: _customerPhoneCtrl,
                   keyboardType: TextInputType.phone,
                   textInputAction: TextInputAction.next,
+                  inputFormatters: PhoneInput.formatters,
+                  validator: PhoneInput.validate,
                   decoration: InputDecoration(
                     labelText: 'Số điện thoại khách',
+                    hintText: '0xxxxxxxxx (10 số)',
+                    counterText: '',
                     prefixIcon:
                         Icon(Icons.phone_outlined, color: colors.brand),
                   ),

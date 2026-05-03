@@ -45,17 +45,48 @@ class RefundResult {
   const RefundResult({required this.refundedAt, required this.refundAmount});
 }
 
+/// Snapshot trạng thái KYC hiện tại từ backend (`GET /kyc/status`).
+class KycStatusSnapshot {
+  final VerifyStatus status;
+  final String? submissionId;
+  final String? rejectReason;
+  final List<RejectableItem> rejectedItems;
+  final DateTime? approvedAt;
+  final DateTime? trialEndsAt;
+
+  /// Backend trả `uploads: { cccdFront: bool, cccdBack: bool, selfie: bool }`
+  /// — `true` nghĩa là đã upload (nhưng có thể chưa có URL chi tiết).
+  final bool hasCccdFront;
+  final bool hasCccdBack;
+  final bool hasSelfie;
+
+  const KycStatusSnapshot({
+    required this.status,
+    this.submissionId,
+    this.rejectReason,
+    this.rejectedItems = const [],
+    this.approvedAt,
+    this.trialEndsAt,
+    this.hasCccdFront = false,
+    this.hasCccdBack = false,
+    this.hasSelfie = false,
+  });
+}
+
 /// Abstract data source cho verify + subscription flow.
 ///
 /// Implementation:
-/// - [MockVerifyRepository]: dev/QA, không cần backend. Đang dùng làm mặc định.
-/// - VerifyRepositoryImpl (chưa có): sẽ ghép Dio sau khi backend ready
-///   (FPT.AI eKYC cho OCR + face match, VNPay sandbox cho payment).
+/// - [MockVerifyRepository]: dev/QA, không cần backend.
+/// - `VerifyRepositoryImpl`: gọi real backend (xem
+///   `verify_repository_impl.dart`).
 abstract class VerifyRepository {
   // ── KYC ──
   Future<CCCDUpload> uploadCCCDFront(File image);
   Future<CCCDUpload> uploadCCCDBack(File image);
   Future<SelfieUpload> uploadSelfie(File image, {required String cccdFrontId});
+
+  /// Lấy trạng thái KYC hiện tại của user (resume sau khi mở app lại).
+  Future<KycStatusSnapshot> getKycStatus();
 
   // ── Plans + Payment ──
   Future<List<Plan>> fetchPlans();

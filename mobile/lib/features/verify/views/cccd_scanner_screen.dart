@@ -431,30 +431,10 @@ class _FillCameraPreview extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final preview = controller.value.previewSize;
-    if (preview == null) return CameraPreview(controller);
-
-    // previewSize trả về theo sensor (landscape). Trên portrait UI, swap
-    // width/height để FittedBox cover đúng chiều preview thực tế.
-    final isPortrait =
-        MediaQuery.of(context).orientation == Orientation.portrait;
-    final pw = isPortrait ? preview.height : preview.width;
-    final ph = isPortrait ? preview.width : preview.height;
-
-    return ClipRect(
-      child: OverflowBox(
-        maxWidth: double.infinity,
-        maxHeight: double.infinity,
-        child: FittedBox(
-          fit: BoxFit.cover,
-          child: SizedBox(
-            width: pw,
-            height: ph,
-            child: CameraPreview(controller),
-          ),
-        ),
-      ),
-    );
+    // Natural aspect — centered với letterbox khi cần.
+    // (Trước dùng BoxFit.cover + OverflowBox → camera bị scale up & crop edges,
+    //  CCCD thực tế bị crop khỏi vùng visible nếu user cầm phone đứng.)
+    return Center(child: CameraPreview(controller));
   }
 }
 

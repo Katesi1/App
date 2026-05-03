@@ -18,7 +18,7 @@ const double _yawThreshold = 18.0;
 const double _pitchThreshold = 12.0;
 const double _neutralTolerance = 8.0;
 
-/// Full-screen selfie scanner với **liveness challenge** + min 30s gate.
+/// Full-screen selfie scanner với **liveness challenge** + min 5s gate.
 ///
 /// Anti-bot/anti-replay flow:
 /// 1. User vào → tìm khuôn mặt + đảm bảo quality (centered, large, eyes open).
@@ -26,7 +26,7 @@ const double _neutralTolerance = 8.0;
 ///    để bot pre-record không thể vượt.
 /// 3. Mỗi thao tác phải giữ pose ≥ 1.2s (6 frames) mới count → tránh false positive.
 /// 4. Sau 4 thao tác → user về neutral pose → hệ thống chụp.
-/// 5. **Hard floor 30s**: nếu user qua nhanh hơn → wait countdown đến 30s mới
+/// 5. **Hard floor 5s**: nếu user qua nhanh hơn → wait countdown đến 5s mới
 ///    cho phép capture.
 ///
 /// Pop về parent với `File?` (raw selfie, không crop — face match cần vùng quanh).
@@ -55,7 +55,7 @@ class _SelfieScannerScreenState extends State<SelfieScannerScreen>
 
   // Min duration hard floor — start ngay khi screen open, không phụ thuộc
   // vào tốc độ thao tác. Nếu user xong sớm → countdown overlay.
-  static const Duration _minDuration = Duration(seconds: 30);
+  static const Duration _minDuration = Duration(seconds: 5);
   late final DateTime _startedAt;
   Timer? _minDurationTimer;
   bool _minDurationMet = false;
@@ -599,46 +599,37 @@ enum _Challenge {
       };
 
   /// Check nếu pose hiện tại match challenge này.
-  /// ML Kit headEulerAngleY > 0 = face turned image's right = user turn LEFT
-  /// (front camera mirrored display).
-  /// headEulerAngleX > 0 = looking up.
+  ///
+  /// **Front camera + Flutter `camera` plugin convention** (verified empirically):
+  /// - User quay đầu sang **phải** (perspective của user) → headEulerAngleY > 0
+  /// - User quay đầu sang **trái** → headEulerAngleY < 0
+  /// - User ngẩng lên → headEulerAngleX > 0
+  /// - User cúi xuống → headEulerAngleX < 0
+  ///
+  /// (Trước đây dựa vào docs ML Kit "viewer's right" → wrong vì display tự
+  /// mirror; user kêu ngược → flip thực nghiệm.)
   bool matches(double yaw, double pitch) => switch (this) {
-        _Challenge.lookLeft => yaw > _yawThreshold,
-        _Challenge.lookRight => yaw < -_yawThreshold,
+        _Challenge.lookLeft => yaw < -_yawThreshold,
+        _Challenge.lookRight => yaw > _yawThreshold,
         _Challenge.lookUp => pitch > _pitchThreshold,
         _Challenge.lookDown => pitch < -_pitchThreshold,
       };
 }
 
-/// Front camera preview — flutter `camera` plugin tự mirror cho display.
+/// Front camera preview — natural aspect ratio, centered.
+///
+/// Trước đây dùng BoxFit.cover + OverflowBox để fill toàn screen → trên màn
+/// 9:19.5 với sensor 4:3 thì camera bị scale up ~33%, crop edges → user
+/// thấy "quá sát mặt / bị zoom". Chuyển sang Center + CameraPreview để giữ
+/// natural FOV — có letterbox đen trên/dưới nhưng đó là behavior chuẩn của
+/// app camera native.
 class _FillFrontPreview extends StatelessWidget {
   final CameraController controller;
   const _FillFrontPreview({required this.controller});
 
   @override
   Widget build(BuildContext context) {
-    final preview = controller.value.previewSize;
-    if (preview == null) return CameraPreview(controller);
-
-    final isPortrait =
-        MediaQuery.of(context).orientation == Orientation.portrait;
-    final pw = isPortrait ? preview.height : preview.width;
-    final ph = isPortrait ? preview.width : preview.height;
-
-    return ClipRect(
-      child: OverflowBox(
-        maxWidth: double.infinity,
-        maxHeight: double.infinity,
-        child: FittedBox(
-          fit: BoxFit.cover,
-          child: SizedBox(
-            width: pw,
-            height: ph,
-            child: CameraPreview(controller),
-          ),
-        ),
-      ),
-    );
+    return Center(child: CameraPreview(controller));
   }
 }
 

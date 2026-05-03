@@ -7,6 +7,7 @@ import 'package:intl/intl.dart';
 import '../../../core/theme/app_color_scheme.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
+import '../../../core/utils/phone_input.dart';
 import '../../../features/auth/controllers/auth_controller.dart';
 import '../../../shared/widgets/loading_widget.dart';
 
@@ -188,19 +189,13 @@ class _PersonalInfoScreenState
                             field: TextFormField(
                               controller: _phoneController,
                               keyboardType: TextInputType.phone,
+                              inputFormatters: PhoneInput.formatters,
                               decoration: _inputDecoration(
                                 context: context,
-                                hintText: 'Nhập số điện thoại',
+                                hintText: '0xxxxxxxxx (10 số)',
                                 prefixIcon: Icons.phone_outlined,
-                                prefixText: '+84  ',
                               ),
-                              validator: (v) {
-                                if (v == null ||
-                                    v.trim().isEmpty) {
-                                  return 'Vui lòng nhập số điện thoại';
-                                }
-                                return null;
-                              },
+                              validator: PhoneInput.validate,
                             ),
                           ),
                           const SizedBox(height: 16),

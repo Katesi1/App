@@ -1,24 +1,25 @@
-import 'package:flutter_riverpod/flutter_riverpod.dart';
-
 import '../../../verify/data/models/cccd_upload.dart';
 import '../../../verify/data/models/ocr_result.dart';
 import '../../../verify/data/models/selfie_upload.dart';
 import '../../../verify/data/models/verify_enums.dart';
 import '../models/kyc_submission.dart';
+import 'admin_kyc_repository.dart';
 
 /// Mock repository cho admin KYC queue.
 ///
 /// Hardcode 5 submission đa dạng (pending / overdue / approved / rejected)
 /// để demo UI list + detail screen mà không cần backend.
-class MockAdminKYCRepository {
+class MockAdminKYCRepository implements AdminKycRepository {
   /// In-memory cache để approve/reject persist trong session.
   List<KYCSubmission>? _cache;
 
+  @override
   Future<List<KYCSubmission>> fetchAll() async {
     await Future.delayed(const Duration(milliseconds: 300));
     return _cache ??= _seed();
   }
 
+  @override
   Future<KYCSubmission?> fetchById(String id) async {
     await Future.delayed(const Duration(milliseconds: 200));
     final list = await fetchAll();
@@ -29,6 +30,7 @@ class MockAdminKYCRepository {
     }
   }
 
+  @override
   Future<KYCSubmission> approve(String id, {required String adminName}) async {
     await Future.delayed(const Duration(milliseconds: 400));
     final list = await fetchAll();
@@ -43,6 +45,7 @@ class MockAdminKYCRepository {
     return updated;
   }
 
+  @override
   Future<KYCSubmission> reject(
     String id, {
     required String adminName,
@@ -207,7 +210,5 @@ class MockAdminKYCRepository {
   }
 }
 
-/// Singleton provider — giữ in-memory state qua toàn session.
-final adminKYCRepositoryProvider = Provider<MockAdminKYCRepository>(
-  (ref) => MockAdminKYCRepository(),
-);
+// Provider xem `admin_kyc_repository.dart` — mặc định trỏ real impl,
+// override bằng MockAdminKYCRepository() khi test/QA.

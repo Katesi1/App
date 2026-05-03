@@ -147,9 +147,8 @@ class RejectedScreen extends ConsumerWidget {
       await ref.read(verifyFlowControllerProvider.notifier).requestRefund();
     } catch (e) {
       if (!context.mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Lỗi: $e')),
-      );
+      final msg = e.toString().replaceAll('Exception: ', '');
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
     }
   }
 }

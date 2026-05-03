@@ -69,7 +69,8 @@ class _PaymentScreenState extends ConsumerState<PaymentScreen> {
       _startPolling();
     } catch (e) {
       if (!mounted) return;
-      _showError('Khởi tạo payment thất bại: $e');
+      final msg = e.toString().replaceAll('Exception: ', '');
+      _showError('Khởi tạo thanh toán thất bại: $msg');
       setState(() => _processing = false);
     }
   }
@@ -189,7 +190,7 @@ class _PaymentScreenState extends ConsumerState<PaymentScreen> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(s.bankInfo ?? '—'),
+            Text(s.bankInfo?.displayText ?? '—'),
             const SizedBox(height: 8),
             Text(
               'Tổng: ${VerifyFormat.priceVND(s.totalAmount)}',

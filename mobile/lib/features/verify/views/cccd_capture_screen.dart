@@ -80,7 +80,10 @@ class _CCCDCaptureScreenState extends ConsumerState<CCCDCaptureScreen> {
 
       _navigateNext();
     } catch (e) {
-      if (mounted) _showSnack('Upload lỗi: $e', isWarning: false);
+      if (mounted) {
+        final msg = e.toString().replaceAll('Exception: ', '');
+        _showSnack(msg, isWarning: false);
+      }
     } finally {
       if (mounted) setState(() => _uploading = false);
     }

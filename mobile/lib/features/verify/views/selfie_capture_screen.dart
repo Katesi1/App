@@ -54,8 +54,9 @@ class _SelfieCaptureScreenState extends ConsumerState<SelfieCaptureScreen> {
       _showLock();
     } catch (e) {
       if (mounted) {
+        final msg = e.toString().replaceAll('Exception: ', '');
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Lỗi: $e')),
+          SnackBar(content: Text(msg)),
         );
       }
     } finally {

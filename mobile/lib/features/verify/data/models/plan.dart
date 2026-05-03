@@ -24,16 +24,25 @@ class Plan extends Equatable {
     required this.features,
   });
 
+  /// Parse từ backend `GET /billing/plans`. Backend trả về:
+  /// `{ id, name, pricePerRoom, minCharge, maxRooms, yearlyDiscountPct, vatPct, features[] }`
+  /// trong đó `id` là `"starter"|"professional"|"enterprise"` — derive tier từ id.
   factory Plan.fromJson(Map<String, dynamic> json) {
-    final tierStr = json['tier'] as String;
-    final tier = Tier.values.firstWhere((t) => t.name == tierStr);
+    final id = json['id'] as String;
+    final tierStr = (json['tier'] as String?) ?? id;
+    final tier = Tier.values.firstWhere(
+      (t) => t.name == tierStr,
+      orElse: () => Tier.starter,
+    );
     return Plan(
-      id: json['id'] as String,
+      id: id,
       tier: tier,
-      pricePerRoomPerMonth:
-          (json['pricePerRoomPerMonth'] ?? json['price_per_room_per_month']) as int,
-      minChargePerMonth:
-          (json['minChargePerMonth'] ?? json['min_charge_per_month']) as int,
+      pricePerRoomPerMonth: (json['pricePerRoom'] ??
+              json['pricePerRoomPerMonth'] ??
+              json['price_per_room_per_month']) as int,
+      minChargePerMonth: (json['minCharge'] ??
+              json['minChargePerMonth'] ??
+              json['min_charge_per_month']) as int,
       maxRooms: (json['maxRooms'] ?? json['max_rooms']) as int?,
       features: List<String>.from(json['features'] as List),
     );
@@ -42,8 +51,8 @@ class Plan extends Equatable {
   Map<String, dynamic> toJson() => {
         'id': id,
         'tier': tier.name,
-        'pricePerRoomPerMonth': pricePerRoomPerMonth,
-        'minChargePerMonth': minChargePerMonth,
+        'pricePerRoom': pricePerRoomPerMonth,
+        'minCharge': minChargePerMonth,
         'maxRooms': maxRooms,
         'features': features,
       };
@@ -53,15 +62,11 @@ class Plan extends Equatable {
       [id, tier, pricePerRoomPerMonth, minChargePerMonth, maxRooms, features];
 }
 
-/// Catalog 3 plan mặc định.
-///
-/// Numbers theo spec section 3.1:
-/// - Starter:      199.000đ/phòng — sàn 1.999.000đ — max 20 phòng
-/// - Professional: 149.000đ/phòng — sàn 2.999.000đ — max 50 phòng
-/// - Enterprise:   99.000đ/phòng  — sàn 4.999.000đ — không giới hạn
+/// Catalog 3 plan mặc định — dùng khi backend không reachable.
+/// IDs khớp với backend (`starter`, `professional`, `enterprise`).
 const kDefaultPlans = <Plan>[
   Plan(
-    id: 'plan_starter',
+    id: 'starter',
     tier: Tier.starter,
     pricePerRoomPerMonth: 199000,
     minChargePerMonth: 1999000,
@@ -73,7 +78,7 @@ const kDefaultPlans = <Plan>[
     ],
   ),
   Plan(
-    id: 'plan_professional',
+    id: 'professional',
     tier: Tier.professional,
     pricePerRoomPerMonth: 149000,
     minChargePerMonth: 2999000,
@@ -86,7 +91,7 @@ const kDefaultPlans = <Plan>[
     ],
   ),
   Plan(
-    id: 'plan_enterprise',
+    id: 'enterprise',
     tier: Tier.enterprise,
     pricePerRoomPerMonth: 99000,
     minChargePerMonth: 4999000,
