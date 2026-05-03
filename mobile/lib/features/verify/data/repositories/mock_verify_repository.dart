@@ -39,19 +39,23 @@ class MockVerifyRepository implements VerifyRepository {
   });
 
   @override
-  Future<CCCDUpload> uploadCCCDFront(File image) async {
+  Future<CCCDUpload> uploadCCCDFront(File image, {OCRResult? ocrResult}) async {
     await Future.delayed(const Duration(milliseconds: 1200));
+    // Mock: ưu tiên `ocrResult` client gửi (giả lập backend lưu nguyên xi);
+    // fallback hardcoded data khi gallery upload không có OCR.
+    final ocr = ocrResult ??
+        const OCRResult(
+          cccdNumber: '001192012345',
+          fullName: 'NGUYỄN VĂN TUẤN',
+          dob: '12/05/1992',
+          address: 'Tổ 5, P. Hồng Hà, TP. Hạ Long, Quảng Ninh',
+          gender: 'Nam',
+          expiryDate: '12/05/2027',
+        );
     return CCCDUpload(
       id: 'cccd_front_${_randomId()}',
       imageUrl: 'https://placehold.co/640x400/16252B/B5D4DA?text=CCCD+Front',
-      ocrResult: const OCRResult(
-        cccdNumber: '001192012345',
-        fullName: 'NGUYỄN VĂN TUẤN',
-        dob: '12/05/1992',
-        address: 'Tổ 5, P. Hồng Hà, TP. Hạ Long, Quảng Ninh',
-        gender: 'Nam',
-        expiryDate: '12/05/2027',
-      ),
+      ocrResult: ocr,
       confidence: forceLowOcrConfidence ? 0.62 : 0.94,
       uploadedAt: DateTime.now(),
       localPath: image.path,
@@ -59,11 +63,12 @@ class MockVerifyRepository implements VerifyRepository {
   }
 
   @override
-  Future<CCCDUpload> uploadCCCDBack(File image) async {
+  Future<CCCDUpload> uploadCCCDBack(File image, {OCRResult? ocrResult}) async {
     await Future.delayed(const Duration(milliseconds: 1200));
     return CCCDUpload(
       id: 'cccd_back_${_randomId()}',
       imageUrl: 'https://placehold.co/640x400/16252B/B5D4DA?text=CCCD+Back',
+      ocrResult: ocrResult,
       confidence: forceLowOcrConfidence ? 0.65 : 0.91,
       uploadedAt: DateTime.now(),
       localPath: image.path,
@@ -199,6 +204,5 @@ class MockVerifyRepository implements VerifyRepository {
     );
   }
 
-  String _randomId() =>
-      Random().nextInt(999999).toString().padLeft(6, '0');
+  String _randomId() => Random().nextInt(999999).toString().padLeft(6, '0');
 }

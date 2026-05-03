@@ -82,9 +82,8 @@ class PaymentSession extends Equatable {
       method: method,
       totalAmount: (json['totalAmount'] ?? json['total_amount']) as int,
       qrCode: (json['qrCode'] ?? json['qr_code']) as String?,
-      bankInfo: bankRaw is Map<String, dynamic>
-          ? BankInfo.fromJson(bankRaw)
-          : null,
+      bankInfo:
+          bankRaw is Map<String, dynamic> ? BankInfo.fromJson(bankRaw) : null,
       redirectUrl: (json['redirectUrl'] ?? json['redirect_url']) as String?,
       expiresAt: DateTime.parse(
         (json['expiresAt'] ?? json['expires_at']) as String,
@@ -103,8 +102,15 @@ class PaymentSession extends Equatable {
       };
 
   @override
-  List<Object?> get props =>
-      [sessionId, method, totalAmount, qrCode, bankInfo, redirectUrl, expiresAt];
+  List<Object?> get props => [
+        sessionId,
+        method,
+        totalAmount,
+        qrCode,
+        bankInfo,
+        redirectUrl,
+        expiresAt
+      ];
 }
 
 /// Backend dùng `vnpay_qr|bank_transfer|card`, frontend enum dùng camelCase.

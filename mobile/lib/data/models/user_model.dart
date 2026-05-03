@@ -14,7 +14,8 @@ class UserModel {
   // ── KYC + Subscription (backend trả từ /auth/profile sau Đợt 2) ──
   final String kycStatus; // none | pending | approved | rejected
   final String? kycSubmissionId;
-  final String subscriptionStatus; // none | trial | active | past_due | cancelled
+  final String
+      subscriptionStatus; // none | trial | active | past_due | cancelled
   final String? subscriptionPlanId; // starter | professional | enterprise
   final String? subscriptionCycle; // monthly | yearly
   final DateTime? trialEndsAt;
@@ -76,10 +77,12 @@ class UserModel {
         'kycStatus': kycStatus,
         if (kycSubmissionId != null) 'kycSubmissionId': kycSubmissionId,
         'subscriptionStatus': subscriptionStatus,
-        if (subscriptionPlanId != null) 'subscriptionPlanId': subscriptionPlanId,
+        if (subscriptionPlanId != null)
+          'subscriptionPlanId': subscriptionPlanId,
         if (subscriptionCycle != null) 'subscriptionCycle': subscriptionCycle,
         if (trialEndsAt != null) 'trialEndsAt': trialEndsAt!.toIso8601String(),
-        if (nextChargeAt != null) 'nextChargeAt': nextChargeAt!.toIso8601String(),
+        if (nextChargeAt != null)
+          'nextChargeAt': nextChargeAt!.toIso8601String(),
       };
 
   String toJsonString() => jsonEncode(toJson());
@@ -106,8 +109,7 @@ class UserModel {
   bool get hasOwner => ownerId != null;
 
   /// ID owner hiệu lực: OWNER → mình, SALE → ownerId
-  String? get effectiveOwnerId =>
-      isOwner ? id : (isSale ? ownerId : null);
+  String? get effectiveOwnerId => isOwner ? id : (isSale ? ownerId : null);
 
   // ── KYC helpers ──
   bool get isKycApproved => kycStatus == 'approved';

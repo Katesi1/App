@@ -74,7 +74,12 @@ final routerProvider = Provider<GoRouter>((ref) {
       if (isLoading) return null;
 
       // Các trang public (không cần login)
-      const publicPaths = ['/splash', '/login', '/register', '/forgot-password'];
+      const publicPaths = [
+        '/splash',
+        '/login',
+        '/register',
+        '/forgot-password'
+      ];
       final isPublic = publicPaths.contains(path);
 
       // Chưa login → redirect về login
@@ -89,8 +94,7 @@ final routerProvider = Provider<GoRouter>((ref) {
         if (user != null && user.isCustomer) {
           isCustomerMode = true;
         } else if (user != null && user.isManagement) {
-          isCustomerMode =
-              ref.read(viewModeProvider) == ViewMode.customer;
+          isCustomerMode = ref.read(viewModeProvider) == ViewMode.customer;
         } else {
           isCustomerMode = false;
         }
@@ -103,11 +107,19 @@ final routerProvider = Provider<GoRouter>((ref) {
         // Route guard
         // /profile accessible cho cả 2 mode → không nằm trong list nào
         const customerPaths = [
-          '/home', '/search', '/my-bookings', '/account',
+          '/home',
+          '/search',
+          '/my-bookings',
+          '/account',
         ];
         const managementPaths = [
-          '/dashboard', '/rooms', '/calendar',
-          '/properties', '/admin', '/bookings', '/reports',
+          '/dashboard',
+          '/rooms',
+          '/calendar',
+          '/properties',
+          '/admin',
+          '/bookings',
+          '/reports',
         ];
 
         // Đang ở mode khách → chặn route quản lý
@@ -142,13 +154,9 @@ final routerProvider = Provider<GoRouter>((ref) {
       return null;
     },
     routes: [
-      GoRoute(
-          path: '/splash', builder: (_, __) => const SplashScreen()),
-      GoRoute(
-          path: '/login', builder: (_, __) => const LoginScreen()),
-      GoRoute(
-          path: '/register',
-          builder: (_, __) => const RegisterScreen()),
+      GoRoute(path: '/splash', builder: (_, __) => const SplashScreen()),
+      GoRoute(path: '/login', builder: (_, __) => const LoginScreen()),
+      GoRoute(path: '/register', builder: (_, __) => const RegisterScreen()),
       GoRoute(
           path: '/forgot-password',
           builder: (_, __) => const ForgotPasswordScreen()),
@@ -245,16 +253,15 @@ final routerProvider = Provider<GoRouter>((ref) {
             path: ':id',
             pageBuilder: (_, state) => slideUpPage(
               key: state.pageKey,
-              child: RoomDetailScreen(
-                  roomId: state.pathParameters['id']!),
+              child: RoomDetailScreen(roomId: state.pathParameters['id']!),
             ),
             routes: [
               GoRoute(
                 path: 'hold',
                 pageBuilder: (_, state) => fadeScalePage(
                   key: state.pageKey,
-                  child: HoldRoomScreen(
-                      propertyId: state.pathParameters['id']!),
+                  child:
+                      HoldRoomScreen(propertyId: state.pathParameters['id']!),
                 ),
               ),
             ],
@@ -308,8 +315,8 @@ final routerProvider = Provider<GoRouter>((ref) {
             path: ':id',
             pageBuilder: (_, state) => slideUpPage(
               key: state.pageKey,
-              child: PropertyManageScreen(
-                  homestayId: state.pathParameters['id']!),
+              child:
+                  PropertyManageScreen(homestayId: state.pathParameters['id']!),
             ),
             routes: [
               GoRoute(
@@ -517,16 +524,14 @@ final routerProvider = Provider<GoRouter>((ref) {
             path: ':id/edit',
             pageBuilder: (_, state) => fadeScalePage(
               key: state.pageKey,
-              child: UserFormScreen(
-                  userId: state.pathParameters['id']),
+              child: UserFormScreen(userId: state.pathParameters['id']),
             ),
           ),
         ],
       ),
     ],
     errorBuilder: (_, state) => Scaffold(
-      body: Center(
-          child: Text('Không tìm thấy trang: ${state.error}')),
+      body: Center(child: Text('Không tìm thấy trang: ${state.error}')),
     ),
   );
 });

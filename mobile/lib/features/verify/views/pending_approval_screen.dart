@@ -27,8 +27,7 @@ class PendingApprovalScreen extends ConsumerStatefulWidget {
       _PendingApprovalScreenState();
 }
 
-class _PendingApprovalScreenState
-    extends ConsumerState<PendingApprovalScreen> {
+class _PendingApprovalScreenState extends ConsumerState<PendingApprovalScreen> {
   Timer? _poll;
 
   @override
@@ -123,8 +122,7 @@ class _PendingApprovalScreenState
                   height: 1.5,
                 ),
                 children: [
-                  const TextSpan(
-                      text: 'Hồ sơ sẽ được duyệt trong vòng '),
+                  const TextSpan(text: 'Hồ sơ sẽ được duyệt trong vòng '),
                   TextSpan(
                     text: '24 giờ',
                     style: TextStyle(

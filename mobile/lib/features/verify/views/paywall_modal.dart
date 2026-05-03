@@ -165,9 +165,7 @@ class _PaywallModalState extends ConsumerState<PaywallModal> {
               Expanded(
                 flex: 2,
                 child: _PrimaryButton(
-                  label: hasDraft
-                      ? 'Tiếp tục bước $draftStep'
-                      : 'Bắt đầu ngay',
+                  label: hasDraft ? 'Tiếp tục bước $draftStep' : 'Bắt đầu ngay',
                   trailingIcon: Icons.arrow_forward,
                   onTap: () => widget.onProceed?.call(),
                 ),
@@ -183,7 +181,8 @@ class _PaywallModalState extends ConsumerState<PaywallModal> {
                 color: colors.textTertiary,
               ),
               children: [
-                const TextSpan(text: 'Tiếp tục đồng nghĩa với việc bạn đồng ý '),
+                const TextSpan(
+                    text: 'Tiếp tục đồng nghĩa với việc bạn đồng ý '),
                 TextSpan(
                   text: 'Điều khoản dịch vụ',
                   style: TextStyle(

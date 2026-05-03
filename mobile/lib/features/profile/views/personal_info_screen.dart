@@ -18,12 +18,10 @@ class PersonalInfoScreen extends ConsumerStatefulWidget {
   const PersonalInfoScreen({super.key});
 
   @override
-  ConsumerState<PersonalInfoScreen> createState() =>
-      _PersonalInfoScreenState();
+  ConsumerState<PersonalInfoScreen> createState() => _PersonalInfoScreenState();
 }
 
-class _PersonalInfoScreenState
-    extends ConsumerState<PersonalInfoScreen> {
+class _PersonalInfoScreenState extends ConsumerState<PersonalInfoScreen> {
   final _formKey = GlobalKey<FormState>();
   late final TextEditingController _nameController;
   late final TextEditingController _phoneController;
@@ -40,14 +38,11 @@ class _PersonalInfoScreenState
     super.initState();
     final user = ref.read(currentUserProvider);
     _nameController = TextEditingController(text: user?.name ?? '');
-    _phoneController =
-        TextEditingController(text: user?.phone ?? '');
-    _emailController =
-        TextEditingController(text: user?.email ?? '');
+    _phoneController = TextEditingController(text: user?.phone ?? '');
+    _emailController = TextEditingController(text: user?.email ?? '');
     _gender = user?.gender ?? 0;
 
-    if (user?.dateOfBirth != null &&
-        user!.dateOfBirth!.isNotEmpty) {
+    if (user?.dateOfBirth != null && user!.dateOfBirth!.isNotEmpty) {
       try {
         _dateOfBirth = DateTime.parse(user.dateOfBirth!);
         _dobController = TextEditingController(
@@ -92,8 +87,7 @@ class _PersonalInfoScreenState
     if (picked != null) {
       setState(() {
         _dateOfBirth = picked;
-        _dobController.text =
-            DateFormat('dd/MM/yyyy').format(picked);
+        _dobController.text = DateFormat('dd/MM/yyyy').format(picked);
       });
     }
   }
@@ -134,8 +128,7 @@ class _PersonalInfoScreenState
 
   @override
   Widget build(BuildContext context) {
-    final isDark =
-        Theme.of(context).brightness == Brightness.dark;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     final topPad = MediaQuery.of(context).padding.top;
     final user = ref.watch(currentUserProvider);
     final isAdmin = user?.isAdmin ?? false;
@@ -171,12 +164,10 @@ class _PersonalInfoScreenState
                               decoration: _inputDecoration(
                                 context: context,
                                 hintText: 'Nhập họ và tên',
-                                prefixIcon:
-                                    Icons.person_outline_rounded,
+                                prefixIcon: Icons.person_outline_rounded,
                               ),
                               validator: (v) {
-                                if (v == null ||
-                                    v.trim().isEmpty) {
+                                if (v == null || v.trim().isEmpty) {
                                   return 'Vui lòng nhập họ tên';
                                 }
                                 return null;
@@ -204,8 +195,7 @@ class _PersonalInfoScreenState
                             field: TextFormField(
                               controller: _emailController,
                               enabled: isAdmin,
-                              keyboardType:
-                                  TextInputType.emailAddress,
+                              keyboardType: TextInputType.emailAddress,
                               decoration: _inputDecoration(
                                 context: context,
                                 hintText: isAdmin
@@ -239,22 +229,19 @@ class _PersonalInfoScreenState
                                 _GenderChip(
                                   label: 'Nam',
                                   isSelected: _gender == 0,
-                                  onTap: () => setState(
-                                      () => _gender = 0),
+                                  onTap: () => setState(() => _gender = 0),
                                 ),
                                 const SizedBox(width: 10),
                                 _GenderChip(
                                   label: 'Nữ',
                                   isSelected: _gender == 1,
-                                  onTap: () => setState(
-                                      () => _gender = 1),
+                                  onTap: () => setState(() => _gender = 1),
                                 ),
                                 const SizedBox(width: 10),
                                 _GenderChip(
                                   label: 'Khác',
                                   isSelected: _gender == 2,
-                                  onTap: () => setState(
-                                      () => _gender = 2),
+                                  onTap: () => setState(() => _gender = 2),
                                 ),
                               ],
                             ),
@@ -269,10 +256,8 @@ class _PersonalInfoScreenState
                               decoration: _inputDecoration(
                                 context: context,
                                 hintText: 'Chọn ngày sinh',
-                                prefixIcon:
-                                    Icons.calendar_today_outlined,
-                                suffixIcon:
-                                    Icons.chevron_right_rounded,
+                                prefixIcon: Icons.calendar_today_outlined,
+                                suffixIcon: Icons.chevron_right_rounded,
                               ),
                             ),
                           ),
@@ -304,8 +289,8 @@ class _PersonalInfoScreenState
     );
   }
 
-  Widget _buildHeader(BuildContext context, double topPad,
-      String initial, bool isDark) {
+  Widget _buildHeader(
+      BuildContext context, double topPad, String initial, bool isDark) {
     final headerGradient = isDark
         ? const [AppColors.darkBg, AppColors.darkBorder]
         : const [AppColors.jade500, _jadeMidLight];
@@ -404,10 +389,8 @@ class _PersonalInfoScreenState
     final colors = context.colors;
     return InputDecoration(
       hintText: hintText,
-      hintStyle:
-          GoogleFonts.beVietnamPro(color: colors.textTertiary),
-      prefixIcon:
-          Icon(prefixIcon, color: colors.textSecondary, size: 20),
+      hintStyle: GoogleFonts.beVietnamPro(color: colors.textTertiary),
+      prefixIcon: Icon(prefixIcon, color: colors.textSecondary, size: 20),
       prefixText: prefixText,
       prefixStyle: GoogleFonts.beVietnamPro(
         color: colors.textSecondary,
@@ -416,8 +399,7 @@ class _PersonalInfoScreenState
       suffixIcon: suffixIcon != null
           ? Icon(suffixIcon, color: colors.textTertiary, size: 22)
           : null,
-      contentPadding: const EdgeInsets.symmetric(
-          horizontal: 16, vertical: 14),
+      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
       border: OutlineInputBorder(
         borderRadius: BorderRadius.circular(AppRadius.md),
         borderSide: BorderSide(color: colors.borderDefault),
@@ -428,8 +410,7 @@ class _PersonalInfoScreenState
       ),
       focusedBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(AppRadius.md),
-        borderSide: BorderSide(
-            color: colors.brand, width: 1.5),
+        borderSide: BorderSide(color: colors.brand, width: 1.5),
       ),
     );
   }
@@ -533,8 +514,7 @@ class _GroupCard extends StatelessWidget {
             borderRadius: BorderRadius.circular(AppRadius.lg),
             boxShadow: [
               BoxShadow(
-                color:
-                    Colors.black.withValues(alpha: isDark ? 0.30 : 0.06),
+                color: Colors.black.withValues(alpha: isDark ? 0.30 : 0.06),
                 blurRadius: 20,
                 offset: const Offset(0, 4),
               ),
@@ -628,8 +608,7 @@ class _GenderChip extends StatelessWidget {
       onTap: onTap,
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 200),
-        padding: const EdgeInsets.symmetric(
-            horizontal: 20, vertical: 10),
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
         decoration: BoxDecoration(
           gradient: isSelected
               ? LinearGradient(
@@ -639,12 +618,9 @@ class _GenderChip extends StatelessWidget {
                 )
               : null,
           color: isSelected ? null : Colors.transparent,
-          borderRadius:
-              BorderRadius.circular(AppRadius.full),
+          borderRadius: BorderRadius.circular(AppRadius.full),
           border: Border.all(
-            color: isSelected
-                ? colors.brand
-                : colors.borderDefault,
+            color: isSelected ? colors.brand : colors.borderDefault,
             width: 1.5,
           ),
         ),
@@ -652,12 +628,8 @@ class _GenderChip extends StatelessWidget {
           label,
           style: GoogleFonts.beVietnamPro(
             fontSize: 14,
-            fontWeight: isSelected
-                ? FontWeight.w600
-                : FontWeight.w400,
-            color: isSelected
-                ? Colors.white
-                : colors.textPrimary,
+            fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
+            color: isSelected ? Colors.white : colors.textPrimary,
           ),
         ),
       ),

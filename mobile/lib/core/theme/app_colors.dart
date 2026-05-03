@@ -27,8 +27,10 @@ class AppColors {
   static const gold50 = Color(0xFFFEF9E8);
   static const gold100 = Color(0xFFFCEFC4);
   static const gold300 = Color(0xFFF4CD7A);
-  static const gold500 = Color(0xFFE5B547); // MAIN — chỉ dùng làm bg/icon, KHÔNG dùng cho text trên trắng
-  static const gold700 = Color(0xFFA8821F); // text gold trên light (contrast 4.7 ✓)
+  static const gold500 = Color(
+      0xFFE5B547); // MAIN — chỉ dùng làm bg/icon, KHÔNG dùng cho text trên trắng
+  static const gold700 =
+      Color(0xFFA8821F); // text gold trên light (contrast 4.7 ✓)
   static const gold900 = Color(0xFF5C4500);
 
   // ═══════════════════════════════════════════════════════════════
@@ -37,8 +39,10 @@ class AppColors {
   static const coral50 = Color(0xFFFFEFE8);
   static const coral100 = Color(0xFFFED4C4);
   static const coral300 = Color(0xFFF7AB94);
-  static const coral500 = Color(0xFFF2856B); // MAIN — white text chỉ pass khi ≥18px
-  static const coral700 = Color(0xFFB85A3F); // text coral trên light (cho pill nhỏ)
+  static const coral500 =
+      Color(0xFFF2856B); // MAIN — white text chỉ pass khi ≥18px
+  static const coral700 =
+      Color(0xFFB85A3F); // text coral trên light (cho pill nhỏ)
   static const coral900 = Color(0xFF6B2B17);
 
   // ═══════════════════════════════════════════════════════════════
@@ -87,13 +91,18 @@ class AppColors {
   // ── Camera / scanner overlay (KYC scanner UI) ──
   // Màu fixed trên live camera preview — KHÔNG theme-aware vì preview luôn
   // là dark content (camera feed), light/dark mode app không ảnh hưởng.
-  static const cameraScrim = Color(0xB3000000); // 70% black quanh khung CCCD/oval
-  static const cameraOverlay = Color(0xCC000000); // 80% black gradient + uploading overlay
-  static const cameraStatusPillBg = Color(0xCC0F1F23); // dark teal status pill bg
+  static const cameraScrim =
+      Color(0xB3000000); // 70% black quanh khung CCCD/oval
+  static const cameraOverlay =
+      Color(0xCC000000); // 80% black gradient + uploading overlay
+  static const cameraStatusPillBg =
+      Color(0xCC0F1F23); // dark teal status pill bg
 
   // Brand jade — muted, không neon
-  static const jadeText = Color(0xFFB5D4DA); // light blue, dùng làm button primary BG
-  static const jadeMuted = Color(0xFF7AB5BD); // icon, accent (was jadeBright #5BCEDC)
+  static const jadeText =
+      Color(0xFFB5D4DA); // light blue, dùng làm button primary BG
+  static const jadeMuted =
+      Color(0xFF7AB5BD); // icon, accent (was jadeBright #5BCEDC)
   static const jadeBg = Color(0xFF2A4147); // selected pill bg
   static const jadePillBg = Color(0xFF1F353A); // info card, status strip bg
 
@@ -129,11 +138,14 @@ class AppColors {
   static const vipBgDark = Color(0xFF2D2438);
 
   // Backward-compat aliases (will remove next sprint)
-  @Deprecated('Use AppColors.jadeMuted (calm operations). Will be removed in v2.1')
+  @Deprecated(
+      'Use AppColors.jadeMuted (calm operations). Will be removed in v2.1')
   static const jadeBright = jadeMuted;
-  @Deprecated('Use AppColors.goldText (calm operations). Will be removed in v2.1')
+  @Deprecated(
+      'Use AppColors.goldText (calm operations). Will be removed in v2.1')
   static const goldBright = goldText;
-  @Deprecated('Use AppColors.coralText (calm operations). Will be removed in v2.1')
+  @Deprecated(
+      'Use AppColors.coralText (calm operations). Will be removed in v2.1')
   static const coralBright = coralText;
 
   // ═══════════════════════════════════════════════════════════════
@@ -196,9 +208,11 @@ class AppColors {
   // ═══════════════════════════════════════════════════════════════
 
   // Brand renames (visual sẽ shift sang V2 — đó là intent của migration)
-  @Deprecated('Use AppColors.jade500 (or context.colors.brand). Will be removed in v2.1')
+  @Deprecated(
+      'Use AppColors.jade500 (or context.colors.brand). Will be removed in v2.1')
   static const ocean = jade500;
-  @Deprecated('Use AppColors.jade300 (or context.colors.brandLight). Will be removed in v2.1')
+  @Deprecated(
+      'Use AppColors.jade300 (or context.colors.brandLight). Will be removed in v2.1')
   static const oceanMid = jade300;
   @Deprecated('Use AppColors.jade900. Will be removed in v2.1')
   static const oceanDeep = jade900;
@@ -206,17 +220,20 @@ class AppColors {
   static const oceanLight = jade50;
   @Deprecated('Use AppColors.jade50. Will be removed in v2.1')
   static const oceanPale = jade50;
-  @Deprecated('Use AppColors.gold500 (or context.colors.brandSecondary). Will be removed in v2.1')
+  @Deprecated(
+      'Use AppColors.gold500 (or context.colors.brandSecondary). Will be removed in v2.1')
   static const gold = gold500;
   @Deprecated('Use AppColors.gold50. Will be removed in v2.1')
   static const goldLight = gold50;
-  @Deprecated('Removed in v2 (was duplicate of jade300). Will be removed in v2.1')
+  @Deprecated(
+      'Removed in v2 (was duplicate of jade300). Will be removed in v2.1')
   static const teal = jade300;
   @Deprecated('Use AppColors.jade100. Will be removed in v2.1')
   static const tealLight = jade100;
   @Deprecated('Use AppColors.jadeBright. Will be removed in v2.1')
   static const oceanBright = jadeBright;
-  @Deprecated('Removed in v2 (was duplicate of jadeBright). Will be removed in v2.1')
+  @Deprecated(
+      'Removed in v2 (was duplicate of jadeBright). Will be removed in v2.1')
   static const tealBright = jadeBright;
 
   // Aliases
@@ -242,15 +259,18 @@ class AppColors {
   static const slate = slate400;
   @Deprecated('Use AppColors.slate100. Will be removed in v2.1')
   static const slateLight = slate100;
-  @Deprecated('Use AppColors.slate200 (or context.colors.borderDefault). Will be removed in v2.1')
+  @Deprecated(
+      'Use AppColors.slate200 (or context.colors.borderDefault). Will be removed in v2.1')
   static const border = slate200;
   @Deprecated('Use AppColors.slate200. Will be removed in v2.1')
   static const divider = slate200;
-  @Deprecated('Use AppColors.slate50 (or context.colors.bgCanvas). Will be removed in v2.1')
+  @Deprecated(
+      'Use AppColors.slate50 (or context.colors.bgCanvas). Will be removed in v2.1')
   static const background = slate50;
   @Deprecated('Use AppColors.darkBg. Will be removed in v2.1')
   static const backgroundDark = darkBg;
-  @Deprecated('Use Color(0xFFFFFFFF) directly or context.colors.bgSurface. Will be removed in v2.1')
+  @Deprecated(
+      'Use Color(0xFFFFFFFF) directly or context.colors.bgSurface. Will be removed in v2.1')
   static const surface = Color(0xFFFFFFFF);
   @Deprecated('Use AppColors.darkSurface. Will be removed in v2.1')
   static const surfaceDark = darkSurface;
@@ -259,15 +279,19 @@ class AppColors {
   // V2 reassigns "coral" to a peachy warm accent (coral500=#F2856B).
   // Để KHÔNG đổi ngẫu nhiên error badge thành cam, V1 `coral` giữ hex
   // gốc (alias sang `error`), không redirect sang `coral500`.
-  @Deprecated('Use AppColors.error for errors, or AppColors.coral500 for warm accent. Will be removed in v2.1')
+  @Deprecated(
+      'Use AppColors.error for errors, or AppColors.coral500 for warm accent. Will be removed in v2.1')
   static const coral = error;
-  @Deprecated('Use AppColors.errorBg for errors, or AppColors.coral50 for warm accent. Will be removed in v2.1')
+  @Deprecated(
+      'Use AppColors.errorBg for errors, or AppColors.coral50 for warm accent. Will be removed in v2.1')
   static const coralLight = errorBg;
-  @Deprecated('Use AppColors.success (note: hex shifted 22C55E → 16A34A). Will be removed in v2.1')
+  @Deprecated(
+      'Use AppColors.success (note: hex shifted 22C55E → 16A34A). Will be removed in v2.1')
   static const emerald = success;
   @Deprecated('Use AppColors.successBg. Will be removed in v2.1')
   static const emeraldLight = successBg;
-  @Deprecated('Use AppColors.warning (note: hex shifted F59E0B → EAB308). Will be removed in v2.1')
+  @Deprecated(
+      'Use AppColors.warning (note: hex shifted F59E0B → EAB308). Will be removed in v2.1')
   static const amber = warning;
   @Deprecated('Use AppColors.warningBg. Will be removed in v2.1')
   static const amberLight = warningBg;

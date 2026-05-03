@@ -29,8 +29,7 @@ class VerifyAppBar extends StatelessWidget implements PreferredSizeWidget {
   });
 
   @override
-  Size get preferredSize =>
-      Size.fromHeight(currentStep != null ? 96 : 76);
+  Size get preferredSize => Size.fromHeight(currentStep != null ? 96 : 76);
 
   @override
   Widget build(BuildContext context) {

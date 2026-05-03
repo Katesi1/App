@@ -201,7 +201,8 @@ class _BookingListScreenState extends ConsumerState<BookingListScreen> {
                 }
 
                 return RefreshIndicator(
-                  onRefresh: () async => ref.invalidate(bookingListProvider(null)),
+                  onRefresh: () async =>
+                      ref.invalidate(bookingListProvider(null)),
                   child: ListView.separated(
                     padding: const EdgeInsets.fromLTRB(AppSpacing.md,
                         AppSpacing.sm, AppSpacing.md, AppSpacing.xxl),
@@ -310,8 +311,7 @@ class _BookingCardState extends ConsumerState<_BookingCard> {
               child: const Text('Không')),
           FilledButton(
             style: FilledButton.styleFrom(
-                backgroundColor: colors.error,
-                foregroundColor: Colors.white),
+                backgroundColor: colors.error, foregroundColor: Colors.white),
             onPressed: () => Navigator.pop(context, true),
             child: const Text('Huỷ booking'),
           ),
@@ -507,8 +507,7 @@ class _BookingCardState extends ConsumerState<_BookingCard> {
                               .withValues(alpha: isDark ? 0.18 : 0.1),
                           borderRadius: BorderRadius.circular(AppRadius.sm),
                           border: Border.all(
-                              color:
-                                  colors.warning.withValues(alpha: 0.3)),
+                              color: colors.warning.withValues(alpha: 0.3)),
                         ),
                         child: Row(
                           mainAxisSize: MainAxisSize.min,
@@ -546,8 +545,7 @@ class _BookingCardState extends ConsumerState<_BookingCard> {
                                     onPressed: _cancel,
                                     style: OutlinedButton.styleFrom(
                                       foregroundColor: colors.error,
-                                      side: BorderSide(
-                                          color: colors.error),
+                                      side: BorderSide(color: colors.error),
                                       padding: const EdgeInsets.symmetric(
                                           vertical: 6),
                                     ),

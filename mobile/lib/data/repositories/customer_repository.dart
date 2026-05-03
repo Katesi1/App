@@ -45,8 +45,7 @@ class CustomerRepository {
   Future<ApiResponse<BookingModel>> customerHoldRoom(
       Map<String, dynamic> data) async {
     try {
-      final response =
-          await _dio.post(ApiConstants.customerHold, data: data);
+      final response = await _dio.post(ApiConstants.customerHold, data: data);
       return ApiResponse(
         success: true,
         data: BookingModel.fromJson(response.data['data']),

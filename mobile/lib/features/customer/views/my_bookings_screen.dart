@@ -85,8 +85,7 @@ class _MyBookingsScreenState extends ConsumerState<MyBookingsScreen>
                           success ? snackColors.success : snackColors.error,
                       behavior: SnackBarBehavior.floating,
                       shape: RoundedRectangleBorder(
-                        borderRadius:
-                            BorderRadius.circular(AppSpacing.sm),
+                        borderRadius: BorderRadius.circular(AppSpacing.sm),
                       ),
                       margin: const EdgeInsets.all(AppSpacing.md),
                     ),
@@ -188,8 +187,7 @@ class _BookingTabState extends ConsumerState<_BookingTab>
         bookings.where((b) => b.status == BookingStatus.hold).length;
     final now = DateTime.now();
     final upcoming = bookings.where((b) {
-      return b.status == BookingStatus.confirmed &&
-          b.checkinDate.isAfter(now);
+      return b.status == BookingStatus.confirmed && b.checkinDate.isAfter(now);
     }).length;
 
     if (pending > 0) {
@@ -214,8 +212,7 @@ class _BookingTabState extends ConsumerState<_BookingTab>
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Icon(Icons.book_outlined,
-                    size: 48, color: colors.textTertiary),
+                Icon(Icons.book_outlined, size: 48, color: colors.textTertiary),
                 const SizedBox(height: 12),
                 Text(
                   'Chưa có booking nào',
@@ -240,8 +237,7 @@ class _BookingTabState extends ConsumerState<_BookingTab>
           child: ListView.separated(
             padding: const EdgeInsets.all(16),
             itemCount: bookings.length + (showInsight ? 1 : 0),
-            separatorBuilder: (_, __) =>
-                const SizedBox(height: 12),
+            separatorBuilder: (_, __) => const SizedBox(height: 12),
             itemBuilder: (_, i) {
               if (showInsight && i == 0) {
                 return AIInsightCard(message: insightMessage);
@@ -294,8 +290,7 @@ class _MyBookingCard extends StatelessWidget {
     required this.onCancel,
   });
 
-  String _formatDate(DateTime date) =>
-      '${date.day}/${date.month}/${date.year}';
+  String _formatDate(DateTime date) => '${date.day}/${date.month}/${date.year}';
 
   ({IconData icon, String label, String? subtitle, StatusStripVariant variant})
       _stripData() {
@@ -303,8 +298,8 @@ class _MyBookingCard extends StatelessWidget {
     final today = DateTime(now.year, now.month, now.day);
     final ci = DateTime(booking.checkinDate.year, booking.checkinDate.month,
         booking.checkinDate.day);
-    final co = DateTime(booking.checkoutDate.year,
-        booking.checkoutDate.month, booking.checkoutDate.day);
+    final co = DateTime(booking.checkoutDate.year, booking.checkoutDate.month,
+        booking.checkoutDate.day);
     final daysUntil = ci.difference(today).inDays;
     final isOngoing = !today.isBefore(ci) && today.isBefore(co);
 
@@ -415,8 +410,8 @@ class _MyBookingCard extends StatelessWidget {
                   ),
                 ),
                 Container(
-                  padding: const EdgeInsets.symmetric(
-                      horizontal: 10, vertical: 4),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                   decoration: BoxDecoration(
                     color: statusColor.withValues(alpha: isDark ? 0.18 : 0.1),
                     borderRadius: BorderRadius.circular(AppRadius.full),
@@ -436,8 +431,7 @@ class _MyBookingCard extends StatelessWidget {
 
           // Homestay name
           Padding(
-            padding:
-                const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
             child: Row(
               children: [
                 Icon(Icons.location_on_outlined,
@@ -462,8 +456,7 @@ class _MyBookingCard extends StatelessWidget {
 
           // Dates
           Padding(
-            padding:
-                const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
             child: Row(
               children: [
                 _DateInfo(
@@ -510,8 +503,7 @@ class _MyBookingCard extends StatelessWidget {
                     foregroundColor: colors.error,
                     side: BorderSide(color: colors.error),
                     shape: RoundedRectangleBorder(
-                      borderRadius:
-                          BorderRadius.circular(AppRadius.md),
+                      borderRadius: BorderRadius.circular(AppRadius.md),
                     ),
                   ),
                   child: Text(

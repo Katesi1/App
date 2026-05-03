@@ -32,7 +32,8 @@ class _SearchRoomScreenState extends ConsumerState<SearchRoomScreen> {
       context: context,
       initialDate: isCheckin
           ? (_checkinDate ?? now)
-          : (_checkoutDate ?? (_checkinDate ?? now).add(const Duration(days: 1))),
+          : (_checkoutDate ??
+              (_checkinDate ?? now).add(const Duration(days: 1))),
       firstDate: isCheckin ? now : (_checkinDate ?? now),
       lastDate: now.add(const Duration(days: 365)),
     );
@@ -136,8 +137,7 @@ class _SearchRoomScreenState extends ConsumerState<SearchRoomScreen> {
                         padding: const EdgeInsets.symmetric(horizontal: 10),
                         decoration: BoxDecoration(
                           border: Border.all(color: colors.borderDefault),
-                          borderRadius:
-                              BorderRadius.circular(AppRadius.md),
+                          borderRadius: BorderRadius.circular(AppRadius.md),
                         ),
                         child: DropdownButtonHideUnderline(
                           child: DropdownButton<String?>(
@@ -156,11 +156,9 @@ class _SearchRoomScreenState extends ConsumerState<SearchRoomScreen> {
                               DropdownMenuItem(
                                   value: 'sea', child: Text('View biển')),
                               DropdownMenuItem(
-                                  value: 'city',
-                                  child: Text('View thành phố')),
+                                  value: 'city', child: Text('View thành phố')),
                             ],
-                            onChanged: (v) =>
-                                setState(() => _selectedView = v),
+                            onChanged: (v) => setState(() => _selectedView = v),
                           ),
                         ),
                       ),
@@ -181,16 +179,14 @@ class _SearchRoomScreenState extends ConsumerState<SearchRoomScreen> {
                       },
                       child: Container(
                         height: 38,
-                        padding:
-                            const EdgeInsets.symmetric(horizontal: 10),
+                        padding: const EdgeInsets.symmetric(horizontal: 10),
                         decoration: BoxDecoration(
                           border: Border.all(
                             color: _priceAscending != null
                                 ? colors.brand
                                 : colors.borderDefault,
                           ),
-                          borderRadius:
-                              BorderRadius.circular(AppRadius.md),
+                          borderRadius: BorderRadius.circular(AppRadius.md),
                           color: _priceAscending != null
                               ? colors.brand.withValues(alpha: 0.10)
                               : null,
@@ -240,8 +236,7 @@ class _SearchRoomScreenState extends ConsumerState<SearchRoomScreen> {
                           horizontal: 12, vertical: 8),
                       decoration: BoxDecoration(
                         border: Border.all(color: colors.borderDefault),
-                        borderRadius:
-                            BorderRadius.circular(AppRadius.md),
+                        borderRadius: BorderRadius.circular(AppRadius.md),
                       ),
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
@@ -262,8 +257,7 @@ class _SearchRoomScreenState extends ConsumerState<SearchRoomScreen> {
                             ),
                           ),
                           Padding(
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 10),
+                            padding: const EdgeInsets.symmetric(horizontal: 10),
                             child: Text(
                               '$_guests',
                               style: GoogleFonts.beVietnamPro(
@@ -295,8 +289,7 @@ class _SearchRoomScreenState extends ConsumerState<SearchRoomScreen> {
                         height: 42,
                         child: ElevatedButton.icon(
                           onPressed: _search,
-                          icon: const Icon(Icons.search_rounded,
-                              size: 20),
+                          icon: const Icon(Icons.search_rounded, size: 20),
                           label: Text(
                             'Tìm kiếm',
                             style: GoogleFonts.beVietnamPro(
@@ -307,8 +300,7 @@ class _SearchRoomScreenState extends ConsumerState<SearchRoomScreen> {
                             backgroundColor: colors.brand,
                             foregroundColor: colors.textOnPrimary,
                             shape: RoundedRectangleBorder(
-                              borderRadius:
-                                  BorderRadius.circular(AppRadius.md),
+                              borderRadius: BorderRadius.circular(AppRadius.md),
                             ),
                           ),
                         ),
@@ -370,8 +362,7 @@ class _SearchRoomScreenState extends ConsumerState<SearchRoomScreen> {
                           itemBuilder: (_, i) => _RoomListCard(
                             room: rooms[i],
                             index: i,
-                            onTap: () =>
-                                context.push('/rooms/${rooms[i].id}'),
+                            onTap: () => context.push('/rooms/${rooms[i].id}'),
                           ),
                         ),
                 );
@@ -392,8 +383,8 @@ class _SearchRoomScreenState extends ConsumerState<SearchRoomScreen> {
                     ),
                     const SizedBox(height: 12),
                     TextButton(
-                      onPressed: () => ref.invalidate(
-                          publicRoomsProvider(_currentFilter)),
+                      onPressed: () =>
+                          ref.invalidate(publicRoomsProvider(_currentFilter)),
                       child: const Text('Thử lại'),
                     ),
                   ],
@@ -563,9 +554,7 @@ class _RoomListCard extends StatelessWidget {
                             size: 14, color: colors.textSecondary),
                         const SizedBox(width: 3),
                         Text(
-                          room.bedrooms == 0
-                              ? 'Studio'
-                              : '${room.bedrooms}PN',
+                          room.bedrooms == 0 ? 'Studio' : '${room.bedrooms}PN',
                           style: GoogleFonts.beVietnamPro(
                             fontSize: 11,
                             color: colors.textSecondary,

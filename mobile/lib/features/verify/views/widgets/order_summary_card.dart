@@ -113,8 +113,7 @@ class OrderSummaryCard extends StatelessWidget {
           const SizedBox(height: 12),
           // Trial badge
           Container(
-            padding:
-                const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
             decoration: BoxDecoration(
               color: AppColors.successBgDark,
               borderRadius: BorderRadius.circular(8),

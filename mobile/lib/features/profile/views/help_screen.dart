@@ -122,8 +122,7 @@ class _HelpScreenState extends State<HelpScreen> {
                       ),
                       suffixIcon: _query.isNotEmpty
                           ? IconButton(
-                              icon: const Icon(Icons.clear_rounded,
-                                  size: 20),
+                              icon: const Icon(Icons.clear_rounded, size: 20),
                               onPressed: () {
                                 _searchController.clear();
                                 setState(() => _query = '');
@@ -132,11 +131,9 @@ class _HelpScreenState extends State<HelpScreen> {
                           : null,
                       filled: true,
                       fillColor: colors.bgSurface,
-                      contentPadding:
-                          const EdgeInsets.symmetric(vertical: 12),
+                      contentPadding: const EdgeInsets.symmetric(vertical: 12),
                       border: OutlineInputBorder(
-                        borderRadius:
-                            BorderRadius.circular(AppRadius.full),
+                        borderRadius: BorderRadius.circular(AppRadius.full),
                         borderSide: BorderSide.none,
                       ),
                     ),
@@ -188,12 +185,11 @@ class _HelpScreenState extends State<HelpScreen> {
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 20),
               child: Container(
-                padding: const EdgeInsets.symmetric(
-                    horizontal: 16, vertical: 12),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                 decoration: BoxDecoration(
                   color: colors.warningBg,
-                  borderRadius:
-                      BorderRadius.circular(AppRadius.md),
+                  borderRadius: BorderRadius.circular(AppRadius.md),
                 ),
                 child: Row(
                   children: [
@@ -213,9 +209,7 @@ class _HelpScreenState extends State<HelpScreen> {
                   ],
                 ),
               ),
-            )
-                .animate(delay: 200.ms)
-                .fadeIn(duration: 400.ms),
+            ).animate(delay: 200.ms).fadeIn(duration: 400.ms),
           ),
 
           const SliverToBoxAdapter(child: SizedBox(height: 24)),
@@ -246,8 +240,7 @@ class _HelpScreenState extends State<HelpScreen> {
                   children: [
                     Icon(Icons.search_off_rounded,
                         size: 48,
-                        color: colors.textTertiary
-                            .withValues(alpha: 0.5)),
+                        color: colors.textTertiary.withValues(alpha: 0.5)),
                     const SizedBox(height: 12),
                     Text(
                       'Không tìm thấy kết quả',
@@ -275,13 +268,11 @@ class _HelpScreenState extends State<HelpScreen> {
                 (context, index) {
                   final cat = filtered[index];
                   return Padding(
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 20, vertical: 6),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 20, vertical: 6),
                     child: _FaqCategoryCard(category: cat),
                   )
-                      .animate(
-                          delay: Duration(
-                              milliseconds: 250 + index * 80))
+                      .animate(delay: Duration(milliseconds: 250 + index * 80))
                       .fadeIn(duration: 400.ms)
                       .slideY(begin: 0.05, end: 0);
                 },
@@ -299,8 +290,7 @@ class _HelpScreenState extends State<HelpScreen> {
                 padding: const EdgeInsets.all(20),
                 decoration: BoxDecoration(
                   color: colors.bgSurfaceContainer,
-                  borderRadius:
-                      BorderRadius.circular(AppRadius.lg),
+                  borderRadius: BorderRadius.circular(AppRadius.lg),
                 ),
                 child: Column(
                   children: [
@@ -329,20 +319,16 @@ class _HelpScreenState extends State<HelpScreen> {
                         Expanded(
                           child: OutlinedButton.icon(
                             onPressed: () => _launchPhone(context),
-                            icon: const Icon(Icons.phone_outlined,
-                                size: 18),
+                            icon: const Icon(Icons.phone_outlined, size: 18),
                             label: const Text('Gọi ngay'),
                             style: OutlinedButton.styleFrom(
                               foregroundColor: colors.brand,
-                              side: BorderSide(
-                                  color: colors.brand),
+                              side: BorderSide(color: colors.brand),
                               shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(
-                                    AppRadius.full),
+                                borderRadius:
+                                    BorderRadius.circular(AppRadius.full),
                               ),
-                              padding:
-                                  const EdgeInsets.symmetric(
-                                      vertical: 12),
+                              padding: const EdgeInsets.symmetric(vertical: 12),
                               textStyle: GoogleFonts.beVietnamPro(
                                 fontWeight: FontWeight.w600,
                               ),
@@ -353,19 +339,16 @@ class _HelpScreenState extends State<HelpScreen> {
                         Expanded(
                           child: FilledButton.icon(
                             onPressed: () => _launchEmail(context),
-                            icon: const Icon(Icons.email_outlined,
-                                size: 18),
+                            icon: const Icon(Icons.email_outlined, size: 18),
                             label: const Text('Gửi email'),
                             style: FilledButton.styleFrom(
                               backgroundColor: colors.brand,
                               foregroundColor: Colors.white,
                               shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(
-                                    AppRadius.full),
+                                borderRadius:
+                                    BorderRadius.circular(AppRadius.full),
                               ),
-                              padding:
-                                  const EdgeInsets.symmetric(
-                                      vertical: 12),
+                              padding: const EdgeInsets.symmetric(vertical: 12),
                               textStyle: GoogleFonts.beVietnamPro(
                                 fontWeight: FontWeight.w600,
                               ),
@@ -377,9 +360,7 @@ class _HelpScreenState extends State<HelpScreen> {
                   ],
                 ),
               ),
-            )
-                .animate(delay: 400.ms)
-                .fadeIn(duration: 400.ms),
+            ).animate(delay: 400.ms).fadeIn(duration: 400.ms),
           ),
 
           const SliverToBoxAdapter(child: SizedBox(height: 16)),
@@ -410,8 +391,7 @@ class _HelpScreenState extends State<HelpScreen> {
     } else if (context.mounted) {
       await Clipboard.setData(ClipboardData(text: _supportPhone));
       if (context.mounted) {
-        AppSnackBar.info(
-            context, 'Đã sao chép SĐT: $_supportPhone');
+        AppSnackBar.info(context, 'Đã sao chép SĐT: $_supportPhone');
       }
     }
   }
@@ -427,8 +407,7 @@ class _HelpScreenState extends State<HelpScreen> {
     } else if (context.mounted) {
       await Clipboard.setData(ClipboardData(text: _supportEmail));
       if (context.mounted) {
-        AppSnackBar.info(
-            context, 'Đã sao chép email: $_supportEmail');
+        AppSnackBar.info(context, 'Đã sao chép email: $_supportEmail');
       }
     }
   }
@@ -459,8 +438,7 @@ class _ContactCard extends StatelessWidget {
       color: colors.bgSurface,
       borderRadius: BorderRadius.circular(AppRadius.lg),
       elevation: isDark ? 0 : 1,
-      shadowColor:
-          Colors.black.withValues(alpha: isDark ? 0.30 : 0.10),
+      shadowColor: Colors.black.withValues(alpha: isDark ? 0.30 : 0.10),
       child: InkWell(
         onTap: onTap,
         borderRadius: BorderRadius.circular(AppRadius.lg),
@@ -520,8 +498,7 @@ class _FaqCategoryCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(AppRadius.lg),
         boxShadow: [
           BoxShadow(
-            color:
-                Colors.black.withValues(alpha: isDark ? 0.30 : 0.06),
+            color: Colors.black.withValues(alpha: isDark ? 0.30 : 0.06),
             blurRadius: 12,
             offset: const Offset(0, 2),
           ),
@@ -537,8 +514,7 @@ class _FaqCategoryCard extends StatelessWidget {
               color: colors.brand.withValues(alpha: 0.08),
               borderRadius: BorderRadius.circular(AppRadius.md),
             ),
-            child: Icon(category.icon,
-                color: colors.brand, size: 20),
+            child: Icon(category.icon, color: colors.brand, size: 20),
           ),
           title: Text(
             category.title,
@@ -561,11 +537,10 @@ class _FaqCategoryCard extends StatelessWidget {
           collapsedShape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(AppRadius.lg),
           ),
-          childrenPadding: const EdgeInsets.only(
-              left: 16, right: 16, bottom: 12),
-          children: category.items
-              .map((item) => _FaqItemTile(item: item))
-              .toList(),
+          childrenPadding:
+              const EdgeInsets.only(left: 16, right: 16, bottom: 12),
+          children:
+              category.items.map((item) => _FaqItemTile(item: item)).toList(),
         ),
       ),
     );
@@ -586,10 +561,9 @@ class _FaqItemTile extends StatelessWidget {
       data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
       child: ExpansionTile(
         tilePadding: const EdgeInsets.symmetric(horizontal: 8),
-        childrenPadding:
-            const EdgeInsets.only(left: 8, right: 8, bottom: 12),
-        leading: Icon(Icons.help_outline_rounded,
-            color: colors.brand, size: 18),
+        childrenPadding: const EdgeInsets.only(left: 8, right: 8, bottom: 12),
+        leading:
+            Icon(Icons.help_outline_rounded, color: colors.brand, size: 18),
         title: Text(
           item.question,
           style: GoogleFonts.beVietnamPro(
@@ -647,30 +621,26 @@ const _faqCategories = <_FaqCategory>[
     items: [
       _FaqItem(
         question: 'Làm sao để tạo tài khoản?',
-        answer:
-            'Bạn có thể tạo tài khoản bằng cách nhấn "Đăng ký" ở màn hình '
+        answer: 'Bạn có thể tạo tài khoản bằng cách nhấn "Đăng ký" ở màn hình '
             'đăng nhập. Nhập số điện thoại, mật khẩu và chọn vai trò '
             '(Khách hàng hoặc Nhân viên). Bạn cũng có thể đăng ký nhanh '
             'bằng tài khoản Google.',
       ),
       _FaqItem(
         question: 'Quên mật khẩu thì phải làm sao?',
-        answer:
-            'Tại màn hình đăng nhập, nhấn "Quên mật khẩu" và nhập số điện '
+        answer: 'Tại màn hình đăng nhập, nhấn "Quên mật khẩu" và nhập số điện '
             'thoại hoặc email đã đăng ký. Hệ thống sẽ gửi mã xác nhận '
             'để bạn đặt lại mật khẩu mới.',
       ),
       _FaqItem(
         question: 'Làm sao để đổi mật khẩu?',
-        answer:
-            'Vào phần "Tài khoản" → "Đổi mật khẩu". Nhập mật khẩu hiện '
+        answer: 'Vào phần "Tài khoản" → "Đổi mật khẩu". Nhập mật khẩu hiện '
             'tại, sau đó nhập mật khẩu mới (tối thiểu 8 ký tự, bao gồm '
             'chữ hoa, chữ thường, số và ký tự đặc biệt).',
       ),
       _FaqItem(
         question: 'Tôi có thể đăng nhập bằng Google không?',
-        answer:
-            'Có! Tại màn hình đăng nhập, nhấn nút "Đăng nhập với Google". '
+        answer: 'Có! Tại màn hình đăng nhập, nhấn nút "Đăng nhập với Google". '
             'Nếu là lần đầu, hệ thống sẽ tự tạo tài khoản cho bạn.',
       ),
     ],
@@ -681,30 +651,26 @@ const _faqCategories = <_FaqCategory>[
     items: [
       _FaqItem(
         question: 'Làm sao để đặt phòng?',
-        answer:
-            'Từ trang chủ, nhấn "Tìm phòng" → chọn ngày nhận/trả phòng, '
+        answer: 'Từ trang chủ, nhấn "Tìm phòng" → chọn ngày nhận/trả phòng, '
             'số lượng khách → chọn phòng phù hợp → nhấn "Đặt phòng". '
             'Booking sẽ được giữ (HOLD) trong 30 phút để bạn xác nhận.',
       ),
       _FaqItem(
         question: 'Trạng thái đặt phòng gồm những gì?',
-        answer:
-            '• Đang giữ (HOLD): Phòng được giữ 30 phút, chờ xác nhận.\n'
+        answer: '• Đang giữ (HOLD): Phòng được giữ 30 phút, chờ xác nhận.\n'
             '• Đã xác nhận (CONFIRMED): Đặt phòng thành công.\n'
             '• Đã huỷ (CANCELLED): Đặt phòng đã bị huỷ.\n'
             '• Hoàn thành (COMPLETED): Khách đã trả phòng.',
       ),
       _FaqItem(
         question: 'Tôi có thể huỷ đặt phòng không?',
-        answer:
-            'Có. Vào "Booking của tôi", chọn booking cần huỷ và nhấn '
+        answer: 'Có. Vào "Booking của tôi", chọn booking cần huỷ và nhấn '
             '"Huỷ đặt phòng". Lưu ý: chỉ huỷ được khi booking đang ở '
             'trạng thái "Đang giữ" hoặc "Đã xác nhận".',
       ),
       _FaqItem(
         question: 'Phòng bị giữ (HOLD) nghĩa là gì?',
-        answer:
-            'Khi bạn đặt phòng, phòng sẽ được giữ trong 30 phút. Trong '
+        answer: 'Khi bạn đặt phòng, phòng sẽ được giữ trong 30 phút. Trong '
             'thời gian này, nhân viên sẽ xác nhận booking của bạn. Nếu '
             'quá thời gian mà chưa được xác nhận, booking sẽ tự động huỷ.',
       ),
@@ -716,22 +682,19 @@ const _faqCategories = <_FaqCategory>[
     items: [
       _FaqItem(
         question: 'Làm sao để xem chi tiết phòng?',
-        answer:
-            'Tại trang "Tìm phòng", nhấn vào phòng bạn quan tâm để xem '
+        answer: 'Tại trang "Tìm phòng", nhấn vào phòng bạn quan tâm để xem '
             'thông tin chi tiết bao gồm: hình ảnh, giá, tiện nghi, '
             'sức chứa và lịch trống.',
       ),
       _FaqItem(
         question: 'Giá phòng được tính như thế nào?',
-        answer:
-            'Giá phòng được tính theo đêm. Giá có thể khác nhau giữa '
+        answer: 'Giá phòng được tính theo đêm. Giá có thể khác nhau giữa '
             'ngày thường và cuối tuần/ngày lễ. Tổng tiền = Giá phòng '
             '× Số đêm lưu trú.',
       ),
       _FaqItem(
         question: 'Phòng có những trạng thái nào?',
-        answer:
-            '• Trống (xanh lá): Phòng sẵn sàng cho khách đặt.\n'
+        answer: '• Trống (xanh lá): Phòng sẵn sàng cho khách đặt.\n'
             '• Đã đặt (vàng): Phòng có booking sắp tới.\n'
             '• Đang ở (xanh dương): Khách đang lưu trú.\n'
             '• Bảo trì (xám): Phòng đang bảo trì, không thể đặt.',
@@ -744,15 +707,13 @@ const _faqCategories = <_FaqCategory>[
     items: [
       _FaqItem(
         question: 'Các hình thức thanh toán?',
-        answer:
-            'Hiện tại hỗ trợ thanh toán trực tiếp tại homestay khi '
+        answer: 'Hiện tại hỗ trợ thanh toán trực tiếp tại homestay khi '
             'nhận phòng. Chúng tôi đang phát triển thêm các phương '
             'thức thanh toán online trong thời gian tới.',
       ),
       _FaqItem(
         question: 'Chính sách hoàn tiền như thế nào?',
-        answer:
-            'Nếu bạn huỷ booking trước thời gian nhận phòng 24 giờ, '
+        answer: 'Nếu bạn huỷ booking trước thời gian nhận phòng 24 giờ, '
             'bạn sẽ được hoàn tiền 100%. Huỷ trong vòng 24 giờ trước '
             'nhận phòng sẽ tuỳ theo chính sách của từng homestay.',
       ),
@@ -764,22 +725,19 @@ const _faqCategories = <_FaqCategory>[
     items: [
       _FaqItem(
         question: 'Tôi là chủ homestay, làm sao để bắt đầu?',
-        answer:
-            'Đăng ký tài khoản với vai trò "Nhân viên", sau đó liên hệ '
+        answer: 'Đăng ký tài khoản với vai trò "Nhân viên", sau đó liên hệ '
             'admin để được cấp quyền quản lý homestay. Bạn sẽ có thể '
             'thêm phòng, quản lý booking và xem báo cáo.',
       ),
       _FaqItem(
         question: 'Làm sao để chuyển đổi giữa chế độ quản lý và khách?',
-        answer:
-            'Tại trang tài khoản, nhấn "Chuyển sang quản lý" hoặc '
+        answer: 'Tại trang tài khoản, nhấn "Chuyển sang quản lý" hoặc '
             '"Xem như khách" để chuyển đổi. Chế độ khách giúp bạn trải '
             'nghiệm ứng dụng như một khách hàng thông thường.',
       ),
       _FaqItem(
         question: 'Làm sao để xác nhận booking?',
-        answer:
-            'Vào phần "Lịch" hoặc "Tổng quan" → chọn booking đang ở '
+        answer: 'Vào phần "Lịch" hoặc "Tổng quan" → chọn booking đang ở '
             'trạng thái "Đang giữ" → nhấn "Xác nhận". Booking sẽ '
             'chuyển sang trạng thái "Đã xác nhận".',
       ),
@@ -791,14 +749,12 @@ const _faqCategories = <_FaqCategory>[
     items: [
       _FaqItem(
         question: 'Làm sao để bật chế độ tối?',
-        answer:
-            'Vào "Tài khoản" → bật "Chế độ tối". Giao diện sẽ chuyển '
+        answer: 'Vào "Tài khoản" → bật "Chế độ tối". Giao diện sẽ chuyển '
             'sang nền tối, giúp bảo vệ mắt khi sử dụng vào ban đêm.',
       ),
       _FaqItem(
         question: 'Thông tin cá nhân có được bảo mật không?',
-        answer:
-            'Có. Chúng tôi sử dụng mã hoá bảo mật để lưu trữ token '
+        answer: 'Có. Chúng tôi sử dụng mã hoá bảo mật để lưu trữ token '
             'đăng nhập và thông tin cá nhân. Dữ liệu được truyền tải '
             'an toàn qua HTTPS.',
       ),

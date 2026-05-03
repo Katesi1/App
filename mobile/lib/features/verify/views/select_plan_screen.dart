@@ -44,8 +44,7 @@ class _SelectPlanScreenState extends ConsumerState<SelectPlanScreen> {
     final colors = context.colors;
     final state = ref.watch(verifyFlowControllerProvider);
     final plansAsync = ref.watch(verifyPlansProvider);
-    final suggestedTier =
-        PlanPriceCalculator.suggestTier(state.expectedRooms);
+    final suggestedTier = PlanPriceCalculator.suggestTier(state.expectedRooms);
 
     return Scaffold(
       backgroundColor: colors.bgCanvas,
@@ -57,8 +56,7 @@ class _SelectPlanScreenState extends ConsumerState<SelectPlanScreen> {
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (e, _) => Center(child: Text('Lỗi: $e')),
         data: (plans) {
-          final selectedPlan =
-              PlanPriceCalculator.planFor(_selected!, plans);
+          final selectedPlan = PlanPriceCalculator.planFor(_selected!, plans);
           final total = PlanPriceCalculator.total(
             state.expectedRooms,
             selectedPlan,
@@ -242,9 +240,7 @@ class _ToggleSegment extends StatelessWidget {
         decoration: BoxDecoration(
           color: isActive ? colors.bgSurface : Colors.transparent,
           borderRadius: BorderRadius.circular(100),
-          border: isActive
-              ? Border.all(color: colors.borderDefault)
-              : null,
+          border: isActive ? Border.all(color: colors.borderDefault) : null,
         ),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -255,16 +251,13 @@ class _ToggleSegment extends StatelessWidget {
               style: TextStyle(
                 fontSize: 12,
                 fontWeight: FontWeight.w700,
-                color: isActive
-                    ? colors.textPrimary
-                    : colors.textTertiary,
+                color: isActive ? colors.textPrimary : colors.textTertiary,
               ),
             ),
             if (badge != null) ...[
               const SizedBox(width: 6),
               Container(
-                padding: const EdgeInsets.symmetric(
-                    horizontal: 6, vertical: 1),
+                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
                 decoration: BoxDecoration(
                   color: AppColors.goldBg,
                   borderRadius: BorderRadius.circular(4),

@@ -106,8 +106,7 @@ class ReportScreen extends ConsumerWidget {
                     gradient: const LinearGradient(
                         colors: [AppColors.jade500, AppColors.gold500]),
                     border: Border.all(
-                        color: Colors.white.withValues(alpha: 0.3),
-                        width: 1.5),
+                        color: Colors.white.withValues(alpha: 0.3), width: 1.5),
                   ),
                   child: Center(
                     child: Text(
@@ -278,28 +277,24 @@ class ReportScreen extends ConsumerWidget {
                               label: 'Tổng số phòng',
                               value: '$totalRooms',
                             ),
-                            Divider(
-                                height: 20, color: colors.borderDefault),
+                            Divider(height: 20, color: colors.borderDefault),
                             _InfoRow(
                               label: 'Phòng hoạt động',
                               value: '$activeRooms',
                               valueColor: colors.success,
                             ),
-                            Divider(
-                                height: 20, color: colors.borderDefault),
+                            Divider(height: 20, color: colors.borderDefault),
                             _InfoRow(
                               label: 'Phòng tạm ngưng',
                               value: '${totalRooms - activeRooms}',
                               valueColor: colors.textTertiary,
                             ),
-                            Divider(
-                                height: 20, color: colors.borderDefault),
+                            Divider(height: 20, color: colors.borderDefault),
                             _InfoRow(
                               label: 'Có ảnh bìa',
                               value: '${report.roomsWithCover}',
                             ),
-                            Divider(
-                                height: 20, color: colors.borderDefault),
+                            Divider(height: 20, color: colors.borderDefault),
                             _InfoRow(
                               label: 'Đã cập nhật giá',
                               value: '${report.roomsWithPrice}',
@@ -594,8 +589,7 @@ class _RecentBookingCard extends StatelessWidget {
     final colors = context.colors;
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final statusLabel = booking.status.label;
-    final statusColor =
-        AppHelpers.bookingStatusColor(booking.status.value);
+    final statusColor = AppHelpers.bookingStatusColor(booking.status.value);
 
     return Container(
       padding: const EdgeInsets.all(12),
@@ -651,8 +645,7 @@ class _RecentBookingCard extends StatelessWidget {
             ),
           ),
           Container(
-            padding: const EdgeInsets.symmetric(
-                horizontal: 8, vertical: 3),
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
             decoration: BoxDecoration(
               color: statusColor.withValues(alpha: 0.12),
               borderRadius: BorderRadius.circular(20),

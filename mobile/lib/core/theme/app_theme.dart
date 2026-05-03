@@ -11,36 +11,36 @@ export 'app_spacing.dart';
 // ─── Text Themes ───────────────────────────────────────────────────────────────
 TextTheme _buildTextTheme({Color? bodyColor, Color? displayColor}) {
   final base = TextTheme(
-    displayLarge: GoogleFonts.beVietnamPro(
-        fontSize: 57, fontWeight: FontWeight.w400),
-    displayMedium: GoogleFonts.beVietnamPro(
-        fontSize: 45, fontWeight: FontWeight.w400),
-    displaySmall: GoogleFonts.beVietnamPro(
-        fontSize: 36, fontWeight: FontWeight.w400),
-    headlineLarge: GoogleFonts.beVietnamPro(
-        fontSize: 32, fontWeight: FontWeight.w700),
-    headlineMedium: GoogleFonts.beVietnamPro(
-        fontSize: 28, fontWeight: FontWeight.w600),
-    headlineSmall: GoogleFonts.beVietnamPro(
-        fontSize: 24, fontWeight: FontWeight.w600),
-    titleLarge: GoogleFonts.beVietnamPro(
-        fontSize: 22, fontWeight: FontWeight.w600),
-    titleMedium: GoogleFonts.beVietnamPro(
-        fontSize: 16, fontWeight: FontWeight.w600),
-    titleSmall: GoogleFonts.beVietnamPro(
-        fontSize: 14, fontWeight: FontWeight.w600),
-    bodyLarge: GoogleFonts.beVietnamPro(
-        fontSize: 16, fontWeight: FontWeight.w400),
-    bodyMedium: GoogleFonts.beVietnamPro(
-        fontSize: 14, fontWeight: FontWeight.w400),
-    bodySmall: GoogleFonts.beVietnamPro(
-        fontSize: 12, fontWeight: FontWeight.w400),
-    labelLarge: GoogleFonts.beVietnamPro(
-        fontSize: 14, fontWeight: FontWeight.w600),
-    labelMedium: GoogleFonts.beVietnamPro(
-        fontSize: 12, fontWeight: FontWeight.w500),
-    labelSmall: GoogleFonts.beVietnamPro(
-        fontSize: 11, fontWeight: FontWeight.w500),
+    displayLarge:
+        GoogleFonts.beVietnamPro(fontSize: 57, fontWeight: FontWeight.w400),
+    displayMedium:
+        GoogleFonts.beVietnamPro(fontSize: 45, fontWeight: FontWeight.w400),
+    displaySmall:
+        GoogleFonts.beVietnamPro(fontSize: 36, fontWeight: FontWeight.w400),
+    headlineLarge:
+        GoogleFonts.beVietnamPro(fontSize: 32, fontWeight: FontWeight.w700),
+    headlineMedium:
+        GoogleFonts.beVietnamPro(fontSize: 28, fontWeight: FontWeight.w600),
+    headlineSmall:
+        GoogleFonts.beVietnamPro(fontSize: 24, fontWeight: FontWeight.w600),
+    titleLarge:
+        GoogleFonts.beVietnamPro(fontSize: 22, fontWeight: FontWeight.w600),
+    titleMedium:
+        GoogleFonts.beVietnamPro(fontSize: 16, fontWeight: FontWeight.w600),
+    titleSmall:
+        GoogleFonts.beVietnamPro(fontSize: 14, fontWeight: FontWeight.w600),
+    bodyLarge:
+        GoogleFonts.beVietnamPro(fontSize: 16, fontWeight: FontWeight.w400),
+    bodyMedium:
+        GoogleFonts.beVietnamPro(fontSize: 14, fontWeight: FontWeight.w400),
+    bodySmall:
+        GoogleFonts.beVietnamPro(fontSize: 12, fontWeight: FontWeight.w400),
+    labelLarge:
+        GoogleFonts.beVietnamPro(fontSize: 14, fontWeight: FontWeight.w600),
+    labelMedium:
+        GoogleFonts.beVietnamPro(fontSize: 12, fontWeight: FontWeight.w500),
+    labelSmall:
+        GoogleFonts.beVietnamPro(fontSize: 11, fontWeight: FontWeight.w500),
   );
   if (bodyColor == null && displayColor == null) return base;
   return base.apply(
@@ -86,7 +86,6 @@ class AppTheme {
       textTheme: _buildTextTheme(),
       scaffoldBackgroundColor: scheme.bgCanvas,
       extensions: const [AppThemeExtension(colors: scheme)],
-
       appBarTheme: AppBarTheme(
         backgroundColor: scheme.bgSurface,
         foregroundColor: scheme.textBrand,
@@ -100,7 +99,6 @@ class AppTheme {
           fontWeight: FontWeight.w700,
         ),
       ),
-
       elevatedButtonTheme: ElevatedButtonThemeData(
         style: ElevatedButton.styleFrom(
           backgroundColor: AppColors.jade500,
@@ -114,7 +112,6 @@ class AppTheme {
           elevation: 0,
         ),
       ),
-
       filledButtonTheme: FilledButtonThemeData(
         style: FilledButton.styleFrom(
           backgroundColor: AppColors.jade500,
@@ -127,7 +124,6 @@ class AppTheme {
               fontSize: 16, fontWeight: FontWeight.w600),
         ),
       ),
-
       outlinedButtonTheme: OutlinedButtonThemeData(
         style: OutlinedButton.styleFrom(
           foregroundColor: AppColors.jade500,
@@ -140,7 +136,6 @@ class AppTheme {
               fontSize: 16, fontWeight: FontWeight.w600),
         ),
       ),
-
       textButtonTheme: TextButtonThemeData(
         style: TextButton.styleFrom(
           foregroundColor: AppColors.jade500,
@@ -148,7 +143,6 @@ class AppTheme {
               fontSize: 14, fontWeight: FontWeight.w600),
         ),
       ),
-
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
         fillColor: scheme.bgSurface,
@@ -176,12 +170,11 @@ class AppTheme {
           horizontal: AppSpacing.md,
           vertical: 14,
         ),
-        labelStyle: GoogleFonts.beVietnamPro(
-            fontSize: 14, color: scheme.textSecondary),
-        hintStyle: GoogleFonts.beVietnamPro(
-            fontSize: 14, color: scheme.textTertiary),
+        labelStyle:
+            GoogleFonts.beVietnamPro(fontSize: 14, color: scheme.textSecondary),
+        hintStyle:
+            GoogleFonts.beVietnamPro(fontSize: 14, color: scheme.textTertiary),
       ),
-
       cardTheme: CardThemeData(
         elevation: 0,
         shape: RoundedRectangleBorder(
@@ -191,7 +184,6 @@ class AppTheme {
         color: scheme.bgSurface,
         clipBehavior: Clip.antiAlias,
       ),
-
       chipTheme: ChipThemeData(
         backgroundColor: scheme.bgSurface,
         selectedColor: AppColors.jade50,
@@ -205,13 +197,11 @@ class AppTheme {
             fontWeight: FontWeight.w500,
             color: scheme.textPrimary),
       ),
-
       dividerTheme: DividerThemeData(
         color: scheme.borderDefault,
         thickness: 1,
         space: 1,
       ),
-
       floatingActionButtonTheme: FloatingActionButtonThemeData(
         backgroundColor: AppColors.jade500,
         foregroundColor: const Color(0xFFFFFFFF),
@@ -220,7 +210,6 @@ class AppTheme {
           fontWeight: FontWeight.w600,
         ),
       ),
-
       bottomNavigationBarTheme: BottomNavigationBarThemeData(
         backgroundColor: scheme.bgSurface,
         selectedItemColor: AppColors.jade500,
@@ -233,7 +222,6 @@ class AppTheme {
         type: BottomNavigationBarType.fixed,
         elevation: 8,
       ),
-
       switchTheme: SwitchThemeData(
         thumbColor: WidgetStateProperty.resolveWith((s) =>
             s.contains(WidgetState.selected)
@@ -244,7 +232,6 @@ class AppTheme {
                 ? AppColors.jade50
                 : AppColors.slate100),
       ),
-
       dialogTheme: DialogThemeData(
         backgroundColor: scheme.bgSurface,
         shape: RoundedRectangleBorder(
@@ -254,8 +241,8 @@ class AppTheme {
             fontSize: 18,
             fontWeight: FontWeight.w700,
             color: scheme.textPrimary),
-        contentTextStyle: GoogleFonts.beVietnamPro(
-            fontSize: 14, color: scheme.textSecondary),
+        contentTextStyle:
+            GoogleFonts.beVietnamPro(fontSize: 14, color: scheme.textSecondary),
       ),
     );
   }
@@ -379,8 +366,7 @@ class AppTheme {
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(AppRadius.md),
-          borderSide:
-              const BorderSide(color: AppColors.jadeMuted, width: 2),
+          borderSide: const BorderSide(color: AppColors.jadeMuted, width: 2),
         ),
         errorBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(AppRadius.md),
@@ -388,8 +374,7 @@ class AppTheme {
         ),
         focusedErrorBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(AppRadius.md),
-          borderSide:
-              const BorderSide(color: AppColors.errorText, width: 2),
+          borderSide: const BorderSide(color: AppColors.errorText, width: 2),
         ),
         contentPadding: const EdgeInsets.symmetric(
           horizontal: AppSpacing.md,
@@ -397,8 +382,8 @@ class AppTheme {
         ),
         labelStyle: GoogleFonts.beVietnamPro(
             fontSize: 14, color: AppColors.darkTextSecondary),
-        hintStyle: GoogleFonts.beVietnamPro(
-            fontSize: 14, color: AppColors.darkHint),
+        hintStyle:
+            GoogleFonts.beVietnamPro(fontSize: 14, color: AppColors.darkHint),
         prefixIconColor: AppColors.darkHint,
         suffixIconColor: AppColors.darkHint,
       ),

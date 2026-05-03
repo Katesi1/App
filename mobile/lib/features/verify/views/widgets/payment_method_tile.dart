@@ -78,8 +78,9 @@ class PaymentMethodTile extends StatelessWidget {
                     style: TextStyle(
                       fontSize: 12,
                       fontWeight: FontWeight.w700,
-                      color:
-                          isSelected ? colors.textPrimary : colors.textSecondary,
+                      color: isSelected
+                          ? colors.textPrimary
+                          : colors.textSecondary,
                     ),
                   ),
                   const SizedBox(height: 2),

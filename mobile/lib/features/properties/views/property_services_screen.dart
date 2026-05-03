@@ -38,9 +38,8 @@ class _PropertyServicesScreenState
   Future<void> _onSave() async {
     setState(() => _isLoading = true);
 
-    final ok = await ref
-        .read(roomActionsProvider.notifier)
-        .update(widget.homestayId, {
+    final ok =
+        await ref.read(roomActionsProvider.notifier).update(widget.homestayId, {
       'services': _services,
     });
 
@@ -76,8 +75,7 @@ class _PropertyServicesScreenState
           ),
           actions: [
             TextButton(
-                onPressed: () => Navigator.pop(ctx),
-                child: const Text('Huỷ')),
+                onPressed: () => Navigator.pop(ctx), child: const Text('Huỷ')),
             TextButton(
               onPressed: () {
                 if (ctrl.text.trim().isNotEmpty) {
@@ -117,8 +115,7 @@ class _PropertyServicesScreenState
         loading: () => const LoadingWidget(),
         error: (e, _) => ErrorStateWidget(
           message: e.toString().replaceAll('Exception: ', ''),
-          onRetry: () =>
-              ref.invalidate(roomDetailProvider(widget.homestayId)),
+          onRetry: () => ref.invalidate(roomDetailProvider(widget.homestayId)),
         ),
         data: (_) {
           _initFromRoom();
@@ -132,7 +129,8 @@ class _PropertyServicesScreenState
                   const SizedBox(height: 12),
                   Text('Chưa có dịch vụ nào',
                       style: GoogleFonts.beVietnamPro(
-                        fontSize: 15, color: colors.textSecondary,
+                        fontSize: 15,
+                        color: colors.textSecondary,
                       )),
                   const SizedBox(height: 8),
                   TextButton.icon(
@@ -152,7 +150,8 @@ class _PropertyServicesScreenState
             itemBuilder: (_, i) => ListTile(
               contentPadding: EdgeInsets.zero,
               leading: Container(
-                width: 40, height: 40,
+                width: 40,
+                height: 40,
                 decoration: BoxDecoration(
                   color: colors.brand.withValues(alpha: isDark ? 0.18 : 0.12),
                   borderRadius: BorderRadius.circular(AppRadius.sm),
@@ -179,7 +178,8 @@ class _PropertyServicesScreenState
         child: Padding(
           padding: const EdgeInsets.all(AppSpacing.md),
           child: SizedBox(
-            width: double.infinity, height: 48,
+            width: double.infinity,
+            height: 48,
             child: DecoratedBox(
               decoration: BoxDecoration(
                 gradient: LinearGradient(colors: gradient),
@@ -195,12 +195,15 @@ class _PropertyServicesScreenState
                   ),
                 ),
                 child: _isLoading
-                    ? const SizedBox(width: 20, height: 20,
+                    ? const SizedBox(
+                        width: 20,
+                        height: 20,
                         child: CircularProgressIndicator(
                             strokeWidth: 2, color: Colors.white))
                     : Text('Lưu',
                         style: GoogleFonts.beVietnamPro(
-                          fontWeight: FontWeight.w700, fontSize: 15,
+                          fontWeight: FontWeight.w700,
+                          fontSize: 15,
                           color: Colors.white,
                         )),
               ),

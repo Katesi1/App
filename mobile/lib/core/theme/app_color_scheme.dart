@@ -115,7 +115,8 @@ class AppColorScheme {
         textBrand = AppColors.jadeText, // #B5D4DA — text brand on dark
         textBrandAccent = AppColors.goldText, // #C9A567
         textBrandWarm = AppColors.coralText, // #C9A084
-        textOnPrimary = AppColors.darkBg, // #16252B — text on jadeText button BG
+        textOnPrimary =
+            AppColors.darkBg, // #16252B — text on jadeText button BG
         textOnSecondary = AppColors.darkBg,
         textOnCoral = AppColors.darkBg,
         borderSubtle = AppColors.darkDivider, // #243439

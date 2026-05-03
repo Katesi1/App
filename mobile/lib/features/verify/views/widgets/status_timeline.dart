@@ -75,12 +75,21 @@ class _StepRow extends StatelessWidget {
     final colors = context.colors;
 
     final (titleColor, subtitleColor, fontWeight) = switch (step.status) {
-      TimelineStepStatus.done =>
-        (colors.textPrimary, colors.success, FontWeight.w700),
-      TimelineStepStatus.current =>
-        (colors.textPrimary, colors.brandSecondary, FontWeight.w700),
-      TimelineStepStatus.pending =>
-        (colors.textTertiary, colors.textDisabled, FontWeight.w700),
+      TimelineStepStatus.done => (
+          colors.textPrimary,
+          colors.success,
+          FontWeight.w700
+        ),
+      TimelineStepStatus.current => (
+          colors.textPrimary,
+          colors.brandSecondary,
+          FontWeight.w700
+        ),
+      TimelineStepStatus.pending => (
+          colors.textTertiary,
+          colors.textDisabled,
+          FontWeight.w700
+        ),
     };
 
     return Row(

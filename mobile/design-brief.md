@@ -8,7 +8,7 @@
 ## 1. App Overview
 
 - **Tên app**: Halong24h — app đặt & quản lý phòng homestay vùng Hạ Long
-- **Bundle ID**: `com.halong24h.app`
+- **Bundle ID**: `com.halongtravel.halong24h`
 - **Platform**: Flutter (iOS + Android), Material Design 3
 - **Ngôn ngữ UI**: Tiếng Việt
 - **Font**: Google Fonts **Nunito** (toàn bộ app)

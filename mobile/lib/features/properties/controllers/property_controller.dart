@@ -15,8 +15,8 @@ final homestayRepositoryProvider = Provider<HomestayRepository>(
 // ─── List provider ────────────────────────────────────────────────────────────
 // includeInactive: true → dùng ở management screen (admin/staff thấy cả cơ sở bị tắt)
 // includeInactive: false (default) → dùng ở customer / public views
-final homestayListProvider =
-    FutureProvider.family<List<HomestayModel>, bool>((ref, includeInactive) async {
+final homestayListProvider = FutureProvider.family<List<HomestayModel>, bool>(
+    (ref, includeInactive) async {
   final repo = ref.read(homestayRepositoryProvider);
   final result = await repo.getHomestays(includeInactive: includeInactive);
   if (result.success) return result.data!;

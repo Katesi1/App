@@ -164,8 +164,7 @@ class _UserFormScreenState extends ConsumerState<UserFormScreen> {
                       _InfoRow(
                         icon: Icons.phone_outlined,
                         label: 'Số điện thoại',
-                        value:
-                            _userPhone.isNotEmpty ? _userPhone : '-',
+                        value: _userPhone.isNotEmpty ? _userPhone : '-',
                       ),
                       if (_userEmail.isNotEmpty) ...[
                         const _Divider(),
@@ -214,9 +213,7 @@ class _UserFormScreenState extends ConsumerState<UserFormScreen> {
                         onTap: () => setState(() => _role = 1),
                       ),
                     ],
-                  )
-                      .animate(delay: 100.ms)
-                      .fadeIn(duration: 300.ms),
+                  ).animate(delay: 100.ms).fadeIn(duration: 300.ms),
 
                   const SizedBox(height: AppSpacing.xl),
 
@@ -243,8 +240,7 @@ class _UserFormScreenState extends ConsumerState<UserFormScreen> {
                             const SizedBox(width: 10),
                             Expanded(
                               child: Column(
-                                crossAxisAlignment:
-                                    CrossAxisAlignment.start,
+                                crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
                                   Text(
                                     _isActive
@@ -271,16 +267,13 @@ class _UserFormScreenState extends ConsumerState<UserFormScreen> {
                             Switch(
                               value: _isActive,
                               activeTrackColor: colors.success,
-                              onChanged: (v) =>
-                                  setState(() => _isActive = v),
+                              onChanged: (v) => setState(() => _isActive = v),
                             ),
                           ],
                         ),
                       ),
                     ],
-                  )
-                      .animate(delay: 200.ms)
-                      .fadeIn(duration: 300.ms),
+                  ).animate(delay: 200.ms).fadeIn(duration: 300.ms),
 
                   const SizedBox(height: AppSpacing.xl),
 
@@ -358,9 +351,7 @@ class _UserFormScreenState extends ConsumerState<UserFormScreen> {
             ),
             child: Center(
               child: Text(
-                _userName.isNotEmpty
-                    ? _userName[0].toUpperCase()
-                    : '?',
+                _userName.isNotEmpty ? _userName[0].toUpperCase() : '?',
                 style: GoogleFonts.beVietnamPro(
                   color: Colors.white,
                   fontWeight: FontWeight.w800,
@@ -381,13 +372,11 @@ class _UserFormScreenState extends ConsumerState<UserFormScreen> {
           const SizedBox(height: 6),
           // Role badge
           Container(
-            padding: const EdgeInsets.symmetric(
-                horizontal: 14, vertical: 4),
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
             decoration: BoxDecoration(
               color: Colors.white.withValues(alpha: 0.15),
               borderRadius: BorderRadius.circular(20),
-              border: Border.all(
-                  color: Colors.white.withValues(alpha: 0.3)),
+              border: Border.all(color: Colors.white.withValues(alpha: 0.3)),
             ),
             child: Text(
               AppHelpers.roleLabel(_role),
@@ -455,8 +444,8 @@ class _UserFormScreenState extends ConsumerState<UserFormScreen> {
                       icon: Icon(_obscurePassword
                           ? Icons.visibility_outlined
                           : Icons.visibility_off_outlined),
-                      onPressed: () => setState(
-                          () => _obscurePassword = !_obscurePassword),
+                      onPressed: () =>
+                          setState(() => _obscurePassword = !_obscurePassword),
                     ),
                     validator: (v) {
                       if (v?.isEmpty == true) return 'Nhập mật khẩu';
@@ -590,9 +579,8 @@ class _InfoRow extends StatelessWidget {
                   style: GoogleFonts.beVietnamPro(
                     fontSize: 14,
                     fontWeight: FontWeight.w600,
-                    color: value == '-'
-                        ? colors.textTertiary
-                        : colors.textPrimary,
+                    color:
+                        value == '-' ? colors.textTertiary : colors.textPrimary,
                   ),
                 ),
               ],
@@ -633,8 +621,7 @@ class _FormField extends StatelessWidget {
   Widget build(BuildContext context) {
     final colors = context.colors;
     return Padding(
-      padding:
-          const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
       child: TextFormField(
         controller: controller,
         keyboardType: keyboardType,
@@ -702,9 +689,7 @@ class _RoleCard extends StatelessWidget {
           duration: const Duration(milliseconds: 200),
           padding: const EdgeInsets.symmetric(vertical: 16),
           decoration: BoxDecoration(
-            color: selected
-                ? color.withValues(alpha: 0.08)
-                : colors.bgSurface,
+            color: selected ? color.withValues(alpha: 0.08) : colors.bgSurface,
             borderRadius: BorderRadius.circular(AppRadius.lg),
             border: Border.all(
               color: selected ? color : colors.borderDefault,
@@ -720,8 +705,8 @@ class _RoleCard extends StatelessWidget {
                   ]
                 : [
                     BoxShadow(
-                      color: Colors.black
-                          .withValues(alpha: isDark ? 0.30 : 0.03),
+                      color:
+                          Colors.black.withValues(alpha: isDark ? 0.30 : 0.03),
                       blurRadius: 4,
                     ),
                   ],

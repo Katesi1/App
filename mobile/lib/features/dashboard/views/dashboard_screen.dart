@@ -158,8 +158,8 @@ class DashboardScreen extends ConsumerWidget {
                                     child: Icon(
                                       Icons.close_rounded,
                                       size: 18,
-                                      color: colors.warning
-                                          .withValues(alpha: 0.7),
+                                      color:
+                                          colors.warning.withValues(alpha: 0.7),
                                     ),
                                   ),
                                 ),
@@ -185,7 +185,8 @@ class DashboardScreen extends ConsumerWidget {
                                 label: 'Tổng phòng',
                                 value: AppHelpers.formatIntOrDash(
                                     stats.globalTotalRooms),
-                                sub: '${AppHelpers.formatIntOrDash(stats.totalRooms)} của tôi',
+                                sub:
+                                    '${AppHelpers.formatIntOrDash(stats.totalRooms)} của tôi',
                                 accentColor: colors.brand,
                                 icon: Icons.apartment_rounded,
                               ),
@@ -196,7 +197,8 @@ class DashboardScreen extends ConsumerWidget {
                                 label: 'Phòng trống',
                                 value: AppHelpers.formatIntOrDash(
                                     stats.globalEmptyRooms),
-                                sub: '${AppHelpers.formatIntOrDash(stats.emptyRooms)} của tôi',
+                                sub:
+                                    '${AppHelpers.formatIntOrDash(stats.emptyRooms)} của tôi',
                                 accentColor: colors.success,
                                 icon: Icons.check_circle_outline_rounded,
                               ),
@@ -236,8 +238,7 @@ class DashboardScreen extends ConsumerWidget {
 
                 // ── Revenue card ────────────────────────────────────────
                 Padding(
-                  padding:
-                      const EdgeInsets.fromLTRB(16, 0, 16, 0),
+                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 0),
                   child: _RevenueCard(
                     monthlyRevenue: stats.monthlyRevenue,
                     todayRevenue: stats.todayRevenue,
@@ -283,8 +284,7 @@ class DashboardScreen extends ConsumerWidget {
                               icon: Icons.add_home_rounded,
                               label: 'Thêm phòng',
                               color: colors.success,
-                              onTap: () =>
-                                  context.push('/properties/new'),
+                              onTap: () => context.push('/properties/new'),
                             ),
                         ],
                       ),
@@ -319,8 +319,7 @@ class DashboardScreen extends ConsumerWidget {
                           icon: Icons.calendar_month_rounded,
                           iconColor: colors.brandLight,
                           title: 'Lịch booking',
-                          subtitle:
-                              'Xem lịch booking các phòng của chủ nhà',
+                          subtitle: 'Xem lịch booking các phòng của chủ nhà',
                           locked: !user.hasOwner,
                           onTap: () => context.go('/calendar'),
                         ),
@@ -339,8 +338,7 @@ class DashboardScreen extends ConsumerWidget {
                     children: [
                       Row(
                         children: [
-                          Expanded(
-                              child: _SectionLabel('BOOKING GẦN ĐÂY')),
+                          Expanded(child: _SectionLabel('BOOKING GẦN ĐÂY')),
                           GestureDetector(
                             onTap: () => context.push('/bookings'),
                             child: Text(
@@ -372,28 +370,23 @@ class DashboardScreen extends ConsumerWidget {
                           return Column(
                             children: recent.map((b) {
                               final statusColor =
-                                  AppHelpers.bookingStatusColor(
-                                      b.status.value);
+                                  AppHelpers.bookingStatusColor(b.status.value);
                               return Padding(
-                                padding:
-                                    const EdgeInsets.only(bottom: 10),
+                                padding: const EdgeInsets.only(bottom: 10),
                                 child: _BookingItem(
                                   initials: (b.customerName ?? 'K')
                                       .substring(0, 1)
                                       .toUpperCase(),
                                   name: b.customerName ?? 'Không tên',
-                                  meta:
-                                      '${b.propertyName} · ${b.nights} đêm',
+                                  meta: '${b.propertyName} · ${b.nights} đêm',
                                   status: b.status.label,
                                   statusColor: statusColor,
-                                  statusBg:
-                                      statusColor.withValues(alpha: 0.12),
+                                  statusBg: statusColor.withValues(alpha: 0.12),
                                   price: (b.depositAmount != null &&
                                           b.depositAmount! > 0)
                                       ? '${AppHelpers.formatPrice(b.depositAmount!)}đ'
                                       : '--',
-                                  onTap: () =>
-                                      context.push('/bookings'),
+                                  onTap: () => context.push('/bookings'),
                                 ),
                               );
                             }).toList(),
@@ -552,8 +545,8 @@ class _DashHeader extends StatelessWidget {
                         decoration: BoxDecoration(
                           color: AppColors.gold500,
                           shape: BoxShape.circle,
-                          border: Border.all(
-                              color: AppColors.jade500, width: 1.5),
+                          border:
+                              Border.all(color: AppColors.jade500, width: 1.5),
                         ),
                       ),
                     ),
@@ -572,8 +565,7 @@ class _DashHeader extends StatelessWidget {
                     gradient: const LinearGradient(
                         colors: [AppColors.jade300, AppColors.gold500]),
                     border: Border.all(
-                        color: Colors.white.withValues(alpha: 0.3),
-                        width: 1.5),
+                        color: Colors.white.withValues(alpha: 0.3), width: 1.5),
                   ),
                   child: Center(
                     child: Text(
@@ -857,9 +849,8 @@ class _QuickAction extends StatelessWidget {
             color: colors.bgSurface,
             borderRadius: BorderRadius.circular(14),
             border: Border.all(
-              color: isDark
-                  ? colors.borderDefault
-                  : color.withValues(alpha: 0.15),
+              color:
+                  isDark ? colors.borderDefault : color.withValues(alpha: 0.15),
             ),
             boxShadow: [
               BoxShadow(
@@ -949,8 +940,8 @@ class _ManageShortcut extends StatelessWidget {
                 ? null
                 : [
                     BoxShadow(
-                      color: Colors.black
-                          .withValues(alpha: isDark ? 0.30 : 0.05),
+                      color:
+                          Colors.black.withValues(alpha: isDark ? 0.30 : 0.05),
                       blurRadius: 10,
                       offset: const Offset(0, 3),
                     ),
@@ -1045,108 +1036,107 @@ class _BookingItem extends StatelessWidget {
     return GestureDetector(
       onTap: onTap,
       child: Container(
-      decoration: BoxDecoration(
-        color: colors.bgSurface,
-        borderRadius: BorderRadius.circular(14),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: isDark ? 0.30 : 0.05),
-            blurRadius: 10,
-            offset: const Offset(0, 3),
-          ),
-        ],
-      ),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(14),
-        child: Row(
-          children: [
-            // Left status stripe
-            Container(
-              width: 4,
-              height: 64,
-              color: statusColor,
+        decoration: BoxDecoration(
+          color: colors.bgSurface,
+          borderRadius: BorderRadius.circular(14),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: isDark ? 0.30 : 0.05),
+              blurRadius: 10,
+              offset: const Offset(0, 3),
             ),
-            const SizedBox(width: 12),
-            // Emoji avatar
-            Container(
-              width: 42,
-              height: 42,
-              decoration: BoxDecoration(
-                color: statusBg,
-                borderRadius: BorderRadius.circular(10),
+          ],
+        ),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(14),
+          child: Row(
+            children: [
+              // Left status stripe
+              Container(
+                width: 4,
+                height: 64,
+                color: statusColor,
               ),
-              child: Center(
-                child: Text(initials,
-                    style: const TextStyle(fontSize: 20)),
+              const SizedBox(width: 12),
+              // Emoji avatar
+              Container(
+                width: 42,
+                height: 42,
+                decoration: BoxDecoration(
+                  color: statusBg,
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Center(
+                  child: Text(initials, style: const TextStyle(fontSize: 20)),
+                ),
               ),
-            ),
-            const SizedBox(width: 12),
-            // Info
-            Expanded(
-              child: Padding(
-                padding: const EdgeInsets.symmetric(vertical: 12),
+              const SizedBox(width: 12),
+              // Info
+              Expanded(
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 12),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        name,
+                        style: GoogleFonts.beVietnamPro(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                          color: colors.textPrimary,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        meta,
+                        style: GoogleFonts.beVietnamPro(
+                          fontSize: 12,
+                          color: colors.textSecondary,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              // Status + price
+              Padding(
+                padding: const EdgeInsets.only(right: 14),
                 child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+                  crossAxisAlignment: CrossAxisAlignment.end,
                   children: [
-                    Text(
-                      name,
-                      style: GoogleFonts.beVietnamPro(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w600,
-                        color: colors.textPrimary,
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 8, vertical: 3),
+                      decoration: BoxDecoration(
+                        color: statusBg,
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      child: Text(
+                        status,
+                        style: GoogleFonts.beVietnamPro(
+                          fontSize: 10,
+                          fontWeight: FontWeight.w700,
+                          color: statusColor,
+                          letterSpacing: 0.2,
+                        ),
                       ),
                     ),
-                    const SizedBox(height: 2),
+                    const SizedBox(height: 5),
                     Text(
-                      meta,
+                      price,
                       style: GoogleFonts.beVietnamPro(
-                        fontSize: 12,
-                        color: colors.textSecondary,
+                        fontSize: 13,
+                        fontWeight: FontWeight.w700,
+                        color: colors.textBrand,
                       ),
                     ),
                   ],
                 ),
               ),
-            ),
-            // Status + price
-            Padding(
-              padding: const EdgeInsets.only(right: 14),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.end,
-                children: [
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 8, vertical: 3),
-                    decoration: BoxDecoration(
-                      color: statusBg,
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    child: Text(
-                      status,
-                      style: GoogleFonts.beVietnamPro(
-                        fontSize: 10,
-                        fontWeight: FontWeight.w700,
-                        color: statusColor,
-                        letterSpacing: 0.2,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 5),
-                  Text(
-                    price,
-                    style: GoogleFonts.beVietnamPro(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w700,
-                      color: colors.textBrand,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
-    ),
     );
   }
 }
@@ -1568,8 +1558,7 @@ class _CTAButton extends StatelessWidget {
               ),
             ),
             const SizedBox(width: 4),
-            Icon(Icons.arrow_forward,
-                size: 12, color: colors.textOnPrimary),
+            Icon(Icons.arrow_forward, size: 12, color: colors.textOnPrimary),
           ],
         ),
       ),

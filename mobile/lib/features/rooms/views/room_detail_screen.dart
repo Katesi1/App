@@ -56,8 +56,7 @@ class RoomDetailScreen extends ConsumerWidget {
                       children: [
                         Expanded(
                           child: Column(
-                            crossAxisAlignment:
-                                CrossAxisAlignment.start,
+                            crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text(
                                 _titleText(room),
@@ -132,7 +131,9 @@ class RoomDetailScreen extends ConsumerWidget {
                       children: [
                         _InfoChip(
                           icon: Icons.bed_outlined,
-                          label: room.bedrooms == 0 ? 'Studio' : '${room.bedrooms} PN',
+                          label: room.bedrooms == 0
+                              ? 'Studio'
+                              : '${room.bedrooms} PN',
                         ),
                         if (room.bathrooms > 0)
                           _InfoChip(
@@ -149,9 +150,7 @@ class RoomDetailScreen extends ConsumerWidget {
                             label: 'Tối đa ${room.maxGuests}',
                           ),
                       ],
-                    )
-                        .animate(delay: 100.ms)
-                        .fadeIn(duration: 300.ms),
+                    ).animate(delay: 100.ms).fadeIn(duration: 300.ms),
 
                     // ── Amenities ────────────────────────────────────
                     if (room.amenities.isNotEmpty) ...[
@@ -159,9 +158,8 @@ class RoomDetailScreen extends ConsumerWidget {
                       Wrap(
                         spacing: 6,
                         runSpacing: 6,
-                        children: room.amenities
-                            .map((a) => _AmenityChip(a))
-                            .toList(),
+                        children:
+                            room.amenities.map((a) => _AmenityChip(a)).toList(),
                       ),
                     ],
 
@@ -189,8 +187,7 @@ class RoomDetailScreen extends ConsumerWidget {
                     const SizedBox(height: 24),
 
                     // ── Quy định + Lưu ý ──────────────────────────
-                    if (room.rules != null &&
-                        room.rules!.isNotEmpty) ...[
+                    if (room.rules != null && room.rules!.isNotEmpty) ...[
                       _DetailSection(
                         title: 'Quy định',
                         value: room.rules!.contains('\n\n--- LƯU Ý ---\n')
@@ -236,8 +233,7 @@ class RoomDetailScreen extends ConsumerWidget {
                                     AppColors.jade500,
                                   ],
                           ),
-                          borderRadius: BorderRadius.circular(
-                              AppRadius.md),
+                          borderRadius: BorderRadius.circular(AppRadius.md),
                           boxShadow: [
                             BoxShadow(
                               color: colors.brand
@@ -250,10 +246,8 @@ class RoomDetailScreen extends ConsumerWidget {
                         child: Material(
                           color: Colors.transparent,
                           child: InkWell(
-                            onTap: () => context
-                                .push('/rooms/$roomId/hold'),
-                            borderRadius: BorderRadius.circular(
-                                AppRadius.md),
+                            onTap: () => context.push('/rooms/$roomId/hold'),
+                            borderRadius: BorderRadius.circular(AppRadius.md),
                             child: Center(
                               child: Text(
                                 'Tạo booking',
@@ -289,12 +283,10 @@ class RoomDetailScreen extends ConsumerWidget {
 class _ImageGalleryHeader extends StatefulWidget {
   final RoomModel room;
   final String roomId;
-  const _ImageGalleryHeader(
-      {required this.room, required this.roomId});
+  const _ImageGalleryHeader({required this.room, required this.roomId});
 
   @override
-  State<_ImageGalleryHeader> createState() =>
-      _ImageGalleryHeaderState();
+  State<_ImageGalleryHeader> createState() => _ImageGalleryHeaderState();
 }
 
 class _ImageGalleryHeaderState extends State<_ImageGalleryHeader> {
@@ -336,8 +328,7 @@ class _ImageGalleryHeaderState extends State<_ImageGalleryHeader> {
                     ? PageView.builder(
                         controller: _pageCtrl,
                         itemCount: images.length,
-                        onPageChanged: (i) =>
-                            setState(() => _currentPage = i),
+                        onPageChanged: (i) => setState(() => _currentPage = i),
                         itemBuilder: (_, i) => Hero(
                           tag: i == 0
                               ? 'room-cover-${room.id}'
@@ -353,8 +344,7 @@ class _ImageGalleryHeaderState extends State<_ImageGalleryHeader> {
                               child: Icon(
                                 Icons.broken_image_outlined,
                                 size: 48,
-                                color: colors.brand
-                                    .withValues(alpha: 0.5),
+                                color: colors.brand.withValues(alpha: 0.5),
                               ),
                             ),
                           ),
@@ -408,8 +398,7 @@ class _ImageGalleryHeaderState extends State<_ImageGalleryHeader> {
                 icon: Icons.share_rounded,
                 onTap: () => Share.share(
                   _buildShareText(widget.room),
-                  subject:
-                      '${widget.room.code} · ${widget.room.name}',
+                  subject: '${widget.room.code} · ${widget.room.name}',
                 ),
               ),
             ),
@@ -420,11 +409,10 @@ class _ImageGalleryHeaderState extends State<_ImageGalleryHeader> {
                 bottom: 12,
                 right: 12,
                 child: GestureDetector(
-                  onTap: () =>
-                      _openGallery(context, images, _currentPage),
+                  onTap: () => _openGallery(context, images, _currentPage),
                   child: Container(
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 10, vertical: 5),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
                     decoration: BoxDecoration(
                       color: Colors.black54,
                       borderRadius: BorderRadius.circular(20),
@@ -463,8 +451,7 @@ class _ImageGalleryHeaderState extends State<_ImageGalleryHeader> {
                     images.length.clamp(0, 8),
                     (i) => AnimatedContainer(
                       duration: const Duration(milliseconds: 250),
-                      margin:
-                          const EdgeInsets.symmetric(horizontal: 3),
+                      margin: const EdgeInsets.symmetric(horizontal: 3),
                       width: _currentPage == i ? 20 : 6,
                       height: 6,
                       decoration: BoxDecoration(
@@ -543,10 +530,12 @@ class _ImageGalleryHeaderState extends State<_ImageGalleryHeader> {
     // Phụ thu
     if (room.adultSurcharge != null && room.adultSurcharge! > 0) {
       buf.writeln();
-      buf.writeln('💰 Phụ thu người lớn: ${_fmtPrice(room.adultSurcharge!)}đ/người');
+      buf.writeln(
+          '💰 Phụ thu người lớn: ${_fmtPrice(room.adultSurcharge!)}đ/người');
     }
     if (room.childSurcharge != null && room.childSurcharge! > 0) {
-      buf.writeln('💰 Phụ thu trẻ em: ${_fmtPrice(room.childSurcharge!)}đ/người');
+      buf.writeln(
+          '💰 Phụ thu trẻ em: ${_fmtPrice(room.childSurcharge!)}đ/người');
     }
 
     // Chính sách huỷ
@@ -632,11 +621,9 @@ class _ThumbnailStripState extends State<_ThumbnailStrip> {
     super.didUpdateWidget(oldWidget);
     // Tự động scroll thumbnail đến item đang chọn
     if (oldWidget.selectedIndex != widget.selectedIndex) {
-      final targetOffset =
-          (widget.selectedIndex * 72.0) - 100;
+      final targetOffset = (widget.selectedIndex * 72.0) - 100;
       _scrollCtrl.animateTo(
-        targetOffset.clamp(
-            0.0, _scrollCtrl.position.maxScrollExtent),
+        targetOffset.clamp(0.0, _scrollCtrl.position.maxScrollExtent),
         duration: const Duration(milliseconds: 300),
         curve: Curves.easeInOut,
       );
@@ -657,8 +644,8 @@ class _ThumbnailStripState extends State<_ThumbnailStrip> {
       child: ListView.builder(
         controller: _scrollCtrl,
         scrollDirection: Axis.horizontal,
-        padding: const EdgeInsets.symmetric(
-            horizontal: AppSpacing.sm, vertical: 6),
+        padding:
+            const EdgeInsets.symmetric(horizontal: AppSpacing.sm, vertical: 6),
         itemCount: widget.images.length,
         itemBuilder: (_, i) {
           final isSelected = i == widget.selectedIndex;
@@ -672,9 +659,7 @@ class _ThumbnailStripState extends State<_ThumbnailStrip> {
               decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(AppRadius.xs),
                 border: Border.all(
-                  color: isSelected
-                      ? Colors.white
-                      : Colors.transparent,
+                  color: isSelected ? Colors.white : Colors.transparent,
                   width: 2,
                 ),
               ),
@@ -815,9 +800,8 @@ class _DetailRow extends StatelessWidget {
                 value,
                 style: GoogleFonts.beVietnamPro(
                   fontSize: 13,
-                  color: value == '-'
-                      ? colors.textTertiary
-                      : colors.textSecondary,
+                  color:
+                      value == '-' ? colors.textTertiary : colors.textSecondary,
                 ),
               ),
             ),
@@ -852,9 +836,7 @@ class _DetailSection extends StatelessWidget {
           value,
           style: GoogleFonts.beVietnamPro(
             fontSize: 13,
-            color: value == '-'
-                ? colors.textTertiary
-                : colors.textSecondary,
+            color: value == '-' ? colors.textTertiary : colors.textSecondary,
             height: 1.5,
           ),
         ),
@@ -896,8 +878,8 @@ class _PriceGrid extends StatelessWidget {
               _priceItem('Ngày thường', price.weekdayPrice,
                   Icons.wb_sunny_outlined, colors.brand),
               const SizedBox(width: AppSpacing.md),
-              _priceItem('Thứ 6', price.fridayPrice,
-                  Icons.weekend_outlined, AppColors.purple),
+              _priceItem('Thứ 6', price.fridayPrice, Icons.weekend_outlined,
+                  AppColors.purple),
             ],
           ),
           const SizedBox(height: AppSpacing.md),
@@ -915,8 +897,7 @@ class _PriceGrid extends StatelessWidget {
     );
   }
 
-  Widget _priceItem(
-      String label, double amount, IconData icon, Color color) {
+  Widget _priceItem(String label, double amount, IconData icon, Color color) {
     return Expanded(
       child: Row(
         children: [
@@ -964,8 +945,7 @@ class _GalleryScreen extends StatefulWidget {
   final List<RoomImageModel> images;
   final int initialIndex;
 
-  const _GalleryScreen(
-      {required this.images, required this.initialIndex});
+  const _GalleryScreen({required this.images, required this.initialIndex});
 
   @override
   State<_GalleryScreen> createState() => _GalleryScreenState();
@@ -1033,8 +1013,7 @@ class _GalleryScreenState extends State<_GalleryScreen> {
                       : 'room-img-${widget.images[i].roomId}-$i',
                 ),
               ),
-              backgroundDecoration:
-                  const BoxDecoration(color: Colors.black),
+              backgroundDecoration: const BoxDecoration(color: Colors.black),
               loadingBuilder: (_, __) => const Center(
                 child: CircularProgressIndicator(
                   color: Colors.white54,
@@ -1056,40 +1035,35 @@ class _GalleryScreenState extends State<_GalleryScreen> {
                       child: ListView.builder(
                         scrollDirection: Axis.horizontal,
                         padding: const EdgeInsets.symmetric(
-                            horizontal: AppSpacing.sm,
-                            vertical: AppSpacing.sm),
+                            horizontal: AppSpacing.sm, vertical: AppSpacing.sm),
                         itemCount: widget.images.length,
                         itemBuilder: (_, i) {
                           final sel = i == _current;
                           return GestureDetector(
                             onTap: () => _pageCtrl.animateToPage(
                               i,
-                              duration:
-                                  const Duration(milliseconds: 300),
+                              duration: const Duration(milliseconds: 300),
                               curve: Curves.easeInOut,
                             ),
                             child: AnimatedContainer(
-                              duration:
-                                  const Duration(milliseconds: 200),
+                              duration: const Duration(milliseconds: 200),
                               width: 56,
                               height: 56,
                               margin: const EdgeInsets.only(right: 6),
                               decoration: BoxDecoration(
-                                borderRadius: BorderRadius.circular(
-                                    AppRadius.xs),
+                                borderRadius:
+                                    BorderRadius.circular(AppRadius.xs),
                                 border: Border.all(
-                                  color: sel
-                                      ? Colors.white
-                                      : Colors.transparent,
+                                  color:
+                                      sel ? Colors.white : Colors.transparent,
                                   width: 2,
                                 ),
                               ),
                               child: ClipRRect(
-                                borderRadius: BorderRadius.circular(
-                                    AppRadius.xs),
+                                borderRadius:
+                                    BorderRadius.circular(AppRadius.xs),
                                 child: CachedNetworkImage(
-                                  imageUrl:
-                                      widget.images[i].imageUrl,
+                                  imageUrl: widget.images[i].imageUrl,
                                   fit: BoxFit.cover,
                                   memCacheWidth: 120,
                                 ),

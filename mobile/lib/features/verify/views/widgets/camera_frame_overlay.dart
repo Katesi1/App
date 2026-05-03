@@ -59,10 +59,20 @@ class _CameraFrameOverlayState extends State<CameraFrameOverlay>
         child: Stack(
           children: [
             // 4 corner brackets
-            Positioned(left: 16, top: 16, child: _Corner(color: AppColors.jadeText)),
-            Positioned(right: 16, top: 16, child: _Corner(color: AppColors.jadeText, rotate: 1)),
-            Positioned(left: 16, bottom: 16, child: _Corner(color: AppColors.jadeText, rotate: 3)),
-            Positioned(right: 16, bottom: 16, child: _Corner(color: AppColors.jadeText, rotate: 2)),
+            Positioned(
+                left: 16, top: 16, child: _Corner(color: AppColors.jadeText)),
+            Positioned(
+                right: 16,
+                top: 16,
+                child: _Corner(color: AppColors.jadeText, rotate: 1)),
+            Positioned(
+                left: 16,
+                bottom: 16,
+                child: _Corner(color: AppColors.jadeText, rotate: 3)),
+            Positioned(
+                right: 16,
+                bottom: 16,
+                child: _Corner(color: AppColors.jadeText, rotate: 2)),
 
             // Scan line
             AnimatedBuilder(
@@ -72,7 +82,8 @@ class _CameraFrameOverlayState extends State<CameraFrameOverlay>
                   left: 16,
                   right: 16,
                   top: 16 +
-                      (MediaQuery.of(context).size.width - 32) * 0.62 *
+                      (MediaQuery.of(context).size.width - 32) *
+                          0.62 *
                           _scanCtrl.value,
                   child: Container(
                     height: 1,
@@ -214,8 +225,8 @@ class SelfieFrameOverlay extends StatelessWidget {
               right: 0,
               child: Center(
                 child: Container(
-                  padding: const EdgeInsets.symmetric(
-                      horizontal: 10, vertical: 6),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                   decoration: BoxDecoration(
                     color: colors.bgSurfaceContainer,
                     borderRadius: BorderRadius.circular(100),

@@ -81,8 +81,8 @@ class AIInsightCard extends StatelessWidget {
                   borderRadius: BorderRadius.circular(AppRadius.sm),
                   boxShadow: [
                     BoxShadow(
-                      color: AppColors.gold500
-                          .withValues(alpha: iconShadowAlpha),
+                      color:
+                          AppColors.gold500.withValues(alpha: iconShadowAlpha),
                       blurRadius: 10,
                       offset: const Offset(0, 4),
                     ),
@@ -147,8 +147,7 @@ class AIInsightCard extends StatelessWidget {
                     onTap: onPrimaryAction,
                     isDark: isDark,
                   ),
-                if (primaryActionLabel != null &&
-                    secondaryActionLabel != null)
+                if (primaryActionLabel != null && secondaryActionLabel != null)
                   const SizedBox(width: 8),
                 if (secondaryActionLabel != null)
                   _SecondaryAction(

@@ -1,4 +1,7 @@
+import 'dart:async';
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../../core/network/api_client.dart';
 import '../../../core/storage/secure_storage.dart';
 import '../../../data/models/user_model.dart';
 import '../../../data/repositories/auth_repository.dart';
@@ -18,11 +21,17 @@ class AuthState {
   final bool isLoggedIn;
   final String? error;
 
+  /// Đặt = true khi server từ chối token (refresh fail). Login screen detect
+  /// transition false→true qua `ref.listen` → show snackbar + gọi
+  /// `consumeForceLogoutFlag()` để reset.
+  final bool forceLoggedOut;
+
   AuthState({
     this.user,
     this.isLoading = false,
     this.isLoggedIn = false,
     this.error,
+    this.forceLoggedOut = false,
   });
 
   AuthState copyWith({
@@ -30,12 +39,14 @@ class AuthState {
     bool? isLoading,
     bool? isLoggedIn,
     String? error,
+    bool? forceLoggedOut,
   }) =>
       AuthState(
         user: user ?? this.user,
         isLoading: isLoading ?? this.isLoading,
         isLoggedIn: isLoggedIn ?? this.isLoggedIn,
         error: error,
+        forceLoggedOut: forceLoggedOut ?? this.forceLoggedOut,
       );
 }
 
@@ -43,8 +54,32 @@ class AuthNotifier extends StateNotifier<AuthState> {
   final AuthRepository _repo;
   final Ref _ref;
 
+  StreamSubscription<void>? _forceLogoutSub;
+
   AuthNotifier(this._repo, this._ref) : super(AuthState()) {
     _init();
+    // Lắng nghe force-logout từ ApiClient (refresh token fail).
+    // SecureStorage đã được clear bởi interceptor trước khi event fire — chỉ
+    // cần reset state để router redirect /login + flag để login screen
+    // show snackbar.
+    _forceLogoutSub = ApiClient.onForceLogout.listen((_) {
+      if (!mounted) return;
+      state = AuthState(forceLoggedOut: true);
+    });
+  }
+
+  @override
+  void dispose() {
+    _forceLogoutSub?.cancel();
+    super.dispose();
+  }
+
+  /// Login screen gọi sau khi đã hiển thị snackbar — clear flag để không
+  /// trigger lần 2 khi user back ra rồi vào lại.
+  void consumeForceLogoutFlag() {
+    if (state.forceLoggedOut) {
+      state = state.copyWith(forceLoggedOut: false);
+    }
   }
 
   /// Invalidate tất cả data providers sau login/register

@@ -59,14 +59,11 @@ class _UserListScreenState extends ConsumerState<UserListScreen> {
               ),
               error: (e, _) => ErrorStateWidget(
                 message: e.toString().replaceAll('Exception: ', ''),
-                onRetry: () =>
-                    ref.invalidate(staffListProvider),
+                onRetry: () => ref.invalidate(staffListProvider),
               ),
               data: (allUsers) {
                 // Loại Admin ra khỏi danh sách quản lý
-                final users = allUsers
-                    .where((u) => !u.isAdmin)
-                    .toList();
+                final users = allUsers.where((u) => !u.isAdmin).toList();
 
                 if (users.isEmpty) {
                   return EmptyStateWidget(
@@ -85,8 +82,7 @@ class _UserListScreenState extends ConsumerState<UserListScreen> {
 
                 return RefreshIndicator(
                   color: colors.brand,
-                  onRefresh: () async =>
-                      ref.invalidate(staffListProvider),
+                  onRefresh: () async => ref.invalidate(staffListProvider),
                   child: ListView.separated(
                     padding: const EdgeInsets.fromLTRB(
                       AppSpacing.md,
@@ -102,8 +98,8 @@ class _UserListScreenState extends ConsumerState<UserListScreen> {
                       animIndex: i,
                       isAdmin: isAdmin,
                       onTap: isAdmin
-                          ? () => context
-                              .push('/admin/users/${users[i].id}/edit')
+                          ? () =>
+                              context.push('/admin/users/${users[i].id}/edit')
                           : null,
                       onToggleActive: isAdmin
                           ? () => _toggleActive(context, users[i])
@@ -184,8 +180,8 @@ class _UserListScreenState extends ConsumerState<UserListScreen> {
                   decoration: BoxDecoration(
                     color: Colors.white.withValues(alpha: 0.12),
                     shape: BoxShape.circle,
-                    border: Border.all(
-                        color: Colors.white.withValues(alpha: 0.18)),
+                    border:
+                        Border.all(color: Colors.white.withValues(alpha: 0.18)),
                   ),
                   child: const Icon(Icons.arrow_back_rounded,
                       color: Colors.white, size: 18),
@@ -233,9 +229,7 @@ class _UserListScreenState extends ConsumerState<UserListScreen> {
                   ),
                   child: Center(
                     child: Text(
-                      userName.isNotEmpty
-                          ? userName[0].toUpperCase()
-                          : 'A',
+                      userName.isNotEmpty ? userName[0].toUpperCase() : 'A',
                       style: GoogleFonts.beVietnamPro(
                         color: Colors.white,
                         fontWeight: FontWeight.w700,
@@ -270,12 +264,9 @@ class _UserListScreenState extends ConsumerState<UserListScreen> {
               selectedColor: colors.brand.withValues(alpha: 0.15),
               checkmarkColor: colors.brand,
               labelStyle: GoogleFonts.beVietnamPro(
-                fontWeight: _roleFilter == null
-                    ? FontWeight.w700
-                    : FontWeight.w500,
-                color: _roleFilter == null
-                    ? colors.brand
-                    : colors.textPrimary,
+                fontWeight:
+                    _roleFilter == null ? FontWeight.w700 : FontWeight.w500,
+                color: _roleFilter == null ? colors.brand : colors.textPrimary,
                 fontSize: 12,
               ),
             ),
@@ -289,13 +280,11 @@ class _UserListScreenState extends ConsumerState<UserListScreen> {
               child: FilterChip(
                 label: Text(_filterLabels[i]),
                 selected: selected,
-                onSelected: (_) =>
-                    setState(() => _roleFilter = role),
+                onSelected: (_) => setState(() => _roleFilter = role),
                 selectedColor: color.withValues(alpha: 0.15),
                 checkmarkColor: color,
                 labelStyle: GoogleFonts.beVietnamPro(
-                  fontWeight:
-                      selected ? FontWeight.w700 : FontWeight.w500,
+                  fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
                   color: selected ? color : colors.textPrimary,
                   fontSize: 12,
                 ),
@@ -464,8 +453,7 @@ class _UserListScreenState extends ConsumerState<UserListScreen> {
                       final sale = available[i];
                       return ListTile(
                         leading: CircleAvatar(
-                          backgroundColor:
-                              colors.brand.withValues(alpha: 0.12),
+                          backgroundColor: colors.brand.withValues(alpha: 0.12),
                           child: Text(
                             sale.name.isNotEmpty
                                 ? sale.name[0].toUpperCase()
@@ -477,9 +465,7 @@ class _UserListScreenState extends ConsumerState<UserListScreen> {
                           ),
                         ),
                         title: Text(
-                          sale.name.isNotEmpty
-                              ? sale.name
-                              : 'Chưa đặt tên',
+                          sale.name.isNotEmpty ? sale.name : 'Chưa đặt tên',
                           style: GoogleFonts.beVietnamPro(
                             fontSize: 14,
                             fontWeight: FontWeight.w600,
@@ -496,14 +482,12 @@ class _UserListScreenState extends ConsumerState<UserListScreen> {
                         trailing: FilledButton.icon(
                           onPressed: () async {
                             Navigator.pop(ctx);
-                            await _addStaffByEmail(
-                                context, sale.email ?? '');
+                            await _addStaffByEmail(context, sale.email ?? '');
                           },
                           icon: const Icon(Icons.add_rounded, size: 16),
                           label: Text('Thêm',
                               style: GoogleFonts.beVietnamPro(
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.w600)),
+                                  fontSize: 12, fontWeight: FontWeight.w600)),
                           style: FilledButton.styleFrom(
                             backgroundColor: colors.brand,
                             foregroundColor: Colors.white,
@@ -511,8 +495,7 @@ class _UserListScreenState extends ConsumerState<UserListScreen> {
                                 horizontal: 12, vertical: 6),
                             minimumSize: Size.zero,
                             shape: RoundedRectangleBorder(
-                              borderRadius:
-                                  BorderRadius.circular(AppRadius.md),
+                              borderRadius: BorderRadius.circular(AppRadius.md),
                             ),
                           ),
                         ),
@@ -563,8 +546,7 @@ class _UserListScreenState extends ConsumerState<UserListScreen> {
             TextButton(
               onPressed: () => Navigator.pop(context, false),
               child: Text('Huỷ',
-                  style: GoogleFonts.beVietnamPro(
-                      color: colors.textSecondary)),
+                  style: GoogleFonts.beVietnamPro(color: colors.textSecondary)),
             ),
             FilledButton(
               style: FilledButton.styleFrom(
@@ -576,8 +558,7 @@ class _UserListScreenState extends ConsumerState<UserListScreen> {
               ),
               onPressed: () => Navigator.pop(context, true),
               child: Text('Gỡ',
-                  style:
-                      GoogleFonts.beVietnamPro(fontWeight: FontWeight.w600)),
+                  style: GoogleFonts.beVietnamPro(fontWeight: FontWeight.w600)),
             ),
           ],
         );
@@ -597,8 +578,7 @@ class _UserListScreenState extends ConsumerState<UserListScreen> {
     }
   }
 
-  Future<void> _toggleActive(
-      BuildContext context, UserModel user) async {
+  Future<void> _toggleActive(BuildContext context, UserModel user) async {
     final action = user.isActive ? 'vô hiệu hoá' : 'kích hoạt';
     final ok = await showDialog<bool>(
       context: context,
@@ -620,13 +600,11 @@ class _UserListScreenState extends ConsumerState<UserListScreen> {
             TextButton(
               onPressed: () => Navigator.pop(context, false),
               child: Text('Huỷ',
-                  style: GoogleFonts.beVietnamPro(
-                      color: colors.textSecondary)),
+                  style: GoogleFonts.beVietnamPro(color: colors.textSecondary)),
             ),
             FilledButton(
               style: FilledButton.styleFrom(
-                backgroundColor:
-                    user.isActive ? colors.error : colors.success,
+                backgroundColor: user.isActive ? colors.error : colors.success,
                 foregroundColor: Colors.white,
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(AppRadius.md),
@@ -635,8 +613,7 @@ class _UserListScreenState extends ConsumerState<UserListScreen> {
               onPressed: () => Navigator.pop(context, true),
               child: Text(
                 user.isActive ? 'Vô hiệu hoá' : 'Kích hoạt',
-                style:
-                    GoogleFonts.beVietnamPro(fontWeight: FontWeight.w600),
+                style: GoogleFonts.beVietnamPro(fontWeight: FontWeight.w600),
               ),
             ),
           ],
@@ -702,8 +679,8 @@ class _UserCard extends StatelessWidget {
           child: Row(
             children: [
               // Avatar
-              _Avatar(name: user.name, color: _roleColor,
-                  isActive: user.isActive),
+              _Avatar(
+                  name: user.name, color: _roleColor, isActive: user.isActive),
 
               const SizedBox(width: AppSpacing.md),
 
@@ -734,8 +711,7 @@ class _UserCard extends StatelessWidget {
                               horizontal: 8, vertical: 2),
                           decoration: BoxDecoration(
                             color: _roleColor.withValues(alpha: 0.1),
-                            borderRadius:
-                                BorderRadius.circular(AppRadius.full),
+                            borderRadius: BorderRadius.circular(AppRadius.full),
                             border: Border.all(
                                 color: _roleColor.withValues(alpha: 0.3)),
                           ),
@@ -755,8 +731,7 @@ class _UserCard extends StatelessWidget {
                       children: [
                         Icon(Icons.phone_outlined,
                             size: 12,
-                            color: colors.textSecondary
-                                .withValues(alpha: 0.7)),
+                            color: colors.textSecondary.withValues(alpha: 0.7)),
                         const SizedBox(width: 4),
                         Text(
                           user.phone.isNotEmpty ? user.phone : '-',
@@ -807,17 +782,15 @@ class _UserCard extends StatelessWidget {
                             color: user.isActive
                                 ? colors.errorBg
                                 : colors.successBg,
-                            borderRadius:
-                                BorderRadius.circular(AppRadius.md),
+                            borderRadius: BorderRadius.circular(AppRadius.md),
                           ),
                           child: Icon(
                             user.isActive
                                 ? Icons.block_rounded
                                 : Icons.check_circle_outline_rounded,
                             size: 18,
-                            color: user.isActive
-                                ? colors.error
-                                : colors.success,
+                            color:
+                                user.isActive ? colors.error : colors.success,
                           ),
                         ),
                       ),
@@ -922,8 +895,8 @@ class _UserCardSkeleton extends StatelessWidget {
     final colors = context.colors;
     return Container(
       margin: const EdgeInsets.only(bottom: AppSpacing.sm),
-      padding: const EdgeInsets.symmetric(
-          horizontal: AppSpacing.md, vertical: 14),
+      padding:
+          const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: 14),
       decoration: BoxDecoration(
         color: colors.bgSurface,
         borderRadius: BorderRadius.circular(AppRadius.lg),
@@ -945,14 +918,10 @@ class _UserCardSkeleton extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Container(
-                    width: 120,
-                    height: 14,
-                    color: colors.bgSurfaceContainer),
+                    width: 120, height: 14, color: colors.bgSurfaceContainer),
                 const SizedBox(height: 6),
                 Container(
-                    width: 90,
-                    height: 12,
-                    color: colors.bgSurfaceContainer),
+                    width: 90, height: 12, color: colors.bgSurfaceContainer),
               ],
             ),
           ),

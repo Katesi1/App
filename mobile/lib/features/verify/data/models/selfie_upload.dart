@@ -21,7 +21,8 @@ class SelfieUpload extends Equatable {
 
   factory SelfieUpload.fromJson(Map<String, dynamic> json) => SelfieUpload(
         id: json['id'] as String,
-        imageUrl: json['imageUrl'] as String? ?? json['image_url'] as String? ?? '',
+        imageUrl:
+            json['imageUrl'] as String? ?? json['image_url'] as String? ?? '',
         faceMatchScore:
             (json['faceMatchScore'] ?? json['face_match_score'] as num?)
                     ?.toDouble() ??

@@ -23,8 +23,7 @@ class PropertyPricingScreen extends ConsumerStatefulWidget {
       _PropertyPricingScreenState();
 }
 
-class _PropertyPricingScreenState
-    extends ConsumerState<PropertyPricingScreen> {
+class _PropertyPricingScreenState extends ConsumerState<PropertyPricingScreen> {
   final _weekdayCtrl = TextEditingController();
   final _weekendCtrl = TextEditingController();
   final _holidayCtrl = TextEditingController();
@@ -66,8 +65,7 @@ class _PropertyPricingScreenState
     return buf.toString();
   }
 
-  int _parseVnd(String text) =>
-      int.tryParse(text.replaceAll('.', '')) ?? 0;
+  int _parseVnd(String text) => int.tryParse(text.replaceAll('.', '')) ?? 0;
 
   Future<void> _onSave() async {
     setState(() => _isLoading = true);
@@ -128,21 +126,20 @@ class _PropertyPricingScreenState
               children: [
                 _section(context, 'GIÁ PHÒNG'),
                 const SizedBox(height: AppSpacing.sm),
-                _field(context, _weekdayCtrl,
-                    'Giá ngày thường (T2-T6)', 'đ/đêm'),
+                _field(
+                    context, _weekdayCtrl, 'Giá ngày thường (T2-T6)', 'đ/đêm'),
                 const SizedBox(height: AppSpacing.md),
-                _field(context, _weekendCtrl,
-                    'Giá cuối tuần (T7-CN)', 'đ/đêm'),
+                _field(context, _weekendCtrl, 'Giá cuối tuần (T7-CN)', 'đ/đêm'),
                 const SizedBox(height: AppSpacing.md),
                 _field(context, _holidayCtrl, 'Giá ngày lễ', 'đ/đêm'),
                 const SizedBox(height: AppSpacing.xl),
                 _section(context, 'PHỤ THU'),
                 const SizedBox(height: AppSpacing.sm),
-                _field(context, _adultSurchargeCtrl,
-                    'Phụ thu người lớn', 'đ/người'),
+                _field(context, _adultSurchargeCtrl, 'Phụ thu người lớn',
+                    'đ/người'),
                 const SizedBox(height: AppSpacing.md),
-                _field(context, _childSurchargeCtrl,
-                    'Phụ thu trẻ em', 'đ/người'),
+                _field(
+                    context, _childSurchargeCtrl, 'Phụ thu trẻ em', 'đ/người'),
                 const SizedBox(height: AppSpacing.lg),
               ],
             );
@@ -180,8 +177,8 @@ class _PropertyPricingScreenState
           controller: c,
           keyboardType: TextInputType.number,
           inputFormatters: [VndInputFormatter()],
-          style: GoogleFonts.beVietnamPro(
-              fontSize: 14, color: colors.textPrimary),
+          style:
+              GoogleFonts.beVietnamPro(fontSize: 14, color: colors.textPrimary),
           decoration: InputDecoration(
             hintText: '0',
             hintStyle: GoogleFonts.beVietnamPro(
@@ -197,8 +194,8 @@ class _PropertyPricingScreenState
               borderRadius: BorderRadius.circular(AppRadius.md),
               borderSide: BorderSide.none,
             ),
-            contentPadding: const EdgeInsets.symmetric(
-                horizontal: 14, vertical: 14),
+            contentPadding:
+                const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
           ),
         ),
       ],
@@ -214,7 +211,8 @@ class _PropertyPricingScreenState
       child: Padding(
         padding: const EdgeInsets.all(AppSpacing.md),
         child: SizedBox(
-          width: double.infinity, height: 48,
+          width: double.infinity,
+          height: 48,
           child: DecoratedBox(
             decoration: BoxDecoration(
               gradient: LinearGradient(colors: gradient),
@@ -230,12 +228,15 @@ class _PropertyPricingScreenState
                 ),
               ),
               child: _isLoading
-                  ? const SizedBox(width: 20, height: 20,
+                  ? const SizedBox(
+                      width: 20,
+                      height: 20,
                       child: CircularProgressIndicator(
                           strokeWidth: 2, color: Colors.white))
                   : Text('Lưu',
                       style: GoogleFonts.beVietnamPro(
-                        fontWeight: FontWeight.w700, fontSize: 15,
+                        fontWeight: FontWeight.w700,
+                        fontSize: 15,
                         color: Colors.white,
                       )),
             ),

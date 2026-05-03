@@ -21,8 +21,7 @@ class OwnerCalendarScreen extends ConsumerStatefulWidget {
       _OwnerCalendarScreenState();
 }
 
-class _OwnerCalendarScreenState
-    extends ConsumerState<OwnerCalendarScreen> {
+class _OwnerCalendarScreenState extends ConsumerState<OwnerCalendarScreen> {
   CalendarViewMode _viewMode = CalendarViewMode.weekly;
   PropertyCategory _category = PropertyCategory.all;
   DateTime _weekStart = _mondayOf(DateTime.now());
@@ -117,17 +116,14 @@ class _OwnerCalendarScreenState
             subtitle: 'Quản lý lịch các căn của bạn',
             showBack: true,
           ),
-
           CalendarViewModeToggle(
             viewMode: _viewMode,
             onChanged: (mode) => setState(() => _viewMode = mode),
           ),
-
           CalendarCategoryTabs(
             selected: _category,
             onChanged: (cat) => setState(() => _category = cat),
           ),
-
           CalendarDateNavigation(
             viewMode: _viewMode,
             weekStart: _weekStart,
@@ -135,14 +131,12 @@ class _OwnerCalendarScreenState
             onPrevious: () => _navigate(-1),
             onNext: () => _navigate(1),
           ),
-
           Expanded(
             child: gridAsync.when(
               loading: () => const LoadingWidget(),
               error: (e, _) => ErrorStateWidget(
                 message: e.toString().replaceAll('Exception: ', ''),
-                onRetry: () =>
-                    ref.invalidate(calendarGridProvider(gridParams)),
+                onRetry: () => ref.invalidate(calendarGridProvider(gridParams)),
               ),
               data: (grid) {
                 final rooms = _mapProperties(grid.properties);
@@ -157,8 +151,8 @@ class _OwnerCalendarScreenState
                   viewMode: _viewMode,
                   weekStart: _weekStart,
                   monthStart: _monthStart,
-                  onCellTap: (room, date, cell) => _showLockDialog(
-                      context, room, date, cell, gridParams),
+                  onCellTap: (room, date, cell) =>
+                      _showLockDialog(context, room, date, cell, gridParams),
                   legendTapHint: 'Tap ô = lock/mở',
                 );
               },
@@ -226,15 +220,14 @@ class _OwnerCalendarScreenState
                 ),
               ),
               const SizedBox(height: 20),
-
               Row(
                 children: [
                   Container(
                     width: 48,
                     height: 48,
                     decoration: BoxDecoration(
-                      color: statusColor
-                          .withValues(alpha: isDark ? 0.18 : 0.10),
+                      color:
+                          statusColor.withValues(alpha: isDark ? 0.18 : 0.10),
                       borderRadius: BorderRadius.circular(AppRadius.md),
                     ),
                     child: Icon(
@@ -275,11 +268,9 @@ class _OwnerCalendarScreenState
                   ),
                 ],
               ),
-
               const SizedBox(height: 20),
               Divider(height: 1, color: colors.borderDefault),
               const SizedBox(height: 20),
-
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
@@ -300,9 +291,7 @@ class _OwnerCalendarScreenState
                   ),
                 ],
               ),
-
               const SizedBox(height: 24),
-
               if (isAvailable) ...[
                 // Khoá ngày
                 _ActionBtn(
@@ -379,18 +368,17 @@ class _OwnerCalendarScreenState
                 // Đã bán — chỉ có thể mở lại
                 Container(
                   width: double.infinity,
-                  padding: const EdgeInsets.symmetric(
-                      horizontal: 14, vertical: 12),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
                   decoration: BoxDecoration(
                     color: colors.errorBg,
                     borderRadius: BorderRadius.circular(AppRadius.md),
-                    border: Border.all(
-                        color: colors.error.withValues(alpha: 0.3)),
+                    border:
+                        Border.all(color: colors.error.withValues(alpha: 0.3)),
                   ),
                   child: Row(
                     children: [
-                      Icon(Icons.sell_rounded,
-                          color: colors.error, size: 18),
+                      Icon(Icons.sell_rounded, color: colors.error, size: 18),
                       const SizedBox(width: 10),
                       Expanded(
                         child: Text(
@@ -430,9 +418,7 @@ class _OwnerCalendarScreenState
     CalendarGridParams gridParams,
   ) async {
     final dateStr = DateFormat('yyyy-MM-dd').format(date);
-    final success = await ref
-        .read(calendarActionsProvider.notifier)
-        .lockRoom(
+    final success = await ref.read(calendarActionsProvider.notifier).lockRoom(
           propertyId: room.id,
           date: dateStr,
           gridParams: gridParams,
@@ -448,8 +434,7 @@ class _OwnerCalendarScreenState
               ? 'Đã khoá phòng ${room.code} ngày ${date.day}/${date.month}'
               : 'Có lỗi xảy ra, vui lòng thử lại',
         ),
-        backgroundColor:
-            success ? colors.textTertiary : colors.error,
+        backgroundColor: success ? colors.textTertiary : colors.error,
         behavior: SnackBarBehavior.floating,
         duration: const Duration(seconds: 2),
       ),
@@ -462,9 +447,7 @@ class _OwnerCalendarScreenState
     CalendarGridParams gridParams,
   ) async {
     final dateStr = DateFormat('yyyy-MM-dd').format(date);
-    final success = await ref
-        .read(calendarActionsProvider.notifier)
-        .lockRoom(
+    final success = await ref.read(calendarActionsProvider.notifier).lockRoom(
           propertyId: room.id,
           date: dateStr,
           gridParams: gridParams,
@@ -493,9 +476,7 @@ class _OwnerCalendarScreenState
     CalendarGridParams gridParams,
   ) async {
     final dateStr = DateFormat('yyyy-MM-dd').format(date);
-    final success = await ref
-        .read(calendarActionsProvider.notifier)
-        .unlockRoom(
+    final success = await ref.read(calendarActionsProvider.notifier).unlockRoom(
           propertyId: room.id,
           date: dateStr,
           gridParams: gridParams,
@@ -539,8 +520,7 @@ class _OwnerCalendarScreenState
               ? 'Đã đánh dấu đã bán phòng ${room.code} ngày ${date.day}/${date.month}'
               : 'Có lỗi xảy ra, vui lòng thử lại',
         ),
-        backgroundColor:
-            success ? colors.error : colors.textSecondary,
+        backgroundColor: success ? colors.error : colors.textSecondary,
         behavior: SnackBarBehavior.floating,
         duration: const Duration(seconds: 2),
       ),

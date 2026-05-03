@@ -76,8 +76,7 @@ class _PropertyImagesScreenState extends ConsumerState<PropertyImagesScreen> {
                 child: const Text('Huỷ')),
             TextButton(
                 onPressed: () => Navigator.pop(ctx, true),
-                child: Text('Xoá',
-                    style: TextStyle(color: colors.error))),
+                child: Text('Xoá', style: TextStyle(color: colors.error))),
           ],
         );
       },
@@ -125,7 +124,8 @@ class _PropertyImagesScreenState extends ConsumerState<PropertyImagesScreen> {
               mainAxisSize: MainAxisSize.min,
               children: [
                 Container(
-                  width: 40, height: 4,
+                  width: 40,
+                  height: 4,
                   decoration: BoxDecoration(
                     color: colors.borderDefault,
                     borderRadius: BorderRadius.circular(2),
@@ -134,20 +134,21 @@ class _PropertyImagesScreenState extends ConsumerState<PropertyImagesScreen> {
                 const SizedBox(height: AppSpacing.md),
                 Text('Thêm ảnh',
                     style: GoogleFonts.beVietnamPro(
-                      fontSize: 16, fontWeight: FontWeight.w700,
+                      fontSize: 16,
+                      fontWeight: FontWeight.w700,
                       color: colors.textPrimary,
                     )),
                 const SizedBox(height: AppSpacing.sm),
                 ListTile(
                   leading: Container(
-                    width: 44, height: 44,
+                    width: 44,
+                    height: 44,
                     decoration: BoxDecoration(
                       color:
                           colors.brand.withValues(alpha: isDark ? 0.18 : 0.12),
                       borderRadius: BorderRadius.circular(AppRadius.md),
                     ),
-                    child: Icon(Icons.camera_alt_outlined,
-                        color: colors.brand),
+                    child: Icon(Icons.camera_alt_outlined, color: colors.brand),
                   ),
                   title: Text('Chụp ảnh',
                       style: GoogleFonts.beVietnamPro(
@@ -160,7 +161,8 @@ class _PropertyImagesScreenState extends ConsumerState<PropertyImagesScreen> {
                 ),
                 ListTile(
                   leading: Container(
-                    width: 44, height: 44,
+                    width: 44,
+                    height: 44,
                     decoration: BoxDecoration(
                       color: colors.brandSecondary
                           .withValues(alpha: isDark ? 0.22 : 0.18),
@@ -200,7 +202,8 @@ class _PropertyImagesScreenState extends ConsumerState<PropertyImagesScreen> {
             Padding(
               padding: const EdgeInsets.only(right: AppSpacing.md),
               child: SizedBox(
-                width: 20, height: 20,
+                width: 20,
+                height: 20,
                 child: CircularProgressIndicator(
                     strokeWidth: 2, color: colors.brand),
               ),
@@ -211,8 +214,7 @@ class _PropertyImagesScreenState extends ConsumerState<PropertyImagesScreen> {
         loading: () => const LoadingWidget(),
         error: (e, _) => ErrorStateWidget(
           message: e.toString().replaceAll('Exception: ', ''),
-          onRetry: () =>
-              ref.invalidate(roomDetailProvider(widget.homestayId)),
+          onRetry: () => ref.invalidate(roomDetailProvider(widget.homestayId)),
         ),
         data: (room) {
           if (room.images.isEmpty) {
@@ -224,11 +226,12 @@ class _PropertyImagesScreenState extends ConsumerState<PropertyImagesScreen> {
       floatingActionButton: FloatingActionButton.extended(
         onPressed: _uploading ? null : _showPickerSheet,
         backgroundColor: colors.brand,
-        icon: const Icon(Icons.add_photo_alternate_outlined,
-            color: Colors.white),
+        icon:
+            const Icon(Icons.add_photo_alternate_outlined, color: Colors.white),
         label: Text('Thêm ảnh',
             style: GoogleFonts.beVietnamPro(
-              fontSize: 14, fontWeight: FontWeight.w600,
+              fontSize: 14,
+              fontWeight: FontWeight.w600,
               color: Colors.white,
             )),
       ),
@@ -243,7 +246,8 @@ class _PropertyImagesScreenState extends ConsumerState<PropertyImagesScreen> {
         mainAxisSize: MainAxisSize.min,
         children: [
           Container(
-            width: 100, height: 100,
+            width: 100,
+            height: 100,
             decoration: BoxDecoration(
               color: colors.brand.withValues(alpha: isDark ? 0.18 : 0.12),
               borderRadius: BorderRadius.circular(AppRadius.full),
@@ -254,14 +258,17 @@ class _PropertyImagesScreenState extends ConsumerState<PropertyImagesScreen> {
           const SizedBox(height: AppSpacing.lg),
           Text('Chưa có ảnh nào',
               style: GoogleFonts.beVietnamPro(
-                fontSize: 18, fontWeight: FontWeight.w700,
+                fontSize: 18,
+                fontWeight: FontWeight.w700,
                 color: colors.textPrimary,
               )),
           const SizedBox(height: AppSpacing.sm),
           Text('Thêm ảnh để khách hàng hình dung\nvề căn phòng của bạn.',
               textAlign: TextAlign.center,
               style: GoogleFonts.beVietnamPro(
-                fontSize: 14, color: colors.textSecondary, height: 1.5,
+                fontSize: 14,
+                color: colors.textSecondary,
+                height: 1.5,
               )),
         ],
       ),
@@ -275,11 +282,13 @@ class _PropertyImagesScreenState extends ConsumerState<PropertyImagesScreen> {
       children: [
         Padding(
           padding: const EdgeInsets.symmetric(
-            horizontal: AppSpacing.md, vertical: AppSpacing.sm,
+            horizontal: AppSpacing.md,
+            vertical: AppSpacing.sm,
           ),
           child: Text('Nhấn "Đặt ảnh chính" để chọn ảnh hiển thị · X = xoá',
               style: GoogleFonts.beVietnamPro(
-                fontSize: 12, fontStyle: FontStyle.italic,
+                fontSize: 12,
+                fontStyle: FontStyle.italic,
                 color: colors.textSecondary,
               )),
         ),
@@ -323,13 +332,13 @@ class _PropertyImagesScreenState extends ConsumerState<PropertyImagesScreen> {
           child: GestureDetector(
             onTap: () => _deleteImage(img),
             child: Container(
-              width: 28, height: 28,
+              width: 28,
+              height: 28,
               decoration: BoxDecoration(
                 color: colors.error,
                 shape: BoxShape.circle,
               ),
-              child: const Icon(Icons.close, size: 16,
-                  color: Colors.white),
+              child: const Icon(Icons.close, size: 16, color: Colors.white),
             ),
           ),
         ),
@@ -340,7 +349,8 @@ class _PropertyImagesScreenState extends ConsumerState<PropertyImagesScreen> {
           child: img.isCover
               ? Container(
                   padding: const EdgeInsets.symmetric(
-                    horizontal: AppSpacing.sm, vertical: 4,
+                    horizontal: AppSpacing.sm,
+                    vertical: 4,
                   ),
                   decoration: BoxDecoration(
                     color: AppColors.jade500.withValues(alpha: 0.85),
@@ -354,7 +364,8 @@ class _PropertyImagesScreenState extends ConsumerState<PropertyImagesScreen> {
                       const SizedBox(width: 4),
                       Text('Ảnh chính',
                           style: GoogleFonts.beVietnamPro(
-                            fontSize: 11, fontWeight: FontWeight.w600,
+                            fontSize: 11,
+                            fontWeight: FontWeight.w600,
                             color: Colors.white,
                           )),
                     ],
@@ -364,7 +375,8 @@ class _PropertyImagesScreenState extends ConsumerState<PropertyImagesScreen> {
                   onTap: () => _setCover(img),
                   child: Container(
                     padding: const EdgeInsets.symmetric(
-                      horizontal: AppSpacing.sm, vertical: 4,
+                      horizontal: AppSpacing.sm,
+                      vertical: 4,
                     ),
                     decoration: BoxDecoration(
                       color: Colors.black.withValues(alpha: 0.5),
@@ -372,7 +384,8 @@ class _PropertyImagesScreenState extends ConsumerState<PropertyImagesScreen> {
                     ),
                     child: Text('Đặt ảnh chính',
                         style: GoogleFonts.beVietnamPro(
-                          fontSize: 11, fontWeight: FontWeight.w500,
+                          fontSize: 11,
+                          fontWeight: FontWeight.w500,
                           color: Colors.white,
                         )),
                   ),

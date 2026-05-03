@@ -10,7 +10,6 @@ import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../shared/widgets/loading_widget.dart';
 import '../controllers/verify_flow_controller.dart';
-import '../data/models/verify_state.dart';
 import 'selfie_scanner_screen.dart';
 import 'widgets/camera_frame_overlay.dart';
 import 'widgets/verify_app_bar.dart';
@@ -41,17 +40,9 @@ class _SelfieCaptureScreenState extends ConsumerState<SelfieCaptureScreen> {
 
     setState(() => _uploading = true);
     try {
-      await ref
-          .read(verifyFlowControllerProvider.notifier)
-          .uploadSelfie(file);
+      await ref.read(verifyFlowControllerProvider.notifier).uploadSelfie(file);
       if (!mounted) return;
       context.pushReplacement('/verify/select-plan');
-    } on FaceMismatchException catch (e) {
-      if (!mounted) return;
-      _showMismatch(e);
-    } on FaceMismatchTooManyAttemptsException {
-      if (!mounted) return;
-      _showLock();
     } catch (e) {
       if (mounted) {
         final msg = e.toString().replaceAll('Exception: ', '');
@@ -62,57 +53,6 @@ class _SelfieCaptureScreenState extends ConsumerState<SelfieCaptureScreen> {
     } finally {
       if (mounted) setState(() => _uploading = false);
     }
-  }
-
-  void _showMismatch(FaceMismatchException e) {
-    final colors = context.colors;
-    showDialog<void>(
-      context: context,
-      builder: (_) => AlertDialog(
-        backgroundColor: colors.bgSurfaceElevated,
-        title: const Text('Khuôn mặt không khớp'),
-        content: Text(
-          'Score: ${(e.score * 100).round()}% (cần ≥ 85%).\n'
-          'Bạn còn ${e.remainingAttempts} lần thử trước khi bị khoá 1 giờ.',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: const Text('Thử lại'),
-          ),
-        ],
-      ),
-    );
-  }
-
-  void _showLock() {
-    final colors = context.colors;
-    showDialog<void>(
-      context: context,
-      barrierDismissible: false,
-      builder: (_) => AlertDialog(
-        backgroundColor: colors.bgSurfaceElevated,
-        title: const Text('Đã khoá tạm thời'),
-        content: const Text(
-          'Bạn đã thử 3 lần không khớp. Hệ thống đã khoá 1 giờ và gửi yêu '
-          'cầu cho admin xét duyệt thủ công. Vui lòng thử lại sau hoặc liên '
-          'hệ hỗ trợ.',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () {
-              Navigator.of(context).pop();
-              Navigator.of(context).pop(); // back to previous screen
-            },
-            child: const Text('Đóng'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: const Text('Liên hệ HT'),
-          ),
-        ],
-      ),
-    );
   }
 
   @override
@@ -140,7 +80,8 @@ class _SelfieCaptureScreenState extends ConsumerState<SelfieCaptureScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                if (ocr != null) _CCCDInfoCard(name: ocr.fullName, cccd: ocr.cccdNumber),
+                if (ocr != null)
+                  _CCCDInfoCard(name: ocr.fullName, cccd: ocr.cccdNumber),
                 const SizedBox(height: AppSpacing.md),
                 Text(
                   'Chụp selfie để so khớp khuôn mặt với ảnh trên CCCD.',
@@ -157,35 +98,6 @@ class _SelfieCaptureScreenState extends ConsumerState<SelfieCaptureScreen> {
                     .fadeIn(duration: 320.ms),
                 const SizedBox(height: AppSpacing.md),
                 const _TipsCard(),
-                if (state.selfieFailAttempts > 0) ...[
-                  const SizedBox(height: AppSpacing.sm),
-                  Container(
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      color: AppColors.warningBgDark,
-                      border: Border.all(color: AppColors.warningBorder),
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    child: Row(
-                      children: [
-                        Icon(Icons.warning_amber_rounded,
-                            size: 16, color: colors.warning),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: Text(
-                            'Lần thử ${state.selfieFailAttempts}/3 — '
-                            'còn ${3 - state.selfieFailAttempts} lần trước khi khoá.',
-                            style: TextStyle(
-                              fontSize: 11,
-                              fontWeight: FontWeight.w700,
-                              color: colors.warning,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
               ],
             ),
           ),
@@ -202,8 +114,7 @@ class _SelfieCaptureScreenState extends ConsumerState<SelfieCaptureScreen> {
               ),
               decoration: BoxDecoration(
                 color: colors.bgSurface,
-                border:
-                    Border(top: BorderSide(color: colors.borderDefault)),
+                border: Border(top: BorderSide(color: colors.borderDefault)),
               ),
               child: SizedBox(
                 height: 52,

@@ -13,8 +13,7 @@ class PropertyInfoScreen extends ConsumerStatefulWidget {
   const PropertyInfoScreen({super.key, required this.homestayId});
 
   @override
-  ConsumerState<PropertyInfoScreen> createState() =>
-      _PropertyInfoScreenState();
+  ConsumerState<PropertyInfoScreen> createState() => _PropertyInfoScreenState();
 }
 
 class _PropertyInfoScreenState extends ConsumerState<PropertyInfoScreen> {
@@ -118,8 +117,7 @@ class _PropertyInfoScreenState extends ConsumerState<PropertyInfoScreen> {
                     ),
                     child: Row(
                       children: [
-                        Icon(Icons.tag_rounded,
-                            size: 18, color: colors.brand),
+                        Icon(Icons.tag_rounded, size: 18, color: colors.brand),
                         const SizedBox(width: 10),
                         Text('Mã căn: ',
                             style: GoogleFonts.beVietnamPro(
@@ -298,7 +296,8 @@ class _PropertyInfoScreenState extends ConsumerState<PropertyInfoScreen> {
     );
   }
 
-  Widget _chip(BuildContext context, String label, bool on, VoidCallback onTap) {
+  Widget _chip(
+      BuildContext context, String label, bool on, VoidCallback onTap) {
     final colors = context.colors;
     return GestureDetector(
       onTap: onTap,

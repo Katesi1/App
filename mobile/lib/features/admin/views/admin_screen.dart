@@ -25,8 +25,7 @@ class AdminScreen extends ConsumerWidget {
     final usersAsync = ref.watch(staffListProvider);
     final homestaysAsync = ref.watch(homestayListProvider(true));
     final bookingsAsync = ref.watch(bookingListProvider(null));
-    final pendingKycCount =
-        ref.watch(pendingKycCountProvider).valueOrNull ?? 0;
+    final pendingKycCount = ref.watch(pendingKycCountProvider).valueOrNull ?? 0;
 
     return AppScaffold(
       title: '',
@@ -213,9 +212,7 @@ class AdminScreen extends ConsumerWidget {
                     icon: Icons.people_rounded,
                     iconBg: AppColors.jade50,
                     iconColor: colors.brand,
-                    title: isAdmin
-                        ? 'Quản lý nhân viên'
-                        : 'Nhân viên của tôi',
+                    title: isAdmin ? 'Quản lý nhân viên' : 'Nhân viên của tôi',
                     subtitle: isAdmin
                         ? 'Thêm, sửa, vô hiệu hoá tài khoản'
                         : 'Thêm, gỡ nhân viên khỏi đội',
@@ -338,8 +335,7 @@ class AdminScreen extends ConsumerWidget {
                     ),
                     error: (e, _) => ErrorStateWidget(
                       message: e.toString().replaceAll('Exception: ', ''),
-                      onRetry: () =>
-                          ref.invalidate(staffListProvider),
+                      onRetry: () => ref.invalidate(staffListProvider),
                     ),
                     data: (users) {
                       if (users.isEmpty) {
@@ -392,8 +388,7 @@ class AdminScreen extends ConsumerWidget {
                             ? Padding(
                                 padding: const EdgeInsets.only(top: 8),
                                 child: TextButton(
-                                  onPressed: () =>
-                                      context.push('/admin/users'),
+                                  onPressed: () => context.push('/admin/users'),
                                   child: Text(
                                     'Xem tất cả ${users.length} nhân viên →',
                                     style: GoogleFonts.beVietnamPro(
@@ -418,7 +413,6 @@ class AdminScreen extends ConsumerWidget {
     );
   }
 }
-
 
 // ─── KPI Card ────────────────────────────────────────────────────────────────
 class _KpiCard extends StatelessWidget {
@@ -561,8 +555,7 @@ class _MenuCard extends StatelessWidget {
                 height: 42,
                 decoration: BoxDecoration(
                   color: iconBg,
-                  borderRadius:
-                      BorderRadius.circular(AppRadius.md),
+                  borderRadius: BorderRadius.circular(AppRadius.md),
                 ),
                 child: Icon(icon, color: iconColor, size: 22),
               ),
@@ -598,8 +591,7 @@ class _MenuCard extends StatelessWidget {
                   ),
                   decoration: BoxDecoration(
                     color: colors.bgSurfaceContainer,
-                    borderRadius:
-                        BorderRadius.circular(AppRadius.full),
+                    borderRadius: BorderRadius.circular(AppRadius.full),
                   ),
                   child: Text(
                     trailing!,
@@ -662,8 +654,7 @@ class _QuickAction extends StatelessWidget {
                 height: 44,
                 decoration: BoxDecoration(
                   color: color.withValues(alpha: 0.12),
-                  borderRadius:
-                      BorderRadius.circular(AppRadius.md),
+                  borderRadius: BorderRadius.circular(AppRadius.md),
                 ),
                 child: Icon(icon, color: color, size: 22),
               ),
@@ -710,12 +701,9 @@ class _UserRow extends StatelessWidget {
           children: [
             CircleAvatar(
               radius: 18,
-              backgroundColor:
-                  roleColor.withValues(alpha: 0.12),
+              backgroundColor: roleColor.withValues(alpha: 0.12),
               child: Text(
-                user.name.isNotEmpty
-                    ? user.name[0].toUpperCase()
-                    : 'U',
+                user.name.isNotEmpty ? user.name[0].toUpperCase() : 'U',
                 style: GoogleFonts.beVietnamPro(
                   color: roleColor,
                   fontWeight: FontWeight.w700,
@@ -755,8 +743,7 @@ class _UserRow extends StatelessWidget {
               ),
               decoration: BoxDecoration(
                 color: roleColor.withValues(alpha: 0.1),
-                borderRadius:
-                    BorderRadius.circular(AppRadius.full),
+                borderRadius: BorderRadius.circular(AppRadius.full),
               ),
               child: Text(
                 roleLabel,
@@ -784,7 +771,6 @@ class _UserRow extends StatelessWidget {
     );
   }
 }
-
 
 // ─── Avatar Button ─────────────────────────────────────────────────────────────
 class _AvatarBtn extends StatelessWidget {

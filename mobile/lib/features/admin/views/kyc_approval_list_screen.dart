@@ -74,8 +74,7 @@ class KYCApprovalListScreen extends ConsumerWidget {
                 }
                 return RefreshIndicator(
                   color: colors.brand,
-                  onRefresh: () async =>
-                      ref.invalidate(kycSubmissionsProvider),
+                  onRefresh: () async => ref.invalidate(kycSubmissionsProvider),
                   child: ListView.separated(
                     padding: const EdgeInsets.all(AppSpacing.md),
                     itemCount: list.length,
@@ -190,8 +189,7 @@ class _FilterChip extends StatelessWidget {
             ),
             const SizedBox(width: 6),
             Container(
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
+              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
               decoration: BoxDecoration(
                 color: isActive
                     ? AppColors.darkBg.withValues(alpha: 0.15)
@@ -389,10 +387,12 @@ class _StatusPill extends StatelessWidget {
   Widget build(BuildContext context) {
     final colors = context.colors;
     final (label, fg, bg) = switch (submission.status) {
-      VerifyStatus.approved =>
-        ('Đã duyệt', colors.success, AppColors.successBgDark),
-      VerifyStatus.rejected =>
-        ('Từ chối', colors.error, AppColors.errorBgDark),
+      VerifyStatus.approved => (
+          'Đã duyệt',
+          colors.success,
+          AppColors.successBgDark
+        ),
+      VerifyStatus.rejected => ('Từ chối', colors.error, AppColors.errorBgDark),
       _ => submission.isOverdue
           ? ('Quá hạn', colors.error, AppColors.errorBgDark)
           : ('Chờ duyệt', colors.brandSecondary, AppColors.goldBg),
@@ -431,8 +431,9 @@ class _Meta extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = context.colors;
-    final crossAxis =
-        align == TextAlign.end ? CrossAxisAlignment.end : CrossAxisAlignment.start;
+    final crossAxis = align == TextAlign.end
+        ? CrossAxisAlignment.end
+        : CrossAxisAlignment.start;
     return Column(
       crossAxisAlignment: crossAxis,
       children: [
@@ -470,11 +471,18 @@ class _EmptyState extends StatelessWidget {
   Widget build(BuildContext context) {
     final colors = context.colors;
     final (icon, label) = switch (filter) {
-      KYCQueueFilter.pending => (Icons.inbox_outlined, 'Không có hồ sơ chờ duyệt'),
-      KYCQueueFilter.approved =>
-        (Icons.check_circle_outline, 'Chưa có hồ sơ đã duyệt'),
-      KYCQueueFilter.rejected =>
-        (Icons.cancel_outlined, 'Chưa có hồ sơ từ chối'),
+      KYCQueueFilter.pending => (
+          Icons.inbox_outlined,
+          'Không có hồ sơ chờ duyệt'
+        ),
+      KYCQueueFilter.approved => (
+          Icons.check_circle_outline,
+          'Chưa có hồ sơ đã duyệt'
+        ),
+      KYCQueueFilter.rejected => (
+          Icons.cancel_outlined,
+          'Chưa có hồ sơ từ chối'
+        ),
       KYCQueueFilter.all => (Icons.inbox_outlined, 'Chưa có hồ sơ nào'),
     };
     return Center(

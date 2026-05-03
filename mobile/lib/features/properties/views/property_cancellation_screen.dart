@@ -62,9 +62,8 @@ class _PropertyCancellationScreenState
   Future<void> _onSave() async {
     setState(() => _isLoading = true);
 
-    final ok = await ref
-        .read(roomActionsProvider.notifier)
-        .update(widget.homestayId, {
+    final ok =
+        await ref.read(roomActionsProvider.notifier).update(widget.homestayId, {
       'cancellationPolicy': _selected,
     });
 
@@ -95,8 +94,7 @@ class _PropertyCancellationScreenState
         loading: () => const LoadingWidget(),
         error: (e, _) => ErrorStateWidget(
           message: e.toString().replaceAll('Exception: ', ''),
-          onRetry: () =>
-              ref.invalidate(roomDetailProvider(widget.homestayId)),
+          onRetry: () => ref.invalidate(roomDetailProvider(widget.homestayId)),
         ),
         data: (_) {
           _initFromRoom();
@@ -164,7 +162,8 @@ class _PropertyCancellationScreenState
         child: Padding(
           padding: const EdgeInsets.all(AppSpacing.md),
           child: SizedBox(
-            width: double.infinity, height: 48,
+            width: double.infinity,
+            height: 48,
             child: DecoratedBox(
               decoration: BoxDecoration(
                 gradient: LinearGradient(colors: gradient),
@@ -180,12 +179,15 @@ class _PropertyCancellationScreenState
                   ),
                 ),
                 child: _isLoading
-                    ? const SizedBox(width: 20, height: 20,
+                    ? const SizedBox(
+                        width: 20,
+                        height: 20,
                         child: CircularProgressIndicator(
                             strokeWidth: 2, color: Colors.white))
                     : Text('Lưu',
                         style: GoogleFonts.beVietnamPro(
-                          fontWeight: FontWeight.w700, fontSize: 15,
+                          fontWeight: FontWeight.w700,
+                          fontSize: 15,
                           color: Colors.white,
                         )),
               ),

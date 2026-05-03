@@ -83,8 +83,7 @@ class _CalendarGridWidgetState extends State<CalendarGridWidget> {
     if (_isSyncing) return;
     _isSyncing = true;
     if (_bodyHorizontalController.hasClients) {
-      _bodyHorizontalController.jumpTo(
-          _headerHorizontalController.offset);
+      _bodyHorizontalController.jumpTo(_headerHorizontalController.offset);
     }
     _isSyncing = false;
   }
@@ -93,8 +92,7 @@ class _CalendarGridWidgetState extends State<CalendarGridWidget> {
     if (_isSyncing) return;
     _isSyncing = true;
     if (_headerHorizontalController.hasClients) {
-      _headerHorizontalController.jumpTo(
-          _bodyHorizontalController.offset);
+      _headerHorizontalController.jumpTo(_bodyHorizontalController.offset);
     }
     _isSyncing = false;
   }
@@ -366,15 +364,12 @@ class _CalendarGridWidgetState extends State<CalendarGridWidget> {
     }
 
     final bgColor = switch (cell.status) {
-      DayCellStatus.booked => isDark
-          ? AppColors.coral.withValues(alpha: 0.2)
-          : AppColors.coralLight,
-      DayCellStatus.hold => isDark
-          ? AppColors.amber.withValues(alpha: 0.18)
-          : AppColors.amberLight,
-      DayCellStatus.locked => isDark
-          ? AppColors.slate.withValues(alpha: 0.25)
-          : AppColors.slateLight,
+      DayCellStatus.booked =>
+        isDark ? AppColors.coral.withValues(alpha: 0.2) : AppColors.coralLight,
+      DayCellStatus.hold =>
+        isDark ? AppColors.amber.withValues(alpha: 0.18) : AppColors.amberLight,
+      DayCellStatus.locked =>
+        isDark ? AppColors.slate.withValues(alpha: 0.25) : AppColors.slateLight,
       DayCellStatus.available => isWeekend
           ? isDark
               ? AppColors.gold.withValues(alpha: 0.1)
@@ -722,7 +717,8 @@ class CalendarDateNavigation extends StatelessWidget {
                 style: GoogleFonts.beVietnamPro(
                   fontSize: 16,
                   fontWeight: FontWeight.w700,
-                  color: isDark ? AppColors.darkTextPrimary : AppColors.oceanDeep,
+                  color:
+                      isDark ? AppColors.darkTextPrimary : AppColors.oceanDeep,
                 ),
               ),
               if (isWeekly)
@@ -895,8 +891,8 @@ class CalendarGradientHeader extends StatelessWidget {
                 decoration: BoxDecoration(
                   color: Colors.white.withValues(alpha: 0.12),
                   shape: BoxShape.circle,
-                  border: Border.all(
-                      color: Colors.white.withValues(alpha: 0.18)),
+                  border:
+                      Border.all(color: Colors.white.withValues(alpha: 0.18)),
                 ),
                 child: const Icon(Icons.arrow_back_rounded,
                     color: Colors.white, size: 18),

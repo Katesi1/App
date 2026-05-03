@@ -28,7 +28,8 @@ class PropertyManagementScreen extends ConsumerStatefulWidget {
       _PropertyManagementScreenState();
 }
 
-class _PropertyManagementScreenState extends ConsumerState<PropertyManagementScreen>
+class _PropertyManagementScreenState
+    extends ConsumerState<PropertyManagementScreen>
     with SingleTickerProviderStateMixin {
   late final TabController _tabController;
 
@@ -214,8 +215,7 @@ class _PropertyManagementScreenState extends ConsumerState<PropertyManagementScr
                                   }),
                                   child: Icon(
                                     Icons.clear_rounded,
-                                    color: Colors.white
-                                        .withValues(alpha: 0.6),
+                                    color: Colors.white.withValues(alpha: 0.6),
                                     size: 18,
                                   ),
                                 )
@@ -235,11 +235,9 @@ class _PropertyManagementScreenState extends ConsumerState<PropertyManagementScr
                     controller: _tabController,
                     isScrollable: true,
                     tabAlignment: TabAlignment.start,
-                    labelPadding:
-                        const EdgeInsets.symmetric(horizontal: 14),
+                    labelPadding: const EdgeInsets.symmetric(horizontal: 14),
                     labelColor: Colors.white,
-                    unselectedLabelColor:
-                        Colors.white.withValues(alpha: 0.6),
+                    unselectedLabelColor: Colors.white.withValues(alpha: 0.6),
                     labelStyle: GoogleFonts.beVietnamPro(
                       fontSize: 13,
                       fontWeight: FontWeight.w700,
@@ -294,24 +292,19 @@ class _PropertyManagementScreenState extends ConsumerState<PropertyManagementScr
                     child: EmptyStateWidget(
                       icon: tab.icon,
                       message: 'Chưa có ${tab.label} nào',
-                      subMessage:
-                          canEdit ? 'Nhấn + để thêm mới' : null,
+                      subMessage: canEdit ? 'Nhấn + để thêm mới' : null,
                     ),
                   );
                 }
                 return ListView.separated(
-                  padding:
-                      const EdgeInsets.fromLTRB(16, 16, 16, 100),
+                  padding: const EdgeInsets.fromLTRB(16, 16, 16, 100),
                   itemCount: filtered.length,
-                  separatorBuilder: (_, __) =>
-                      const SizedBox(height: 10),
+                  separatorBuilder: (_, __) => const SizedBox(height: 10),
                   itemBuilder: (_, i) => PropertyManagementCard(
                     homestay: filtered[i],
-                    onTap: () => context
-                        .push('/properties/${filtered[i].id}'),
+                    onTap: () => context.push('/properties/${filtered[i].id}'),
                     onEdit: canEdit
-                        ? () => context
-                            .push('/properties/${filtered[i].id}')
+                        ? () => context.push('/properties/${filtered[i].id}')
                         : null,
                   ),
                 );
@@ -338,8 +331,8 @@ class _PropertyManagementScreenState extends ConsumerState<PropertyManagementScr
     final user = ref.read(currentUserProvider);
     final verifyState = ref.read(verifyFlowControllerProvider);
 
-    final needsVerify = (user?.isOwner ?? false) &&
-        verifyState.status != VerifyStatus.approved;
+    final needsVerify =
+        (user?.isOwner ?? false) && verifyState.status != VerifyStatus.approved;
 
     if (!needsVerify) {
       context.push('/properties/new');

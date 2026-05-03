@@ -11,8 +11,7 @@ class NotificationScreen extends ConsumerStatefulWidget {
   const NotificationScreen({super.key});
 
   @override
-  ConsumerState<NotificationScreen> createState() =>
-      _NotificationScreenState();
+  ConsumerState<NotificationScreen> createState() => _NotificationScreenState();
 }
 
 class _NotificationScreenState extends ConsumerState<NotificationScreen> {
@@ -29,9 +28,7 @@ class _NotificationScreenState extends ConsumerState<NotificationScreen> {
         actions: [
           TextButton(
             onPressed: () {
-              ref
-                  .read(notificationActionsProvider.notifier)
-                  .markAllAsRead();
+              ref.read(notificationActionsProvider.notifier).markAllAsRead();
             },
             child: Text(
               'Đọc tất cả',
@@ -66,8 +63,7 @@ class _NotificationScreenState extends ConsumerState<NotificationScreen> {
                   return const EmptyStateWidget(
                     icon: Icons.notifications_off_outlined,
                     message: 'Không có thông báo',
-                    subMessage:
-                        'Bạn sẽ nhận thông báo khi có cập nhật mới',
+                    subMessage: 'Bạn sẽ nhận thông báo khi có cập nhật mới',
                   );
                 }
 
@@ -84,8 +80,7 @@ class _NotificationScreenState extends ConsumerState<NotificationScreen> {
                       onTap: () {
                         if (!notification.isRead) {
                           ref
-                              .read(
-                                  notificationActionsProvider.notifier)
+                              .read(notificationActionsProvider.notifier)
                               .markAsRead(notification.id);
                         }
                       },
@@ -98,10 +93,8 @@ class _NotificationScreenState extends ConsumerState<NotificationScreen> {
                 count: 6,
               ),
               error: (e, _) => ErrorStateWidget(
-                message:
-                    e.toString().replaceAll('Exception: ', ''),
-                onRetry: () =>
-                    ref.invalidate(notificationListProvider),
+                message: e.toString().replaceAll('Exception: ', ''),
+                onRetry: () => ref.invalidate(notificationListProvider),
               ),
             ),
           ),

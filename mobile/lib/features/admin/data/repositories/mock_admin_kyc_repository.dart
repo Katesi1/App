@@ -169,8 +169,7 @@ class MockAdminKYCRepository implements AdminKycRepository {
       ownerEmail: email,
       cccdFront: CCCDUpload(
         id: '${id}_front',
-        imageUrl:
-            'https://placehold.co/640x400/16252B/B5D4DA?text=CCCD+Front',
+        imageUrl: 'https://placehold.co/640x400/16252B/B5D4DA?text=CCCD+Front',
         ocrResult: OCRResult(
           cccdNumber: cccdNumber,
           fullName: ownerName.toUpperCase(),
@@ -184,15 +183,13 @@ class MockAdminKYCRepository implements AdminKycRepository {
       ),
       cccdBack: CCCDUpload(
         id: '${id}_back',
-        imageUrl:
-            'https://placehold.co/640x400/16252B/B5D4DA?text=CCCD+Back',
+        imageUrl: 'https://placehold.co/640x400/16252B/B5D4DA?text=CCCD+Back',
         confidence: 0.91,
         uploadedAt: submittedAt.subtract(const Duration(minutes: 3)),
       ),
       selfie: SelfieUpload(
         id: '${id}_selfie',
-        imageUrl:
-            'https://placehold.co/400x500/16252B/B5D4DA?text=Selfie',
+        imageUrl: 'https://placehold.co/400x500/16252B/B5D4DA?text=Selfie',
         faceMatchScore: 0.92,
         isValid: true,
         uploadedAt: submittedAt.subtract(const Duration(minutes: 1)),

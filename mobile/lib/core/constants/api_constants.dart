@@ -76,10 +76,14 @@ class ApiConstants {
       '/admin/kyc/submissions/$id/reject';
 
   // Calendar
-  static const String calendarPublicGrid = '/calendar/public-grid'; // GET — public, no auth
-  static const String calendarGrid = '/calendar/grid'; // GET — management, Bearer token
-  static const String calendarLock = '/calendar/lock'; // POST = lock, DELETE = unlock
-  static const String calendarSold = '/calendar/sold'; // PATCH = đánh dấu đã bán
+  static const String calendarPublicGrid =
+      '/calendar/public-grid'; // GET — public, no auth
+  static const String calendarGrid =
+      '/calendar/grid'; // GET — management, Bearer token
+  static const String calendarLock =
+      '/calendar/lock'; // POST = lock, DELETE = unlock
+  static const String calendarSold =
+      '/calendar/sold'; // PATCH = đánh dấu đã bán
   static const String calendarAdminContact = '/calendar/admin-contact';
 
   // Dashboard & Reports

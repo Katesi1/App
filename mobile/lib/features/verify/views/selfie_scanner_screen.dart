@@ -299,11 +299,10 @@ class _SelfieScannerScreenState extends State<SelfieScannerScreen>
 
     // ── Phase 3: final neutral pose ──
     if (_phase == _Phase.neutral) {
-      final isNeutral =
-          yaw.abs() <= _neutralTolerance &&
-              pitch.abs() <= _neutralTolerance &&
-              leftEye >= _minEyeOpenProb &&
-              rightEye >= _minEyeOpenProb;
+      final isNeutral = yaw.abs() <= _neutralTolerance &&
+          pitch.abs() <= _neutralTolerance &&
+          leftEye >= _minEyeOpenProb &&
+          rightEye >= _minEyeOpenProb;
       if (isNeutral) {
         _holdFrames++;
         if (mounted) setState(() {});
@@ -336,8 +335,7 @@ class _SelfieScannerScreenState extends State<SelfieScannerScreen>
 
     InputImageRotation? rotation;
     if (Platform.isIOS) {
-      rotation =
-          InputImageRotationValue.fromRawValue(cam.sensorOrientation);
+      rotation = InputImageRotationValue.fromRawValue(cam.sensorOrientation);
     } else {
       final deviceRotation =
           _orientationDegrees[controller.value.deviceOrientation];
@@ -509,8 +507,7 @@ class _SelfieScannerScreenState extends State<SelfieScannerScreen>
                           AppSpacing.md,
                           AppSpacing.md,
                           AppSpacing.md,
-                          MediaQuery.of(context).padding.bottom +
-                              AppSpacing.md,
+                          MediaQuery.of(context).padding.bottom + AppSpacing.md,
                         ),
                         decoration: const BoxDecoration(
                           gradient: LinearGradient(
@@ -642,10 +639,8 @@ class _OvalScrimPainter extends CustomPainter {
     final left = (size.width - ovalW) / 2;
     final top = (size.height - ovalH) / 2;
 
-    final scrim = Path()
-      ..addRect(Rect.fromLTWH(0, 0, size.width, size.height));
-    final hole = Path()
-      ..addOval(Rect.fromLTWH(left, top, ovalW, ovalH));
+    final scrim = Path()..addRect(Rect.fromLTWH(0, 0, size.width, size.height));
+    final hole = Path()..addOval(Rect.fromLTWH(left, top, ovalW, ovalH));
     final path = Path.combine(PathOperation.difference, scrim, hole);
 
     canvas.drawPath(path, Paint()..color = AppColors.cameraScrim);
@@ -829,9 +824,7 @@ class _OvalBorderPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(covariant _OvalBorderPainter old) =>
-      old.color != color ||
-      old.progress != progress ||
-      old.pulse != pulse;
+      old.color != color || old.progress != progress || old.pulse != pulse;
 }
 
 class _StatusPill extends StatelessWidget {

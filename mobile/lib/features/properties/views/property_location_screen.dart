@@ -43,9 +43,8 @@ class _PropertyLocationScreenState
   Future<void> _onSave() async {
     setState(() => _isLoading = true);
 
-    final ok = await ref
-        .read(roomActionsProvider.notifier)
-        .update(widget.homestayId, {
+    final ok =
+        await ref.read(roomActionsProvider.notifier).update(widget.homestayId, {
       'address': _addressCtrl.text.trim(),
       if (_mapLinkCtrl.text.trim().isNotEmpty)
         'mapLink': _mapLinkCtrl.text.trim(),
@@ -131,7 +130,8 @@ class _PropertyLocationScreenState
           child: Padding(
             padding: const EdgeInsets.all(AppSpacing.md),
             child: SizedBox(
-              width: double.infinity, height: 48,
+              width: double.infinity,
+              height: 48,
               child: DecoratedBox(
                 decoration: BoxDecoration(
                   gradient: LinearGradient(
@@ -149,12 +149,15 @@ class _PropertyLocationScreenState
                     ),
                   ),
                   child: _isLoading
-                      ? const SizedBox(width: 20, height: 20,
+                      ? const SizedBox(
+                          width: 20,
+                          height: 20,
                           child: CircularProgressIndicator(
                               strokeWidth: 2, color: Colors.white))
                       : Text('Lưu',
                           style: GoogleFonts.beVietnamPro(
-                            fontWeight: FontWeight.w700, fontSize: 15,
+                            fontWeight: FontWeight.w700,
+                            fontSize: 15,
                             color: Colors.white,
                           )),
                 ),
@@ -176,14 +179,13 @@ class _PropertyLocationScreenState
     final colors = context.colors;
     return InputDecoration(
       hintText: hint,
-      hintStyle: GoogleFonts.beVietnamPro(
-          fontSize: 14, color: colors.textTertiary),
+      hintStyle:
+          GoogleFonts.beVietnamPro(fontSize: 14, color: colors.textTertiary),
       border: OutlineInputBorder(
         borderRadius: BorderRadius.circular(AppRadius.md),
         borderSide: BorderSide.none,
       ),
-      contentPadding:
-          const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+      contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
     );
   }
 }

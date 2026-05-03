@@ -78,8 +78,7 @@ class _PaymentScreenState extends ConsumerState<PaymentScreen> {
   void _startPolling() {
     _pollTimer?.cancel();
     _pollCount = 0;
-    _pollTimer =
-        Timer.periodic(const Duration(seconds: 3), (timer) async {
+    _pollTimer = Timer.periodic(const Duration(seconds: 3), (timer) async {
       _pollCount++;
       if (_pollCount > 100) {
         timer.cancel();
@@ -121,8 +120,7 @@ class _PaymentScreenState extends ConsumerState<PaymentScreen> {
       barrierDismissible: false,
       builder: (_) => Dialog(
         backgroundColor: context.colors.bgSurfaceElevated,
-        shape:
-            RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         child: Padding(
           padding: const EdgeInsets.all(20),
           child: Column(
@@ -214,7 +212,8 @@ class _PaymentScreenState extends ConsumerState<PaymentScreen> {
       builder: (_) => AlertDialog(
         backgroundColor: context.colors.bgSurfaceElevated,
         title: const Text('Nhập thông tin thẻ'),
-        content: const Text('(Stub) Form thẻ tín dụng sẽ ghép sau khi VNPay sandbox sẵn sàng.'),
+        content: const Text(
+            '(Stub) Form thẻ tín dụng sẽ ghép sau khi VNPay sandbox sẵn sàng.'),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).maybePop(),
@@ -246,8 +245,8 @@ class _PaymentScreenState extends ConsumerState<PaymentScreen> {
           overline: 'BƯỚC 6/7 · SUBSCRIPTION',
           title: 'Thanh toán',
         ),
-        body: const Center(
-            child: Text('Chưa chọn plan — quay lại bước trước.')),
+        body:
+            const Center(child: Text('Chưa chọn plan — quay lại bước trước.')),
       );
     }
 
@@ -325,8 +324,7 @@ class _PaymentScreenState extends ConsumerState<PaymentScreen> {
               ),
               decoration: BoxDecoration(
                 color: colors.bgSurface,
-                border:
-                    Border(top: BorderSide(color: colors.borderDefault)),
+                border: Border(top: BorderSide(color: colors.borderDefault)),
               ),
               child: SizedBox(
                 height: 52,
@@ -337,8 +335,7 @@ class _PaymentScreenState extends ConsumerState<PaymentScreen> {
                           width: 16,
                           height: 16,
                           child: CircularProgressIndicator(
-                              strokeWidth: 2,
-                              color: AppColors.darkBg),
+                              strokeWidth: 2, color: AppColors.darkBg),
                         )
                       : const Icon(Icons.lock_outline, size: 18),
                   label: Text(

@@ -20,8 +20,7 @@ class ChangePasswordScreen extends ConsumerStatefulWidget {
       _ChangePasswordScreenState();
 }
 
-class _ChangePasswordScreenState
-    extends ConsumerState<ChangePasswordScreen> {
+class _ChangePasswordScreenState extends ConsumerState<ChangePasswordScreen> {
   final _formKey = GlobalKey<FormState>();
   final _currentPwController = TextEditingController();
   final _newPwController = TextEditingController();
@@ -45,12 +44,11 @@ class _ChangePasswordScreenState
 
     setState(() => _isLoading = true);
 
-    final (success, message) = await ref
-        .read(authProvider.notifier)
-        .changePassword(
-          _currentPwController.text,
-          _newPwController.text,
-        );
+    final (success, message) =
+        await ref.read(authProvider.notifier).changePassword(
+              _currentPwController.text,
+              _newPwController.text,
+            );
 
     if (!mounted) return;
     setState(() => _isLoading = false);
@@ -65,21 +63,29 @@ class _ChangePasswordScreenState
 
   /// Password strength: 0-4 based on criteria met
   int _strength(String pw) {
-    if (pw.isEmpty) { return 0; }
+    if (pw.isEmpty) {
+      return 0;
+    }
     int score = 0;
-    if (pw.length >= 8) { score++; }
-    if (RegExp(r'[A-Z]').hasMatch(pw) &&
-        RegExp(r'[a-z]').hasMatch(pw)) { score++; }
-    if (RegExp(r'[0-9]').hasMatch(pw)) { score++; }
-    if (RegExp(r'[!@#\$%^&*(),.?":{}|<>]').hasMatch(pw)) { score++; }
+    if (pw.length >= 8) {
+      score++;
+    }
+    if (RegExp(r'[A-Z]').hasMatch(pw) && RegExp(r'[a-z]').hasMatch(pw)) {
+      score++;
+    }
+    if (RegExp(r'[0-9]').hasMatch(pw)) {
+      score++;
+    }
+    if (RegExp(r'[!@#\$%^&*(),.?":{}|<>]').hasMatch(pw)) {
+      score++;
+    }
     return score;
   }
 
   @override
   Widget build(BuildContext context) {
     final colors = context.colors;
-    final isDark =
-        Theme.of(context).brightness == Brightness.dark;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     final topPad = MediaQuery.of(context).padding.top;
     final strengthLevel = _strength(_newPwController.text);
 
@@ -103,20 +109,18 @@ class _ChangePasswordScreenState
                       padding: const EdgeInsets.all(20),
                       decoration: BoxDecoration(
                         color: colors.bgSurface,
-                        borderRadius: BorderRadius.circular(
-                            AppRadius.lg),
+                        borderRadius: BorderRadius.circular(AppRadius.lg),
                         boxShadow: [
                           BoxShadow(
-                            color: Colors.black.withValues(
-                                alpha: isDark ? 0.30 : 0.06),
+                            color: Colors.black
+                                .withValues(alpha: isDark ? 0.30 : 0.06),
                             blurRadius: 20,
                             offset: const Offset(0, 4),
                           ),
                         ],
                       ),
                       child: Column(
-                        crossAxisAlignment:
-                            CrossAxisAlignment.start,
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           // Mật khẩu hiện tại
                           _buildLabel('Mật khẩu hiện tại'),
@@ -126,11 +130,10 @@ class _ChangePasswordScreenState
                             obscureText: !_showCurrent,
                             decoration: _pwDecoration(
                               context: context,
-                              hintText:
-                                  'Nhập mật khẩu hiện tại',
+                              hintText: 'Nhập mật khẩu hiện tại',
                               visible: _showCurrent,
-                              onToggle: () => setState(() =>
-                                  _showCurrent = !_showCurrent),
+                              onToggle: () =>
+                                  setState(() => _showCurrent = !_showCurrent),
                             ),
                             validator: (v) {
                               if (v == null || v.isEmpty) {
@@ -153,8 +156,8 @@ class _ChangePasswordScreenState
                               context: context,
                               hintText: 'Nhập mật khẩu mới',
                               visible: _showNew,
-                              onToggle: () => setState(
-                                  () => _showNew = !_showNew),
+                              onToggle: () =>
+                                  setState(() => _showNew = !_showNew),
                             ),
                             validator: (v) {
                               if (v == null || v.isEmpty) {
@@ -184,8 +187,7 @@ class _ChangePasswordScreenState
                           const SizedBox(height: 10),
                           _StrengthBar(
                               strength: strengthLevel,
-                              password:
-                                  _newPwController.text),
+                              password: _newPwController.text),
 
                           const SizedBox(height: 20),
 
@@ -197,11 +199,10 @@ class _ChangePasswordScreenState
                             obscureText: !_showConfirm,
                             decoration: _pwDecoration(
                               context: context,
-                              hintText:
-                                  'Nhập lại mật khẩu mới',
+                              hintText: 'Nhập lại mật khẩu mới',
                               visible: _showConfirm,
-                              onToggle: () => setState(() =>
-                                  _showConfirm = !_showConfirm),
+                              onToggle: () =>
+                                  setState(() => _showConfirm = !_showConfirm),
                             ),
                             validator: (v) {
                               if (v == null || v.isEmpty) {
@@ -218,8 +219,7 @@ class _ChangePasswordScreenState
 
                           // Hint row
                           Row(
-                            crossAxisAlignment:
-                                CrossAxisAlignment.start,
+                            crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Icon(
                                 Icons.info_outline_rounded,
@@ -231,8 +231,7 @@ class _ChangePasswordScreenState
                                 child: Text(
                                   'Mật khẩu cần ít nhất 8 ký tự, bao gồm '
                                   'chữ hoa, chữ thường, số và ký tự đặc biệt',
-                                  style:
-                                      GoogleFonts.beVietnamPro(
+                                  style: GoogleFonts.beVietnamPro(
                                     fontSize: 12,
                                     color: colors.textSecondary,
                                   ),
@@ -341,10 +340,7 @@ class _ChangePasswordScreenState
               color: Colors.white,
               size: 28,
             ),
-          )
-              .animate()
-              .fadeIn(duration: 400.ms)
-              .scale(
+          ).animate().fadeIn(duration: 400.ms).scale(
                 begin: const Offset(0.8, 0.8),
                 curve: Curves.elasticOut,
                 duration: 500.ms,
@@ -375,8 +371,7 @@ class _ChangePasswordScreenState
     final colors = context.colors;
     return InputDecoration(
       hintText: hintText,
-      hintStyle:
-          GoogleFonts.beVietnamPro(color: colors.textTertiary),
+      hintStyle: GoogleFonts.beVietnamPro(color: colors.textTertiary),
       prefixIcon: Icon(
         Icons.lock_outline_rounded,
         color: colors.textSecondary,
@@ -385,15 +380,12 @@ class _ChangePasswordScreenState
       suffixIcon: IconButton(
         onPressed: onToggle,
         icon: Icon(
-          visible
-              ? Icons.visibility_rounded
-              : Icons.visibility_off_rounded,
+          visible ? Icons.visibility_rounded : Icons.visibility_off_rounded,
           color: colors.textTertiary,
           size: 20,
         ),
       ),
-      contentPadding: const EdgeInsets.symmetric(
-          horizontal: 16, vertical: 14),
+      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
       border: OutlineInputBorder(
         borderRadius: BorderRadius.circular(AppRadius.md),
         borderSide: BorderSide(color: colors.borderDefault),
@@ -404,8 +396,7 @@ class _ChangePasswordScreenState
       ),
       focusedBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(AppRadius.md),
-        borderSide: BorderSide(
-            color: colors.brand, width: 1.5),
+        borderSide: BorderSide(color: colors.brand, width: 1.5),
       ),
     );
   }
@@ -488,8 +479,7 @@ class _StrengthBar extends StatelessWidget {
                 margin: EdgeInsets.only(right: i < 3 ? 4 : 0),
                 decoration: BoxDecoration(
                   color: _segmentColor(context, i),
-                  borderRadius:
-                      BorderRadius.circular(AppRadius.full),
+                  borderRadius: BorderRadius.circular(AppRadius.full),
                 ),
               ),
             );

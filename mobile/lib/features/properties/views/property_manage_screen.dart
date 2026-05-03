@@ -24,8 +24,7 @@ class PropertyManageScreen extends ConsumerStatefulWidget {
       _PropertyManageScreenState();
 }
 
-class _PropertyManageScreenState
-    extends ConsumerState<PropertyManageScreen> {
+class _PropertyManageScreenState extends ConsumerState<PropertyManageScreen> {
   bool _togglingActive = false;
 
   @override
@@ -49,7 +48,6 @@ class _PropertyManageScreenState
         ),
       ),
       data: (room) {
-
         return Scaffold(
           backgroundColor: colors.bgCanvas,
           body: Column(
@@ -71,11 +69,13 @@ class _PropertyManageScreenState
                     // ── Name + subtitle ─────────────────────
                     Padding(
                       padding: const EdgeInsets.fromLTRB(
-                        20, 20, 20, 0,
+                        20,
+                        20,
+                        20,
+                        0,
                       ),
                       child: Column(
-                        crossAxisAlignment:
-                            CrossAxisAlignment.start,
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
                             '${room.code} · ${room.name}',
@@ -88,10 +88,13 @@ class _PropertyManageScreenState
                           const SizedBox(height: 4),
                           Text(
                             [
-                              room.bedrooms == 0 ? 'Studio' : '${room.bedrooms}PN',
+                              room.bedrooms == 0
+                                  ? 'Studio'
+                                  : '${room.bedrooms}PN',
                               '${room.bathrooms}WC',
                               '${room.standardGuests} người',
-                              if (room.address != null && room.address!.isNotEmpty)
+                              if (room.address != null &&
+                                  room.address!.isNotEmpty)
                                 room.address!,
                             ].join(' · '),
                             style: GoogleFonts.beVietnamPro(
@@ -149,9 +152,7 @@ class _PropertyManageScreenState
                             const SizedBox(width: 10),
                             Expanded(
                               child: Text(
-                                room.isActive
-                                    ? 'Đang hoạt động'
-                                    : 'Tạm ngưng',
+                                room.isActive ? 'Đang hoạt động' : 'Tạm ngưng',
                                 style: GoogleFonts.beVietnamPro(
                                   fontSize: 14,
                                   fontWeight: FontWeight.w600,
@@ -163,8 +164,7 @@ class _PropertyManageScreenState
                                 ? SizedBox(
                                     width: 24,
                                     height: 24,
-                                    child:
-                                        CircularProgressIndicator(
+                                    child: CircularProgressIndicator(
                                       strokeWidth: 2,
                                       color: colors.brand,
                                     ),
@@ -172,8 +172,7 @@ class _PropertyManageScreenState
                                 : Switch(
                                     value: room.isActive,
                                     activeTrackColor: colors.brand,
-                                    onChanged: (val) =>
-                                        _toggleActive(val),
+                                    onChanged: (val) => _toggleActive(val),
                                   ),
                           ],
                         ),
@@ -276,40 +275,38 @@ class _PropertyManageScreenState
                     const SizedBox(height: 24),
 
                     // ── Delete button (ADMIN + OWNER only) ──
-                    if (ref.watch(currentUserProvider)
-                            ?.canManageProperty ??
+                    if (ref.watch(currentUserProvider)?.canManageProperty ??
                         false)
-                    Padding(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 20,
-                      ),
-                      child: OutlinedButton.icon(
-                        onPressed: () => _deleteHomestay(context),
-                        icon: Icon(
-                          Icons.delete_outline_rounded,
-                          color: colors.error,
+                      Padding(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 20,
                         ),
-                        label: Text(
-                          'Xoá căn này',
-                          style: GoogleFonts.beVietnamPro(
-                            fontWeight: FontWeight.w600,
+                        child: OutlinedButton.icon(
+                          onPressed: () => _deleteHomestay(context),
+                          icon: Icon(
+                            Icons.delete_outline_rounded,
                             color: colors.error,
                           ),
-                        ),
-                        style: OutlinedButton.styleFrom(
-                          side: BorderSide(
-                            color: colors.error,
+                          label: Text(
+                            'Xoá căn này',
+                            style: GoogleFonts.beVietnamPro(
+                              fontWeight: FontWeight.w600,
+                              color: colors.error,
+                            ),
                           ),
-                          minimumSize:
-                              const Size(double.infinity, 48),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(
-                              AppRadius.lg,
+                          style: OutlinedButton.styleFrom(
+                            side: BorderSide(
+                              color: colors.error,
+                            ),
+                            minimumSize: const Size(double.infinity, 48),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(
+                                AppRadius.lg,
+                              ),
                             ),
                           ),
                         ),
-                      ),
-                    ).animate(delay: 300.ms).fadeIn(duration: 300.ms),
+                      ).animate(delay: 300.ms).fadeIn(duration: 300.ms),
 
                     const SizedBox(height: 40),
                   ],
@@ -387,7 +384,6 @@ class _PropertyManageScreenState
       AppSnackBar.error(context, msg);
     }
   }
-
 }
 
 // ─── Gradient Header ─────────────────────────────────────────────────────────
@@ -441,14 +437,12 @@ class _GradientHeader extends StatelessWidget {
           child: Row(
             children: [
               IconButton(
-                icon: const Icon(Icons.arrow_back_rounded,
-                    color: Colors.white),
+                icon: const Icon(Icons.arrow_back_rounded, color: Colors.white),
                 onPressed: onBack,
               ),
               const Spacer(),
               IconButton(
-                icon: const Icon(Icons.edit_rounded,
-                    color: Colors.white),
+                icon: const Icon(Icons.edit_rounded, color: Colors.white),
                 onPressed: onEdit,
               ),
             ],

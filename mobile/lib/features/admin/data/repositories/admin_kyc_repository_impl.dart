@@ -44,8 +44,8 @@ class AdminKycRepositoryImpl implements AdminKycRepository {
         'status': status,
       },
     );
-    final items = (res.data['data']['items'] as List)
-        .cast<Map<String, dynamic>>();
+    final items =
+        (res.data['data']['items'] as List).cast<Map<String, dynamic>>();
     return items.map(_listItemToSubmission).toList();
   }
 
@@ -65,17 +65,20 @@ class AdminKycRepositoryImpl implements AdminKycRepository {
   @override
   Future<KYCSubmission> approve(String id, {required String adminName}) async {
     try {
-      await _dio.post(
+      final res = await _dio.post(
         ApiConstants.adminKycApprove(id),
         data: {'trialDays': 7},
       );
-      // Backend chỉ trả `{submissionId, status, approvedAt, trialEndsAt}` —
-      // refetch detail để FE có đầy đủ uploads/owner cho UI cập nhật.
-      final updated = await fetchById(id);
-      if (updated == null) {
-        throw Exception('Không tìm thấy hồ sơ sau khi duyệt');
-      }
-      return updated;
+      // Backend trả `{submissionId, status, approvedAt, trialEndsAt}` —
+      // build minimal KYCSubmission từ response, controller sẽ invalidate
+      // `kycSubmissionsProvider` ngay sau đó nên UI sẽ refetch full data.
+      final data = res.data['data'] as Map<String, dynamic>;
+      return _ackSubmission(
+        id: id,
+        status: VerifyStatus.approved,
+        adminName: adminName,
+        handledAt: _parseDate(data['approvedAt']) ?? DateTime.now(),
+      );
     } on DioException catch (e) {
       throw Exception(parseDioError(e));
     }
@@ -96,14 +99,50 @@ class AdminKycRepositoryImpl implements AdminKycRepository {
           'items': items.map((i) => i.id).toList(),
         },
       );
-      final updated = await fetchById(id);
-      if (updated == null) {
-        throw Exception('Không tìm thấy hồ sơ sau khi từ chối');
-      }
-      return updated;
+      return _ackSubmission(
+        id: id,
+        status: VerifyStatus.rejected,
+        adminName: adminName,
+        handledAt: DateTime.now(),
+        rejectReason: reason,
+        rejectedItems: items,
+      );
     } on DioException catch (e) {
       throw Exception(parseDioError(e));
     }
+  }
+
+  /// Build minimal "ack" KYCSubmission để return từ approve/reject.
+  ///
+  /// Caller (kycApprovalActionsProvider) discard return value và
+  /// `invalidate(kycSubmissionsProvider)` ngay sau → UI sẽ refetch full data.
+  /// Mục đích duy nhất là thoả mãn signature của abstract.
+  KYCSubmission _ackSubmission({
+    required String id,
+    required VerifyStatus status,
+    required String adminName,
+    required DateTime handledAt,
+    String? rejectReason,
+    List<RejectableItem> rejectedItems = const [],
+  }) {
+    return KYCSubmission(
+      id: id,
+      ownerId: '',
+      ownerName: '',
+      ownerPhone: '',
+      cccdFront: _emptyCccd(),
+      cccdBack: _emptyCccd(),
+      selfie: _emptySelfie(),
+      planName: '',
+      totalAmount: 0,
+      expectedRooms: 0,
+      submittedAt: handledAt,
+      status: status,
+      rejectReason: rejectReason,
+      rejectedItems: rejectedItems,
+      handledByAdmin: adminName,
+      handledAt: handledAt,
+    );
   }
 
   // ─── Mappers ────────────────────────────────────────────────────────────────
@@ -171,8 +210,8 @@ class AdminKycRepositoryImpl implements AdminKycRepository {
           .toList(),
       handledByAdmin: data['approvedByName'] as String? ??
           data['handledByAdmin'] as String?,
-      handledAt: _parseDate(data['approvedAt']) ??
-          _parseDate(data['handledAt']),
+      handledAt:
+          _parseDate(data['approvedAt']) ?? _parseDate(data['handledAt']),
     );
   }
 
@@ -187,8 +226,7 @@ class AdminKycRepositoryImpl implements AdminKycRepository {
           ? OCRResult.fromJson(raw['ocrResult'] as Map<String, dynamic>)
           : null,
       confidence: (raw['confidence'] as num?)?.toDouble() ?? 0,
-      uploadedAt:
-          _parseDate(raw['uploadedAt']) ?? DateTime.now(),
+      uploadedAt: _parseDate(raw['uploadedAt']) ?? DateTime.now(),
     );
   }
 

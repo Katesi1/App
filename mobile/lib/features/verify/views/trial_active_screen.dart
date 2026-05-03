@@ -54,10 +54,11 @@ class TrialActiveScreen extends ConsumerWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            _SuccessBanner(trialEndsAt: trialEnds)
-                .animate()
-                .slideY(
-                    begin: -0.5, end: 0, duration: 400.ms, curve: Curves.easeOutCubic),
+            _SuccessBanner(trialEndsAt: trialEnds).animate().slideY(
+                begin: -0.5,
+                end: 0,
+                duration: 400.ms,
+                curve: Curves.easeOutCubic),
             Expanded(
               child: ListView(
                 padding: const EdgeInsets.all(AppSpacing.md),

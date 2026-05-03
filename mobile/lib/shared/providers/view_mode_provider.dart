@@ -22,9 +22,8 @@ class ViewModeNotifier extends StateNotifier<ViewMode> {
   }
 
   Future<void> toggle() async {
-    final next = state == ViewMode.management
-        ? ViewMode.customer
-        : ViewMode.management;
+    final next =
+        state == ViewMode.management ? ViewMode.customer : ViewMode.management;
     state = next;
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(
@@ -43,7 +42,6 @@ class ViewModeNotifier extends StateNotifier<ViewMode> {
   }
 }
 
-final viewModeProvider =
-    StateNotifierProvider<ViewModeNotifier, ViewMode>(
+final viewModeProvider = StateNotifierProvider<ViewModeNotifier, ViewMode>(
   (ref) => ViewModeNotifier(),
 );

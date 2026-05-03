@@ -61,8 +61,7 @@ class AccountScreen extends ConsumerWidget {
                   // Avatar
                   CircleAvatar(
                     radius: 36,
-                    backgroundColor:
-                        Colors.white.withValues(alpha: 0.15),
+                    backgroundColor: Colors.white.withValues(alpha: 0.15),
                     child: Text(
                       user?.name.isNotEmpty == true
                           ? user!.name[0].toUpperCase()
@@ -92,8 +91,7 @@ class AccountScreen extends ConsumerWidget {
                     ),
                     decoration: BoxDecoration(
                       color: Colors.white.withValues(alpha: 0.15),
-                      borderRadius:
-                          BorderRadius.circular(AppRadius.full),
+                      borderRadius: BorderRadius.circular(AppRadius.full),
                     ),
                     child: Text(
                       AppHelpers.roleLabel(user?.role),
@@ -112,8 +110,7 @@ class AccountScreen extends ConsumerWidget {
                       color: Colors.white.withValues(alpha: 0.7),
                     ),
                   ),
-                  if (user?.email != null &&
-                      user!.email!.isNotEmpty) ...[
+                  if (user?.email != null && user!.email!.isNotEmpty) ...[
                     const SizedBox(height: 4),
                     Text(
                       user.email!,
@@ -153,8 +150,7 @@ class AccountScreen extends ConsumerWidget {
                         ),
                         decoration: BoxDecoration(
                           color: colors.brand.withValues(alpha: 0.1),
-                          borderRadius:
-                              BorderRadius.circular(AppRadius.full),
+                          borderRadius: BorderRadius.circular(AppRadius.full),
                         ),
                         child: Text(
                           AppHelpers.roleLabel(user?.role),
@@ -177,8 +173,7 @@ class AccountScreen extends ConsumerWidget {
                   _MenuItem(
                     icon: Icons.lock_outline_rounded,
                     label: 'Đổi mật khẩu',
-                    onTap: () =>
-                        context.push('/profile/change-password'),
+                    onTap: () => context.push('/profile/change-password'),
                   ),
                   _MenuItem(
                     icon: Icons.book_outlined,
@@ -190,8 +185,7 @@ class AccountScreen extends ConsumerWidget {
                         ? Icons.light_mode_rounded
                         : Icons.dark_mode_rounded,
                     label: isDark ? 'Chế độ sáng' : 'Chế độ tối',
-                    onTap: () =>
-                        ref.read(themeProvider.notifier).toggle(),
+                    onTap: () => ref.read(themeProvider.notifier).toggle(),
                     trailing: Switch(
                       value: isDark,
                       activeThumbColor: colors.brand,
@@ -222,8 +216,7 @@ class AccountScreen extends ConsumerWidget {
                             ),
                             actions: [
                               TextButton(
-                                onPressed: () =>
-                                    Navigator.pop(ctx, false),
+                                onPressed: () => Navigator.pop(ctx, false),
                                 child: Text(
                                   'Huỷ',
                                   style: GoogleFonts.beVietnamPro(
@@ -231,8 +224,7 @@ class AccountScreen extends ConsumerWidget {
                                 ),
                               ),
                               TextButton(
-                                onPressed: () =>
-                                    Navigator.pop(ctx, true),
+                                onPressed: () => Navigator.pop(ctx, true),
                                 child: Text(
                                   'Đăng xuất',
                                   style: GoogleFonts.beVietnamPro(
@@ -246,9 +238,7 @@ class AccountScreen extends ConsumerWidget {
                         },
                       );
                       if (confirmed == true && context.mounted) {
-                        await ref
-                            .read(authProvider.notifier)
-                            .logout();
+                        await ref.read(authProvider.notifier).logout();
                         if (context.mounted) {
                           context.go('/login');
                         }
@@ -298,8 +288,7 @@ class _MenuItem extends StatelessWidget {
         onTap: onTap,
         borderRadius: BorderRadius.circular(AppRadius.md),
         child: Padding(
-          padding: const EdgeInsets.symmetric(
-              horizontal: 4, vertical: 14),
+          padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 14),
           child: Row(
             children: [
               Icon(icon, color: c, size: 22),

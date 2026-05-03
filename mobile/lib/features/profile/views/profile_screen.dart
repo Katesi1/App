@@ -65,8 +65,7 @@ class ProfileScreen extends ConsumerWidget {
                         label: 'Đổi mật khẩu',
                         subtitle: 'Bảo mật tài khoản',
                         iconColor: colors.brand,
-                        onTap: () =>
-                            context.push('/profile/change-password'),
+                        onTap: () => context.push('/profile/change-password'),
                       ),
                     ],
                   ),
@@ -91,7 +90,8 @@ class ProfileScreen extends ConsumerWidget {
                     _MenuCard(
                       isDark: isDark,
                       items: [
-                        _verifyMenuItem(context, ref, verifyState.status, colors),
+                        _verifyMenuItem(
+                            context, ref, verifyState.status, colors),
                       ],
                     ),
                   ],
@@ -191,8 +191,7 @@ class ProfileScreen extends ConsumerWidget {
                     width: 1.5,
                   ),
                   shape: RoundedRectangleBorder(
-                    borderRadius:
-                        BorderRadius.circular(AppRadius.lg),
+                    borderRadius: BorderRadius.circular(AppRadius.lg),
                   ),
                 ),
               ),
@@ -212,9 +211,7 @@ class ProfileScreen extends ConsumerWidget {
                   color: colors.textTertiary,
                 ),
               ),
-            )
-                .animate(delay: 450.ms)
-                .fadeIn(duration: 300.ms),
+            ).animate(delay: 450.ms).fadeIn(duration: 300.ms),
 
             const SizedBox(height: 32),
           ],
@@ -223,8 +220,7 @@ class ProfileScreen extends ConsumerWidget {
     );
   }
 
-  Future<void> _confirmLogout(
-      BuildContext context, WidgetRef ref) async {
+  Future<void> _confirmLogout(BuildContext context, WidgetRef ref) async {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) {
@@ -236,16 +232,15 @@ class ProfileScreen extends ConsumerWidget {
           ),
           content: Text(
             'Bạn có chắc chắn muốn đăng xuất?',
-            style:
-                GoogleFonts.beVietnamPro(color: dialogColors.textSecondary),
+            style: GoogleFonts.beVietnamPro(color: dialogColors.textSecondary),
           ),
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(ctx, false),
               child: Text(
                 'Huỷ',
-                style: GoogleFonts.beVietnamPro(
-                    color: dialogColors.textSecondary),
+                style:
+                    GoogleFonts.beVietnamPro(color: dialogColors.textSecondary),
               ),
             ),
             TextButton(
@@ -340,9 +335,8 @@ class _ProfileHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final initial = (user?.name?.isNotEmpty == true)
-        ? user!.name[0].toUpperCase()
-        : 'U';
+    final initial =
+        (user?.name?.isNotEmpty == true) ? user!.name[0].toUpperCase() : 'U';
 
     final headerGradient = isDark
         ? const [AppColors.darkBg, AppColors.darkBorder]
@@ -602,8 +596,7 @@ class _MenuCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(AppRadius.lg),
         boxShadow: [
           BoxShadow(
-            color:
-                Colors.black.withValues(alpha: isDark ? 0.30 : 0.06),
+            color: Colors.black.withValues(alpha: isDark ? 0.30 : 0.06),
             blurRadius: 20,
             offset: const Offset(0, 4),
           ),
@@ -656,10 +649,8 @@ class _TapRow extends StatelessWidget {
                 width: 44,
                 height: 44,
                 decoration: BoxDecoration(
-                  color:
-                      item.iconColor.withValues(alpha: 0.10),
-                  borderRadius:
-                      BorderRadius.circular(AppRadius.md),
+                  color: item.iconColor.withValues(alpha: 0.10),
+                  borderRadius: BorderRadius.circular(AppRadius.md),
                 ),
                 child: Icon(
                   item.icon,
@@ -736,8 +727,7 @@ class _ToggleRow extends StatelessWidget {
                 height: 44,
                 decoration: BoxDecoration(
                   color: item.iconColor.withValues(alpha: 0.10),
-                  borderRadius:
-                      BorderRadius.circular(AppRadius.md),
+                  borderRadius: BorderRadius.circular(AppRadius.md),
                 ),
                 child: Icon(
                   item.icon,

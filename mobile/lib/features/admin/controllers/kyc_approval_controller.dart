@@ -23,9 +23,8 @@ final filteredKycSubmissionsProvider =
   final all = ref.watch(kycSubmissionsProvider);
   return all.whenData((list) {
     final filtered = switch (filter) {
-      KYCQueueFilter.pending => list
-          .where((s) => s.status == VerifyStatus.awaitingApproval)
-          .toList(),
+      KYCQueueFilter.pending =>
+        list.where((s) => s.status == VerifyStatus.awaitingApproval).toList(),
       KYCQueueFilter.approved =>
         list.where((s) => s.status == VerifyStatus.approved).toList(),
       KYCQueueFilter.rejected =>

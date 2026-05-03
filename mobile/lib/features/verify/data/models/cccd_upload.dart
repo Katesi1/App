@@ -26,11 +26,13 @@ class CCCDUpload extends Equatable {
 
   factory CCCDUpload.fromJson(Map<String, dynamic> json) => CCCDUpload(
         id: json['id'] as String,
-        imageUrl: json['imageUrl'] as String? ?? json['image_url'] as String? ?? '',
+        imageUrl:
+            json['imageUrl'] as String? ?? json['image_url'] as String? ?? '',
         ocrResult: json['ocrResult'] == null && json['ocr_result'] == null
             ? null
             : OCRResult.fromJson(
-                (json['ocrResult'] ?? json['ocr_result']) as Map<String, dynamic>,
+                (json['ocrResult'] ?? json['ocr_result'])
+                    as Map<String, dynamic>,
               ),
         confidence: (json['confidence'] as num?)?.toDouble() ?? 0,
         uploadedAt: DateTime.parse(

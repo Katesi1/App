@@ -128,9 +128,7 @@ class _ContentState extends ConsumerState<_Content> {
     if (reason == null || reason.trim().isEmpty || !mounted) return;
 
     final adminName = ref.read(currentUserProvider)?.name ?? 'Admin';
-    final success = await ref
-        .read(kycApprovalActionsProvider.notifier)
-        .reject(
+    final success = await ref.read(kycApprovalActionsProvider.notifier).reject(
           widget.submission.id,
           adminName: adminName,
           reason: reason.trim(),
@@ -140,7 +138,8 @@ class _ContentState extends ConsumerState<_Content> {
     if (success) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: const Text('Đã từ chối hồ sơ + gửi yêu cầu bổ sung cho owner'),
+          content:
+              const Text('Đã từ chối hồ sơ + gửi yêu cầu bổ sung cho owner'),
           backgroundColor: context.colors.error,
         ),
       );
@@ -308,15 +307,15 @@ class _ResolvedBanner extends StatelessWidget {
     final colors = context.colors;
     final isApproved = submission.isApproved;
     final bg = isApproved ? AppColors.successBgDark : AppColors.errorBgDark;
-    final border =
-        isApproved ? AppColors.successBorder : AppColors.errorBorder;
+    final border = isApproved ? AppColors.successBorder : AppColors.errorBorder;
     final fg = isApproved ? colors.success : colors.error;
     final icon = isApproved ? Icons.check : Icons.close;
     final title = isApproved ? 'Đã phê duyệt' : 'Đã từ chối';
     final handledAt = submission.handledAt;
     final subtitle = [
       if (submission.handledByAdmin != null) 'bởi ${submission.handledByAdmin}',
-      if (handledAt != null) '· ${VerifyFormat.dateVN(handledAt)} ${VerifyFormat.time(handledAt)}',
+      if (handledAt != null)
+        '· ${VerifyFormat.dateVN(handledAt)} ${VerifyFormat.time(handledAt)}',
     ].join(' ');
 
     return Container(
@@ -498,8 +497,7 @@ class _CCCDFrontSection extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           _CCCDImage(url: upload.imageUrl, confidence: upload.confidence),
-          if (upload.ocrResult != null)
-            _OCRGrid(ocr: upload.ocrResult!),
+          if (upload.ocrResult != null) _OCRGrid(ocr: upload.ocrResult!),
           if (isRejectable)
             _RejectToggle(
               isRejected: isRejected,
@@ -568,8 +566,7 @@ class _CCCDImage extends StatelessWidget {
             imageUrl: url,
             fit: BoxFit.cover,
             memCacheWidth: 800,
-            placeholder: (_, __) =>
-                Container(color: colors.bgSurfaceContainer),
+            placeholder: (_, __) => Container(color: colors.bgSurfaceContainer),
             errorWidget: (_, __, ___) => Container(
               color: colors.bgSurfaceContainer,
               child: Icon(Icons.broken_image,
@@ -816,8 +813,7 @@ class _RejectToggle extends StatelessWidget {
     return InkWell(
       onTap: () => onChanged(!isRejected),
       child: Container(
-        padding:
-            const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
         decoration: BoxDecoration(
           color: isRejected ? AppColors.errorBgDark : Colors.transparent,
           border: Border(
@@ -1006,9 +1002,7 @@ class _ActionBar extends StatelessWidget {
                 ),
                 icon: const Icon(Icons.close, size: 16),
                 label: Text(
-                  hasRejectSelection
-                      ? 'Từ chối (đã chọn)'
-                      : 'Từ chối',
+                  hasRejectSelection ? 'Từ chối (đã chọn)' : 'Từ chối',
                 ),
               ),
             ),

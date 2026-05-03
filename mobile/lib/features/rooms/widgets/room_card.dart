@@ -94,8 +94,8 @@ class _RoomCardState extends State<RoomCard> {
                       padding: const EdgeInsets.symmetric(
                           horizontal: 8, vertical: 4),
                       decoration: BoxDecoration(
-                        color: statusColor
-                            .withValues(alpha: isDark ? 0.18 : 0.10),
+                        color:
+                            statusColor.withValues(alpha: isDark ? 0.18 : 0.10),
                         borderRadius: BorderRadius.circular(20),
                       ),
                       child: Text(
@@ -123,8 +123,7 @@ class _RoomCardState extends State<RoomCard> {
                       children: [
                         Expanded(
                           child: Column(
-                            crossAxisAlignment:
-                                CrossAxisAlignment.start,
+                            crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text(
                                 '${room.code} · ${room.name}',
@@ -173,8 +172,7 @@ class _RoomCardState extends State<RoomCard> {
         ),
       ),
     )
-        .animate(
-            delay: Duration(milliseconds: widget.animationIndex * 80))
+        .animate(delay: Duration(milliseconds: widget.animationIndex * 80))
         .fadeIn(duration: 400.ms)
         .slideY(begin: 0.08, end: 0, curve: Curves.easeOut);
   }
@@ -201,8 +199,7 @@ class _RoomCardState extends State<RoomCard> {
     return room.amenities
         .take(3)
         .map((label) => Container(
-              padding: const EdgeInsets.symmetric(
-                  horizontal: 8, vertical: 3),
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
               decoration: BoxDecoration(
                 color: colors.bgSurfaceContainer,
                 borderRadius: BorderRadius.circular(20),

@@ -28,25 +28,50 @@ class _PropertyAmenitiesScreenState
 
   static const _amenityGroups = {
     'Phòng khách': [
-      'Điều hòa', 'Wifi', 'TV', 'Karaoke', 'Loa di động',
+      'Điều hòa',
+      'Wifi',
+      'TV',
+      'Karaoke',
+      'Loa di động',
     ],
     'Bếp & Ăn uống': [
-      'Bếp đầy đủ', 'Tủ lạnh', 'Lò vi sóng', 'Bếp từ',
-      'BBQ ngoài trời', 'Bát đũa', 'Nước lọc free',
+      'Bếp đầy đủ',
+      'Tủ lạnh',
+      'Lò vi sóng',
+      'Bếp từ',
+      'BBQ ngoài trời',
+      'Bát đũa',
+      'Nước lọc free',
     ],
     'Phòng ngủ & Tắm': [
-      'Bồn tắm', 'Vòi sen', 'Nước nóng', 'Máy sấy tóc',
-      'Đèn sưởi', 'Khăn tắm', 'Dầu gội/Sữa tắm',
+      'Bồn tắm',
+      'Vòi sen',
+      'Nước nóng',
+      'Máy sấy tóc',
+      'Đèn sưởi',
+      'Khăn tắm',
+      'Dầu gội/Sữa tắm',
     ],
     'Ngoài trời': [
-      'Bể bơi', 'Ban công', 'View biển',
-      'Sân vườn', 'Sân thượng', 'Đỗ xe',
+      'Bể bơi',
+      'Ban công',
+      'View biển',
+      'Sân vườn',
+      'Sân thượng',
+      'Đỗ xe',
     ],
     'Tiện ích chung': [
-      'Máy giặt', 'Bàn là', 'Tủ quần áo', 'Két sắt', 'Thang máy',
+      'Máy giặt',
+      'Bàn là',
+      'Tủ quần áo',
+      'Két sắt',
+      'Thang máy',
     ],
     'Giải trí': [
-      'Bida', 'Bàn bóng bàn', 'Xích đu', 'Khu vui chơi trẻ em',
+      'Bida',
+      'Bàn bóng bàn',
+      'Xích đu',
+      'Khu vui chơi trẻ em',
     ],
   };
 
@@ -61,9 +86,8 @@ class _PropertyAmenitiesScreenState
   Future<void> _onSave() async {
     setState(() => _isLoading = true);
 
-    final ok = await ref
-        .read(roomActionsProvider.notifier)
-        .update(widget.homestayId, {
+    final ok =
+        await ref.read(roomActionsProvider.notifier).update(widget.homestayId, {
       'amenities': _selectedAmenities.toList(),
     });
 
@@ -124,8 +148,7 @@ class _PropertyAmenitiesScreenState
           data: (room) {
             _initFromRoom();
 
-            final allPreset =
-                _amenityGroups.values.expand((v) => v).toSet();
+            final allPreset = _amenityGroups.values.expand((v) => v).toSet();
             final extraAmenities = _selectedAmenities
                 .where((a) => !allPreset.contains(a))
                 .toList();
@@ -158,8 +181,7 @@ class _PropertyAmenitiesScreenState
                                 ),
                               ),
                               ...group.value.map((amenity) {
-                                final on =
-                                    _selectedAmenities.contains(amenity);
+                                final on = _selectedAmenities.contains(amenity);
                                 return _AmenityRow(
                                   name: amenity,
                                   enabled: on,
@@ -174,7 +196,6 @@ class _PropertyAmenitiesScreenState
                               }),
                             ],
                           )),
-
                       if (extraAmenities.isNotEmpty) ...[
                         Padding(
                           padding: const EdgeInsets.only(
@@ -199,7 +220,6 @@ class _PropertyAmenitiesScreenState
                               }),
                             )),
                       ],
-
                       const SizedBox(height: AppSpacing.lg),
                     ],
                   ),
@@ -215,8 +235,7 @@ class _PropertyAmenitiesScreenState
                           gradient: LinearGradient(
                             colors: [colors.brand, colors.brandLight],
                           ),
-                          borderRadius:
-                              BorderRadius.circular(AppRadius.md),
+                          borderRadius: BorderRadius.circular(AppRadius.md),
                         ),
                         child: ElevatedButton(
                           onPressed: _isLoading ? null : _onSave,
@@ -224,8 +243,7 @@ class _PropertyAmenitiesScreenState
                             backgroundColor: Colors.transparent,
                             shadowColor: Colors.transparent,
                             shape: RoundedRectangleBorder(
-                              borderRadius:
-                                  BorderRadius.circular(AppRadius.md),
+                              borderRadius: BorderRadius.circular(AppRadius.md),
                             ),
                           ),
                           child: _isLoading

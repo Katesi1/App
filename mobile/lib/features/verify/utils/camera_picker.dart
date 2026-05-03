@@ -36,8 +36,7 @@ class CameraPicker {
     try {
       return await _picker.pickImage(
         source: ImageSource.camera,
-        preferredCameraDevice:
-            front ? CameraDevice.front : CameraDevice.rear,
+        preferredCameraDevice: front ? CameraDevice.front : CameraDevice.rear,
         imageQuality: imageQuality,
         maxWidth: maxWidth,
       );

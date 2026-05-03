@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../data/models/cccd_upload.dart';
+import '../data/models/ocr_result.dart';
 import '../data/models/payment_session.dart';
 import '../data/models/plan.dart';
 import '../data/models/selfie_upload.dart';
@@ -69,48 +70,55 @@ class VerifyFlowController extends StateNotifier<VerifyFlowState> {
   // ════════════════════════════════════════════════════════════
 
   /// Step 1: Upload CCCD mặt trước.
-  Future<CCCDUpload> uploadCCCDFront(File image) async {
-    final result = await _repo.uploadCCCDFront(image);
+  ///
+  /// `ocrResult` là dữ liệu đã extract trên device (xem [CCCDScannerScreen]).
+  /// Có thể null nếu user chọn ảnh từ gallery.
+  Future<CCCDUpload> uploadCCCDFront(
+    File image, {
+    OCRResult? ocrResult,
+  }) async {
+    final result = await _repo.uploadCCCDFront(image, ocrResult: ocrResult);
     state = state.copyWith(cccdFront: result, status: VerifyStatus.draft);
     _persistDraft();
     return result;
   }
 
   /// Step 2: Upload CCCD mặt sau.
-  Future<CCCDUpload> uploadCCCDBack(File image) async {
-    final result = await _repo.uploadCCCDBack(image);
-    state = state.copyWith(cccdBack: result);
+  ///
+  /// `ocrResult` từ QR code mặt sau (chính xác 100% nếu CCCD chip mới).
+  Future<CCCDUpload> uploadCCCDBack(
+    File image, {
+    OCRResult? ocrResult,
+  }) async {
+    final result = await _repo.uploadCCCDBack(image, ocrResult: ocrResult);
+    // Merge data trước (OCR text) + sau (QR machine-readable). Field nào QR
+    // có → ưu tiên QR vì chính xác hơn (xem `OCRResult.mergeWith`).
+    final merged = state.cccdFront?.copyWith(
+      ocrResult: state.cccdFront?.ocrResult?.mergeWith(result.ocrResult),
+    );
+    state = state.copyWith(cccdBack: result, cccdFront: merged);
     _persistDraft();
     return result;
   }
 
-  /// Step 3: Upload selfie + face match check.
+  /// Step 3: Upload selfie.
   ///
-  /// - Score < 0.85 → throw [FaceMismatchException], increment fail counter.
-  /// - 3 lần fail liên tiếp → throw [FaceMismatchTooManyAttemptsException]
-  ///   (caller phải show lock screen + contact support).
+  /// **Không auto-reject theo `faceMatchScore`**. Lý do:
+  /// - Backend chưa wire FPT.AI → score luôn `null/0` → reject nhầm
+  /// - Score 0.7-0.85 hay rơi vào user thật do ánh sáng/góc/kính → hard
+  ///   cutoff ở client = chặn nhầm khách hàng
+  /// - Admin nhìn cả CCCD + selfie + score trong queue → quyết định cuối
+  ///   cùng (xem [KYCApprovalDetailScreen])
+  ///
+  /// `faceMatchScore` và `isValid` từ backend chỉ là **hint hiển thị cho
+  /// admin** trong queue, không phải gate ở client.
   Future<SelfieUpload> uploadSelfie(File image) async {
     final cccdFront = state.cccdFront;
     if (cccdFront == null) {
       throw StateError('Phải upload CCCD trước khi chụp selfie');
     }
 
-    final result =
-        await _repo.uploadSelfie(image, cccdFrontId: cccdFront.id);
-
-    if (result.faceMatchScore < 0.85) {
-      final attempts = state.selfieFailAttempts + 1;
-      state = state.copyWith(selfieFailAttempts: attempts);
-      _persistDraft();
-      if (attempts >= 3) {
-        throw const FaceMismatchTooManyAttemptsException();
-      }
-      throw FaceMismatchException(
-        score: result.faceMatchScore,
-        attemptNumber: attempts,
-        remainingAttempts: 3 - attempts,
-      );
-    }
+    final result = await _repo.uploadSelfie(image, cccdFrontId: cccdFront.id);
 
     state = state.copyWith(
       selfie: result,
@@ -119,12 +127,6 @@ class VerifyFlowController extends StateNotifier<VerifyFlowState> {
     );
     _persistDraft();
     return result;
-  }
-
-  /// Reset 3-strike lock (sau 1 giờ hoặc khi admin manual unlock).
-  void resetSelfieLock() {
-    state = state.copyWith(selfieFailAttempts: 0);
-    _persistDraft();
   }
 
   // ════════════════════════════════════════════════════════════

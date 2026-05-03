@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import '../models/cccd_upload.dart';
+import '../models/ocr_result.dart';
 import '../models/payment_session.dart';
 import '../models/plan.dart';
 import '../models/selfie_upload.dart';
@@ -81,8 +82,16 @@ class KycStatusSnapshot {
 ///   `verify_repository_impl.dart`).
 abstract class VerifyRepository {
   // ── KYC ──
-  Future<CCCDUpload> uploadCCCDFront(File image);
-  Future<CCCDUpload> uploadCCCDBack(File image);
+  /// Upload mặt trước CCCD. `ocrResult` là dữ liệu đã extract trên device
+  /// (ML Kit OCR) — gửi kèm ảnh để backend lưu thẳng vào DB, không cần chạy
+  /// OCR engine của riêng nó. `null` nếu user chọn ảnh từ gallery hoặc
+  /// scanner không nhận diện được.
+  Future<CCCDUpload> uploadCCCDFront(File image, {OCRResult? ocrResult});
+
+  /// Upload mặt sau CCCD. `ocrResult` từ QR mặt sau (machine-readable, chính
+  /// xác 100%). `null` nếu CCCD cũ không có QR.
+  Future<CCCDUpload> uploadCCCDBack(File image, {OCRResult? ocrResult});
+
   Future<SelfieUpload> uploadSelfie(File image, {required String cccdFrontId});
 
   /// Lấy trạng thái KYC hiện tại của user (resume sau khi mở app lại).

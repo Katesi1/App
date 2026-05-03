@@ -28,8 +28,7 @@ class BookingCalendarScreen extends ConsumerStatefulWidget {
       _BookingCalendarScreenState();
 }
 
-class _BookingCalendarScreenState
-    extends ConsumerState<BookingCalendarScreen> {
+class _BookingCalendarScreenState extends ConsumerState<BookingCalendarScreen> {
   final _screenshotController = ScreenshotController();
   bool _isSharing = false;
 
@@ -143,17 +142,14 @@ class _BookingCalendarScreenState
                     ),
             ],
           ),
-
           CalendarViewModeToggle(
             viewMode: _viewMode,
             onChanged: (mode) => setState(() => _viewMode = mode),
           ),
-
           CalendarCategoryTabs(
             selected: _category,
             onChanged: (cat) => setState(() => _category = cat),
           ),
-
           CalendarDateNavigation(
             viewMode: _viewMode,
             weekStart: _weekStart,
@@ -161,14 +157,12 @@ class _BookingCalendarScreenState
             onPrevious: () => _navigate(-1),
             onNext: () => _navigate(1),
           ),
-
           Expanded(
             child: gridAsync.when(
               loading: () => const LoadingWidget(),
               error: (e, _) => ErrorStateWidget(
                 message: e.toString().replaceAll('Exception: ', ''),
-                onRetry: () =>
-                    ref.invalidate(calendarGridProvider(gridParams)),
+                onRetry: () => ref.invalidate(calendarGridProvider(gridParams)),
               ),
               data: (grid) {
                 final rooms = _mapProperties(grid.properties);
@@ -185,9 +179,8 @@ class _BookingCalendarScreenState
                     viewMode: _viewMode,
                     weekStart: _weekStart,
                     monthStart: _monthStart,
-                    onCellTap: (room, date, cell) =>
-                        _showContactModal(
-                            context, room, date, cell, adminContact),
+                    onCellTap: (room, date, cell) => _showContactModal(
+                        context, room, date, cell, adminContact),
                     legendTapHint: 'Tap ô = liên hệ',
                   ),
                 );
@@ -251,15 +244,14 @@ class _BookingCalendarScreenState
                 ),
               ),
               const SizedBox(height: 20),
-
               Row(
                 children: [
                   Container(
                     width: 48,
                     height: 48,
                     decoration: BoxDecoration(
-                      color: colors.brand
-                          .withValues(alpha: isDark ? 0.18 : 0.10),
+                      color:
+                          colors.brand.withValues(alpha: isDark ? 0.18 : 0.10),
                       borderRadius: BorderRadius.circular(AppRadius.md),
                     ),
                     child: Icon(
@@ -298,8 +290,8 @@ class _BookingCalendarScreenState
                       vertical: 4,
                     ),
                     decoration: BoxDecoration(
-                      color: statusColor
-                          .withValues(alpha: isDark ? 0.18 : 0.10),
+                      color:
+                          statusColor.withValues(alpha: isDark ? 0.18 : 0.10),
                       borderRadius: BorderRadius.circular(AppRadius.full),
                       border: Border.all(
                         color: statusColor.withValues(alpha: 0.4),
@@ -316,11 +308,9 @@ class _BookingCalendarScreenState
                   ),
                 ],
               ),
-
               const SizedBox(height: 20),
               Divider(height: 1, color: colors.borderDefault),
               const SizedBox(height: 20),
-
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
@@ -341,9 +331,7 @@ class _BookingCalendarScreenState
                   ),
                 ],
               ),
-
               const SizedBox(height: 24),
-
               SizedBox(
                 width: double.infinity,
                 height: 48,
@@ -370,9 +358,7 @@ class _BookingCalendarScreenState
                   ),
                 ),
               ),
-
               const SizedBox(height: 10),
-
               SizedBox(
                 width: double.infinity,
                 height: 48,
@@ -413,8 +399,7 @@ class _BookingCalendarScreenState
   }
 
   Future<void> _openZalo(AdminContact? contact) async {
-    final url =
-        contact?.zaloUrl ?? 'https://zalo.me/${contact?.phone ?? ''}';
+    final url = contact?.zaloUrl ?? 'https://zalo.me/${contact?.phone ?? ''}';
     final uri = Uri.parse(url);
     if (await canLaunchUrl(uri)) {
       await launchUrl(uri, mode: LaunchMode.externalApplication);
@@ -495,8 +480,8 @@ class _BookingCalendarScreenState
               _ShareOption(
                 icon: Icons.image_rounded,
                 iconColor: colors.brandLight,
-                iconBg: colors.brandLight
-                    .withValues(alpha: isDark ? 0.18 : 0.12),
+                iconBg:
+                    colors.brandLight.withValues(alpha: isDark ? 0.18 : 0.12),
                 title: 'Chia sẻ ảnh chụp lịch',
                 subtitle: 'Gửi ngay qua Zalo, nhắn tin — ai cũng xem được',
                 onTap: () {
@@ -508,8 +493,7 @@ class _BookingCalendarScreenState
               _ShareOption(
                 icon: Icons.download_rounded,
                 iconColor: colors.brand,
-                iconBg:
-                    colors.brand.withValues(alpha: isDark ? 0.18 : 0.10),
+                iconBg: colors.brand.withValues(alpha: isDark ? 0.18 : 0.10),
                 title: 'Gửi link app & lịch',
                 subtitle: 'Nhân viên mở link để tải app và xem lịch realtime',
                 onTap: () {
@@ -545,8 +529,7 @@ class _BookingCalendarScreenState
   }
 
   Future<void> _doShareAppLink() async {
-    final message =
-        '📅 Halong24h — Quản lý phòng & lịch booking\n\n'
+    final message = '📅 Halong24h — Quản lý phòng & lịch booking\n\n'
         'Tải ứng dụng để xem lịch đặt phòng, nhận thông báo và quản lý homestay:\n\n'
         '🤖 Android: ${AppConstants.playStoreUrl}\n'
         '🍎 iOS: ${AppConstants.appStoreUrl}';

@@ -158,8 +158,7 @@ class PlanCard extends StatelessWidget {
             top: -8,
             right: 14,
             child: Container(
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
               decoration: BoxDecoration(
                 color: colors.brandLight,
                 borderRadius: BorderRadius.circular(4),

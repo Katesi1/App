@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:dio/dio.dart';
@@ -6,6 +7,7 @@ import '../../../../core/constants/api_constants.dart';
 import '../../../../core/network/api_client.dart';
 import '../../../../core/network/api_response.dart';
 import '../models/cccd_upload.dart';
+import '../models/ocr_result.dart';
 import '../models/payment_session.dart';
 import '../models/plan.dart';
 import '../models/selfie_upload.dart';
@@ -24,20 +26,32 @@ class VerifyRepositoryImpl implements VerifyRepository {
   // ── KYC upload ─────────────────────────────────────────────────────────────
 
   @override
-  Future<CCCDUpload> uploadCCCDFront(File image) =>
-      _uploadCccd(ApiConstants.kycUploadCccdFront, image);
+  Future<CCCDUpload> uploadCCCDFront(File image, {OCRResult? ocrResult}) =>
+      _uploadCccd(ApiConstants.kycUploadCccdFront, image, ocrResult);
 
   @override
-  Future<CCCDUpload> uploadCCCDBack(File image) =>
-      _uploadCccd(ApiConstants.kycUploadCccdBack, image);
+  Future<CCCDUpload> uploadCCCDBack(File image, {OCRResult? ocrResult}) =>
+      _uploadCccd(ApiConstants.kycUploadCccdBack, image, ocrResult);
 
-  Future<CCCDUpload> _uploadCccd(String path, File image) async {
+  /// Multipart upload: ảnh + (optional) OCR JSON đã extract trên device.
+  ///
+  /// Backend chỉ cần lưu ảnh lên Cloudinary + lưu `ocrResult` JSON vào
+  /// `kyc_uploads.ocr_result`. KHÔNG gọi OCR engine bên ngoài (frontend đã
+  /// extract bằng ML Kit / QR scanner trên device).
+  Future<CCCDUpload> _uploadCccd(
+    String path,
+    File image,
+    OCRResult? ocr,
+  ) async {
     try {
       final form = FormData.fromMap({
         'image': await MultipartFile.fromFile(
           image.path,
           filename: image.path.split('/').last,
         ),
+        // Field optional — chỉ gửi khi scanner extract được data
+        if (ocr != null && !ocr.isEmpty)
+          'ocrResult': jsonEncode(ocr.toJson()),
       });
       final res = await _dio.post(
         path,
@@ -49,8 +63,12 @@ class VerifyRepositoryImpl implements VerifyRepository {
         ),
       );
       final data = res.data['data'] as Map<String, dynamic>;
-      // Backend có thể trả localPath = null → set về local file để preview offline.
-      final upload = CCCDUpload.fromJson(data);
+      // Backend có thể chưa lưu `ocrResult` (early integration) → fallback
+      // dùng ocr client đã gửi để frontend vẫn có data hiển thị ngay.
+      var upload = CCCDUpload.fromJson(data);
+      if (upload.ocrResult == null && ocr != null && !ocr.isEmpty) {
+        upload = upload.copyWith(ocrResult: ocr);
+      }
       return upload.copyWith(localPath: image.path);
     } on DioException catch (e) {
       throw VerifyApiException(parseDioError(e));
@@ -183,7 +201,8 @@ class VerifyRepositoryImpl implements VerifyRepository {
   @override
   Future<ApprovalResult> checkApprovalStatus(String submissionId) async {
     try {
-      final res = await _dio.get(ApiConstants.kycSubmissionDetail(submissionId));
+      final res =
+          await _dio.get(ApiConstants.kycSubmissionDetail(submissionId));
       final data = res.data['data'] as Map<String, dynamic>;
       final rejectedItemsRaw =
           (data['rejectedItems'] as List?)?.cast<String>() ?? const [];

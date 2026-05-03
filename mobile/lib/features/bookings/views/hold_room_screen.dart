@@ -188,8 +188,8 @@ class _HoldRoomScreenState extends ConsumerState<HoldRoomScreen> {
                   decoration: BoxDecoration(
                     color: colors.brand.withValues(alpha: 0.07),
                     borderRadius: BorderRadius.circular(AppRadius.lg),
-                    border: Border.all(
-                        color: colors.brand.withValues(alpha: 0.2)),
+                    border:
+                        Border.all(color: colors.brand.withValues(alpha: 0.2)),
                   ),
                   child: Row(
                     children: [
@@ -381,8 +381,8 @@ class _HoldRoomScreenState extends ConsumerState<HoldRoomScreen> {
                   textInputAction: TextInputAction.next,
                   decoration: InputDecoration(
                     labelText: 'Tên khách hàng',
-                    prefixIcon: Icon(Icons.person_outline_rounded,
-                        color: colors.brand),
+                    prefixIcon:
+                        Icon(Icons.person_outline_rounded, color: colors.brand),
                   ),
                 ).animate(delay: 100.ms).fadeIn(duration: 300.ms),
 
@@ -393,13 +393,14 @@ class _HoldRoomScreenState extends ConsumerState<HoldRoomScreen> {
                   keyboardType: TextInputType.phone,
                   textInputAction: TextInputAction.next,
                   inputFormatters: PhoneInput.formatters,
-                  validator: PhoneInput.validate,
+                  // Booking field — SĐT khách optional (xem _holdRoom: chỉ
+                  // attach customerPhone khi không rỗng).
+                  validator: PhoneInput.validateOptional,
                   decoration: InputDecoration(
-                    labelText: 'Số điện thoại khách',
+                    labelText: 'Số điện thoại khách (không bắt buộc)',
                     hintText: '0xxxxxxxxx (10 số)',
                     counterText: '',
-                    prefixIcon:
-                        Icon(Icons.phone_outlined, color: colors.brand),
+                    prefixIcon: Icon(Icons.phone_outlined, color: colors.brand),
                   ),
                 ).animate(delay: 120.ms).fadeIn(duration: 300.ms),
 
@@ -429,8 +430,7 @@ class _HoldRoomScreenState extends ConsumerState<HoldRoomScreen> {
                   textInputAction: TextInputAction.done,
                   decoration: InputDecoration(
                     labelText: 'Ghi chú',
-                    prefixIcon:
-                        Icon(Icons.notes_rounded, color: colors.brand),
+                    prefixIcon: Icon(Icons.notes_rounded, color: colors.brand),
                     alignLabelWithHint: true,
                   ),
                 ).animate(delay: 160.ms).fadeIn(duration: 300.ms),
@@ -481,8 +481,7 @@ class _HoldRoomScreenState extends ConsumerState<HoldRoomScreen> {
                         )
                       : FilledButton.icon(
                           key: const ValueKey('hold-btn'),
-                          onPressed:
-                              _dateConflicts.isEmpty ? _holdRoom : null,
+                          onPressed: _dateConflicts.isEmpty ? _holdRoom : null,
                           icon: const Icon(Icons.lock_clock_rounded),
                           label: Text(
                             'Giữ phòng 30 phút',
@@ -542,9 +541,8 @@ class _DateButton extends StatelessWidget {
             width: hasDate ? 2 : 1,
           ),
           borderRadius: BorderRadius.circular(AppRadius.md),
-          color: hasDate
-              ? colors.brand.withValues(alpha: 0.05)
-              : colors.bgSurface,
+          color:
+              hasDate ? colors.brand.withValues(alpha: 0.05) : colors.bgSurface,
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,

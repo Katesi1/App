@@ -112,7 +112,8 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
                 end: Alignment.bottomRight,
                 colors: [
                   AppColors.oceanDeep,
-                  Color(0xFF083550), // custom interpolation, không thuộc token brand
+                  Color(
+                      0xFF083550), // custom interpolation, không thuộc token brand
                   AppColors.ocean,
                 ],
                 stops: [0.0, 0.5, 1.0],
@@ -156,8 +157,8 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
                               decoration: BoxDecoration(
                                 shape: BoxShape.circle,
                                 border: Border.all(
-                                  color: AppColors.teal
-                                      .withValues(alpha: 0.15 * (1 - _pulseCtrl.value)),
+                                  color: AppColors.teal.withValues(
+                                      alpha: 0.15 * (1 - _pulseCtrl.value)),
                                   width: 2,
                                 ),
                               ),
@@ -249,9 +250,7 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
                     color: Colors.white.withValues(alpha: 0.55),
                     letterSpacing: 0.4,
                   ),
-                )
-                    .animate(delay: 500.ms)
-                    .fadeIn(duration: 500.ms),
+                ).animate(delay: 500.ms).fadeIn(duration: 500.ms),
               ],
             ),
           ),
@@ -261,9 +260,8 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
             bottom: 60,
             left: 0,
             right: 0,
-            child: _LoadingDots()
-                .animate(delay: 700.ms)
-                .fadeIn(duration: 400.ms),
+            child:
+                _LoadingDots().animate(delay: 700.ms).fadeIn(duration: 400.ms),
           ),
         ],
       ),

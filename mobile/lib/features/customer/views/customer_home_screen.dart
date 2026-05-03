@@ -139,16 +139,13 @@ class CustomerHomeScreen extends ConsumerWidget {
                     height: 260,
                     child: ListView.separated(
                       scrollDirection: Axis.horizontal,
-                      padding:
-                          const EdgeInsets.symmetric(horizontal: 20),
+                      padding: const EdgeInsets.symmetric(horizontal: 20),
                       itemCount: rooms.length > 6 ? 6 : rooms.length,
-                      separatorBuilder: (_, __) =>
-                          const SizedBox(width: 14),
+                      separatorBuilder: (_, __) => const SizedBox(width: 14),
                       itemBuilder: (_, i) => _FeaturedRoomCard(
                         room: rooms[i],
                         index: i,
-                        onTap: () =>
-                            context.push('/rooms/${rooms[i].id}'),
+                        onTap: () => context.push('/rooms/${rooms[i].id}'),
                       ),
                     ),
                   );
@@ -230,9 +227,7 @@ class CustomerHomeScreen extends ConsumerWidget {
                     ],
                   ),
                 ),
-              )
-                  .animate(delay: 400.ms)
-                  .fadeIn(duration: 400.ms),
+              ).animate(delay: 400.ms).fadeIn(duration: 400.ms),
 
               const SizedBox(height: 32),
             ],
@@ -299,10 +294,7 @@ class _WelcomeHeader extends StatelessWidget {
           ),
         ],
       ),
-    )
-        .animate()
-        .fadeIn(duration: 400.ms)
-        .slideY(begin: -0.05, end: 0);
+    ).animate().fadeIn(duration: 400.ms).slideY(begin: -0.05, end: 0);
   }
 }
 
@@ -383,8 +375,7 @@ class _FeaturedRoomCard extends StatelessWidget {
           border: Border.all(color: colors.borderDefault),
           boxShadow: [
             BoxShadow(
-              color: Colors.black
-                  .withValues(alpha: isDark ? 0.30 : 0.05),
+              color: Colors.black.withValues(alpha: isDark ? 0.30 : 0.05),
               blurRadius: 12,
               offset: const Offset(0, 2),
             ),

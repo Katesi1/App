@@ -5,13 +5,18 @@ import 'package:camera/camera.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:google_mlkit_barcode_scanning/google_mlkit_barcode_scanning.dart';
 import 'package:google_mlkit_text_recognition/google_mlkit_text_recognition.dart';
 
 import '../../../core/theme/app_color_scheme.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
+import '../data/models/ocr_result.dart';
+import '../data/models/scanner_result.dart';
 import '../data/models/verify_enums.dart';
+import '../utils/cccd_front_ocr_parser.dart';
 import '../utils/cccd_image_cropper.dart';
+import '../utils/cccd_qr_parser.dart';
 
 /// Full-screen scanner cho CCCD.
 ///
@@ -33,6 +38,7 @@ class _CCCDScannerScreenState extends State<CCCDScannerScreen>
     with WidgetsBindingObserver {
   CameraController? _controller;
   TextRecognizer? _recognizer;
+  BarcodeScanner? _barcodeScanner;
   bool _initializing = true;
   String? _initError;
 
@@ -43,10 +49,18 @@ class _CCCDScannerScreenState extends State<CCCDScannerScreen>
   bool _capturing = false;
   _Status _status = _Status.searching;
 
+  /// Cached extraction:
+  /// - Mặt trước: text OCR đã đọc lúc auto-shutter trigger → parse khi capture.
+  /// - Mặt sau: QR code raw đã decode (nếu nhận diện được).
+  String? _lastOcrText;
+  String? _lastQrPayload;
+
   // Auto-capture sau khi detect ổn định ~1.2s (~6 frames @ 200ms throttle).
   static const int _detectThreshold = 6;
   static const Duration _processInterval = Duration(milliseconds: 200);
   static const double _frameWidthFraction = 0.86;
+
+  bool get _isFront => widget.side == CCCDSide.front;
 
   // Map device orientation → degrees (Android cần để compute rotation).
   static const _orientationDegrees = <DeviceOrientation, int>{
@@ -60,7 +74,14 @@ class _CCCDScannerScreenState extends State<CCCDScannerScreen>
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
-    _recognizer = TextRecognizer(script: TextRecognitionScript.latin);
+    // Mặt trước: dùng OCR text recognizer.
+    // Mặt sau: dùng barcode scanner (QR code).
+    if (_isFront) {
+      _recognizer = TextRecognizer(script: TextRecognitionScript.latin);
+    } else {
+      _barcodeScanner =
+          BarcodeScanner(formats: const [BarcodeFormat.qrCode]);
+    }
     _initCamera();
   }
 
@@ -84,6 +105,8 @@ class _CCCDScannerScreenState extends State<CCCDScannerScreen>
     }
     await _recognizer?.close();
     _recognizer = null;
+    await _barcodeScanner?.close();
+    _barcodeScanner = null;
   }
 
   @override
@@ -157,10 +180,13 @@ class _CCCDScannerScreenState extends State<CCCDScannerScreen>
     try {
       final input = _toInputImage(image);
       if (input == null) return;
-      final recognized = await _recognizer?.processImage(input);
-      if (recognized == null || !mounted) return;
 
-      final hit = _matchesCccd(recognized.text, widget.side);
+      final hit = _isFront
+          ? await _processFrontFrame(input)
+          : await _processBackFrame(input);
+
+      if (!mounted) return;
+
       if (hit) {
         _consecutiveDetects++;
         if (_consecutiveDetects >= _detectThreshold) {
@@ -178,6 +204,34 @@ class _CCCDScannerScreenState extends State<CCCDScannerScreen>
     } finally {
       _processing = false;
     }
+  }
+
+  /// Mặt trước — OCR text + cache raw text để parse khi capture.
+  Future<bool> _processFrontFrame(InputImage input) async {
+    final recognized = await _recognizer?.processImage(input);
+    if (recognized == null) return false;
+    final hit = _matchesCccd(recognized.text, CCCDSide.front);
+    if (hit) _lastOcrText = recognized.text;
+    return hit;
+  }
+
+  /// Mặt sau — quét QR code. CCCD chip mới có QR ở góc trên phải mặt sau.
+  /// Khi decode được QR có format hợp lệ (12-digit ID đầu tiên) thì trigger
+  /// auto-shutter ngay (không cần đếm frame như OCR text vì QR đã chính xác).
+  Future<bool> _processBackFrame(InputImage input) async {
+    final scanner = _barcodeScanner;
+    if (scanner == null) return false;
+    final barcodes = await scanner.processImage(input);
+    for (final b in barcodes) {
+      final raw = b.rawValue;
+      if (raw == null || raw.isEmpty) continue;
+      // Pre-check: phải bắt đầu bằng 12 chữ số (CCCD ID).
+      if (RegExp(r'^\d{12}\|').hasMatch(raw)) {
+        _lastQrPayload = raw;
+        return true;
+      }
+    }
+    return false;
   }
 
   /// Match keyword đặc trưng của CCCD VN (in cả tiếng Việt + English line).
@@ -215,8 +269,7 @@ class _CCCDScannerScreenState extends State<CCCDScannerScreen>
       'PLACE OF RESIDENCE',
     ];
 
-    final keywords =
-        side == CCCDSide.front ? frontKeywords : backKeywords;
+    final keywords = side == CCCDSide.front ? frontKeywords : backKeywords;
     var hits = 0;
     for (final k in keywords) {
       if (upper.contains(k)) {
@@ -234,8 +287,7 @@ class _CCCDScannerScreenState extends State<CCCDScannerScreen>
 
     InputImageRotation? rotation;
     if (Platform.isIOS) {
-      rotation =
-          InputImageRotationValue.fromRawValue(cam.sensorOrientation);
+      rotation = InputImageRotationValue.fromRawValue(cam.sensorOrientation);
     } else {
       final deviceRotation =
           _orientationDegrees[controller.value.deviceOrientation];
@@ -283,7 +335,20 @@ class _CCCDScannerScreenState extends State<CCCDScannerScreen>
         frameWidthFraction: _frameWidthFraction,
       );
       if (!mounted) return;
-      Navigator.of(context).pop<File>(cropped ?? File(shot.path));
+
+      // Parse extraction đã cached từ frame cuối cùng trigger auto-shutter.
+      // Nếu user nhấn shutter thủ công, _lastOcrText/_lastQrPayload có thể null.
+      OCRResult? ocr;
+      if (_isFront && _lastOcrText != null) {
+        ocr = CccdFrontOcrParser.parse(_lastOcrText!);
+        if (ocr.isEmpty) ocr = null;
+      } else if (!_isFront && _lastQrPayload != null) {
+        ocr = VietnamCccdQrParser.parse(_lastQrPayload!);
+      }
+
+      Navigator.of(context).pop<ScannerResult>(
+        ScannerResult(image: cropped ?? File(shot.path), ocrResult: ocr),
+      );
     } catch (e) {
       if (!mounted) return;
       _capturing = false;
@@ -316,9 +381,7 @@ class _CCCDScannerScreenState extends State<CCCDScannerScreen>
         elevation: 0,
         foregroundColor: Colors.white,
         title: Text(
-          widget.side == CCCDSide.front
-              ? 'Quét CCCD mặt trước'
-              : 'Quét CCCD mặt sau',
+          _isFront ? 'Quét CCCD mặt trước' : 'Quét QR mặt sau',
           style: const TextStyle(
             fontSize: 15,
             fontWeight: FontWeight.w700,
@@ -459,8 +522,7 @@ class _ScrimPainter extends CustomPainter {
       const Radius.circular(16),
     );
 
-    final scrim = Path()
-      ..addRect(Rect.fromLTWH(0, 0, size.width, size.height));
+    final scrim = Path()..addRect(Rect.fromLTWH(0, 0, size.width, size.height));
     final hole = Path()..addRRect(rect);
     final path = Path.combine(PathOperation.difference, scrim, hole);
 

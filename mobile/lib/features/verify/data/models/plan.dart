@@ -38,11 +38,11 @@ class Plan extends Equatable {
       id: id,
       tier: tier,
       pricePerRoomPerMonth: (json['pricePerRoom'] ??
-              json['pricePerRoomPerMonth'] ??
-              json['price_per_room_per_month']) as int,
+          json['pricePerRoomPerMonth'] ??
+          json['price_per_room_per_month']) as int,
       minChargePerMonth: (json['minCharge'] ??
-              json['minChargePerMonth'] ??
-              json['min_charge_per_month']) as int,
+          json['minChargePerMonth'] ??
+          json['min_charge_per_month']) as int,
       maxRooms: (json['maxRooms'] ?? json['max_rooms']) as int?,
       features: List<String>.from(json['features'] as List),
     );

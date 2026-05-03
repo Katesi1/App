@@ -11,6 +11,8 @@ import '../../../core/theme/app_spacing.dart';
 import '../../../shared/widgets/loading_widget.dart';
 import '../../../shared/widgets/status_strip.dart';
 import '../controllers/verify_flow_controller.dart';
+import '../data/models/ocr_result.dart';
+import '../data/models/scanner_result.dart';
 import '../data/models/verify_enums.dart';
 import '../utils/camera_picker.dart';
 import 'cccd_scanner_screen.dart';
@@ -42,42 +44,37 @@ class _CCCDCaptureScreenState extends ConsumerState<CCCDCaptureScreen> {
   String get _stepLabel => _isFront ? 'Mặt trước CCCD' : 'Mặt sau CCCD';
 
   Future<void> _pickFromCamera() async {
-    // Mở in-app scanner (live preview + ML Kit auto-detect) thay vì camera
-    // hệ thống. Scanner pop về với File đã crop theo khung CCCD.
-    final file = await Navigator.of(context).push<File>(
+    // Mở in-app scanner (live preview + on-device OCR/QR auto-detect).
+    // Scanner pop về `ScannerResult` gồm File đã crop + OCR/QR đã extract.
+    final result = await Navigator.of(context).push<ScannerResult>(
       MaterialPageRoute(
         builder: (_) => CCCDScannerScreen(side: widget.side),
         fullscreenDialog: true,
       ),
     );
-    if (file != null && mounted) await _upload(file);
+    if (result != null && mounted) {
+      await _upload(result.image, ocr: result.ocrResult);
+    }
   }
 
   Future<void> _pickFromGallery() async {
     if (!mounted) return;
     final image = await CameraPicker.fromGallery(context);
-    if (image != null) await _upload(File(image.path));
+    // Ảnh từ gallery: không có OCR/QR extracted (parser cần live frame stream).
+    // Backend sẽ chỉ lưu ảnh; admin sẽ điền data thủ công khi review.
+    if (image != null) await _upload(File(image.path), ocr: null);
   }
 
-  Future<void> _upload(File file) async {
+  Future<void> _upload(File file, {required OCRResult? ocr}) async {
     setState(() => _uploading = true);
     try {
-      final controller =
-          ref.read(verifyFlowControllerProvider.notifier);
-      final result = _isFront
-          ? await controller.uploadCCCDFront(file)
-          : await controller.uploadCCCDBack(file);
-
-      if (!mounted) return;
-
-      if (result.confidence < 0.8) {
-        _showSnack(
-          'OCR chưa rõ (${(result.confidence * 100).round()}%). Vui lòng chụp lại.',
-          isWarning: true,
-        );
-        return;
+      final controller = ref.read(verifyFlowControllerProvider.notifier);
+      if (_isFront) {
+        await controller.uploadCCCDFront(file, ocrResult: ocr);
+      } else {
+        await controller.uploadCCCDBack(file, ocrResult: ocr);
       }
-
+      if (!mounted) return;
       _navigateNext();
     } catch (e) {
       if (mounted) {
@@ -133,8 +130,8 @@ class _CCCDCaptureScreenState extends ConsumerState<CCCDCaptureScreen> {
               children: [
                 Text(
                   _isFront
-                      ? 'Đặt CCCD mặt trước vào khung. Đảm bảo ánh sáng đủ và không bị bóng phản chiếu.'
-                      : 'Đặt CCCD mặt sau vào khung. Đảm bảo nét, đọc được hình chip và mã QR.',
+                      ? 'Đặt CCCD mặt trước vào khung. App tự đọc số CCCD, họ tên, ngày sinh… từ ảnh (không cần gửi server).'
+                      : 'Hướng QR code mặt sau CCCD vào khung. App quét QR để lấy thông tin chính xác từ chip Bộ Công An.',
                   style: TextStyle(
                     fontSize: 13,
                     fontWeight: FontWeight.w500,
@@ -144,15 +141,18 @@ class _CCCDCaptureScreenState extends ConsumerState<CCCDCaptureScreen> {
                 ),
                 const SizedBox(height: AppSpacing.md),
                 CameraFrameOverlay(
-                  hintTitle: 'Đặt CCCD vào khung',
-                  hintSubtitle: 'Chụp tự động khi đủ rõ',
+                  hintTitle: _isFront
+                      ? 'Đặt CCCD vào khung'
+                      : 'Hướng QR vào khung',
+                  hintSubtitle: 'Chụp tự động khi nhận diện',
                 ).animate().fadeIn(duration: 320.ms),
                 const SizedBox(height: AppSpacing.md),
-                const StatusStrip(
+                StatusStrip(
                   icon: Icons.info_outline,
                   label: 'Lưu ý quan trọng',
-                  subtitle:
-                      'CCCD còn hiệu lực · Không che các góc · Không reflect ánh sáng',
+                  subtitle: _isFront
+                      ? 'CCCD còn hiệu lực · Không che các góc · Đủ ánh sáng, không bị bóng'
+                      : 'Yêu cầu CCCD chip mới (sau 2021) có QR · QR phải sạch, không bị che',
                   variant: StatusStripVariant.info,
                 ),
                 if (widget.isResubmit) ...[
@@ -183,8 +183,7 @@ class _CCCDCaptureScreenState extends ConsumerState<CCCDCaptureScreen> {
               ),
               decoration: BoxDecoration(
                 color: colors.bgSurface,
-                border:
-                    Border(top: BorderSide(color: colors.borderDefault)),
+                border: Border(top: BorderSide(color: colors.borderDefault)),
               ),
               child: Row(
                 children: [
@@ -198,8 +197,7 @@ class _CCCDCaptureScreenState extends ConsumerState<CCCDCaptureScreen> {
                       height: 52,
                       child: FilledButton.icon(
                         onPressed: _uploading ? null : _pickFromCamera,
-                        icon: const Icon(Icons.camera_alt_outlined,
-                            size: 18),
+                        icon: const Icon(Icons.camera_alt_outlined, size: 18),
                         label: const Text('Mở camera'),
                       ),
                     ),
