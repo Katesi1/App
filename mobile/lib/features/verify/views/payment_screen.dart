@@ -250,11 +250,7 @@ class _PaymentScreenState extends ConsumerState<PaymentScreen> {
       );
     }
 
-    final total = PlanPriceCalculator.total(
-      state.expectedRooms,
-      plan,
-      state.billingCycle,
-    );
+    final total = PlanPriceCalculator.total(plan, state.billingCycle);
 
     return Scaffold(
       backgroundColor: colors.bgCanvas,
@@ -274,7 +270,6 @@ class _PaymentScreenState extends ConsumerState<PaymentScreen> {
             children: [
               OrderSummaryCard(
                 plan: plan,
-                rooms: state.expectedRooms,
                 cycle: state.billingCycle,
               ).animate().fadeIn(duration: 320.ms),
               const SizedBox(height: AppSpacing.md),

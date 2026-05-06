@@ -21,9 +21,12 @@ final verifyRepositoryProvider = Provider<VerifyRepository>(
   (ref) => VerifyRepositoryImpl(),
 );
 
-/// Catalog 3 plan — load 1 lần khi vào Select Plan screen.
+/// Catalog 6 plan. Tạm dùng `kDefaultPlans` local — backend hiện vẫn trả 3
+/// plan cũ (`starter|professional|enterprise`). Khi backend re-seed bảng
+/// `billing_plans` theo spec mới (xem `api-kyc-self-host-update.md`),
+/// swap về `ref.read(verifyRepositoryProvider).fetchPlans()`.
 final verifyPlansProvider = FutureProvider<List<Plan>>((ref) async {
-  return ref.read(verifyRepositoryProvider).fetchPlans();
+  return kDefaultPlans;
 });
 
 /// Controller cho toàn flow verify + subscription.
@@ -130,20 +133,21 @@ class VerifyFlowController extends StateNotifier<VerifyFlowState> {
   }
 
   // ════════════════════════════════════════════════════════════
-  // Property info — Step 4
+  // Subscription — Step 4
   // ════════════════════════════════════════════════════════════
+  // `expectedRooms` derive từ `plan.rooms` trong `selectPlan()` —
+  // user không tự nhập số phòng nữa (model mới: tier-based, mỗi tier ứng
+  // số phòng cố định).
 
-  void setExpectedRooms(int rooms) {
-    state = state.copyWith(expectedRooms: rooms);
-    _persistDraft();
-  }
-
-  // ════════════════════════════════════════════════════════════
-  // Subscription — Step 5
-  // ════════════════════════════════════════════════════════════
-
+  /// Pick plan + cycle. `expectedRooms` auto-derive từ `plan.rooms` (giữ
+  /// trong state cho payment + admin queue). Enterprise: rooms = -1 → giữ
+  /// nguyên giá trị cũ (không override).
   void selectPlan(Plan plan, BillingCycle cycle) {
-    state = state.copyWith(selectedPlan: plan, billingCycle: cycle);
+    state = state.copyWith(
+      selectedPlan: plan,
+      billingCycle: cycle,
+      expectedRooms: plan.rooms > 0 ? plan.rooms : state.expectedRooms,
+    );
     _persistDraft();
   }
 
@@ -162,16 +166,12 @@ class VerifyFlowController extends StateNotifier<VerifyFlowState> {
     if (plan == null) {
       throw StateError('Chưa chọn plan');
     }
-    final total = PlanPriceCalculator.total(
-      state.expectedRooms,
-      plan,
-      state.billingCycle,
-    );
+    final total = PlanPriceCalculator.total(plan, state.billingCycle);
     final session = await _repo.initiatePayment(
       planId: plan.id,
       billingCycle: state.billingCycle,
       method: method,
-      rooms: state.expectedRooms,
+      rooms: plan.rooms,
       totalAmount: total,
     );
     state = state.copyWith(

@@ -49,7 +49,7 @@ class VerifyFlowState extends Equatable {
     this.cccdBack,
     this.selfie,
     this.selfieFailAttempts = 0,
-    this.expectedRooms = 15,
+    this.expectedRooms = 5,
     this.selectedPlan,
     this.billingCycle = BillingCycle.yearly,
     this.paymentSession,
@@ -155,7 +155,7 @@ class VerifyFlowState extends Equatable {
             ? null
             : SelfieUpload.fromJson(json['selfie'] as Map<String, dynamic>),
         selfieFailAttempts: (json['selfieFailAttempts'] as int?) ?? 0,
-        expectedRooms: (json['expectedRooms'] as int?) ?? 15,
+        expectedRooms: (json['expectedRooms'] as int?) ?? 5,
         selectedPlan: json['selectedPlan'] == null
             ? null
             : Plan.fromJson(json['selectedPlan'] as Map<String, dynamic>),

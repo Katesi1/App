@@ -17,14 +17,12 @@ import 'verify_format.dart';
 /// - Trial badge cuối: bg successBg, text successText, padding 6×10, radius 8
 class OrderSummaryCard extends StatelessWidget {
   final Plan plan;
-  final int rooms;
   final BillingCycle cycle;
   final bool includeVat;
 
   const OrderSummaryCard({
     super.key,
     required this.plan,
-    required this.rooms,
     required this.cycle,
     this.includeVat = true,
   });
@@ -35,10 +33,9 @@ class OrderSummaryCard extends StatelessWidget {
 
     final isYearly = cycle == BillingCycle.yearly;
     final base = isYearly
-        ? PlanPriceCalculator.yearlyBeforeDiscount(rooms, plan)
-        : PlanPriceCalculator.monthly(rooms, plan);
-    final savings =
-        isYearly ? PlanPriceCalculator.yearlySavings(rooms, plan) : 0;
+        ? PlanPriceCalculator.yearlyBeforeDiscount(plan)
+        : PlanPriceCalculator.monthly(plan);
+    final savings = isYearly ? PlanPriceCalculator.yearlySavings(plan) : 0;
     final subtotal = base - savings;
     final vat = includeVat ? PlanPriceCalculator.vat(subtotal) : 0;
     final total = subtotal + vat;

@@ -9,24 +9,22 @@ import 'verify_format.dart';
 
 /// Plan card cho Screen 4.
 ///
-/// 3 visual states:
+/// 2 visual states:
 /// 1. Default: border 1px borderDefault.
-/// 2. Suggested (Pro): border 2px brandLight + ribbon "PHỔ BIẾN NHẤT".
-/// 3. Selected: border 2px brand + check icon corner.
+/// 2. Selected: border 2px brand + check icon corner.
+///
+/// Enterprise: hiển thị "Liên hệ" thay vì giá. Tap → caller redirect
+/// `/profile/help`.
 class PlanCard extends StatelessWidget {
   final Plan plan;
-  final int rooms;
   final BillingCycle cycle;
-  final bool isSuggested;
   final bool isSelected;
   final VoidCallback onTap;
 
   const PlanCard({
     super.key,
     required this.plan,
-    required this.rooms,
     required this.cycle,
-    required this.isSuggested,
     required this.isSelected,
     required this.onTap,
   });
@@ -34,14 +32,9 @@ class PlanCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = context.colors;
-    final price = cycle == BillingCycle.yearly
-        ? PlanPriceCalculator.yearlyAfterDiscount(rooms, plan)
-        : PlanPriceCalculator.monthly(rooms, plan);
 
-    final borderColor = isSelected
-        ? colors.brand
-        : (isSuggested ? colors.brandLight : colors.borderDefault);
-    final borderWidth = (isSelected || isSuggested) ? 2.0 : 1.0;
+    final borderColor = isSelected ? colors.brand : colors.borderDefault;
+    final borderWidth = isSelected ? 2.0 : 1.0;
 
     return Stack(
       clipBehavior: Clip.none,
@@ -76,49 +69,26 @@ class PlanCard extends StatelessWidget {
                           ),
                           const SizedBox(height: 2),
                           Text(
-                            _roomRange(plan),
+                            _roomLabel(plan),
+                            style: TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w600,
+                              color: colors.brandLight,
+                            ),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            plan.tier.tagline,
                             style: TextStyle(
                               fontSize: 10,
                               fontWeight: FontWeight.w500,
                               color: colors.textTertiary,
                             ),
                           ),
-                          if (isSuggested) ...[
-                            const SizedBox(height: 4),
-                            Text(
-                              'Phù hợp với bạn',
-                              style: TextStyle(
-                                fontSize: 11,
-                                fontWeight: FontWeight.w700,
-                                color: colors.brandLight,
-                              ),
-                            ),
-                          ],
                         ],
                       ),
                     ),
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.end,
-                      children: [
-                        Text(
-                          VerifyFormat.priceShort(price),
-                          style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w800,
-                            color: colors.textPrimary,
-                          ),
-                        ),
-                        const SizedBox(height: 2),
-                        Text(
-                          cycle == BillingCycle.yearly ? '/ năm' : '/ tháng',
-                          style: TextStyle(
-                            fontSize: 10,
-                            fontWeight: FontWeight.w500,
-                            color: colors.textTertiary,
-                          ),
-                        ),
-                      ],
-                    ),
+                    _PriceBlock(plan: plan, cycle: cycle),
                   ],
                 ),
                 const SizedBox(height: 10),
@@ -152,31 +122,8 @@ class PlanCard extends StatelessWidget {
           ),
         ),
 
-        // Ribbon "PHỔ BIẾN NHẤT"
-        if (isSuggested)
-          Positioned(
-            top: -8,
-            right: 14,
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-              decoration: BoxDecoration(
-                color: colors.brandLight,
-                borderRadius: BorderRadius.circular(4),
-              ),
-              child: Text(
-                'PHỔ BIẾN NHẤT',
-                style: TextStyle(
-                  fontSize: 9,
-                  fontWeight: FontWeight.w700,
-                  letterSpacing: 0.3,
-                  color: AppColors.darkBg,
-                ),
-              ),
-            ),
-          ),
-
-        // Selected check icon
-        if (isSelected)
+        // Selected check icon (chỉ cho plan có giá cố định)
+        if (isSelected && plan.hasFixedPrice)
           Positioned(
             top: 12,
             right: 12,
@@ -198,8 +145,81 @@ class PlanCard extends StatelessWidget {
     );
   }
 
-  String _roomRange(Plan plan) {
-    if (plan.maxRooms == null) return 'Không giới hạn phòng';
-    return 'Đến ${plan.maxRooms} phòng';
+  String _roomLabel(Plan plan) {
+    if (plan.isEnterprise) return 'Không giới hạn';
+    return '${plan.rooms} phòng';
+  }
+}
+
+/// Hiển thị giá ở góc phải card. Enterprise → "Liên hệ" + arrow.
+class _PriceBlock extends StatelessWidget {
+  final Plan plan;
+  final BillingCycle cycle;
+  const _PriceBlock({required this.plan, required this.cycle});
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.colors;
+
+    if (!plan.hasFixedPrice) {
+      // Enterprise — không có giá cố định
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.end,
+        children: [
+          Text(
+            'Liên hệ',
+            style: TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.w800,
+              color: colors.textBrand,
+            ),
+          ),
+          const SizedBox(height: 2),
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                'Tư vấn',
+                style: TextStyle(
+                  fontSize: 10,
+                  fontWeight: FontWeight.w500,
+                  color: colors.textTertiary,
+                ),
+              ),
+              const SizedBox(width: 2),
+              Icon(Icons.arrow_forward,
+                  size: 12, color: colors.textTertiary),
+            ],
+          ),
+        ],
+      );
+    }
+
+    final price = cycle == BillingCycle.yearly
+        ? PlanPriceCalculator.yearlyAfterDiscount(plan)
+        : PlanPriceCalculator.monthly(plan);
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.end,
+      children: [
+        Text(
+          VerifyFormat.priceShort(price),
+          style: TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.w800,
+            color: colors.textPrimary,
+          ),
+        ),
+        const SizedBox(height: 2),
+        Text(
+          cycle == BillingCycle.yearly ? '/ năm' : '/ tháng',
+          style: TextStyle(
+            fontSize: 10,
+            fontWeight: FontWeight.w500,
+            color: colors.textTertiary,
+          ),
+        ),
+      ],
+    );
   }
 }

@@ -17,30 +17,40 @@ enum CCCDSide { front, back }
 
 enum BillingCycle { monthly, yearly }
 
-enum Tier { starter, professional, enterprise }
+/// 6 tier theo số phòng cố định. Plan = tier; user không tự chọn số phòng
+/// (số phòng = thuộc tính của tier). Enterprise = không giới hạn, giá liên hệ.
+enum Tier { rooms1, rooms5, rooms10, rooms20, rooms50, enterprise }
 
 extension TierX on Tier {
-  String get displayName {
-    switch (this) {
-      case Tier.starter:
-        return 'Starter';
-      case Tier.professional:
-        return 'Professional';
-      case Tier.enterprise:
-        return 'Enterprise';
-    }
-  }
+  String get displayName => switch (this) {
+        Tier.rooms1 => 'Mini',
+        Tier.rooms5 => 'Starter',
+        Tier.rooms10 => 'Standard',
+        Tier.rooms20 => 'Pro',
+        Tier.rooms50 => 'Business',
+        Tier.enterprise => 'Enterprise',
+      };
 
-  String get tagline {
-    switch (this) {
-      case Tier.starter:
-        return 'Cho homestay nhỏ';
-      case Tier.professional:
-        return 'Phù hợp với hầu hết homestay';
-      case Tier.enterprise:
-        return 'Cho chuỗi homestay';
-    }
-  }
+  String get tagline => switch (this) {
+        Tier.rooms1 => 'Cá nhân thử nghiệm',
+        Tier.rooms5 => 'Homestay nhỏ',
+        Tier.rooms10 => 'Homestay vừa',
+        Tier.rooms20 => 'Homestay lớn',
+        Tier.rooms50 => 'Chuỗi nhỏ',
+        Tier.enterprise => 'Không giới hạn — hợp đồng riêng',
+      };
+
+  /// Số phòng cố định của tier. Enterprise = -1 (custom/unlimited).
+  int get rooms => switch (this) {
+        Tier.rooms1 => 1,
+        Tier.rooms5 => 5,
+        Tier.rooms10 => 10,
+        Tier.rooms20 => 20,
+        Tier.rooms50 => 50,
+        Tier.enterprise => -1,
+      };
+
+  bool get isEnterprise => this == Tier.enterprise;
 }
 
 enum PaymentMethod { vnpayQR, bankTransfer, card }

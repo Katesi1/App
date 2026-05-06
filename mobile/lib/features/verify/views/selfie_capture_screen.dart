@@ -42,7 +42,8 @@ class _SelfieCaptureScreenState extends ConsumerState<SelfieCaptureScreen> {
     try {
       await ref.read(verifyFlowControllerProvider.notifier).uploadSelfie(file);
       if (!mounted) return;
-      context.pushReplacement('/verify/select-plan');
+      // Push (không pushReplacement) để user back về retake selfie nếu cần.
+      context.push('/verify/select-plan');
     } catch (e) {
       if (mounted) {
         final msg = e.toString().replaceAll('Exception: ', '');

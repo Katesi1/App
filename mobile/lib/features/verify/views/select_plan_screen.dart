@@ -15,10 +15,11 @@ import 'widgets/verify_format.dart';
 
 /// Screen 4 — Chọn gói subscription.
 ///
-/// Logic:
-/// - Auto-suggest tier theo `expectedRooms`.
-/// - Toggle Monthly/Yearly → recalculate price tất cả 3 cards.
-/// - Tap plan card → highlight + cập nhật CTA text.
+/// 6 tier theo số phòng cố định: Mini (1) / Starter (5) / Standard (10) /
+/// Pro (20) / Business (50) / Enterprise (unlimited — Liên hệ).
+/// User pick tier xong → số phòng = `tier.rooms`, không tự nhập.
+/// Toggle Monthly/Yearly áp dụng cho 5 tier có giá cố định; Enterprise
+/// bypass toggle, tap → /profile/help liên hệ.
 class SelectPlanScreen extends ConsumerStatefulWidget {
   const SelectPlanScreen({super.key});
 
@@ -35,16 +36,14 @@ class _SelectPlanScreenState extends ConsumerState<SelectPlanScreen> {
     super.initState();
     final state = ref.read(verifyFlowControllerProvider);
     _cycle = state.billingCycle;
-    _selected = state.selectedPlan?.tier ??
-        PlanPriceCalculator.suggestTier(state.expectedRooms);
+    // Default Starter (5 phòng) — tier phổ biến nhất cho homestay nhỏ.
+    _selected = state.selectedPlan?.tier ?? Tier.rooms5;
   }
 
   @override
   Widget build(BuildContext context) {
     final colors = context.colors;
-    final state = ref.watch(verifyFlowControllerProvider);
     final plansAsync = ref.watch(verifyPlansProvider);
-    final suggestedTier = PlanPriceCalculator.suggestTier(state.expectedRooms);
 
     return Scaffold(
       backgroundColor: colors.bgCanvas,
@@ -56,12 +55,9 @@ class _SelectPlanScreenState extends ConsumerState<SelectPlanScreen> {
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (e, _) => Center(child: Text('Lỗi: $e')),
         data: (plans) {
-          final selectedPlan = PlanPriceCalculator.planFor(_selected!, plans);
-          final total = PlanPriceCalculator.total(
-            state.expectedRooms,
-            selectedPlan,
-            _cycle,
-          );
+          final selectedPlan =
+              PlanPriceCalculator.planFor(_selected!, plans);
+          final total = PlanPriceCalculator.total(selectedPlan, _cycle);
 
           return Stack(
             children: [
@@ -73,8 +69,6 @@ class _SelectPlanScreenState extends ConsumerState<SelectPlanScreen> {
                   120,
                 ),
                 children: [
-                  _RoomsSummary(rooms: state.expectedRooms),
-                  const SizedBox(height: AppSpacing.md),
                   _BillingToggle(
                     cycle: _cycle,
                     onChanged: (c) => setState(() => _cycle = c),
@@ -85,16 +79,13 @@ class _SelectPlanScreenState extends ConsumerState<SelectPlanScreen> {
                           padding: const EdgeInsets.only(top: 12),
                           child: PlanCard(
                             plan: e.value,
-                            rooms: state.expectedRooms,
                             cycle: _cycle,
-                            isSuggested: e.value.tier == suggestedTier,
                             isSelected: e.value.tier == _selected,
-                            onTap: () =>
-                                setState(() => _selected = e.value.tier),
+                            onTap: () => _onPlanTap(e.value),
                           )
-                              .animate(delay: (80 * e.key).ms)
-                              .fadeIn(duration: 300.ms)
-                              .slideY(begin: 0.1, end: 0),
+                              .animate(delay: (60 * e.key).ms)
+                              .fadeIn(duration: 280.ms)
+                              .slideY(begin: 0.08, end: 0),
                         ),
                       ),
                   const SizedBox(height: AppSpacing.md),
@@ -122,58 +113,9 @@ class _SelectPlanScreenState extends ConsumerState<SelectPlanScreen> {
       ),
     );
   }
-}
 
-class _RoomsSummary extends StatelessWidget {
-  final int rooms;
-  const _RoomsSummary({required this.rooms});
-
-  @override
-  Widget build(BuildContext context) {
-    final colors = context.colors;
-    return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: colors.bgSurface,
-        border: Border.all(color: colors.borderDefault),
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Row(
-        children: [
-          Icon(Icons.king_bed_outlined, size: 18, color: colors.brandLight),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'SỐ PHÒNG DỰ KIẾN',
-                  style: TextStyle(
-                    fontSize: 10,
-                    fontWeight: FontWeight.w700,
-                    letterSpacing: 0.3,
-                    color: colors.textTertiary,
-                  ),
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  '$rooms phòng',
-                  style: TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w700,
-                    color: colors.textPrimary,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          TextButton(
-            onPressed: () => Navigator.of(context).maybePop(),
-            child: const Text('Sửa →'),
-          ),
-        ],
-      ),
-    );
+  void _onPlanTap(Plan plan) {
+    setState(() => _selected = plan.tier);
   }
 }
 
@@ -257,7 +199,8 @@ class _ToggleSegment extends StatelessWidget {
             if (badge != null) ...[
               const SizedBox(width: 6),
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
                 decoration: BoxDecoration(
                   color: AppColors.goldBg,
                   borderRadius: BorderRadius.circular(4),

@@ -23,13 +23,8 @@ class TrialActiveScreen extends ConsumerWidget {
     final trialEnds =
         state.trialEndsAt ?? DateTime.now().add(const Duration(days: 7));
     final chargeStarts = state.chargeStartsAt ?? trialEnds;
-    final total = plan == null
-        ? 0
-        : PlanPriceCalculator.total(
-            state.expectedRooms,
-            plan,
-            state.billingCycle,
-          );
+    final total =
+        plan == null ? 0 : PlanPriceCalculator.total(plan, state.billingCycle);
 
     return Scaffold(
       backgroundColor: colors.bgCanvas,
