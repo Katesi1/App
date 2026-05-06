@@ -11,8 +11,9 @@ final customerRepositoryProvider =
 
 // ── Public rooms (cho customer tìm phòng) ──────────────────────────────────
 
-final publicRoomsProvider = FutureProvider.family<List<RoomModel>,
-    PublicRoomFilter?>((ref, filter) async {
+final publicRoomsProvider =
+    FutureProvider.family<List<RoomModel>, PublicRoomFilter?>(
+        (ref, filter) async {
   final repo = ref.read(customerRepositoryProvider);
   final result = await repo.getPublicRooms(
     checkinDate: filter?.checkinDate,

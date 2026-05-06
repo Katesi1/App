@@ -51,8 +51,7 @@ class UserRepository {
   /// Lấy danh sách SALE chưa có owner (OWNER dùng để add)
   Future<ApiResponse<List<UserModel>>> getAvailableStaff() async {
     try {
-      final response =
-          await _dio.get('${ApiConstants.users}/available-staff');
+      final response = await _dio.get('${ApiConstants.users}/available-staff');
       final list = (response.data['data'] as List)
           .map((e) => UserModel.fromJson(e))
           .toList();

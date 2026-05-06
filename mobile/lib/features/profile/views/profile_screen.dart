@@ -3,21 +3,31 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
+import '../../../core/theme/app_color_scheme.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../core/utils/helpers.dart';
 import '../../../features/auth/controllers/auth_controller.dart';
 import '../../../shared/providers/theme_provider.dart';
+import '../../verify/controllers/verify_flow_controller.dart';
+import '../../verify/data/models/verify_enums.dart';
+import '../../verify/views/paywall_modal.dart';
+
+// gradient.brandHero stop "jade-mid" theo spec section 3.7 — chưa có token sẵn
+const _jadeMidLight = Color(0xFF1B7E94);
 
 class ProfileScreen extends ConsumerWidget {
   const ProfileScreen({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final colors = context.colors;
     final user = ref.watch(currentUserProvider);
     final themeMode = ref.watch(themeProvider);
     final isDark = themeMode == ThemeMode.dark;
     final topPad = MediaQuery.of(context).padding.top;
+    final verifyState = ref.watch(verifyFlowControllerProvider);
+    final showVerifySection = user?.isOwner ?? false;
 
     return Scaffold(
       body: SingleChildScrollView(
@@ -25,7 +35,7 @@ class ProfileScreen extends ConsumerWidget {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             // ── Immersive gradient header ──────────────────────────
-            _ProfileHeader(user: user, topPad: topPad)
+            _ProfileHeader(user: user, topPad: topPad, isDark: isDark)
                 .animate()
                 .fadeIn(duration: 400.ms)
                 .slideY(begin: -0.04, end: 0),
@@ -47,16 +57,15 @@ class ProfileScreen extends ConsumerWidget {
                         icon: Icons.person_outline_rounded,
                         label: 'Thông tin cá nhân',
                         subtitle: 'Cập nhật hồ sơ của bạn',
-                        iconColor: AppColors.ocean,
+                        iconColor: colors.brand,
                         onTap: () => context.push('/profile/edit'),
                       ),
                       _MenuItemData(
                         icon: Icons.lock_outline_rounded,
                         label: 'Đổi mật khẩu',
                         subtitle: 'Bảo mật tài khoản',
-                        iconColor: AppColors.teal,
-                        onTap: () =>
-                            context.push('/profile/change-password'),
+                        iconColor: colors.brand,
+                        onTap: () => context.push('/profile/change-password'),
                       ),
                     ],
                   ),
@@ -68,6 +77,31 @@ class ProfileScreen extends ConsumerWidget {
                 .slideX(begin: 0.05, end: 0),
 
             const SizedBox(height: 16),
+
+            // ── Section: KYC + SUBSCRIPTION (chỉ cho Owner) ───────
+            if (showVerifySection)
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 20),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _SectionLabel('XÁC THỰC + GÓI ĐĂNG KÝ'),
+                    const SizedBox(height: 8),
+                    _MenuCard(
+                      isDark: isDark,
+                      items: [
+                        _verifyMenuItem(
+                            context, ref, verifyState.status, colors),
+                      ],
+                    ),
+                  ],
+                ),
+              )
+                  .animate(delay: 150.ms)
+                  .fadeIn(duration: 300.ms)
+                  .slideX(begin: 0.05, end: 0),
+
+            if (showVerifySection) const SizedBox(height: 16),
 
             // ── Section: CÀI ĐẶT ──────────────────────────────────
             Padding(
@@ -86,7 +120,7 @@ class ProfileScreen extends ConsumerWidget {
                             : Icons.dark_mode_rounded,
                         label: 'Chế độ tối',
                         subtitle: isDark ? 'Đang bật' : 'Đang tắt',
-                        iconColor: AppColors.navy,
+                        iconColor: colors.textPrimary,
                         isToggle: true,
                         toggleValue: isDark,
                         onToggle: (_) =>
@@ -118,7 +152,7 @@ class ProfileScreen extends ConsumerWidget {
                         icon: Icons.help_outline_rounded,
                         label: 'Trợ giúp',
                         subtitle: 'Câu hỏi thường gặp & liên hệ',
-                        iconColor: AppColors.amber,
+                        iconColor: colors.warning,
                         onTap: () => context.push('/profile/help'),
                       ),
                     ],
@@ -137,9 +171,9 @@ class ProfileScreen extends ConsumerWidget {
               padding: const EdgeInsets.symmetric(horizontal: 20),
               child: OutlinedButton.icon(
                 onPressed: () => _confirmLogout(context, ref),
-                icon: const Icon(
+                icon: Icon(
                   Icons.logout_rounded,
-                  color: AppColors.coral,
+                  color: colors.error,
                   size: 20,
                 ),
                 label: Text(
@@ -147,18 +181,17 @@ class ProfileScreen extends ConsumerWidget {
                   style: GoogleFonts.beVietnamPro(
                     fontSize: 15,
                     fontWeight: FontWeight.w600,
-                    color: AppColors.coral,
+                    color: colors.error,
                   ),
                 ),
                 style: OutlinedButton.styleFrom(
                   minimumSize: const Size(double.infinity, 52),
-                  side: const BorderSide(
-                    color: AppColors.coral,
+                  side: BorderSide(
+                    color: colors.error,
                     width: 1.5,
                   ),
                   shape: RoundedRectangleBorder(
-                    borderRadius:
-                        BorderRadius.circular(AppRadius.lg),
+                    borderRadius: BorderRadius.circular(AppRadius.lg),
                   ),
                 ),
               ),
@@ -175,12 +208,10 @@ class ProfileScreen extends ConsumerWidget {
                 'Halong24h v1.0.0',
                 style: GoogleFonts.beVietnamPro(
                   fontSize: 11,
-                  color: AppColors.slate,
+                  color: colors.textTertiary,
                 ),
               ),
-            )
-                .animate(delay: 450.ms)
-                .fadeIn(duration: 300.ms),
+            ).animate(delay: 450.ms).fadeIn(duration: 300.ms),
 
             const SizedBox(height: 32),
           ],
@@ -189,46 +220,102 @@ class ProfileScreen extends ConsumerWidget {
     );
   }
 
-  Future<void> _confirmLogout(
-      BuildContext context, WidgetRef ref) async {
+  Future<void> _confirmLogout(BuildContext context, WidgetRef ref) async {
     final confirmed = await showDialog<bool>(
       context: context,
-      builder: (ctx) => AlertDialog(
-        title: Text(
-          'Đăng xuất?',
-          style: GoogleFonts.beVietnamPro(fontWeight: FontWeight.w700),
-        ),
-        content: Text(
-          'Bạn có chắc chắn muốn đăng xuất?',
-          style: GoogleFonts.beVietnamPro(color: AppColors.muted),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, false),
-            child: Text(
-              'Huỷ',
-              style:
-                  GoogleFonts.beVietnamPro(color: AppColors.muted),
-            ),
+      builder: (ctx) {
+        final dialogColors = ctx.colors;
+        return AlertDialog(
+          title: Text(
+            'Đăng xuất?',
+            style: GoogleFonts.beVietnamPro(fontWeight: FontWeight.w700),
           ),
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, true),
-            child: Text(
-              'Đăng xuất',
-              style: GoogleFonts.beVietnamPro(
-                color: AppColors.coral,
-                fontWeight: FontWeight.w600,
+          content: Text(
+            'Bạn có chắc chắn muốn đăng xuất?',
+            style: GoogleFonts.beVietnamPro(color: dialogColors.textSecondary),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: Text(
+                'Huỷ',
+                style:
+                    GoogleFonts.beVietnamPro(color: dialogColors.textSecondary),
               ),
             ),
-          ),
-        ],
-      ),
+            TextButton(
+              onPressed: () => Navigator.pop(ctx, true),
+              child: Text(
+                'Đăng xuất',
+                style: GoogleFonts.beVietnamPro(
+                  color: dialogColors.error,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+          ],
+        );
+      },
     );
     if (confirmed == true && context.mounted) {
       await ref.read(authProvider.notifier).logout();
       if (context.mounted) {
         context.go('/login');
       }
+    }
+  }
+
+  /// Build KYC menu item theo verify status hiện tại của owner.
+  ///
+  /// 4 trạng thái khác nhau → label + icon + route khác nhau:
+  /// - `approved`: "Gói + Trial" (xanh) → /verify/approved
+  /// - `awaitingApproval`: "Đang chờ duyệt" (vàng) → /verify/pending
+  /// - `rejected`: "Cần bổ sung" (đỏ) → /verify/rejected
+  /// - draft / chưa start: "Verify CCCD" (gold) → showPaywallModal
+  _MenuItemData _verifyMenuItem(
+    BuildContext context,
+    WidgetRef ref,
+    VerifyStatus status,
+    AppColorScheme colors,
+  ) {
+    switch (status) {
+      case VerifyStatus.approved:
+        return _MenuItemData(
+          icon: Icons.workspace_premium_rounded,
+          label: 'Gói đăng ký + Trial',
+          subtitle: 'Đã verify · Trial 7 ngày đang chạy',
+          iconColor: colors.success,
+          onTap: () => context.push('/verify/approved'),
+        );
+      case VerifyStatus.awaitingApproval:
+        return _MenuItemData(
+          icon: Icons.access_time_rounded,
+          label: 'Hồ sơ đang chờ duyệt',
+          subtitle: 'Admin sẽ phản hồi trong 24h',
+          iconColor: colors.brandSecondary,
+          onTap: () => context.push('/verify/pending'),
+        );
+      case VerifyStatus.rejected:
+        return _MenuItemData(
+          icon: Icons.error_outline_rounded,
+          label: 'Cần bổ sung hồ sơ',
+          subtitle: 'Admin yêu cầu chụp lại một số item',
+          iconColor: colors.error,
+          onTap: () => context.push('/verify/rejected'),
+        );
+      default:
+        return _MenuItemData(
+          icon: Icons.verified_user_outlined,
+          label: 'Verify CCCD để đăng phòng',
+          subtitle: '4 bước · Trial 7 ngày miễn phí',
+          iconColor: AppColors.goldText,
+          onTap: () async {
+            final ok = await showPaywallModal(context);
+            if (ok == true && context.mounted) {
+              context.push('/verify/cccd-front');
+            }
+          },
+        );
     }
   }
 }
@@ -238,14 +325,22 @@ class ProfileScreen extends ConsumerWidget {
 class _ProfileHeader extends StatelessWidget {
   final dynamic user;
   final double topPad;
+  final bool isDark;
 
-  const _ProfileHeader({required this.user, required this.topPad});
+  const _ProfileHeader({
+    required this.user,
+    required this.topPad,
+    required this.isDark,
+  });
 
   @override
   Widget build(BuildContext context) {
-    final initial = (user?.name?.isNotEmpty == true)
-        ? user!.name[0].toUpperCase()
-        : 'U';
+    final initial =
+        (user?.name?.isNotEmpty == true) ? user!.name[0].toUpperCase() : 'U';
+
+    final headerGradient = isDark
+        ? const [AppColors.darkBg, AppColors.darkBorder]
+        : const [AppColors.jade500, _jadeMidLight];
 
     return Container(
       width: double.infinity,
@@ -255,13 +350,13 @@ class _ProfileHeader extends StatelessWidget {
         right: 24,
         bottom: 32,
       ),
-      decoration: const BoxDecoration(
+      decoration: BoxDecoration(
         gradient: LinearGradient(
-          begin: Alignment(-0.4, -1),
-          end: Alignment(0.6, 1),
-          colors: [AppColors.oceanDeep, AppColors.ocean],
+          begin: const Alignment(-0.4, -1),
+          end: const Alignment(0.6, 1),
+          colors: headerGradient,
         ),
-        borderRadius: BorderRadius.only(
+        borderRadius: const BorderRadius.only(
           bottomLeft: Radius.circular(32),
           bottomRight: Radius.circular(32),
         ),
@@ -372,6 +467,7 @@ class _GradientAvatar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.colors;
     return Stack(
       alignment: Alignment.center,
       children: [
@@ -381,8 +477,8 @@ class _GradientAvatar extends StatelessWidget {
           height: 100,
           decoration: BoxDecoration(
             shape: BoxShape.circle,
-            gradient: const LinearGradient(
-              colors: [AppColors.teal, AppColors.gold],
+            gradient: LinearGradient(
+              colors: [colors.brand, AppColors.gold500],
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
             ),
@@ -415,10 +511,10 @@ class _GradientAvatar extends StatelessWidget {
         Container(
           width: 88,
           height: 88,
-          decoration: const BoxDecoration(
+          decoration: BoxDecoration(
             shape: BoxShape.circle,
             gradient: LinearGradient(
-              colors: [AppColors.ocean, AppColors.oceanMid],
+              colors: [AppColors.jade500, _jadeMidLight],
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
             ),
@@ -446,12 +542,13 @@ class _SectionLabel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.colors;
     return Text(
       text,
       style: GoogleFonts.beVietnamPro(
         fontSize: 11,
         fontWeight: FontWeight.w600,
-        color: AppColors.muted,
+        color: colors.textSecondary,
         letterSpacing: 1.2,
       ),
     );
@@ -492,19 +589,18 @@ class _MenuCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.colors;
     return Container(
       decoration: BoxDecoration(
-        color: isDark ? AppColors.darkContainer : AppColors.surface,
+        color: colors.bgSurface,
         borderRadius: BorderRadius.circular(AppRadius.lg),
-        boxShadow: isDark
-            ? null
-            : [
-                BoxShadow(
-                  color: AppColors.navy.withValues(alpha: 0.06),
-                  blurRadius: 20,
-                  offset: const Offset(0, 4),
-                ),
-              ],
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: isDark ? 0.30 : 0.06),
+            blurRadius: 20,
+            offset: const Offset(0, 4),
+          ),
+        ],
       ),
       child: Column(
         children: [
@@ -513,7 +609,7 @@ class _MenuCard extends StatelessWidget {
               Divider(
                 height: 1,
                 indent: 72,
-                color: isDark ? AppColors.darkBorder : AppColors.border,
+                color: colors.borderDefault,
               ),
             items[i].isToggle
                 ? _ToggleRow(item: items[i], isDark: isDark)
@@ -535,6 +631,7 @@ class _TapRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.colors;
     return Material(
       color: Colors.transparent,
       child: InkWell(
@@ -552,10 +649,8 @@ class _TapRow extends StatelessWidget {
                 width: 44,
                 height: 44,
                 decoration: BoxDecoration(
-                  color:
-                      item.iconColor.withValues(alpha: 0.10),
-                  borderRadius:
-                      BorderRadius.circular(AppRadius.md),
+                  color: item.iconColor.withValues(alpha: 0.10),
+                  borderRadius: BorderRadius.circular(AppRadius.md),
                 ),
                 child: Icon(
                   item.icon,
@@ -575,9 +670,7 @@ class _TapRow extends StatelessWidget {
                       style: GoogleFonts.beVietnamPro(
                         fontSize: 15,
                         fontWeight: FontWeight.w500,
-                        color: isDark
-                            ? AppColors.darkOnSurface
-                            : AppColors.navy,
+                        color: colors.textPrimary,
                       ),
                     ),
                     const SizedBox(height: 2),
@@ -585,7 +678,7 @@ class _TapRow extends StatelessWidget {
                       item.subtitle,
                       style: GoogleFonts.beVietnamPro(
                         fontSize: 12,
-                        color: AppColors.muted,
+                        color: colors.textSecondary,
                       ),
                     ),
                   ],
@@ -594,7 +687,7 @@ class _TapRow extends StatelessWidget {
 
               Icon(
                 Icons.chevron_right_rounded,
-                color: AppColors.slate,
+                color: colors.textTertiary,
                 size: 22,
               ),
             ],
@@ -615,6 +708,7 @@ class _ToggleRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.colors;
     return Material(
       color: Colors.transparent,
       child: InkWell(
@@ -633,8 +727,7 @@ class _ToggleRow extends StatelessWidget {
                 height: 44,
                 decoration: BoxDecoration(
                   color: item.iconColor.withValues(alpha: 0.10),
-                  borderRadius:
-                      BorderRadius.circular(AppRadius.md),
+                  borderRadius: BorderRadius.circular(AppRadius.md),
                 ),
                 child: Icon(
                   item.icon,
@@ -654,9 +747,7 @@ class _ToggleRow extends StatelessWidget {
                       style: GoogleFonts.beVietnamPro(
                         fontSize: 15,
                         fontWeight: FontWeight.w500,
-                        color: isDark
-                            ? AppColors.darkOnSurface
-                            : AppColors.navy,
+                        color: colors.textPrimary,
                       ),
                     ),
                     const SizedBox(height: 2),
@@ -664,7 +755,7 @@ class _ToggleRow extends StatelessWidget {
                       item.subtitle,
                       style: GoogleFonts.beVietnamPro(
                         fontSize: 12,
-                        color: AppColors.muted,
+                        color: colors.textSecondary,
                       ),
                     ),
                   ],
@@ -673,7 +764,7 @@ class _ToggleRow extends StatelessWidget {
 
               Switch(
                 value: item.toggleValue,
-                activeThumbColor: AppColors.ocean,
+                activeThumbColor: colors.brand,
                 onChanged: item.onToggle,
               ),
             ],

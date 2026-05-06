@@ -101,7 +101,8 @@ class RoomModel {
   final String? mapLink;
   final List<String> amenities;
   final int? cancellationPolicy; // 0=FLEXIBLE, 1=MODERATE, 2=STRICT
-  final String? view; // "sea" = view biển, "city" = view thành phố, null = không
+  final String?
+      view; // "sea" = view biển, "city" = view thành phố, null = không
   final String? rules; // Quy định (1 chuỗi text)
   final List<String> services; // Dịch vụ trả phí
   final double? adultSurcharge;
@@ -192,8 +193,7 @@ class RoomModel {
                 : null,
         // Hỗ trợ cả property (API mới) và homestay (API cũ)
         homestay: (json['property'] ?? json['homestay']) != null
-            ? HomestaySimpleModel.fromJson(
-                json['property'] ?? json['homestay'])
+            ? HomestaySimpleModel.fromJson(json['property'] ?? json['homestay'])
             : null,
       );
 

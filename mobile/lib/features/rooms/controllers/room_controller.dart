@@ -93,7 +93,8 @@ class RoomActionsNotifier extends StateNotifier<AsyncValue<void>> {
     return false;
   }
 
-  Future<(bool, String)> uploadImages(String roomId, List<String> filePaths) async {
+  Future<(bool, String)> uploadImages(
+      String roomId, List<String> filePaths) async {
     final result = await _repo.uploadImages(roomId, filePaths);
     if (result.success) {
       _ref.invalidate(roomDetailProvider(roomId));
@@ -123,8 +124,7 @@ class RoomActionsNotifier extends StateNotifier<AsyncValue<void>> {
     return false;
   }
 
-  Future<bool> upsertPrice(
-      String roomId, Map<String, dynamic> data) async {
+  Future<bool> upsertPrice(String roomId, Map<String, dynamic> data) async {
     final result = await _repo.upsertPrice(roomId, data);
     if (result.success) {
       _refreshAll(id: roomId);

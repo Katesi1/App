@@ -50,8 +50,7 @@ class FilterChipTile extends StatelessWidget {
             ),
             if (isSelected) ...[
               const SizedBox(width: 6),
-              const Icon(Icons.check_rounded,
-                  size: 14, color: AppColors.ocean),
+              const Icon(Icons.check_rounded, size: 14, color: AppColors.ocean),
             ],
           ],
         ),

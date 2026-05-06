@@ -136,7 +136,8 @@ class RoomRepository {
 
   Future<ApiResponse<void>> setCoverImage(String roomId, String imageId) async {
     try {
-      await _dio.patch('${ApiConstants.properties}/$roomId/images/$imageId/cover');
+      await _dio
+          .patch('${ApiConstants.properties}/$roomId/images/$imageId/cover');
       return ApiResponse(success: true, message: 'Đặt ảnh cover thành công');
     } on DioException catch (e) {
       return ApiResponse(success: false, message: parseDioError(e));
@@ -146,8 +147,8 @@ class RoomRepository {
   Future<ApiResponse<Map<String, dynamic>>> upsertPrice(
       String roomId, Map<String, dynamic> data) async {
     try {
-      final response =
-          await _dio.put('${ApiConstants.properties}/$roomId/prices', data: data);
+      final response = await _dio
+          .put('${ApiConstants.properties}/$roomId/prices', data: data);
       return ApiResponse(
         success: true,
         data: response.data['data'],

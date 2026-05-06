@@ -33,7 +33,8 @@ class SecureStorage {
     await _storage.write(key: _savedPassword, value: password);
   }
 
-  static Future<({String email, String password})?> getSavedCredentials() async {
+  static Future<({String email, String password})?>
+      getSavedCredentials() async {
     final email = await _storage.read(key: _savedPhone);
     final password = await _storage.read(key: _savedPassword);
     if (email == null || password == null) return null;

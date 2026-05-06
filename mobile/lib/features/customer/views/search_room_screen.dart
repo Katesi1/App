@@ -4,7 +4,7 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
-import '../../../core/theme/app_colors.dart';
+import '../../../core/theme/app_color_scheme.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../data/models/room_model.dart';
 import '../../../shared/widgets/app_scaffold.dart';
@@ -32,7 +32,8 @@ class _SearchRoomScreenState extends ConsumerState<SearchRoomScreen> {
       context: context,
       initialDate: isCheckin
           ? (_checkinDate ?? now)
-          : (_checkoutDate ?? (_checkinDate ?? now).add(const Duration(days: 1))),
+          : (_checkoutDate ??
+              (_checkinDate ?? now).add(const Duration(days: 1))),
       firstDate: isCheckin ? now : (_checkinDate ?? now),
       lastDate: now.add(const Duration(days: 365)),
     );
@@ -83,6 +84,7 @@ class _SearchRoomScreenState extends ConsumerState<SearchRoomScreen> {
   @override
   Widget build(BuildContext context) {
     final roomsAsync = ref.watch(publicRoomsProvider(_currentFilter));
+    final colors = context.colors;
 
     return AppScaffold(
       title: 'Tìm phòng',
@@ -92,10 +94,10 @@ class _SearchRoomScreenState extends ConsumerState<SearchRoomScreen> {
           // ── Filter bar ──────────────────────────────────────
           Container(
             padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
-            decoration: const BoxDecoration(
-              color: AppColors.surface,
+            decoration: BoxDecoration(
+              color: colors.bgSurface,
               border: Border(
-                bottom: BorderSide(color: AppColors.border),
+                bottom: BorderSide(color: colors.borderDefault),
               ),
             ),
             child: Column(
@@ -110,10 +112,10 @@ class _SearchRoomScreenState extends ConsumerState<SearchRoomScreen> {
                         onTap: () => _pickDate(isCheckin: true),
                       ),
                     ),
-                    const Padding(
-                      padding: EdgeInsets.symmetric(horizontal: 8),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 8),
                       child: Icon(Icons.arrow_forward_rounded,
-                          color: AppColors.slate, size: 20),
+                          color: colors.textTertiary, size: 20),
                     ),
                     Expanded(
                       child: _DateField(
@@ -134,31 +136,29 @@ class _SearchRoomScreenState extends ConsumerState<SearchRoomScreen> {
                         height: 38,
                         padding: const EdgeInsets.symmetric(horizontal: 10),
                         decoration: BoxDecoration(
-                          border: Border.all(color: AppColors.border),
-                          borderRadius:
-                              BorderRadius.circular(AppRadius.md),
+                          border: Border.all(color: colors.borderDefault),
+                          borderRadius: BorderRadius.circular(AppRadius.md),
                         ),
                         child: DropdownButtonHideUnderline(
                           child: DropdownButton<String?>(
                             value: _selectedView,
                             isExpanded: true,
-                            icon: const Icon(Icons.expand_more_rounded,
-                                size: 18, color: AppColors.slate),
+                            icon: Icon(Icons.expand_more_rounded,
+                                size: 18, color: colors.textTertiary),
                             style: GoogleFonts.beVietnamPro(
                               fontSize: 13,
-                              color: AppColors.navy,
+                              color: colors.textPrimary,
                             ),
+                            dropdownColor: colors.bgSurface,
                             items: const [
                               DropdownMenuItem(
                                   value: null, child: Text('Tất cả view')),
                               DropdownMenuItem(
                                   value: 'sea', child: Text('View biển')),
                               DropdownMenuItem(
-                                  value: 'city',
-                                  child: Text('View thành phố')),
+                                  value: 'city', child: Text('View thành phố')),
                             ],
-                            onChanged: (v) =>
-                                setState(() => _selectedView = v),
+                            onChanged: (v) => setState(() => _selectedView = v),
                           ),
                         ),
                       ),
@@ -179,18 +179,16 @@ class _SearchRoomScreenState extends ConsumerState<SearchRoomScreen> {
                       },
                       child: Container(
                         height: 38,
-                        padding:
-                            const EdgeInsets.symmetric(horizontal: 10),
+                        padding: const EdgeInsets.symmetric(horizontal: 10),
                         decoration: BoxDecoration(
                           border: Border.all(
                             color: _priceAscending != null
-                                ? AppColors.ocean
-                                : AppColors.border,
+                                ? colors.brand
+                                : colors.borderDefault,
                           ),
-                          borderRadius:
-                              BorderRadius.circular(AppRadius.md),
+                          borderRadius: BorderRadius.circular(AppRadius.md),
                           color: _priceAscending != null
-                              ? AppColors.oceanPale
+                              ? colors.brand.withValues(alpha: 0.10)
                               : null,
                         ),
                         child: Row(
@@ -204,8 +202,8 @@ class _SearchRoomScreenState extends ConsumerState<SearchRoomScreen> {
                                       : Icons.arrow_downward_rounded,
                               size: 16,
                               color: _priceAscending != null
-                                  ? AppColors.ocean
-                                  : AppColors.slate,
+                                  ? colors.brand
+                                  : colors.textTertiary,
                             ),
                             const SizedBox(width: 4),
                             Text(
@@ -218,8 +216,8 @@ class _SearchRoomScreenState extends ConsumerState<SearchRoomScreen> {
                                 fontSize: 13,
                                 fontWeight: FontWeight.w500,
                                 color: _priceAscending != null
-                                    ? AppColors.ocean
-                                    : AppColors.slate,
+                                    ? colors.brand
+                                    : colors.textTertiary,
                               ),
                             ),
                           ],
@@ -237,52 +235,48 @@ class _SearchRoomScreenState extends ConsumerState<SearchRoomScreen> {
                       padding: const EdgeInsets.symmetric(
                           horizontal: 12, vertical: 8),
                       decoration: BoxDecoration(
-                        border: Border.all(color: AppColors.border),
-                        borderRadius:
-                            BorderRadius.circular(AppRadius.md),
+                        border: Border.all(color: colors.borderDefault),
+                        borderRadius: BorderRadius.circular(AppRadius.md),
                       ),
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          const Icon(Icons.people_outline_rounded,
-                              color: AppColors.slate, size: 18),
+                          Icon(Icons.people_outline_rounded,
+                              color: colors.textTertiary, size: 18),
                           const SizedBox(width: 6),
                           GestureDetector(
                             onTap: _guests > 1
-                                ? () =>
-                                    setState(() => _guests--)
+                                ? () => setState(() => _guests--)
                                 : null,
                             child: Icon(
                               Icons.remove_circle_outline,
                               size: 20,
                               color: _guests > 1
-                                  ? AppColors.ocean
-                                  : AppColors.border,
+                                  ? colors.brand
+                                  : colors.borderDefault,
                             ),
                           ),
                           Padding(
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 10),
+                            padding: const EdgeInsets.symmetric(horizontal: 10),
                             child: Text(
                               '$_guests',
                               style: GoogleFonts.beVietnamPro(
                                 fontSize: 15,
                                 fontWeight: FontWeight.w600,
-                                color: AppColors.navy,
+                                color: colors.textPrimary,
                               ),
                             ),
                           ),
                           GestureDetector(
                             onTap: _guests < 10
-                                ? () =>
-                                    setState(() => _guests++)
+                                ? () => setState(() => _guests++)
                                 : null,
                             child: Icon(
                               Icons.add_circle_outline,
                               size: 20,
                               color: _guests < 10
-                                  ? AppColors.ocean
-                                  : AppColors.border,
+                                  ? colors.brand
+                                  : colors.borderDefault,
                             ),
                           ),
                         ],
@@ -295,8 +289,7 @@ class _SearchRoomScreenState extends ConsumerState<SearchRoomScreen> {
                         height: 42,
                         child: ElevatedButton.icon(
                           onPressed: _search,
-                          icon: const Icon(Icons.search_rounded,
-                              size: 20),
+                          icon: const Icon(Icons.search_rounded, size: 20),
                           label: Text(
                             'Tìm kiếm',
                             style: GoogleFonts.beVietnamPro(
@@ -304,11 +297,10 @@ class _SearchRoomScreenState extends ConsumerState<SearchRoomScreen> {
                             ),
                           ),
                           style: ElevatedButton.styleFrom(
-                            backgroundColor: AppColors.ocean,
-                            foregroundColor: Colors.white,
+                            backgroundColor: colors.brand,
+                            foregroundColor: colors.textOnPrimary,
                             shape: RoundedRectangleBorder(
-                              borderRadius:
-                                  BorderRadius.circular(AppRadius.md),
+                              borderRadius: BorderRadius.circular(AppRadius.md),
                             ),
                           ),
                         ),
@@ -326,54 +318,53 @@ class _SearchRoomScreenState extends ConsumerState<SearchRoomScreen> {
               data: (rawRooms) {
                 final rooms = _sortRooms(rawRooms);
                 return RefreshIndicator(
-                color: AppColors.ocean,
-                onRefresh: () async =>
-                    ref.invalidate(publicRoomsProvider(_currentFilter)),
-                child: rooms.isEmpty
-                    ? ListView(
-                        physics: const AlwaysScrollableScrollPhysics(),
-                        children: [
-                          SizedBox(
-                            height: MediaQuery.of(context).size.height * 0.4,
-                            child: Column(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                const Icon(Icons.search_off_rounded,
-                                    size: 48, color: AppColors.slate),
-                                const SizedBox(height: 12),
-                                Text(
-                                  'Không tìm thấy phòng',
-                                  style: GoogleFonts.beVietnamPro(
-                                    fontSize: 15,
-                                    color: AppColors.muted,
+                  color: colors.brand,
+                  onRefresh: () async =>
+                      ref.invalidate(publicRoomsProvider(_currentFilter)),
+                  child: rooms.isEmpty
+                      ? ListView(
+                          physics: const AlwaysScrollableScrollPhysics(),
+                          children: [
+                            SizedBox(
+                              height: MediaQuery.of(context).size.height * 0.4,
+                              child: Column(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Icon(Icons.search_off_rounded,
+                                      size: 48, color: colors.textTertiary),
+                                  const SizedBox(height: 12),
+                                  Text(
+                                    'Không tìm thấy phòng',
+                                    style: GoogleFonts.beVietnamPro(
+                                      fontSize: 15,
+                                      color: colors.textSecondary,
+                                    ),
                                   ),
-                                ),
-                                const SizedBox(height: 4),
-                                Text(
-                                  'Thử thay đổi bộ lọc',
-                                  style: GoogleFonts.beVietnamPro(
-                                    fontSize: 13,
-                                    color: AppColors.slate,
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    'Thử thay đổi bộ lọc',
+                                    style: GoogleFonts.beVietnamPro(
+                                      fontSize: 13,
+                                      color: colors.textTertiary,
+                                    ),
                                   ),
-                                ),
-                              ],
+                                ],
+                              ),
                             ),
+                          ],
+                        )
+                      : ListView.separated(
+                          physics: const AlwaysScrollableScrollPhysics(),
+                          padding: const EdgeInsets.all(16),
+                          itemCount: rooms.length,
+                          separatorBuilder: (_, __) =>
+                              const SizedBox(height: 14),
+                          itemBuilder: (_, i) => _RoomListCard(
+                            room: rooms[i],
+                            index: i,
+                            onTap: () => context.push('/rooms/${rooms[i].id}'),
                           ),
-                        ],
-                      )
-                    : ListView.separated(
-                        physics: const AlwaysScrollableScrollPhysics(),
-                        padding: const EdgeInsets.all(16),
-                        itemCount: rooms.length,
-                        separatorBuilder: (_, __) =>
-                            const SizedBox(height: 14),
-                        itemBuilder: (_, i) => _RoomListCard(
-                          room: rooms[i],
-                          index: i,
-                          onTap: () =>
-                              context.push('/rooms/${rooms[i].id}'),
                         ),
-                      ),
                 );
               },
               loading: () => SkeletonList(
@@ -387,13 +378,13 @@ class _SearchRoomScreenState extends ConsumerState<SearchRoomScreen> {
                     Text(
                       e.toString().replaceAll('Exception: ', ''),
                       style: GoogleFonts.beVietnamPro(
-                        color: AppColors.coral,
+                        color: colors.error,
                       ),
                     ),
                     const SizedBox(height: 12),
                     TextButton(
-                      onPressed: () => ref.invalidate(
-                          publicRoomsProvider(_currentFilter)),
+                      onPressed: () =>
+                          ref.invalidate(publicRoomsProvider(_currentFilter)),
                       child: const Text('Thử lại'),
                     ),
                   ],
@@ -422,12 +413,15 @@ class _DateField extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.colors;
+    final isPlaceholder = value == 'Chọn ngày';
+
     return GestureDetector(
       onTap: onTap,
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
         decoration: BoxDecoration(
-          border: Border.all(color: AppColors.border),
+          border: Border.all(color: colors.borderDefault),
           borderRadius: BorderRadius.circular(AppRadius.md),
         ),
         child: Column(
@@ -438,7 +432,7 @@ class _DateField extends StatelessWidget {
               style: GoogleFonts.beVietnamPro(
                 fontSize: 10,
                 fontWeight: FontWeight.w600,
-                color: AppColors.muted,
+                color: colors.textSecondary,
                 letterSpacing: 0.3,
               ),
             ),
@@ -451,14 +445,14 @@ class _DateField extends StatelessWidget {
                     style: GoogleFonts.beVietnamPro(
                       fontSize: 13,
                       fontWeight: FontWeight.w500,
-                      color: value == 'Chọn ngày'
-                          ? AppColors.slate
-                          : AppColors.navy,
+                      color: isPlaceholder
+                          ? colors.textTertiary
+                          : colors.textPrimary,
                     ),
                   ),
                 ),
-                const Icon(Icons.calendar_today_outlined,
-                    size: 16, color: AppColors.ocean),
+                Icon(Icons.calendar_today_outlined,
+                    size: 16, color: colors.brand),
               ],
             ),
           ],
@@ -483,15 +477,19 @@ class _RoomListCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.colors;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return GestureDetector(
       onTap: onTap,
       child: Container(
         decoration: BoxDecoration(
-          color: AppColors.surface,
+          color: colors.bgSurface,
           borderRadius: BorderRadius.circular(AppRadius.lg),
+          border: Border.all(color: colors.borderDefault),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withValues(alpha: 0.04),
+              color: Colors.black.withValues(alpha: isDark ? 0.30 : 0.04),
               blurRadius: 12,
               offset: const Offset(0, 2),
             ),
@@ -509,10 +507,10 @@ class _RoomListCard extends StatelessWidget {
                       imageUrl: room.coverImageUrl!,
                       fit: BoxFit.cover,
                       memCacheWidth: 250,
-                      placeholder: (_, __) => _placeholder(),
-                      errorWidget: (_, __, ___) => _placeholder(),
+                      placeholder: (_, __) => _placeholder(context),
+                      errorWidget: (_, __, ___) => _placeholder(context),
                     )
-                  : _placeholder(),
+                  : _placeholder(context),
             ),
             // Info
             Expanded(
@@ -526,7 +524,7 @@ class _RoomListCard extends StatelessWidget {
                       style: GoogleFonts.beVietnamPro(
                         fontSize: 14,
                         fontWeight: FontWeight.w700,
-                        color: AppColors.navy,
+                        color: colors.textPrimary,
                       ),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
@@ -537,7 +535,7 @@ class _RoomListCard extends StatelessWidget {
                         room.homestay!.name,
                         style: GoogleFonts.beVietnamPro(
                           fontSize: 11,
-                          color: AppColors.muted,
+                          color: colors.textSecondary,
                         ),
                       ),
                     const SizedBox(height: 6),
@@ -548,31 +546,29 @@ class _RoomListCard extends StatelessWidget {
                           style: GoogleFonts.beVietnamPro(
                             fontSize: 15,
                             fontWeight: FontWeight.w700,
-                            color: AppColors.ocean,
+                            color: colors.textBrand,
                           ),
                         ),
                         const Spacer(),
                         Icon(Icons.bed_outlined,
-                            size: 14, color: AppColors.muted),
+                            size: 14, color: colors.textSecondary),
                         const SizedBox(width: 3),
                         Text(
-                          room.bedrooms == 0
-                              ? 'Studio'
-                              : '${room.bedrooms}PN',
+                          room.bedrooms == 0 ? 'Studio' : '${room.bedrooms}PN',
                           style: GoogleFonts.beVietnamPro(
                             fontSize: 11,
-                            color: AppColors.muted,
+                            color: colors.textSecondary,
                           ),
                         ),
                         const SizedBox(width: 8),
-                        const Icon(Icons.people_outline_rounded,
-                            size: 14, color: AppColors.muted),
+                        Icon(Icons.people_outline_rounded,
+                            size: 14, color: colors.textSecondary),
                         const SizedBox(width: 3),
                         Text(
                           '${room.standardGuests} người',
                           style: GoogleFonts.beVietnamPro(
                             fontSize: 11,
-                            color: AppColors.muted,
+                            color: colors.textSecondary,
                           ),
                         ),
                       ],
@@ -590,15 +586,16 @@ class _RoomListCard extends StatelessWidget {
         .slideY(begin: 0.05, end: 0);
   }
 
-  Widget _placeholder() => Container(
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            colors: [AppColors.oceanLight, AppColors.tealLight],
-          ),
-        ),
-        child: const Center(
-          child: Icon(Icons.home_rounded,
-              size: 28, color: AppColors.oceanMid),
-        ),
-      );
+  Widget _placeholder(BuildContext context) {
+    final colors = context.colors;
+    return Container(
+      decoration: BoxDecoration(
+        color: colors.bgSurfaceContainer,
+      ),
+      child: Center(
+        child: Icon(Icons.home_rounded,
+            size: 28, color: colors.brand.withValues(alpha: 0.5)),
+      ),
+    );
+  }
 }

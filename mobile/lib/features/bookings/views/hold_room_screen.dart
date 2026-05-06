@@ -1,11 +1,12 @@
 import 'package:flutter/material.dart';
+import '../../../core/utils/phone_input.dart';
 import '../../../core/utils/vnd_input_formatter.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart' show DateFormat;
-import '../../../core/theme/app_colors.dart';
+import '../../../core/theme/app_color_scheme.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../data/models/calendar_model.dart';
 import '../../../shared/widgets/loading_widget.dart';
@@ -29,7 +30,6 @@ class _HoldRoomScreenState extends ConsumerState<HoldRoomScreen> {
   final _notesCtrl = TextEditingController();
   DateTime? _checkinDate;
   DateTime? _checkoutDate;
-  double? _autoDeposit;
   List<String> _dateConflicts = [];
 
   @override
@@ -117,7 +117,6 @@ class _HoldRoomScreenState extends ConsumerState<HoldRoomScreen> {
     if (nights <= 0) return;
     final pricePerNight = room!.price!.weekdayPrice;
     final deposit = (pricePerNight * nights * 0.5).round();
-    _autoDeposit = deposit.toDouble();
     // Format VND
     final digits = deposit.toString();
     final buf = StringBuffer();
@@ -165,9 +164,9 @@ class _HoldRoomScreenState extends ConsumerState<HoldRoomScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.colors;
     final roomAsync = ref.watch(roomDetailProvider(widget.propertyId));
     final isLoading = ref.watch(bookingActionsProvider).isLoading;
-    final colors = Theme.of(context).colorScheme;
 
     return Scaffold(
       appBar: AppBar(
@@ -187,21 +186,21 @@ class _HoldRoomScreenState extends ConsumerState<HoldRoomScreen> {
                 Container(
                   padding: const EdgeInsets.all(AppSpacing.md),
                   decoration: BoxDecoration(
-                    color: colors.primary.withValues(alpha: 0.07),
+                    color: colors.brand.withValues(alpha: 0.07),
                     borderRadius: BorderRadius.circular(AppRadius.lg),
-                    border: Border.all(
-                        color: colors.primary.withValues(alpha: 0.2)),
+                    border:
+                        Border.all(color: colors.brand.withValues(alpha: 0.2)),
                   ),
                   child: Row(
                     children: [
                       Container(
                         padding: const EdgeInsets.all(AppSpacing.sm),
                         decoration: BoxDecoration(
-                          color: colors.primary.withValues(alpha: 0.12),
+                          color: colors.brand.withValues(alpha: 0.12),
                           shape: BoxShape.circle,
                         ),
                         child: Icon(Icons.bed_outlined,
-                            color: colors.primary, size: 22),
+                            color: colors.brand, size: 22),
                       ),
                       const SizedBox(width: AppSpacing.md),
                       Expanded(
@@ -213,7 +212,7 @@ class _HoldRoomScreenState extends ConsumerState<HoldRoomScreen> {
                               style: GoogleFonts.beVietnamPro(
                                 fontWeight: FontWeight.w700,
                                 fontSize: 15,
-                                color: colors.onSurface,
+                                color: colors.textPrimary,
                               ),
                             ),
                             if (room.homestay != null)
@@ -221,8 +220,7 @@ class _HoldRoomScreenState extends ConsumerState<HoldRoomScreen> {
                                 room.homestay!.name,
                                 style: GoogleFonts.beVietnamPro(
                                   fontSize: 12,
-                                  color:
-                                      colors.onSurface.withValues(alpha: 0.55),
+                                  color: colors.textSecondary,
                                 ),
                               ),
                           ],
@@ -231,7 +229,7 @@ class _HoldRoomScreenState extends ConsumerState<HoldRoomScreen> {
                       Text(
                         room.priceDisplay,
                         style: GoogleFonts.beVietnamPro(
-                          color: colors.primary,
+                          color: colors.brand,
                           fontWeight: FontWeight.w800,
                           fontSize: 14,
                         ),
@@ -248,7 +246,7 @@ class _HoldRoomScreenState extends ConsumerState<HoldRoomScreen> {
                   style: GoogleFonts.beVietnamPro(
                     fontWeight: FontWeight.w700,
                     fontSize: 14,
-                    color: colors.onSurface.withValues(alpha: 0.7),
+                    color: colors.textSecondary,
                   ),
                 ),
                 const SizedBox(height: AppSpacing.sm),
@@ -267,8 +265,7 @@ class _HoldRoomScreenState extends ConsumerState<HoldRoomScreen> {
                       padding:
                           const EdgeInsets.symmetric(horizontal: AppSpacing.sm),
                       child: Icon(Icons.arrow_forward_rounded,
-                          color: colors.onSurface.withValues(alpha: 0.3),
-                          size: 20),
+                          color: colors.textTertiary, size: 20),
                     ),
                     Expanded(
                       child: _DateButton(
@@ -288,10 +285,10 @@ class _HoldRoomScreenState extends ConsumerState<HoldRoomScreen> {
                     width: double.infinity,
                     padding: const EdgeInsets.all(AppSpacing.md),
                     decoration: BoxDecoration(
-                      color: AppColors.coral.withValues(alpha: 0.08),
+                      color: colors.errorBg,
                       borderRadius: BorderRadius.circular(AppRadius.md),
                       border: Border.all(
-                        color: AppColors.coral.withValues(alpha: 0.3),
+                        color: colors.error.withValues(alpha: 0.3),
                       ),
                     ),
                     child: Column(
@@ -299,15 +296,15 @@ class _HoldRoomScreenState extends ConsumerState<HoldRoomScreen> {
                       children: [
                         Row(
                           children: [
-                            const Icon(Icons.warning_amber_rounded,
-                                color: AppColors.coral, size: 18),
+                            Icon(Icons.warning_amber_rounded,
+                                color: colors.error, size: 18),
                             const SizedBox(width: 6),
                             Text(
                               'Ngày không khả dụng',
                               style: GoogleFonts.beVietnamPro(
                                 fontSize: 13,
                                 fontWeight: FontWeight.w700,
-                                color: AppColors.coral,
+                                color: colors.error,
                               ),
                             ),
                           ],
@@ -319,7 +316,7 @@ class _HoldRoomScreenState extends ConsumerState<HoldRoomScreen> {
                                 '• $c',
                                 style: GoogleFonts.beVietnamPro(
                                   fontSize: 12,
-                                  color: AppColors.coral,
+                                  color: colors.error,
                                 ),
                               ),
                             ))),
@@ -335,18 +332,18 @@ class _HoldRoomScreenState extends ConsumerState<HoldRoomScreen> {
                     padding: const EdgeInsets.symmetric(
                         horizontal: AppSpacing.md, vertical: AppSpacing.sm),
                     decoration: BoxDecoration(
-                      color: colors.primary.withValues(alpha: 0.07),
+                      color: colors.brand.withValues(alpha: 0.07),
                       borderRadius: BorderRadius.circular(AppRadius.md),
                     ),
                     child: Row(
                       children: [
                         Icon(Icons.nights_stay_outlined,
-                            size: 16, color: colors.primary),
+                            size: 16, color: colors.brand),
                         const SizedBox(width: AppSpacing.sm),
                         Text(
                           '$_nights đêm',
                           style: GoogleFonts.beVietnamPro(
-                            color: colors.primary,
+                            color: colors.brand,
                             fontWeight: FontWeight.w700,
                             fontSize: 14,
                           ),
@@ -356,7 +353,7 @@ class _HoldRoomScreenState extends ConsumerState<HoldRoomScreen> {
                           Text(
                             '≈ ${_estimateTotal(room.price!.weekdayPrice, _nights)}đ',
                             style: GoogleFonts.beVietnamPro(
-                              color: colors.primary.withValues(alpha: 0.7),
+                              color: colors.brand.withValues(alpha: 0.7),
                               fontSize: 13,
                             ),
                           ),
@@ -374,7 +371,7 @@ class _HoldRoomScreenState extends ConsumerState<HoldRoomScreen> {
                   style: GoogleFonts.beVietnamPro(
                     fontWeight: FontWeight.w700,
                     fontSize: 14,
-                    color: colors.onSurface.withValues(alpha: 0.7),
+                    color: colors.textSecondary,
                   ),
                 ),
                 const SizedBox(height: AppSpacing.sm),
@@ -384,8 +381,8 @@ class _HoldRoomScreenState extends ConsumerState<HoldRoomScreen> {
                   textInputAction: TextInputAction.next,
                   decoration: InputDecoration(
                     labelText: 'Tên khách hàng',
-                    prefixIcon: Icon(Icons.person_outline_rounded,
-                        color: colors.primary),
+                    prefixIcon:
+                        Icon(Icons.person_outline_rounded, color: colors.brand),
                   ),
                 ).animate(delay: 100.ms).fadeIn(duration: 300.ms),
 
@@ -395,10 +392,15 @@ class _HoldRoomScreenState extends ConsumerState<HoldRoomScreen> {
                   controller: _customerPhoneCtrl,
                   keyboardType: TextInputType.phone,
                   textInputAction: TextInputAction.next,
+                  inputFormatters: PhoneInput.formatters,
+                  // Booking field — SĐT khách optional (xem _holdRoom: chỉ
+                  // attach customerPhone khi không rỗng).
+                  validator: PhoneInput.validateOptional,
                   decoration: InputDecoration(
-                    labelText: 'Số điện thoại khách',
-                    prefixIcon:
-                        Icon(Icons.phone_outlined, color: colors.primary),
+                    labelText: 'Số điện thoại khách (không bắt buộc)',
+                    hintText: '0xxxxxxxxx (10 số)',
+                    counterText: '',
+                    prefixIcon: Icon(Icons.phone_outlined, color: colors.brand),
                   ),
                 ).animate(delay: 120.ms).fadeIn(duration: 300.ms),
 
@@ -416,7 +418,7 @@ class _HoldRoomScreenState extends ConsumerState<HoldRoomScreen> {
                         : 'Tự tính khi chọn ngày',
                     suffixText: '₫',
                     prefixIcon:
-                        Icon(Icons.payments_outlined, color: colors.primary),
+                        Icon(Icons.payments_outlined, color: colors.brand),
                   ),
                 ).animate(delay: 140.ms).fadeIn(duration: 300.ms),
 
@@ -428,8 +430,7 @@ class _HoldRoomScreenState extends ConsumerState<HoldRoomScreen> {
                   textInputAction: TextInputAction.done,
                   decoration: InputDecoration(
                     labelText: 'Ghi chú',
-                    prefixIcon:
-                        Icon(Icons.notes_rounded, color: colors.primary),
+                    prefixIcon: Icon(Icons.notes_rounded, color: colors.brand),
                     alignLabelWithHint: true,
                   ),
                 ).animate(delay: 160.ms).fadeIn(duration: 300.ms),
@@ -440,21 +441,21 @@ class _HoldRoomScreenState extends ConsumerState<HoldRoomScreen> {
                 Container(
                   padding: const EdgeInsets.all(AppSpacing.md),
                   decoration: BoxDecoration(
-                    color: AppColors.warning.withValues(alpha: 0.08),
+                    color: colors.warningBg,
                     borderRadius: BorderRadius.circular(AppRadius.md),
                     border: Border.all(
-                        color: AppColors.warning.withValues(alpha: 0.3)),
+                        color: colors.warning.withValues(alpha: 0.3)),
                   ),
                   child: Row(
                     children: [
-                      const Icon(Icons.timer_outlined,
-                          color: AppColors.warning, size: 20),
+                      Icon(Icons.timer_outlined,
+                          color: colors.warning, size: 20),
                       const SizedBox(width: AppSpacing.sm),
                       Expanded(
                         child: Text(
                           'Phòng sẽ được giữ trong 30 phút. Sau đó tự động huỷ nếu chưa xác nhận.',
                           style: GoogleFonts.beVietnamPro(
-                            color: AppColors.warning,
+                            color: colors.warning,
                             fontSize: 13,
                             fontWeight: FontWeight.w500,
                           ),
@@ -470,18 +471,17 @@ class _HoldRoomScreenState extends ConsumerState<HoldRoomScreen> {
                 AnimatedSwitcher(
                   duration: const Duration(milliseconds: 200),
                   child: isLoading
-                      ? const Center(
+                      ? Center(
                           child: SizedBox(
                             height: 52,
                             child: Center(
                                 child: CircularProgressIndicator(
-                                    color: AppColors.primary)),
+                                    color: colors.brand)),
                           ),
                         )
                       : FilledButton.icon(
                           key: const ValueKey('hold-btn'),
-                          onPressed:
-                              _dateConflicts.isEmpty ? _holdRoom : null,
+                          onPressed: _dateConflicts.isEmpty ? _holdRoom : null,
                           icon: const Icon(Icons.lock_clock_rounded),
                           label: Text(
                             'Giữ phòng 30 phút',
@@ -489,7 +489,7 @@ class _HoldRoomScreenState extends ConsumerState<HoldRoomScreen> {
                                 fontWeight: FontWeight.w700, fontSize: 15),
                           ),
                           style: FilledButton.styleFrom(
-                            backgroundColor: AppColors.primary,
+                            backgroundColor: colors.brand,
                             foregroundColor: Colors.white,
                             minimumSize: const Size(double.infinity, 52),
                           ),
@@ -526,7 +526,7 @@ class _DateButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colors = Theme.of(context).colorScheme;
+    final colors = context.colors;
     final hasDate = date != null;
 
     return InkWell(
@@ -537,14 +537,12 @@ class _DateButton extends StatelessWidget {
             horizontal: AppSpacing.md, vertical: AppSpacing.sm),
         decoration: BoxDecoration(
           border: Border.all(
-            color: hasDate
-                ? colors.primary
-                : colors.outline.withValues(alpha: 0.4),
+            color: hasDate ? colors.brand : colors.borderDefault,
             width: hasDate ? 2 : 1,
           ),
           borderRadius: BorderRadius.circular(AppRadius.md),
           color:
-              hasDate ? colors.primary.withValues(alpha: 0.05) : colors.surface,
+              hasDate ? colors.brand.withValues(alpha: 0.05) : colors.bgSurface,
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -553,17 +551,13 @@ class _DateButton extends StatelessWidget {
               children: [
                 Icon(icon,
                     size: 13,
-                    color: hasDate
-                        ? colors.primary
-                        : colors.onSurface.withValues(alpha: 0.4)),
+                    color: hasDate ? colors.brand : colors.textTertiary),
                 const SizedBox(width: 4),
                 Text(
                   label,
                   style: GoogleFonts.beVietnamPro(
                     fontSize: 11,
-                    color: hasDate
-                        ? colors.primary
-                        : colors.onSurface.withValues(alpha: 0.4),
+                    color: hasDate ? colors.brand : colors.textTertiary,
                     fontWeight: FontWeight.w600,
                   ),
                 ),
@@ -574,9 +568,7 @@ class _DateButton extends StatelessWidget {
               hasDate ? DateFormat('dd/MM/yyyy').format(date!) : 'Chọn ngày',
               style: GoogleFonts.beVietnamPro(
                 fontWeight: hasDate ? FontWeight.w700 : FontWeight.w400,
-                color: hasDate
-                    ? colors.primary
-                    : colors.onSurface.withValues(alpha: 0.35),
+                color: hasDate ? colors.brand : colors.textTertiary,
                 fontSize: 13,
               ),
             ),

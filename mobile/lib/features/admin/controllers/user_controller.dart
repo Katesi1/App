@@ -9,8 +9,8 @@ final userRepositoryProvider = Provider<UserRepository>(
 );
 
 // ─── List provider (optional role filter) — ADMIN only ──────────────────────
-final userListProvider = FutureProvider.autoDispose
-    .family<List<UserModel>, int?>((ref, role) async {
+final userListProvider =
+    FutureProvider.autoDispose.family<List<UserModel>, int?>((ref, role) async {
   final link = ref.keepAlive();
   Future.delayed(const Duration(minutes: 2), link.close);
   final repo = ref.read(userRepositoryProvider);

@@ -3,19 +3,44 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../../core/constants/app_constants.dart';
+import '../../../core/theme/app_color_scheme.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../core/theme/app_spacing.dart';
 import '../../../core/utils/helpers.dart';
+import '../../../data/models/user_model.dart';
 import '../../auth/controllers/auth_controller.dart';
 import '../../bookings/controllers/booking_controller.dart';
 import '../../dashboard/controllers/dashboard_controller.dart';
+import '../../verify/data/models/verify_enums.dart';
+import '../../verify/views/paywall_modal.dart';
 import '../../../shared/widgets/app_scaffold.dart';
 import '../../../shared/widgets/loading_widget.dart';
+
+// gradient.brandHero stop "jade-mid" theo spec section 3.7
+const _jadeMidLight = Color(0xFF1B7E94);
+
+/// Map field `kycStatus` từ backend (`none|pending|rejected|approved`) sang
+/// [VerifyStatus] để [_VerifyCTABanner] biết hiển thị variant nào.
+VerifyStatus _verifyStatusFromUserKyc(String kycStatus) {
+  switch (kycStatus) {
+    case 'pending':
+      return VerifyStatus.awaitingApproval;
+    case 'rejected':
+      return VerifyStatus.rejected;
+    case 'approved':
+      return VerifyStatus.approved;
+    case 'none':
+    default:
+      return VerifyStatus.draft;
+  }
+}
 
 class DashboardScreen extends ConsumerWidget {
   const DashboardScreen({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final colors = context.colors;
     final user = ref.watch(currentUserProvider);
     final statsAsync = ref.watch(dashboardStatsProvider);
     final bookingsAsync = ref.watch(bookingListProvider(null));
@@ -34,8 +59,13 @@ class DashboardScreen extends ConsumerWidget {
           onRetry: () => ref.invalidate(dashboardStatsProvider),
         ),
         data: (stats) => RefreshIndicator(
-          color: AppColors.ocean,
-          onRefresh: () async => ref.invalidate(dashboardStatsProvider),
+          color: colors.brand,
+          onRefresh: () async {
+            // Refresh stats + user profile cùng lúc để bắt KYC/subscription
+            // status thay đổi từ backend (vd: admin vừa approve KYC).
+            ref.invalidate(dashboardStatsProvider);
+            await ref.read(authProvider.notifier).refreshProfile();
+          },
           child: SingleChildScrollView(
             physics: const AlwaysScrollableScrollPhysics(),
             child: Column(
@@ -47,42 +77,98 @@ class DashboardScreen extends ConsumerWidget {
                   formattedDate: formattedDate,
                 ),
 
-                // ── Cảnh báo SALE chưa gán owner ─────────────────────
-                if (user != null && user.isSale && !user.hasOwner)
+                // ── Verify CTA cho Owner chưa verify ────────────────
+                // Source of truth: user.kycStatus từ /auth/profile (backend),
+                // KHÔNG dựa vào verifyFlowController (local, non-persisted).
+                if (user != null && user.isOwner && !user.isKycApproved)
                   Padding(
                     padding: const EdgeInsets.fromLTRB(16, 0, 16, 0),
                     child: Transform.translate(
                       offset: const Offset(0, -16),
-                      child: Container(
-                        width: double.infinity,
-                        padding: const EdgeInsets.all(14),
-                        margin: const EdgeInsets.only(bottom: 12),
-                        decoration: BoxDecoration(
-                          color: AppColors.amber.withValues(alpha: 0.1),
-                          borderRadius: BorderRadius.circular(14),
-                          border: Border.all(
-                            color: AppColors.amber.withValues(alpha: 0.3),
-                          ),
-                        ),
-                        child: Row(
-                          children: [
-                            const Icon(Icons.warning_amber_rounded,
-                                color: AppColors.amber, size: 20),
-                            const SizedBox(width: 10),
-                            Expanded(
-                              child: Text(
-                                'Bạn chưa được gán cho chủ nhà nào. Hãy liên hệ chủ nhà để được thêm vào đội.',
-                                style: GoogleFonts.beVietnamPro(
-                                  fontSize: 12,
-                                  color: AppColors.amber,
-                                  fontWeight: FontWeight.w500,
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
+                      child: _VerifyCTABanner(
+                        status: _verifyStatusFromUserKyc(user.kycStatus),
                       ),
                     ),
+                  ),
+
+                // ── Subscription banner cho OWNER đã KYC approved ─────
+                // Trial / past_due / cancelled — active thì không hiện.
+                if (user != null &&
+                    user.isOwner &&
+                    user.isKycApproved &&
+                    !user.isSubscriptionActive)
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 0, 16, 0),
+                    child: Transform.translate(
+                      offset: const Offset(0, -16),
+                      child: _SubscriptionBanner(user: user),
+                    ),
+                  ),
+
+                // ── Cảnh báo SALE chưa gán owner ─────────────────────
+                if (user != null && user.isSale && !user.hasOwner)
+                  Consumer(
+                    builder: (context, ref, _) {
+                      final dismissed =
+                          ref.watch(unassignedBannerDismissedProvider);
+                      if (dismissed) return const SizedBox.shrink();
+                      return Padding(
+                        padding: const EdgeInsets.fromLTRB(16, 0, 16, 0),
+                        child: Transform.translate(
+                          offset: const Offset(0, -16),
+                          child: Container(
+                            width: double.infinity,
+                            padding: const EdgeInsets.fromLTRB(14, 14, 8, 14),
+                            margin: const EdgeInsets.only(bottom: 12),
+                            decoration: BoxDecoration(
+                              color: colors.warningBg,
+                              borderRadius: BorderRadius.circular(14),
+                              border: Border.all(
+                                color: colors.warning.withValues(alpha: 0.3),
+                              ),
+                            ),
+                            child: Row(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Icon(Icons.warning_amber_rounded,
+                                    color: colors.warning, size: 20),
+                                const SizedBox(width: 10),
+                                Expanded(
+                                  child: Padding(
+                                    padding: const EdgeInsets.only(top: 1),
+                                    child: Text(
+                                      'Bạn chưa được gán cho chủ nhà nào. Hãy liên hệ chủ nhà để được thêm vào đội.',
+                                      style: GoogleFonts.beVietnamPro(
+                                        fontSize: 12,
+                                        color: colors.warning,
+                                        fontWeight: FontWeight.w500,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(width: 4),
+                                InkWell(
+                                  onTap: () => ref
+                                      .read(unassignedBannerDismissedProvider
+                                          .notifier)
+                                      .state = true,
+                                  borderRadius: BorderRadius.circular(20),
+                                  child: Padding(
+                                    padding: const EdgeInsets.all(4),
+                                    child: Icon(
+                                      Icons.close_rounded,
+                                      size: 18,
+                                      color:
+                                          colors.warning.withValues(alpha: 0.7),
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      );
+                    },
                   ),
 
                 // ── KPI Grid — overlaps header by 16px ─────────────────
@@ -99,8 +185,9 @@ class DashboardScreen extends ConsumerWidget {
                                 label: 'Tổng phòng',
                                 value: AppHelpers.formatIntOrDash(
                                     stats.globalTotalRooms),
-                                sub: '${AppHelpers.formatIntOrDash(stats.totalRooms)} của tôi',
-                                accentColor: AppColors.ocean,
+                                sub:
+                                    '${AppHelpers.formatIntOrDash(stats.totalRooms)} của tôi',
+                                accentColor: colors.brand,
                                 icon: Icons.apartment_rounded,
                               ),
                             ),
@@ -110,8 +197,9 @@ class DashboardScreen extends ConsumerWidget {
                                 label: 'Phòng trống',
                                 value: AppHelpers.formatIntOrDash(
                                     stats.globalEmptyRooms),
-                                sub: '${AppHelpers.formatIntOrDash(stats.emptyRooms)} của tôi',
-                                accentColor: AppColors.emerald,
+                                sub:
+                                    '${AppHelpers.formatIntOrDash(stats.emptyRooms)} của tôi',
+                                accentColor: colors.success,
                                 icon: Icons.check_circle_outline_rounded,
                               ),
                             ),
@@ -126,7 +214,7 @@ class DashboardScreen extends ConsumerWidget {
                                 value: AppHelpers.formatIntOrDash(
                                     stats.occupiedRooms),
                                 sub: 'Đang lưu trú',
-                                accentColor: AppColors.teal,
+                                accentColor: colors.brandLight,
                                 icon: Icons.people_rounded,
                               ),
                             ),
@@ -137,7 +225,7 @@ class DashboardScreen extends ConsumerWidget {
                                 value: AppHelpers.formatIntOrDash(
                                     stats.checkoutToday),
                                 sub: 'Trước 12:00',
-                                accentColor: AppColors.amber,
+                                accentColor: colors.warning,
                                 icon: Icons.logout_rounded,
                               ),
                             ),
@@ -150,8 +238,7 @@ class DashboardScreen extends ConsumerWidget {
 
                 // ── Revenue card ────────────────────────────────────────
                 Padding(
-                  padding:
-                      const EdgeInsets.fromLTRB(16, 0, 16, 0),
+                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 0),
                   child: _RevenueCard(
                     monthlyRevenue: stats.monthlyRevenue,
                     todayRevenue: stats.todayRevenue,
@@ -174,21 +261,21 @@ class DashboardScreen extends ConsumerWidget {
                           _QuickAction(
                             icon: Icons.add_rounded,
                             label: 'Booking',
-                            color: AppColors.ocean,
+                            color: colors.brand,
                             onTap: () => context.push('/bookings'),
                           ),
                           const SizedBox(width: 10),
                           _QuickAction(
                             icon: Icons.login_rounded,
                             label: 'Check-in',
-                            color: AppColors.teal,
+                            color: colors.brandLight,
                             onTap: () {},
                           ),
                           const SizedBox(width: 10),
                           _QuickAction(
                             icon: Icons.logout_rounded,
                             label: 'Check-out',
-                            color: AppColors.gold,
+                            color: colors.brandSecondary,
                             onTap: () {},
                           ),
                           const SizedBox(width: 10),
@@ -196,15 +283,50 @@ class DashboardScreen extends ConsumerWidget {
                             _QuickAction(
                               icon: Icons.add_home_rounded,
                               label: 'Thêm phòng',
-                              color: AppColors.emerald,
-                              onTap: () =>
-                                  context.push('/properties/new'),
+                              color: colors.success,
+                              onTap: () => context.push('/properties/new'),
                             ),
                         ],
                       ),
                     ],
                   ),
                 ),
+
+                // ── Shortcut quản lý phòng + lịch CHỈ cho SALE ──────────
+                // OWNER/ADMIN đã có bottom nav + admin tab nên không cần.
+                // SALE chưa được gán owner → lock; có owner → vào dữ liệu
+                // của owner (backend auto-scope theo ownerId của SALE).
+                if (user != null && user.isSale) ...[
+                  const SizedBox(height: 28),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        _SectionLabel('QUẢN LÝ'),
+                        const SizedBox(height: 12),
+                        _ManageShortcut(
+                          icon: Icons.apartment_rounded,
+                          iconColor: colors.brand,
+                          title: 'Quản lý phòng',
+                          subtitle:
+                              'Xem & cập nhật phòng của chủ nhà bạn phụ trách',
+                          locked: !user.hasOwner,
+                          onTap: () => context.go('/rooms'),
+                        ),
+                        const SizedBox(height: 10),
+                        _ManageShortcut(
+                          icon: Icons.calendar_month_rounded,
+                          iconColor: colors.brandLight,
+                          title: 'Lịch booking',
+                          subtitle: 'Xem lịch booking các phòng của chủ nhà',
+                          locked: !user.hasOwner,
+                          onTap: () => context.go('/calendar'),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
 
                 const SizedBox(height: 28),
 
@@ -216,8 +338,7 @@ class DashboardScreen extends ConsumerWidget {
                     children: [
                       Row(
                         children: [
-                          Expanded(
-                              child: _SectionLabel('BOOKING GẦN ĐÂY')),
+                          Expanded(child: _SectionLabel('BOOKING GẦN ĐÂY')),
                           GestureDetector(
                             onTap: () => context.push('/bookings'),
                             child: Text(
@@ -225,7 +346,7 @@ class DashboardScreen extends ConsumerWidget {
                               style: GoogleFonts.beVietnamPro(
                                 fontSize: 12,
                                 fontWeight: FontWeight.w600,
-                                color: AppColors.oceanMid,
+                                color: colors.textBrand,
                               ),
                             ),
                           ),
@@ -249,28 +370,23 @@ class DashboardScreen extends ConsumerWidget {
                           return Column(
                             children: recent.map((b) {
                               final statusColor =
-                                  AppHelpers.bookingStatusColor(
-                                      b.status.value);
+                                  AppHelpers.bookingStatusColor(b.status.value);
                               return Padding(
-                                padding:
-                                    const EdgeInsets.only(bottom: 10),
+                                padding: const EdgeInsets.only(bottom: 10),
                                 child: _BookingItem(
                                   initials: (b.customerName ?? 'K')
                                       .substring(0, 1)
                                       .toUpperCase(),
                                   name: b.customerName ?? 'Không tên',
-                                  meta:
-                                      '${b.propertyName} · ${b.nights} đêm',
+                                  meta: '${b.propertyName} · ${b.nights} đêm',
                                   status: b.status.label,
                                   statusColor: statusColor,
-                                  statusBg:
-                                      statusColor.withValues(alpha: 0.12),
+                                  statusBg: statusColor.withValues(alpha: 0.12),
                                   price: (b.depositAmount != null &&
                                           b.depositAmount! > 0)
                                       ? '${AppHelpers.formatPrice(b.depositAmount!)}đ'
                                       : '--',
-                                  onTap: () =>
-                                      context.push('/bookings'),
+                                  onTap: () => context.push('/bookings'),
                                 ),
                               );
                             }).toList(),
@@ -298,12 +414,13 @@ class _SectionLabel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.colors;
     return Text(
       text,
       style: GoogleFonts.beVietnamPro(
         fontSize: 11,
         fontWeight: FontWeight.w600,
-        color: AppColors.muted,
+        color: colors.textSecondary,
         letterSpacing: 1.2,
       ),
     );
@@ -322,7 +439,11 @@ class _DashHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.colors;
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final headerGradient = isDark
+        ? const [AppColors.darkBg, AppColors.darkBorder]
+        : const [AppColors.jade500, _jadeMidLight];
 
     return Container(
       padding: EdgeInsets.only(
@@ -331,13 +452,16 @@ class _DashHeader extends StatelessWidget {
         right: 20,
         bottom: 32,
       ),
+      clipBehavior: Clip.antiAlias,
       decoration: BoxDecoration(
         gradient: LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
-          colors: isDark
-              ? [AppColors.darkGradientStart, AppColors.darkGradientEnd]
-              : [AppColors.oceanDeep, AppColors.ocean],
+          colors: headerGradient,
+        ),
+        borderRadius: const BorderRadius.only(
+          bottomLeft: Radius.circular(28),
+          bottomRight: Radius.circular(28),
         ),
       ),
       child: Stack(
@@ -351,7 +475,7 @@ class _DashHeader extends StatelessWidget {
               height: 180,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                color: AppColors.teal.withValues(alpha: 0.10),
+                color: colors.brandLight.withValues(alpha: 0.10),
               ),
             ),
           ),
@@ -363,7 +487,7 @@ class _DashHeader extends StatelessWidget {
               height: 110,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                color: AppColors.gold.withValues(alpha: 0.08),
+                color: AppColors.gold500.withValues(alpha: 0.08),
               ),
             ),
           ),
@@ -419,10 +543,10 @@ class _DashHeader extends StatelessWidget {
                         width: 8,
                         height: 8,
                         decoration: BoxDecoration(
-                          color: AppColors.gold,
+                          color: AppColors.gold500,
                           shape: BoxShape.circle,
                           border:
-                              Border.all(color: AppColors.ocean, width: 1.5),
+                              Border.all(color: AppColors.jade500, width: 1.5),
                         ),
                       ),
                     ),
@@ -439,10 +563,9 @@ class _DashHeader extends StatelessWidget {
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
                     gradient: const LinearGradient(
-                        colors: [AppColors.teal, AppColors.gold]),
+                        colors: [AppColors.jade300, AppColors.gold500]),
                     border: Border.all(
-                        color: Colors.white.withValues(alpha: 0.3),
-                        width: 1.5),
+                        color: Colors.white.withValues(alpha: 0.3), width: 1.5),
                   ),
                   child: Center(
                     child: Text(
@@ -482,16 +605,17 @@ class _KpiCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.colors;
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: isDark ? AppColors.darkContainer : Colors.white,
+        color: colors.bgSurface,
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.06),
+            color: Colors.black.withValues(alpha: isDark ? 0.30 : 0.06),
             blurRadius: 12,
             offset: const Offset(0, 4),
           ),
@@ -538,7 +662,7 @@ class _KpiCard extends StatelessWidget {
             style: GoogleFonts.beVietnamPro(
               fontSize: 13,
               fontWeight: FontWeight.w500,
-              color: isDark ? AppColors.darkOnSurface : AppColors.navy,
+              color: colors.textPrimary,
             ),
           ),
           const SizedBox(height: 2),
@@ -546,7 +670,7 @@ class _KpiCard extends StatelessWidget {
             sub,
             style: GoogleFonts.beVietnamPro(
               fontSize: 11,
-              color: AppColors.slate,
+              color: colors.textTertiary,
             ),
           ),
         ],
@@ -569,6 +693,7 @@ class _RevenueCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.colors;
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Container(
@@ -576,7 +701,7 @@ class _RevenueCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: AppColors.emerald.withValues(alpha: isDark ? 0.15 : 0.12),
+            color: colors.success.withValues(alpha: isDark ? 0.15 : 0.12),
             blurRadius: 16,
             offset: const Offset(0, 4),
           ),
@@ -586,7 +711,7 @@ class _RevenueCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(16),
         child: Container(
           decoration: BoxDecoration(
-            color: isDark ? AppColors.darkContainer : Colors.white,
+            color: colors.bgSurface,
           ),
           child: Stack(
             children: [
@@ -597,11 +722,11 @@ class _RevenueCard extends StatelessWidget {
                 bottom: 0,
                 child: Container(
                   width: 4,
-                  decoration: const BoxDecoration(
+                  decoration: BoxDecoration(
                     gradient: LinearGradient(
                       begin: Alignment.topCenter,
                       end: Alignment.bottomCenter,
-                      colors: [AppColors.emerald, AppColors.teal],
+                      colors: [colors.success, colors.brandLight],
                     ),
                   ),
                 ),
@@ -620,7 +745,7 @@ class _RevenueCard extends StatelessWidget {
                             style: GoogleFonts.beVietnamPro(
                               fontSize: 10,
                               fontWeight: FontWeight.w600,
-                              color: AppColors.muted,
+                              color: colors.textSecondary,
                               letterSpacing: 1.0,
                             ),
                           ),
@@ -630,7 +755,7 @@ class _RevenueCard extends StatelessWidget {
                             style: GoogleFonts.beVietnamPro(
                               fontSize: 28,
                               fontWeight: FontWeight.w800,
-                              color: AppColors.emerald,
+                              color: colors.success,
                               height: 1,
                             ),
                           ),
@@ -639,7 +764,7 @@ class _RevenueCard extends StatelessWidget {
                             'Tháng ${now.month}/${now.year}',
                             style: GoogleFonts.beVietnamPro(
                               fontSize: 11,
-                              color: AppColors.slate,
+                              color: colors.textTertiary,
                             ),
                           ),
                         ],
@@ -649,7 +774,7 @@ class _RevenueCard extends StatelessWidget {
                     Container(
                       width: 1,
                       height: 52,
-                      color: AppColors.border,
+                      color: colors.borderDefault,
                       margin: const EdgeInsets.symmetric(horizontal: 16),
                     ),
                     // Today revenue
@@ -661,7 +786,7 @@ class _RevenueCard extends StatelessWidget {
                           style: GoogleFonts.beVietnamPro(
                             fontSize: 10,
                             fontWeight: FontWeight.w600,
-                            color: AppColors.muted,
+                            color: colors.textSecondary,
                             letterSpacing: 1.0,
                           ),
                         ),
@@ -671,7 +796,7 @@ class _RevenueCard extends StatelessWidget {
                           style: GoogleFonts.beVietnamPro(
                             fontSize: 22,
                             fontWeight: FontWeight.w700,
-                            color: AppColors.oceanMid,
+                            color: colors.brandLight,
                             height: 1,
                           ),
                         ),
@@ -680,7 +805,7 @@ class _RevenueCard extends StatelessWidget {
                           'Thu hôm nay',
                           style: GoogleFonts.beVietnamPro(
                             fontSize: 11,
-                            color: AppColors.slate,
+                            color: colors.textTertiary,
                           ),
                         ),
                       ],
@@ -712,6 +837,7 @@ class _QuickAction extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.colors;
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Expanded(
@@ -720,12 +846,11 @@ class _QuickAction extends StatelessWidget {
         child: Container(
           padding: const EdgeInsets.symmetric(vertical: 14),
           decoration: BoxDecoration(
-            color: isDark ? AppColors.darkContainer : Colors.white,
+            color: colors.bgSurface,
             borderRadius: BorderRadius.circular(14),
             border: Border.all(
-              color: isDark
-                  ? AppColors.darkBorder
-                  : color.withValues(alpha: 0.15),
+              color:
+                  isDark ? colors.borderDefault : color.withValues(alpha: 0.15),
             ),
             boxShadow: [
               BoxShadow(
@@ -753,11 +878,125 @@ class _QuickAction extends StatelessWidget {
                 style: GoogleFonts.beVietnamPro(
                   fontSize: 11,
                   fontWeight: FontWeight.w600,
-                  color: isDark ? AppColors.darkOnSurface : AppColors.navy,
+                  color: colors.textPrimary,
                   height: 1.2,
                 ),
                 textAlign: TextAlign.center,
                 maxLines: 2,
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ─── Manage Shortcut (row card lớn, dùng cho /rooms + /calendar) ──────────────
+class _ManageShortcut extends StatelessWidget {
+  final IconData icon;
+  final Color iconColor;
+  final String title;
+  final String subtitle;
+  final VoidCallback onTap;
+  final bool locked;
+
+  const _ManageShortcut({
+    required this.icon,
+    required this.iconColor,
+    required this.title,
+    required this.subtitle,
+    required this.onTap,
+    this.locked = false,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.colors;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    return GestureDetector(
+      onTap: locked
+          ? () => AppSnackBar.info(
+                context,
+                'Bạn cần được chủ nhà thêm vào đội trước khi quản lý phòng & lịch.',
+              )
+          : onTap,
+      behavior: HitTestBehavior.opaque,
+      child: Opacity(
+        opacity: locked ? 0.55 : 1,
+        child: Container(
+          padding: const EdgeInsets.all(14),
+          decoration: BoxDecoration(
+            color: colors.bgSurface,
+            borderRadius: BorderRadius.circular(14),
+            border: locked
+                ? Border.all(
+                    color: colors.borderDefault,
+                    style: BorderStyle.solid,
+                  )
+                : null,
+            boxShadow: locked
+                ? null
+                : [
+                    BoxShadow(
+                      color:
+                          Colors.black.withValues(alpha: isDark ? 0.30 : 0.05),
+                      blurRadius: 10,
+                      offset: const Offset(0, 3),
+                    ),
+                  ],
+          ),
+          child: Row(
+            children: [
+              Container(
+                width: 44,
+                height: 44,
+                decoration: BoxDecoration(
+                  color: (locked ? colors.textTertiary : iconColor)
+                      .withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Icon(
+                  icon,
+                  color: locked ? colors.textTertiary : iconColor,
+                  size: 22,
+                ),
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      title,
+                      style: GoogleFonts.beVietnamPro(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w700,
+                        color: colors.textPrimary,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      locked
+                          ? 'Chờ chủ nhà thêm bạn vào đội để mở khoá'
+                          : subtitle,
+                      style: GoogleFonts.beVietnamPro(
+                        fontSize: 11,
+                        color: colors.textSecondary,
+                        height: 1.3,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Icon(
+                locked
+                    ? Icons.lock_outline_rounded
+                    : Icons.chevron_right_rounded,
+                color: colors.textTertiary,
+                size: 22,
               ),
             ],
           ),
@@ -791,115 +1030,538 @@ class _BookingItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.colors;
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return GestureDetector(
       onTap: onTap,
       child: Container(
-      decoration: BoxDecoration(
-        color: isDark ? AppColors.darkContainer : Colors.white,
-        borderRadius: BorderRadius.circular(14),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: isDark ? 0.15 : 0.05),
-            blurRadius: 10,
-            offset: const Offset(0, 3),
-          ),
-        ],
-      ),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(14),
-        child: Row(
-          children: [
-            // Left status stripe
-            Container(
-              width: 4,
-              height: 64,
-              color: statusColor,
+        decoration: BoxDecoration(
+          color: colors.bgSurface,
+          borderRadius: BorderRadius.circular(14),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: isDark ? 0.30 : 0.05),
+              blurRadius: 10,
+              offset: const Offset(0, 3),
             ),
-            const SizedBox(width: 12),
-            // Emoji avatar
-            Container(
-              width: 42,
-              height: 42,
-              decoration: BoxDecoration(
-                color: statusBg,
-                borderRadius: BorderRadius.circular(10),
+          ],
+        ),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(14),
+          child: Row(
+            children: [
+              // Left status stripe
+              Container(
+                width: 4,
+                height: 64,
+                color: statusColor,
               ),
-              child: Center(
-                child: Text(initials,
-                    style: const TextStyle(fontSize: 20)),
+              const SizedBox(width: 12),
+              // Emoji avatar
+              Container(
+                width: 42,
+                height: 42,
+                decoration: BoxDecoration(
+                  color: statusBg,
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Center(
+                  child: Text(initials, style: const TextStyle(fontSize: 20)),
+                ),
               ),
-            ),
-            const SizedBox(width: 12),
-            // Info
-            Expanded(
-              child: Padding(
-                padding: const EdgeInsets.symmetric(vertical: 12),
+              const SizedBox(width: 12),
+              // Info
+              Expanded(
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 12),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        name,
+                        style: GoogleFonts.beVietnamPro(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                          color: colors.textPrimary,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        meta,
+                        style: GoogleFonts.beVietnamPro(
+                          fontSize: 12,
+                          color: colors.textSecondary,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              // Status + price
+              Padding(
+                padding: const EdgeInsets.only(right: 14),
                 child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+                  crossAxisAlignment: CrossAxisAlignment.end,
                   children: [
-                    Text(
-                      name,
-                      style: GoogleFonts.beVietnamPro(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w600,
-                        color: isDark
-                            ? AppColors.darkOnSurface
-                            : AppColors.navy,
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 8, vertical: 3),
+                      decoration: BoxDecoration(
+                        color: statusBg,
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      child: Text(
+                        status,
+                        style: GoogleFonts.beVietnamPro(
+                          fontSize: 10,
+                          fontWeight: FontWeight.w700,
+                          color: statusColor,
+                          letterSpacing: 0.2,
+                        ),
                       ),
                     ),
-                    const SizedBox(height: 2),
+                    const SizedBox(height: 5),
                     Text(
-                      meta,
+                      price,
                       style: GoogleFonts.beVietnamPro(
-                        fontSize: 12,
-                        color: AppColors.muted,
+                        fontSize: 13,
+                        fontWeight: FontWeight.w700,
+                        color: colors.textBrand,
                       ),
                     ),
                   ],
                 ),
               ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Banner subscription cho OWNER đã verify approved.
+/// 3 variant: trial countdown / past_due (cần thanh toán) / cancelled.
+/// Active không hiện (caller đã guard).
+class _SubscriptionBanner extends StatelessWidget {
+  final UserModel user;
+  const _SubscriptionBanner({required this.user});
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.colors;
+
+    final (
+      Color bg,
+      Color borderColor,
+      IconData icon,
+      Color iconColor,
+      String title,
+      String subtitle,
+    ) = _resolveVariant(colors);
+
+    return InkWell(
+      onTap: () => _showDetailSheet(context),
+      borderRadius: BorderRadius.circular(14),
+      child: Container(
+        padding: const EdgeInsets.all(14),
+        margin: const EdgeInsets.only(bottom: 12),
+        decoration: BoxDecoration(
+          color: bg,
+          border: Border.all(color: borderColor),
+          borderRadius: BorderRadius.circular(14),
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 40,
+              height: 40,
+              decoration: BoxDecoration(
+                color: iconColor.withValues(alpha: 0.15),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Icon(icon, size: 20, color: iconColor),
             ),
-            // Status + price
-            Padding(
-              padding: const EdgeInsets.only(right: 14),
+            const SizedBox(width: 12),
+            Expanded(
               child: Column(
-                crossAxisAlignment: CrossAxisAlignment.end,
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 8, vertical: 3),
-                    decoration: BoxDecoration(
-                      color: statusBg,
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    child: Text(
-                      status,
-                      style: GoogleFonts.beVietnamPro(
-                        fontSize: 10,
-                        fontWeight: FontWeight.w700,
-                        color: statusColor,
-                        letterSpacing: 0.2,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 5),
                   Text(
-                    price,
+                    title,
                     style: GoogleFonts.beVietnamPro(
                       fontSize: 13,
                       fontWeight: FontWeight.w700,
-                      color: AppColors.ocean,
+                      color: colors.textPrimary,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    subtitle,
+                    style: GoogleFonts.beVietnamPro(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w500,
+                      color: colors.textSecondary,
+                      height: 1.4,
                     ),
                   ),
                 ],
               ),
             ),
+            Icon(
+              Icons.chevron_right_rounded,
+              size: 20,
+              color: colors.textTertiary,
+            ),
           ],
         ),
       ),
-    ),
+    );
+  }
+
+  /// Bottom sheet chi tiết subscription. Tap "Liên hệ hỗ trợ" → /profile/help.
+  void _showDetailSheet(BuildContext context) {
+    final colors = context.colors;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final (title, body, ctaLabel) = _sheetContent();
+
+    showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (sheetCtx) => Container(
+        decoration: BoxDecoration(
+          color: isDark ? AppColors.darkSurface : Colors.white,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+        ),
+        padding: EdgeInsets.fromLTRB(
+          AppSpacing.lg,
+          AppSpacing.md,
+          AppSpacing.lg,
+          MediaQuery.of(sheetCtx).viewInsets.bottom + AppSpacing.lg,
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Center(
+              child: Container(
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: colors.borderStrong,
+                  borderRadius: BorderRadius.circular(100),
+                ),
+              ),
+            ),
+            const SizedBox(height: AppSpacing.md),
+            Text(
+              title,
+              style: GoogleFonts.beVietnamPro(
+                fontSize: 18,
+                fontWeight: FontWeight.w700,
+                color: colors.textPrimary,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              body,
+              style: GoogleFonts.beVietnamPro(
+                fontSize: 13,
+                fontWeight: FontWeight.w500,
+                height: 1.5,
+                color: colors.textSecondary,
+              ),
+            ),
+            const SizedBox(height: AppSpacing.lg),
+            SizedBox(
+              width: double.infinity,
+              height: 48,
+              child: ElevatedButton.icon(
+                onPressed: () {
+                  Navigator.of(sheetCtx).maybePop();
+                  context.push('/profile/help');
+                },
+                icon: const Icon(Icons.support_agent_rounded, size: 18),
+                label: Text(ctaLabel),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: colors.brand,
+                  foregroundColor: AppColors.darkBg,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  textStyle: GoogleFonts.beVietnamPro(
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// Nội dung bottom sheet theo variant: title / body / CTA label.
+  (String, String, String) _sheetContent() {
+    final plan = user.subscriptionPlanId ?? '—';
+    final cycle = switch (user.subscriptionCycle) {
+      'monthly' => 'Hàng tháng',
+      'yearly' => 'Hàng năm',
+      _ => '',
+    };
+    final planText = cycle.isEmpty ? plan : '$plan · $cycle';
+
+    if (user.isInTrial) {
+      final days = user.trialDaysLeft ?? 0;
+      return (
+        'Đang dùng thử miễn phí',
+        'Gói: $planText\n'
+            'Còn $days ngày trial.\n'
+            'Khi trial kết thúc, hệ thống tự động trừ tiền theo gói đã chọn. '
+            'Bạn có thể đổi gói hoặc huỷ bất cứ lúc nào.',
+        'Liên hệ hỗ trợ',
+      );
+    }
+    if (user.isSubscriptionPastDue) {
+      return (
+        'Thanh toán quá hạn',
+        'Gói: $planText\n\n'
+            'Lần thanh toán gần nhất bị từ chối. Vui lòng cập nhật phương thức '
+            'thanh toán mới hoặc liên hệ hỗ trợ để tránh gián đoạn dịch vụ.',
+        'Liên hệ hỗ trợ ngay',
+      );
+    }
+    if (user.isSubscriptionCancelled) {
+      return (
+        'Subscription đã huỷ',
+        'Gói: $planText\n\n'
+            'Tài khoản đã bị tạm ngưng nhận booking. Liên hệ hỗ trợ để kích '
+            'hoạt lại.',
+        'Liên hệ hỗ trợ',
+      );
+    }
+    return (
+      'Subscription chưa kích hoạt',
+      'Liên hệ hỗ trợ để được tư vấn gói phù hợp.',
+      'Liên hệ hỗ trợ',
+    );
+  }
+
+  (Color, Color, IconData, Color, String, String) _resolveVariant(
+    AppColorScheme colors,
+  ) {
+    // Trial — gold info, đếm ngược ngày
+    if (user.isInTrial) {
+      final days = user.trialDaysLeft ?? 0;
+      final daysText = days > 0 ? 'còn $days ngày' : 'kết thúc hôm nay';
+      return (
+        AppColors.goldBg,
+        AppColors.goldBorder,
+        Icons.workspace_premium_outlined,
+        AppColors.goldText,
+        'Đang dùng thử miễn phí · $daysText',
+        days > 0
+            ? 'Sau khi trial kết thúc, hệ thống tự động trừ tiền theo gói đã chọn.'
+            : 'Hệ thống sẽ tự động charge theo gói đã chọn vào ngày mai.',
+      );
+    }
+    // Past due — payment fail, cần update
+    if (user.isSubscriptionPastDue) {
+      return (
+        AppColors.errorBgDark,
+        AppColors.errorBorder,
+        Icons.priority_high_rounded,
+        colors.error,
+        'Thanh toán quá hạn',
+        'Tài khoản sẽ bị khoá nếu không cập nhật phương thức thanh toán.',
+      );
+    }
+    // Cancelled — subscription đã huỷ
+    if (user.isSubscriptionCancelled) {
+      return (
+        AppColors.darkContainer,
+        AppColors.darkBorder,
+        Icons.cancel_outlined,
+        colors.textSecondary,
+        'Subscription đã huỷ',
+        'Liên hệ hỗ trợ nếu muốn tiếp tục sử dụng.',
+      );
+    }
+    // Fallback (subscription_status='none' nhưng KYC approved — edge case)
+    return (
+      AppColors.infoBgDark,
+      AppColors.darkBorder,
+      Icons.info_outline,
+      colors.brandLight,
+      'Chưa kích hoạt subscription',
+      'Vui lòng liên hệ hỗ trợ.',
+    );
+  }
+}
+
+/// Banner nổi bật trên dashboard cho Owner chưa verify (hoặc đang chờ /
+/// bị reject). Tap → showPaywallModal hoặc đẩy thẳng về screen tương ứng
+/// với status hiện tại.
+class _VerifyCTABanner extends StatelessWidget {
+  final VerifyStatus status;
+  const _VerifyCTABanner({required this.status});
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.colors;
+
+    // Mọi màu derive từ `context.colors` (theme-aware) thay vì hardcode
+    // *Dark constants — banner phải đẹp ở cả light và dark.
+    final (
+      Color bg,
+      Color borderColor,
+      Color iconBg,
+      IconData icon,
+      Color iconColor,
+      String title,
+      String subtitle,
+      String cta,
+      String route,
+      bool useModal,
+    ) = switch (status) {
+      VerifyStatus.awaitingApproval => (
+          colors.bgSurfaceContainer,
+          colors.borderBrand.withValues(alpha: 0.4),
+          colors.brand.withValues(alpha: 0.15),
+          Icons.access_time,
+          colors.brand,
+          'Hồ sơ đang chờ admin duyệt',
+          'Trong vòng 24h sẽ có kết quả.',
+          'Xem trạng thái',
+          '/verify/pending',
+          false,
+        ),
+      VerifyStatus.rejected => (
+          colors.errorBg,
+          colors.error.withValues(alpha: 0.4),
+          colors.error.withValues(alpha: 0.15),
+          Icons.priority_high,
+          colors.error,
+          'Hồ sơ chưa được duyệt',
+          'Cần bổ sung thông tin để được kích hoạt.',
+          'Bổ sung ngay',
+          '/verify/rejected',
+          false,
+        ),
+      _ => (
+          colors.bgWarm,
+          colors.borderGold,
+          colors.borderGold.withValues(alpha: 0.3),
+          Icons.workspace_premium,
+          colors.textBrandAccent,
+          'Verify để bắt đầu nhận booking',
+          '4 bước · Trial 7 ngày miễn phí khi xong.',
+          'Bắt đầu',
+          '/verify/cccd-front',
+          true,
+        ),
+    };
+
+    return Container(
+      padding: const EdgeInsets.all(14),
+      margin: const EdgeInsets.only(bottom: 12),
+      decoration: BoxDecoration(
+        color: bg,
+        border: Border.all(color: borderColor),
+        borderRadius: BorderRadius.circular(14),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 40,
+            height: 40,
+            decoration: BoxDecoration(
+              color: iconBg,
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Icon(icon, size: 20, color: iconColor),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: GoogleFonts.beVietnamPro(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w700,
+                    color: colors.textPrimary,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  subtitle,
+                  style: GoogleFonts.beVietnamPro(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w500,
+                    color: colors.textSecondary,
+                    height: 1.4,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 10),
+          _CTAButton(
+            label: cta,
+            onTap: () async {
+              if (useModal) {
+                final ok = await showPaywallModal(context);
+                if (ok == true && context.mounted) {
+                  context.push(route);
+                }
+              } else {
+                context.push(route);
+              }
+            },
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _CTAButton extends StatelessWidget {
+  final String label;
+  final VoidCallback onTap;
+  const _CTAButton({required this.label, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.colors;
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(8),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        decoration: BoxDecoration(
+          color: colors.brand,
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              label,
+              style: GoogleFonts.beVietnamPro(
+                fontSize: 11,
+                fontWeight: FontWeight.w700,
+                color: colors.textOnPrimary,
+              ),
+            ),
+            const SizedBox(width: 4),
+            Icon(Icons.arrow_forward, size: 12, color: colors.textOnPrimary),
+          ],
+        ),
+      ),
     );
   }
 }

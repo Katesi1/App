@@ -13,7 +13,7 @@ class AppConstants {
   // appStoreUrl: lấy từ App Store Connect → trang app → "App URL"
   // appDownloadPage: trang web riêng (nếu có) để redirect theo platform
   static const String playStoreUrl =
-      'https://play.google.com/store/apps/details?id=com.halong24h.app';
+      'https://play.google.com/store/apps/details?id=com.halongtravel.halong24h';
   static const String appStoreUrl =
       'https://apps.apple.com/app/halong24h/id000000000';
   static const String appDownloadPage = 'https://halong24h.vn/download';

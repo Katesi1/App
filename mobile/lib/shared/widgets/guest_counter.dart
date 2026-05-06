@@ -69,8 +69,8 @@ class GuestCounter extends StatelessWidget {
                 color: AppColors.ocean,
                 shape: BoxShape.circle,
               ),
-              child: const Icon(Icons.add_rounded,
-                  size: 14, color: Colors.white),
+              child:
+                  const Icon(Icons.add_rounded, size: 14, color: Colors.white),
             ),
           ),
         ],

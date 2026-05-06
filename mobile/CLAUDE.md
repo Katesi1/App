@@ -16,8 +16,13 @@ Tài liệu này là **hệ điều hành dự án** — định nghĩa conventi
 
 ### Phạm vi
 
-- ✅ **Được làm**: CRUD rooms/bookings/homestays/users, auth (phone + Google), customer booking flow, dashboard KPI, role-based UI
-- ❌ **KHÔNG được làm**: Tự ý thêm dependency chưa hỏi, thay đổi architecture (MVC → MVVM, BLoC...), bỏ Riverpod sang provider khác, hardcode config/secret
+- ✅ **Được làm**: CRUD rooms/bookings/homestays/users, auth (phone + Google),
+  customer booking flow, dashboard KPI, role-based UI, KYC + subscription
+  flow cho OWNER (xem Section 14), admin KYC queue, staff (SALE) scope theo
+  `ownerId`
+- ❌ **KHÔNG được làm**: Tự ý thêm dependency chưa hỏi, thay đổi architecture
+  (MVC → MVVM, BLoC...), bỏ Riverpod sang provider khác, hardcode config/secret,
+  xoá mock repository (giữ song song với real impl cho QA)
 
 ### Tech Stack
 
@@ -84,10 +89,11 @@ lib/
 
   data/                          # MODEL layer
     models/
-      user_model.dart            # UserModel (role helpers: isAdmin, isStaff, isCustomer, isManagement, canEdit)
+      user_model.dart            # UserModel (role: isAdmin/isOwner/isSale/isCustomer, KYC: isKycApproved/needsKyc, subscription: isInTrial/trialDaysLeft)
       room_model.dart            # RoomModel, RoomImageModel, RoomPriceModel, HomestaySimpleModel
       homestay_model.dart        # HomestayModel
       booking_model.dart         # BookingModel, CalendarBooking
+      notification_model.dart    # NotificationModel + NotificationType (booking|payment|system) + targetType discriminator
     repositories/
       auth_repository.dart       # Login, register, Google sign-in, logout, token management
       user_repository.dart       # CRUD users
@@ -142,9 +148,39 @@ lib/
     admin/
       controllers/
         user_controller.dart     # userListProvider, UserActionsNotifier
+        kyc_approval_controller.dart  # kycSubmissionsProvider, KYCApprovalActionsNotifier (approve/reject)
+      data/
+        models/
+          kyc_submission.dart    # KYCSubmission view-model cho admin queue
+        repositories/
+          admin_kyc_repository.dart        # Abstract + provider
+          admin_kyc_repository_impl.dart   # Real backend (gọi /admin/kyc/queue, /admin/kyc/submissions/:id/approve|reject)
+          mock_admin_kyc_repository.dart   # Seed 5 submission cho QA
       views/
+        admin_screen.dart
         user_list_screen.dart
         user_form_screen.dart
+        kyc_approval_list_screen.dart    # 4-tab queue (chờ duyệt / đã duyệt / bị từ chối / tất cả)
+        kyc_approval_detail_screen.dart  # CCCD images + OCR + face match + approve/reject
+    verify/                       # KYC flow cho OWNER (xem Section 14)
+      controllers/
+        verify_flow_controller.dart   # VerifyFlowController + verifyRepositoryProvider + verifyPlansProvider
+      data/
+        models/                       # cccd_upload, selfie_upload, ocr_result, plan, payment_session, verify_state, verify_enums
+        repositories/
+          verify_repository.dart        # Abstract + KycStatusSnapshot
+          verify_repository_impl.dart   # Real backend (FPT.AI/VNPay sau, hiện wire trực tiếp /kyc/*, /payments/*, /billing/plans)
+          mock_verify_repository.dart   # Mock cho QA — override provider
+      views/                        # 7 screen: cccd_capture/scanner, selfie_capture/scanner, select_plan, payment, pending_approval, trial_active, rejected
+        widgets/                    # camera_frame_overlay, status_timeline, plan_card, order_summary_card...
+      utils/
+        cccd_image_cropper.dart     # Crop CCCD ratio 1.586:1
+        camera_picker.dart
+    notifications/
+      controllers/
+        notification_controller.dart  # notificationListProvider, unreadCountProvider, mark-as-read
+      views/
+        notification_screen.dart
 
   shared/                        # Code dùng chung giữa các features
     providers/
@@ -435,6 +471,32 @@ AppHelpers.vietnameseDayOfWeek(1)      // → 'Thứ Hai'
 
 Khi thêm logic mới dùng ở >= 2 nơi: thêm vào `AppHelpers`, KHÔNG copy-paste.
 
+### Phone Input — `PhoneInput` (lib/core/utils/phone_input.dart)
+
+**SĐT VN: max 10 chữ số, bắt đầu bằng `0`.** Mọi field nhập SĐT (booking, profile,
+admin tạo user...) PHẢI dùng `PhoneInput` — không tự viết regex/validator riêng.
+
+```dart
+import '../../core/utils/phone_input.dart';
+
+TextFormField(
+  keyboardType: TextInputType.phone,
+  inputFormatters: PhoneInput.formatters,   // chỉ digit + max 10 + ép ký tự đầu = 0
+  validator: PhoneInput.validate,           // hoặc validateOptional cho field optional
+  decoration: const InputDecoration(
+    hintText: '0xxxxxxxxx (10 số)',
+    counterText: '',                        // ẩn counter "X/10"
+  ),
+);
+```
+
+| Method | Khi nào |
+|---|---|
+| `PhoneInput.formatters` | Mọi `TextField/TextFormField` SĐT |
+| `PhoneInput.validate` | Field bắt buộc (auth/register, profile, admin user form) |
+| `PhoneInput.validateOptional` | Field có thể rỗng (vd booking customer phone) |
+| `PhoneInput.isValid(value)` | Check nhanh không cần message |
+
 ### Shared Widgets — `lib/shared/widgets/` (QUAN TRỌNG)
 
 **Widget dùng chung PHẢI đặt trong `shared/widgets/`**, KHÔNG viết private widget (`_WidgetName`) trong file view.
@@ -501,6 +563,25 @@ class RoomRepository {
 - Repository chỉ gọi API và parse data — **không chứa business logic**
 - Luôn return `ApiResponse<T>` — **không throw exception**
 - Dùng `ApiClient.instance` (Dio singleton đã có auth interceptor)
+
+#### Ngoại lệ — Feature-specific repository có abstract throw-style
+
+Một vài feature có repository abstract định nghĩa `Future<T>` (throw on error)
+thay vì `Future<ApiResponse<T>>`. Lý do: feature ra đời với mock-first approach,
+controller bắt exception trực tiếp ở UI để hiện snackbar. Hiện đang dùng:
+
+| Feature | Abstract | Real impl | Mock impl |
+|---|---|---|---|
+| `verify` (KYC) | `VerifyRepository` (throws `VerifyApiException`) | `VerifyRepositoryImpl` | `MockVerifyRepository` |
+| `admin/kyc` | `AdminKycRepository` (throws `Exception`) | `AdminKycRepositoryImpl` | `MockAdminKYCRepository` |
+
+Quy tắc khi sửa hoặc thêm method vào các feature này:
+- **Real impl** PHẢI throw cùng exception type với abstract — KHÔNG đổi sang `ApiResponse`
+- **Provider mặc định** trỏ real impl; QA override bằng `*.overrideWithValue(MockX())`
+- Caller (UI) catch + extract message: `e.toString().replaceAll('Exception: ', '')`
+
+Feature mới (room, booking, homestay, user...) PHẢI follow ApiResponse pattern
+chuẩn — không tạo thêm throw-style abstract.
 
 ### Controllers — State Management (Riverpod)
 
@@ -598,21 +679,26 @@ context.pop();                  // Go back
 
 #### Role-based routing
 
-| Role / Mode | Redirect sau login | Bottom Nav |
+| Role | Redirect sau login | Bottom Nav |
 |-------------|-------------------|------------|
-| CUSTOMER | `/home` | Trang chủ, Tìm phòng, Booking, Tài khoản |
-| STAFF | `/dashboard` | Tổng quan, Phòng, Lịch, Báo cáo |
-| ADMIN | `/dashboard` | Tổng quan, Phòng, Lịch, Báo cáo, Quản lý |
-| ADMIN/STAFF (mode khách) | `/home` | Giống CUSTOMER |
+| CUSTOMER (3) | `/home` | Trang chủ, Tìm phòng, Booking, Tài khoản |
+| SALE (2) | `/dashboard` | Tổng quan, Phòng, Lịch, Báo cáo |
+| OWNER (1) | `/dashboard` | Tổng quan, Phòng, Lịch, Báo cáo, Quản lý |
+| ADMIN (0) | `/dashboard` | Tổng quan, Phòng, Lịch, Báo cáo, Quản lý |
+| ADMIN/OWNER (mode khách) | `/home` | Giống CUSTOMER |
 
 #### Route guard
 
 ```
 CUSTOMER → chặn /dashboard, /rooms, /calendar, /homestays, /admin → redirect /home
-STAFF → chặn /admin → redirect /dashboard
-ADMIN/STAFF (mode khách) → chặn management routes → redirect /home
-ADMIN/STAFF (mode quản lý) → chặn customer routes → redirect /dashboard
+SALE → chặn /admin → redirect /dashboard
+ADMIN/OWNER (mode khách) → chặn management routes → redirect /home
+ADMIN/OWNER (mode quản lý) → chặn customer routes → redirect /dashboard
+OWNER chưa KYC approved → chặn /properties/new + /properties/:id/* → redirect /verify/cccd-front
 ```
+
+→ KYC guard chỉ block các sub-route mutate (tạo/sửa). `/properties` (list) vẫn
+truy cập được để user thấy banner CTA + verify status.
 
 #### View Mode Toggle — QUAN TRỌNG trong GoRouter redirect
 
@@ -639,7 +725,21 @@ final isCustomerMode = ref.read(isCustomerModeProvider);
 - Token tự động gắn bởi `_AuthInterceptor` trong `ApiClient`
 - Auto-refresh token khi 401
 - Token lưu qua `SecureStorage` (KHÔNG dùng SharedPreferences)
-- Role system: 3 roles — `ADMIN`, `STAFF`, `CUSTOMER` (role cũ `OWNER`/`SALE` đã gộp thành `STAFF`)
+- Role system: **4 roles** — `ADMIN=0`, `OWNER=1`, `SALE=2`, `CUSTOMER=3`
+  (helper getter trên `UserModel`: `isAdmin/isOwner/isSale/isCustomer`,
+  composite: `isManagement = ADMIN || OWNER || SALE`,
+  `canManageProperty = ADMIN || OWNER`)
+
+### Backend-enforced business rules (frontend mirror)
+
+Các rule sau backend áp đặt → frontend phải mirror để UX nhất quán:
+
+| Rule | Backend trả | Frontend mirror |
+|---|---|---|
+| OWNER chưa KYC → không tạo/sửa property | `403 + msg` | Route guard `user.needsKyc` redirect `/verify/cccd-front` |
+| SALE chưa được OWNER assign → không CRUD property | `403` | UI lock + banner "Chưa được gán" trên dashboard |
+| OWNER KYC pending → app chỉ cho dùng verify flow | `kycStatus = 'pending'` | Banner "Đang chờ duyệt", các route mutate vẫn lock |
+| Subscription `past_due` | `subscriptionStatus = 'past_due'` | Banner đỏ + bottom sheet → /profile/help |
 
 ### Google Sign-In
 
@@ -755,3 +855,70 @@ dart run build_runner build --delete-conflicting-outputs
 ```
 
 Không suppress lint warning trừ khi có lý do rõ ràng.
+
+---
+
+## 14. KYC + SUBSCRIPTION (feature `verify`)
+
+### Overview
+
+OWNER mới đăng ký → bị block tạo phòng cho tới khi qua flow verify identity:
+upload CCCD trước/sau + selfie liveness → chọn plan → thanh toán → admin duyệt
+→ trial 7 ngày → auto-charge subscription.
+
+→ Spec backend đầy đủ: [`api-kyc-implementation-spec.md`](api-kyc-implementation-spec.md)
+→ Trạng thái backend: [`BACKEND_CHANGES_REPORT.md`](BACKEND_CHANGES_REPORT.md)
+
+### State machine — 7 status (camelCase, khớp giữa backend & frontend)
+
+```
+draft → kycSubmitted → paymentPending → awaitingApproval
+   ↑                                       │
+   │ resubmit                              ├─ approved   → trial → active
+   │                                       └─ rejected → (resubmit) | refunded
+```
+
+Enum: `lib/features/verify/data/models/verify_enums.dart`. Backend gửi
+camelCase, parse qua `verifyStatusFromApi()` trong `payment_session.dart`.
+
+### Source of truth
+
+- `user.kycStatus` (`none|pending|approved|rejected`) từ `/auth/profile` —
+  dùng cho **dashboard banner + route guard** (persistent, sync với backend)
+- `verifyFlowControllerProvider` — **local state** trong flow capture/payment
+  (CCCD images chưa submit, selected plan...). Hydrate từ backend khi mở
+  paywall: `ref.read(verifyFlowControllerProvider.notifier).hydrate()`
+
+KHÔNG dùng `verifyFlowController.status` để gate UI ngoài verify flow — sẽ
+drift khi user logout/login. Luôn dùng `user.kycStatus`.
+
+### Auto-refresh user profile
+
+Để bắt KYC/subscription change từ backend (vd admin vừa approve):
+
+1. **App resume** — `WidgetsBindingObserver` ở `main.dart` gọi `refreshProfile()`
+2. **Pull-to-refresh dashboard** — `ref.read(authProvider.notifier).refreshProfile()`
+3. **Pending screen poll** — sau khi `checkApprovalStatus()` trả approved/rejected → refresh trước khi navigate
+
+Khi backend implement FCM push, thêm 4. **FCM listener** invalidate
+`currentUserProvider` khi nhận push `type=kyc_*`.
+
+### Subscription helpers
+
+`UserModel` có sẵn:
+- `isInTrial` / `isSubscriptionActive` / `isSubscriptionPastDue` / `isSubscriptionCancelled`
+- `trialDaysLeft` (int? — null nếu không trong trial)
+
+Dashboard tự render banner cho 4 variant trên (xem `_SubscriptionBanner`),
+tap → bottom sheet → `/profile/help` cho support.
+
+### Khi sửa verify/admin-kyc code
+
+- Real impl phải implement `VerifyRepository` / `AdminKycRepository` abstract — KHÔNG đổi sang ApiResponse pattern (xem Section 10 ngoại lệ)
+- Mock pre-existed cho QA — giữ + maintain song song
+- Models KYC (`cccd_upload`, `selfie_upload`, `ocr_result`, `plan`,
+  `payment_session`) sống trong `features/verify/data/models/` — admin import
+  cross-feature là chấp nhận được vì admin chỉ review data verify tạo ra
+  (KHÔNG sao chép models ra `data/models/`)
+- Phone backend trả snake_case (`vnpay_qr`, `bank_transfer`) → map qua
+  `_methodFromApi()` + `paymentStatusFromApi()` trong `payment_session.dart`

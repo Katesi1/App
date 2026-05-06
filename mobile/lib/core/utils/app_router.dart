@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../features/admin/views/admin_screen.dart';
+import '../../features/admin/views/kyc_approval_detail_screen.dart';
+import '../../features/admin/views/kyc_approval_list_screen.dart';
 import '../../features/properties/views/property_management_screen.dart';
 import '../../features/admin/views/user_form_screen.dart';
 import '../../features/admin/views/user_list_screen.dart';
@@ -37,6 +39,14 @@ import '../../features/profile/views/profile_screen.dart';
 import '../../features/rooms/views/room_detail_screen.dart';
 import '../../features/rooms/views/room_list_screen.dart';
 import '../../features/reports/views/report_screen.dart';
+import '../../features/verify/data/models/verify_enums.dart';
+import '../../features/verify/views/cccd_capture_screen.dart';
+import '../../features/verify/views/payment_screen.dart';
+import '../../features/verify/views/pending_approval_screen.dart';
+import '../../features/verify/views/rejected_screen.dart';
+import '../../features/verify/views/select_plan_screen.dart';
+import '../../features/verify/views/selfie_capture_screen.dart';
+import '../../features/verify/views/trial_active_screen.dart';
 import '../../shared/providers/view_mode_provider.dart';
 import 'app_transitions.dart';
 
@@ -64,7 +74,12 @@ final routerProvider = Provider<GoRouter>((ref) {
       if (isLoading) return null;
 
       // Các trang public (không cần login)
-      const publicPaths = ['/splash', '/login', '/register', '/forgot-password'];
+      const publicPaths = [
+        '/splash',
+        '/login',
+        '/register',
+        '/forgot-password'
+      ];
       final isPublic = publicPaths.contains(path);
 
       // Chưa login → redirect về login
@@ -79,8 +94,7 @@ final routerProvider = Provider<GoRouter>((ref) {
         if (user != null && user.isCustomer) {
           isCustomerMode = true;
         } else if (user != null && user.isManagement) {
-          isCustomerMode =
-              ref.read(viewModeProvider) == ViewMode.customer;
+          isCustomerMode = ref.read(viewModeProvider) == ViewMode.customer;
         } else {
           isCustomerMode = false;
         }
@@ -93,11 +107,19 @@ final routerProvider = Provider<GoRouter>((ref) {
         // Route guard
         // /profile accessible cho cả 2 mode → không nằm trong list nào
         const customerPaths = [
-          '/home', '/search', '/my-bookings', '/account',
+          '/home',
+          '/search',
+          '/my-bookings',
+          '/account',
         ];
         const managementPaths = [
-          '/dashboard', '/rooms', '/calendar',
-          '/properties', '/admin', '/bookings', '/reports',
+          '/dashboard',
+          '/rooms',
+          '/calendar',
+          '/properties',
+          '/admin',
+          '/bookings',
+          '/reports',
         ];
 
         // Đang ở mode khách → chặn route quản lý
@@ -118,18 +140,23 @@ final routerProvider = Provider<GoRouter>((ref) {
         if (user != null && !(user.isAdmin || user.isOwner)) {
           if (path.startsWith('/admin')) return '/dashboard';
         }
+
+        // OWNER chưa hoàn thành KYC → chặn mọi mutate page dưới /properties.
+        // Cho phép /properties (list) để user xem state hiện tại + banner CTA.
+        // Backend sẽ trả 403 nếu lọt qua, đây chỉ là UX guard.
+        if (user != null && user.needsKyc) {
+          if (path != '/properties' && path.startsWith('/properties/')) {
+            return '/verify/cccd-front';
+          }
+        }
       }
 
       return null;
     },
     routes: [
-      GoRoute(
-          path: '/splash', builder: (_, __) => const SplashScreen()),
-      GoRoute(
-          path: '/login', builder: (_, __) => const LoginScreen()),
-      GoRoute(
-          path: '/register',
-          builder: (_, __) => const RegisterScreen()),
+      GoRoute(path: '/splash', builder: (_, __) => const SplashScreen()),
+      GoRoute(path: '/login', builder: (_, __) => const LoginScreen()),
+      GoRoute(path: '/register', builder: (_, __) => const RegisterScreen()),
       GoRoute(
           path: '/forgot-password',
           builder: (_, __) => const ForgotPasswordScreen()),
@@ -226,16 +253,15 @@ final routerProvider = Provider<GoRouter>((ref) {
             path: ':id',
             pageBuilder: (_, state) => slideUpPage(
               key: state.pageKey,
-              child: RoomDetailScreen(
-                  roomId: state.pathParameters['id']!),
+              child: RoomDetailScreen(roomId: state.pathParameters['id']!),
             ),
             routes: [
               GoRoute(
                 path: 'hold',
                 pageBuilder: (_, state) => fadeScalePage(
                   key: state.pageKey,
-                  child: HoldRoomScreen(
-                      propertyId: state.pathParameters['id']!),
+                  child:
+                      HoldRoomScreen(propertyId: state.pathParameters['id']!),
                 ),
               ),
             ],
@@ -289,8 +315,8 @@ final routerProvider = Provider<GoRouter>((ref) {
             path: ':id',
             pageBuilder: (_, state) => slideUpPage(
               key: state.pageKey,
-              child: PropertyManageScreen(
-                  homestayId: state.pathParameters['id']!),
+              child:
+                  PropertyManageScreen(homestayId: state.pathParameters['id']!),
             ),
             routes: [
               GoRoute(
@@ -362,6 +388,76 @@ final routerProvider = Provider<GoRouter>((ref) {
         ],
       ),
 
+      // ── Verify + Subscription Flow ──────────────────────────────────
+      // 8 screens — paywall (modal, không nằm trong router) + 7 screens dưới đây.
+      // Trigger paywall: gọi `showPaywallModal(context)` từ bất kỳ feature
+      // bị lock nào (property management, room management...). Sau khi user
+      // tap "Bắt đầu ngay" → push `/verify/cccd-front`.
+      GoRoute(
+        path: '/verify/cccd-front',
+        pageBuilder: (_, state) => slideUpPage(
+          key: state.pageKey,
+          child: CCCDCaptureScreen(
+            side: CCCDSide.front,
+            isResubmit: state.uri.queryParameters['resubmit'] == '1',
+          ),
+        ),
+      ),
+      GoRoute(
+        path: '/verify/cccd-back',
+        pageBuilder: (_, state) => slideUpPage(
+          key: state.pageKey,
+          child: CCCDCaptureScreen(
+            side: CCCDSide.back,
+            isResubmit: state.uri.queryParameters['resubmit'] == '1',
+          ),
+        ),
+      ),
+      GoRoute(
+        path: '/verify/selfie',
+        pageBuilder: (_, state) => slideUpPage(
+          key: state.pageKey,
+          child: SelfieCaptureScreen(
+            isResubmit: state.uri.queryParameters['resubmit'] == '1',
+          ),
+        ),
+      ),
+      GoRoute(
+        path: '/verify/select-plan',
+        pageBuilder: (_, state) => slideUpPage(
+          key: state.pageKey,
+          child: const SelectPlanScreen(),
+        ),
+      ),
+      GoRoute(
+        path: '/verify/payment',
+        pageBuilder: (_, state) => slideUpPage(
+          key: state.pageKey,
+          child: const PaymentScreen(),
+        ),
+      ),
+      GoRoute(
+        path: '/verify/pending',
+        pageBuilder: (_, state) => fadeScalePage(
+          key: state.pageKey,
+          child: const PendingApprovalScreen(),
+        ),
+      ),
+      GoRoute(
+        path: '/verify/approved',
+        pageBuilder: (_, state) => fadeScalePage(
+          key: state.pageKey,
+          child: const TrialActiveScreen(),
+        ),
+      ),
+      GoRoute(
+        path: '/verify/rejected',
+        pageBuilder: (_, state) => fadeScalePage(
+          key: state.pageKey,
+          child: const RejectedScreen(),
+        ),
+      ),
+
       // ── Admin Hub ───────────────────────────────────────────────────
       GoRoute(
         path: '/admin',
@@ -389,6 +485,26 @@ final routerProvider = Provider<GoRouter>((ref) {
         ),
       ),
 
+      // ── Admin – KYC approval queue ────────────────────────────────
+      GoRoute(
+        path: '/admin/kyc',
+        pageBuilder: (_, state) => slideUpPage(
+          key: state.pageKey,
+          child: const KYCApprovalListScreen(),
+        ),
+        routes: [
+          GoRoute(
+            path: ':id',
+            pageBuilder: (_, state) => slideUpPage(
+              key: state.pageKey,
+              child: KYCApprovalDetailScreen(
+                submissionId: state.pathParameters['id']!,
+              ),
+            ),
+          ),
+        ],
+      ),
+
       // ── Admin – Users ──────────────────────────────────────────────
       GoRoute(
         path: '/admin/users',
@@ -408,16 +524,14 @@ final routerProvider = Provider<GoRouter>((ref) {
             path: ':id/edit',
             pageBuilder: (_, state) => fadeScalePage(
               key: state.pageKey,
-              child: UserFormScreen(
-                  userId: state.pathParameters['id']),
+              child: UserFormScreen(userId: state.pathParameters['id']),
             ),
           ),
         ],
       ),
     ],
     errorBuilder: (_, state) => Scaffold(
-      body: Center(
-          child: Text('Không tìm thấy trang: ${state.error}')),
+      body: Center(child: Text('Không tìm thấy trang: ${state.error}')),
     ),
   );
 });

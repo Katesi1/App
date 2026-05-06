@@ -4,10 +4,14 @@ import 'package:google_fonts/google_fonts.dart';
 
 import '../../../core/utils/vnd_input_formatter.dart';
 
+import '../../../core/theme/app_color_scheme.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../shared/widgets/loading_widget.dart';
 import '../../rooms/controllers/room_controller.dart';
+
+// gradient.brandHero stop "jade-mid" theo spec section 3.7
+const _jadeMidLight = Color(0xFF1B7E94);
 
 class PropertyPricingScreen extends ConsumerStatefulWidget {
   final String homestayId;
@@ -19,8 +23,7 @@ class PropertyPricingScreen extends ConsumerStatefulWidget {
       _PropertyPricingScreenState();
 }
 
-class _PropertyPricingScreenState
-    extends ConsumerState<PropertyPricingScreen> {
+class _PropertyPricingScreenState extends ConsumerState<PropertyPricingScreen> {
   final _weekdayCtrl = TextEditingController();
   final _weekendCtrl = TextEditingController();
   final _holidayCtrl = TextEditingController();
@@ -62,8 +65,7 @@ class _PropertyPricingScreenState
     return buf.toString();
   }
 
-  int _parseVnd(String text) =>
-      int.tryParse(text.replaceAll('.', '')) ?? 0;
+  int _parseVnd(String text) => int.tryParse(text.replaceAll('.', '')) ?? 0;
 
   Future<void> _onSave() async {
     setState(() => _isLoading = true);
@@ -102,11 +104,13 @@ class _PropertyPricingScreenState
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.colors;
     final roomAsync = ref.watch(roomDetailProvider(widget.homestayId));
 
     return GestureDetector(
       onTap: () => FocusScope.of(context).unfocus(),
       child: Scaffold(
+        backgroundColor: colors.bgCanvas,
         appBar: AppBar(title: const Text('Bảng giá')),
         body: roomAsync.when(
           loading: () => const LoadingWidget(),
@@ -120,81 +124,98 @@ class _PropertyPricingScreenState
             return ListView(
               padding: const EdgeInsets.all(AppSpacing.md),
               children: [
-                _section('GIÁ PHÒNG'),
+                _section(context, 'GIÁ PHÒNG'),
                 const SizedBox(height: AppSpacing.sm),
-                _field(_weekdayCtrl, 'Giá ngày thường (T2-T6)', 'đ/đêm'),
+                _field(
+                    context, _weekdayCtrl, 'Giá ngày thường (T2-T6)', 'đ/đêm'),
                 const SizedBox(height: AppSpacing.md),
-                _field(_weekendCtrl, 'Giá cuối tuần (T7-CN)', 'đ/đêm'),
+                _field(context, _weekendCtrl, 'Giá cuối tuần (T7-CN)', 'đ/đêm'),
                 const SizedBox(height: AppSpacing.md),
-                _field(_holidayCtrl, 'Giá ngày lễ', 'đ/đêm'),
+                _field(context, _holidayCtrl, 'Giá ngày lễ', 'đ/đêm'),
                 const SizedBox(height: AppSpacing.xl),
-                _section('PHỤ THU'),
+                _section(context, 'PHỤ THU'),
                 const SizedBox(height: AppSpacing.sm),
-                _field(_adultSurchargeCtrl, 'Phụ thu người lớn', 'đ/người'),
+                _field(context, _adultSurchargeCtrl, 'Phụ thu người lớn',
+                    'đ/người'),
                 const SizedBox(height: AppSpacing.md),
-                _field(_childSurchargeCtrl, 'Phụ thu trẻ em', 'đ/người'),
+                _field(
+                    context, _childSurchargeCtrl, 'Phụ thu trẻ em', 'đ/người'),
                 const SizedBox(height: AppSpacing.lg),
               ],
             );
           },
         ),
-        bottomNavigationBar: _saveBtn(),
+        bottomNavigationBar: _saveBtn(context),
       ),
     );
   }
 
-  Widget _section(String t) => Text(t,
-      style: GoogleFonts.beVietnamPro(
-        fontSize: 11, fontWeight: FontWeight.w600,
-        color: AppColors.muted, letterSpacing: 1.2,
-      ));
+  Widget _section(BuildContext context, String t) {
+    final colors = context.colors;
+    return Text(t,
+        style: GoogleFonts.beVietnamPro(
+          fontSize: 11,
+          fontWeight: FontWeight.w600,
+          color: colors.textSecondary,
+          letterSpacing: 1.2,
+        ));
+  }
 
-  Widget _field(TextEditingController c, String label, String suffix) {
+  Widget _field(BuildContext context, TextEditingController c, String label,
+      String suffix) {
+    final colors = context.colors;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(label,
             style: GoogleFonts.beVietnamPro(
-                fontSize: 13, fontWeight: FontWeight.w500)),
+                fontSize: 13,
+                fontWeight: FontWeight.w500,
+                color: colors.textPrimary)),
         const SizedBox(height: 6),
         TextFormField(
           controller: c,
           keyboardType: TextInputType.number,
           inputFormatters: [VndInputFormatter()],
-          style: GoogleFonts.beVietnamPro(fontSize: 14),
+          style:
+              GoogleFonts.beVietnamPro(fontSize: 14, color: colors.textPrimary),
           decoration: InputDecoration(
             hintText: '0',
             hintStyle: GoogleFonts.beVietnamPro(
-                fontSize: 14, color: AppColors.muted.withValues(alpha: 0.6)),
+                fontSize: 14,
+                color: colors.textSecondary.withValues(alpha: 0.6)),
             suffixText: suffix,
             suffixStyle: GoogleFonts.beVietnamPro(
-                fontSize: 13, fontWeight: FontWeight.w600,
-                color: AppColors.muted),
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+                color: colors.textSecondary),
             filled: true,
-            fillColor: AppColors.background,
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(AppRadius.md),
               borderSide: BorderSide.none,
             ),
-            contentPadding: const EdgeInsets.symmetric(
-                horizontal: 14, vertical: 14),
+            contentPadding:
+                const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
           ),
         ),
       ],
     );
   }
 
-  Widget _saveBtn() {
+  Widget _saveBtn(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final gradient = isDark
+        ? const [AppColors.darkBg, AppColors.darkBorder]
+        : const [AppColors.jade500, _jadeMidLight];
     return SafeArea(
       child: Padding(
         padding: const EdgeInsets.all(AppSpacing.md),
         child: SizedBox(
-          width: double.infinity, height: 48,
+          width: double.infinity,
+          height: 48,
           child: DecoratedBox(
             decoration: BoxDecoration(
-              gradient: const LinearGradient(
-                colors: [AppColors.oceanMid, AppColors.ocean],
-              ),
+              gradient: LinearGradient(colors: gradient),
               borderRadius: BorderRadius.circular(AppRadius.md),
             ),
             child: ElevatedButton(
@@ -207,12 +228,15 @@ class _PropertyPricingScreenState
                 ),
               ),
               child: _isLoading
-                  ? const SizedBox(width: 20, height: 20,
+                  ? const SizedBox(
+                      width: 20,
+                      height: 20,
                       child: CircularProgressIndicator(
                           strokeWidth: 2, color: Colors.white))
                   : Text('Lưu',
                       style: GoogleFonts.beVietnamPro(
-                        fontWeight: FontWeight.w700, fontSize: 15,
+                        fontWeight: FontWeight.w700,
+                        fontSize: 15,
                         color: Colors.white,
                       )),
             ),

@@ -3,12 +3,19 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
+import '../../../core/theme/app_color_scheme.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../data/models/homestay_model.dart';
 import '../../../shared/widgets/loading_widget.dart';
 import '../../auth/controllers/auth_controller.dart';
 import '../../properties/controllers/property_controller.dart';
+import '../../verify/controllers/verify_flow_controller.dart';
+import '../../verify/data/models/verify_enums.dart';
+import '../../verify/views/paywall_modal.dart';
 import '../widgets/property_management_card.dart';
+
+// gradient.brandHero stop "jade-mid" theo spec section 3.7
+const _jadeMidLight = Color(0xFF1B7E94);
 
 /// Trang quản lý phòng (Admin) — 3 tabs: Villa, Homestay, Khách sạn
 /// Dùng homestay data — mỗi homestay là 1 căn (villa/homestay/khách sạn).
@@ -21,7 +28,8 @@ class PropertyManagementScreen extends ConsumerStatefulWidget {
       _PropertyManagementScreenState();
 }
 
-class _PropertyManagementScreenState extends ConsumerState<PropertyManagementScreen>
+class _PropertyManagementScreenState
+    extends ConsumerState<PropertyManagementScreen>
     with SingleTickerProviderStateMixin {
   late final TabController _tabController;
 
@@ -106,6 +114,11 @@ class _PropertyManagementScreenState extends ConsumerState<PropertyManagementScr
     final user = ref.watch(currentUserProvider);
     final canEdit = user?.canEdit ?? false;
     final canManageProperty = user?.canManageProperty ?? false;
+    final colors = context.colors;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final headerGradient = isDark
+        ? const [AppColors.darkBg, AppColors.darkBorder]
+        : const [AppColors.jade500, _jadeMidLight];
 
     return Scaffold(
       body: NestedScrollView(
@@ -117,11 +130,11 @@ class _PropertyManagementScreenState extends ConsumerState<PropertyManagementScr
                 left: 20,
                 right: 20,
               ),
-              decoration: const BoxDecoration(
+              decoration: BoxDecoration(
                 gradient: LinearGradient(
-                  begin: Alignment(-0.4, -1),
-                  end: Alignment(0.4, 1),
-                  colors: [AppColors.oceanDeep, AppColors.ocean],
+                  begin: const Alignment(-0.4, -1),
+                  end: const Alignment(0.4, 1),
+                  colors: headerGradient,
                 ),
               ),
               child: Column(
@@ -130,7 +143,15 @@ class _PropertyManagementScreenState extends ConsumerState<PropertyManagementScr
                   Row(
                     children: [
                       GestureDetector(
-                        onTap: () => context.pop(),
+                        // Fallback /dashboard khi stack rỗng (user vào trực
+                        // tiếp qua bottom nav `context.go` → không pop được).
+                        onTap: () {
+                          if (context.canPop()) {
+                            context.pop();
+                          } else {
+                            context.go('/dashboard');
+                          }
+                        },
                         child: const Icon(
                           Icons.arrow_back_rounded,
                           color: Colors.white,
@@ -194,8 +215,7 @@ class _PropertyManagementScreenState extends ConsumerState<PropertyManagementScr
                                   }),
                                   child: Icon(
                                     Icons.clear_rounded,
-                                    color: Colors.white
-                                        .withValues(alpha: 0.6),
+                                    color: Colors.white.withValues(alpha: 0.6),
                                     size: 18,
                                   ),
                                 )
@@ -215,11 +235,9 @@ class _PropertyManagementScreenState extends ConsumerState<PropertyManagementScr
                     controller: _tabController,
                     isScrollable: true,
                     tabAlignment: TabAlignment.start,
-                    labelPadding:
-                        const EdgeInsets.symmetric(horizontal: 14),
+                    labelPadding: const EdgeInsets.symmetric(horizontal: 14),
                     labelColor: Colors.white,
-                    unselectedLabelColor:
-                        Colors.white.withValues(alpha: 0.6),
+                    unselectedLabelColor: Colors.white.withValues(alpha: 0.6),
                     labelStyle: GoogleFonts.beVietnamPro(
                       fontSize: 13,
                       fontWeight: FontWeight.w700,
@@ -250,7 +268,7 @@ class _PropertyManagementScreenState extends ConsumerState<PropertyManagementScr
           ),
         ],
         body: RefreshIndicator(
-          color: AppColors.ocean,
+          color: colors.brand,
           onRefresh: () async {
             ref.invalidate(homestayListProvider(true));
           },
@@ -274,24 +292,19 @@ class _PropertyManagementScreenState extends ConsumerState<PropertyManagementScr
                     child: EmptyStateWidget(
                       icon: tab.icon,
                       message: 'Chưa có ${tab.label} nào',
-                      subMessage:
-                          canEdit ? 'Nhấn + để thêm mới' : null,
+                      subMessage: canEdit ? 'Nhấn + để thêm mới' : null,
                     ),
                   );
                 }
                 return ListView.separated(
-                  padding:
-                      const EdgeInsets.fromLTRB(16, 16, 16, 100),
+                  padding: const EdgeInsets.fromLTRB(16, 16, 16, 100),
                   itemCount: filtered.length,
-                  separatorBuilder: (_, __) =>
-                      const SizedBox(height: 10),
+                  separatorBuilder: (_, __) => const SizedBox(height: 10),
                   itemBuilder: (_, i) => PropertyManagementCard(
                     homestay: filtered[i],
-                    onTap: () => context
-                        .push('/properties/${filtered[i].id}'),
+                    onTap: () => context.push('/properties/${filtered[i].id}'),
                     onEdit: canEdit
-                        ? () => context
-                            .push('/properties/${filtered[i].id}')
+                        ? () => context.push('/properties/${filtered[i].id}')
                         : null,
                   ),
                 );
@@ -302,12 +315,54 @@ class _PropertyManagementScreenState extends ConsumerState<PropertyManagementScr
       ),
       floatingActionButton: canManageProperty
           ? FloatingActionButton(
-              onPressed: () => context.push('/properties/new'),
-              backgroundColor: AppColors.ocean,
+              onPressed: () => _onCreateProperty(),
+              backgroundColor: colors.brand,
               child: const Icon(Icons.add_rounded, color: Colors.white),
             )
           : null,
     );
+  }
+
+  /// Owner phải verify CCCD trước khi tạo property.
+  /// - Owner đã approved → push thẳng property add screen
+  /// - Owner chưa approved → show paywall, route theo status hiện tại
+  /// - Admin / Sale → bypass verify (không cần KYC)
+  Future<void> _onCreateProperty() async {
+    final user = ref.read(currentUserProvider);
+    final verifyState = ref.read(verifyFlowControllerProvider);
+
+    final needsVerify =
+        (user?.isOwner ?? false) && verifyState.status != VerifyStatus.approved;
+
+    if (!needsVerify) {
+      context.push('/properties/new');
+      return;
+    }
+
+    // Routing theo status: pending → /verify/pending, rejected → /verify/rejected,
+    // còn lại → showPaywallModal → /verify/cccd-front (hoặc resume bước hiện tại).
+    if (verifyState.status == VerifyStatus.awaitingApproval) {
+      context.push('/verify/pending');
+      return;
+    }
+    if (verifyState.status == VerifyStatus.rejected) {
+      context.push('/verify/rejected');
+      return;
+    }
+
+    final ok = await showPaywallModal(context);
+    if (ok == true && mounted) {
+      // Resume từ step cuối nếu có draft, ngược lại bắt đầu từ CCCD front.
+      final step = verifyState.currentStep;
+      final route = switch (step) {
+        2 => '/verify/cccd-back',
+        3 => '/verify/selfie',
+        4 => '/verify/select-plan',
+        5 => '/verify/payment',
+        _ => '/verify/cccd-front',
+      };
+      if (mounted) context.push(route);
+    }
   }
 }
 

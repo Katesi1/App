@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 
-import '../../../core/theme/app_colors.dart';
+import '../../../core/theme/app_color_scheme.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../shared/widgets/loading_widget.dart';
 import '../../rooms/controllers/room_controller.dart';
@@ -28,25 +28,50 @@ class _PropertyAmenitiesScreenState
 
   static const _amenityGroups = {
     'Phòng khách': [
-      'Điều hòa', 'Wifi', 'TV', 'Karaoke', 'Loa di động',
+      'Điều hòa',
+      'Wifi',
+      'TV',
+      'Karaoke',
+      'Loa di động',
     ],
     'Bếp & Ăn uống': [
-      'Bếp đầy đủ', 'Tủ lạnh', 'Lò vi sóng', 'Bếp từ',
-      'BBQ ngoài trời', 'Bát đũa', 'Nước lọc free',
+      'Bếp đầy đủ',
+      'Tủ lạnh',
+      'Lò vi sóng',
+      'Bếp từ',
+      'BBQ ngoài trời',
+      'Bát đũa',
+      'Nước lọc free',
     ],
     'Phòng ngủ & Tắm': [
-      'Bồn tắm', 'Vòi sen', 'Nước nóng', 'Máy sấy tóc',
-      'Đèn sưởi', 'Khăn tắm', 'Dầu gội/Sữa tắm',
+      'Bồn tắm',
+      'Vòi sen',
+      'Nước nóng',
+      'Máy sấy tóc',
+      'Đèn sưởi',
+      'Khăn tắm',
+      'Dầu gội/Sữa tắm',
     ],
     'Ngoài trời': [
-      'Bể bơi', 'Ban công', 'View biển',
-      'Sân vườn', 'Sân thượng', 'Đỗ xe',
+      'Bể bơi',
+      'Ban công',
+      'View biển',
+      'Sân vườn',
+      'Sân thượng',
+      'Đỗ xe',
     ],
     'Tiện ích chung': [
-      'Máy giặt', 'Bàn là', 'Tủ quần áo', 'Két sắt', 'Thang máy',
+      'Máy giặt',
+      'Bàn là',
+      'Tủ quần áo',
+      'Két sắt',
+      'Thang máy',
     ],
     'Giải trí': [
-      'Bida', 'Bàn bóng bàn', 'Xích đu', 'Khu vui chơi trẻ em',
+      'Bida',
+      'Bàn bóng bàn',
+      'Xích đu',
+      'Khu vui chơi trẻ em',
     ],
   };
 
@@ -61,9 +86,8 @@ class _PropertyAmenitiesScreenState
   Future<void> _onSave() async {
     setState(() => _isLoading = true);
 
-    final ok = await ref
-        .read(roomActionsProvider.notifier)
-        .update(widget.homestayId, {
+    final ok =
+        await ref.read(roomActionsProvider.notifier).update(widget.homestayId, {
       'amenities': _selectedAmenities.toList(),
     });
 
@@ -80,6 +104,7 @@ class _PropertyAmenitiesScreenState
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.colors;
     final roomAsync = ref.watch(roomDetailProvider(widget.homestayId));
 
     return GestureDetector(
@@ -97,7 +122,7 @@ class _PropertyAmenitiesScreenState
                   vertical: 2,
                 ),
                 decoration: BoxDecoration(
-                  color: AppColors.oceanLight,
+                  color: colors.bgSurfaceContainer,
                   borderRadius: BorderRadius.circular(AppRadius.full),
                 ),
                 child: Text(
@@ -105,7 +130,7 @@ class _PropertyAmenitiesScreenState
                   style: GoogleFonts.beVietnamPro(
                     fontSize: 12,
                     fontWeight: FontWeight.w600,
-                    color: AppColors.ocean,
+                    color: colors.textBrand,
                   ),
                 ),
               ),
@@ -123,8 +148,7 @@ class _PropertyAmenitiesScreenState
           data: (room) {
             _initFromRoom();
 
-            final allPreset =
-                _amenityGroups.values.expand((v) => v).toSet();
+            final allPreset = _amenityGroups.values.expand((v) => v).toSet();
             final extraAmenities = _selectedAmenities
                 .where((a) => !allPreset.contains(a))
                 .toList();
@@ -151,14 +175,13 @@ class _PropertyAmenitiesScreenState
                                   style: GoogleFonts.beVietnamPro(
                                     fontSize: 11,
                                     fontWeight: FontWeight.w600,
-                                    color: AppColors.muted,
+                                    color: colors.textSecondary,
                                     letterSpacing: 1.2,
                                   ),
                                 ),
                               ),
                               ...group.value.map((amenity) {
-                                final on =
-                                    _selectedAmenities.contains(amenity);
+                                final on = _selectedAmenities.contains(amenity);
                                 return _AmenityRow(
                                   name: amenity,
                                   enabled: on,
@@ -173,7 +196,6 @@ class _PropertyAmenitiesScreenState
                               }),
                             ],
                           )),
-
                       if (extraAmenities.isNotEmpty) ...[
                         Padding(
                           padding: const EdgeInsets.only(
@@ -185,7 +207,7 @@ class _PropertyAmenitiesScreenState
                             style: GoogleFonts.beVietnamPro(
                               fontSize: 11,
                               fontWeight: FontWeight.w600,
-                              color: AppColors.muted,
+                              color: colors.textSecondary,
                               letterSpacing: 1.2,
                             ),
                           ),
@@ -198,7 +220,6 @@ class _PropertyAmenitiesScreenState
                               }),
                             )),
                       ],
-
                       const SizedBox(height: AppSpacing.lg),
                     ],
                   ),
@@ -211,11 +232,10 @@ class _PropertyAmenitiesScreenState
                       height: 48,
                       child: DecoratedBox(
                         decoration: BoxDecoration(
-                          gradient: const LinearGradient(
-                            colors: [AppColors.ocean, AppColors.oceanMid],
+                          gradient: LinearGradient(
+                            colors: [colors.brand, colors.brandLight],
                           ),
-                          borderRadius:
-                              BorderRadius.circular(AppRadius.md),
+                          borderRadius: BorderRadius.circular(AppRadius.md),
                         ),
                         child: ElevatedButton(
                           onPressed: _isLoading ? null : _onSave,
@@ -223,8 +243,7 @@ class _PropertyAmenitiesScreenState
                             backgroundColor: Colors.transparent,
                             shadowColor: Colors.transparent,
                             shape: RoundedRectangleBorder(
-                              borderRadius:
-                                  BorderRadius.circular(AppRadius.md),
+                              borderRadius: BorderRadius.circular(AppRadius.md),
                             ),
                           ),
                           child: _isLoading
@@ -271,13 +290,14 @@ class _AmenityRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.colors;
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 2),
       child: Row(
         children: [
           Icon(
             enabled ? Icons.check_circle : Icons.cancel,
-            color: enabled ? AppColors.emerald : AppColors.slate,
+            color: enabled ? colors.success : colors.textTertiary,
             size: 22,
           ),
           const SizedBox(width: AppSpacing.sm + 4),
@@ -287,14 +307,14 @@ class _AmenityRow extends StatelessWidget {
               style: GoogleFonts.beVietnamPro(
                 fontSize: 14,
                 fontWeight: FontWeight.w400,
-                color: enabled ? AppColors.ink : AppColors.muted,
+                color: enabled ? colors.textPrimary : colors.textSecondary,
               ),
             ),
           ),
           Switch(
             value: enabled,
             onChanged: (_) => onToggle(),
-            activeTrackColor: AppColors.ocean,
+            activeTrackColor: colors.brand,
             activeThumbColor: Colors.white,
           ),
         ],

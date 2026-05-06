@@ -3,6 +3,7 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
+import '../../../core/theme/app_color_scheme.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
 import 'package:cached_network_image/cached_network_image.dart';
@@ -10,6 +11,9 @@ import '../../../shared/widgets/loading_widget.dart';
 import '../../rooms/controllers/room_controller.dart';
 import '../../auth/controllers/auth_controller.dart';
 import '../controllers/property_controller.dart';
+
+// gradient.brandHero stop "jade-mid" theo spec section 3.7
+const _jadeMidLight = Color(0xFF1B7E94);
 
 class PropertyManageScreen extends ConsumerStatefulWidget {
   final String homestayId;
@@ -20,12 +24,13 @@ class PropertyManageScreen extends ConsumerStatefulWidget {
       _PropertyManageScreenState();
 }
 
-class _PropertyManageScreenState
-    extends ConsumerState<PropertyManageScreen> {
+class _PropertyManageScreenState extends ConsumerState<PropertyManageScreen> {
   bool _togglingActive = false;
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.colors;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     final roomAsync = ref.watch(roomDetailProvider(widget.homestayId));
 
     return roomAsync.when(
@@ -43,9 +48,8 @@ class _PropertyManageScreenState
         ),
       ),
       data: (room) {
-
         return Scaffold(
-          backgroundColor: AppColors.background,
+          backgroundColor: colors.bgCanvas,
           body: Column(
             children: [
               // ── Gradient Header ──────────────────────────
@@ -65,32 +69,37 @@ class _PropertyManageScreenState
                     // ── Name + subtitle ─────────────────────
                     Padding(
                       padding: const EdgeInsets.fromLTRB(
-                        20, 20, 20, 0,
+                        20,
+                        20,
+                        20,
+                        0,
                       ),
                       child: Column(
-                        crossAxisAlignment:
-                            CrossAxisAlignment.start,
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
                             '${room.code} · ${room.name}',
                             style: GoogleFonts.beVietnamPro(
                               fontSize: 22,
                               fontWeight: FontWeight.w700,
-                              color: AppColors.navy,
+                              color: colors.textPrimary,
                             ),
                           ),
                           const SizedBox(height: 4),
                           Text(
                             [
-                              room.bedrooms == 0 ? 'Studio' : '${room.bedrooms}PN',
+                              room.bedrooms == 0
+                                  ? 'Studio'
+                                  : '${room.bedrooms}PN',
                               '${room.bathrooms}WC',
                               '${room.standardGuests} người',
-                              if (room.address != null && room.address!.isNotEmpty)
+                              if (room.address != null &&
+                                  room.address!.isNotEmpty)
                                 room.address!,
                             ].join(' · '),
                             style: GoogleFonts.beVietnamPro(
                               fontSize: 13,
-                              color: AppColors.muted,
+                              color: colors.textSecondary,
                             ),
                             maxLines: 2,
                             overflow: TextOverflow.ellipsis,
@@ -115,14 +124,14 @@ class _PropertyManageScreenState
                           vertical: 12,
                         ),
                         decoration: BoxDecoration(
-                          color: AppColors.surface,
+                          color: colors.bgSurface,
                           borderRadius: BorderRadius.circular(
                             AppRadius.lg,
                           ),
                           boxShadow: [
                             BoxShadow(
                               color: Colors.black
-                                  .withValues(alpha: 0.04),
+                                  .withValues(alpha: isDark ? 0.30 : 0.04),
                               blurRadius: 8,
                               offset: const Offset(0, 2),
                             ),
@@ -135,39 +144,35 @@ class _PropertyManageScreenState
                               height: 10,
                               decoration: BoxDecoration(
                                 color: room.isActive
-                                    ? AppColors.emerald
-                                    : AppColors.slate,
+                                    ? colors.success
+                                    : colors.textTertiary,
                                 shape: BoxShape.circle,
                               ),
                             ),
                             const SizedBox(width: 10),
                             Expanded(
                               child: Text(
-                                room.isActive
-                                    ? 'Đang hoạt động'
-                                    : 'Tạm ngưng',
+                                room.isActive ? 'Đang hoạt động' : 'Tạm ngưng',
                                 style: GoogleFonts.beVietnamPro(
                                   fontSize: 14,
                                   fontWeight: FontWeight.w600,
-                                  color: AppColors.navy,
+                                  color: colors.textPrimary,
                                 ),
                               ),
                             ),
                             _togglingActive
-                                ? const SizedBox(
+                                ? SizedBox(
                                     width: 24,
                                     height: 24,
-                                    child:
-                                        CircularProgressIndicator(
+                                    child: CircularProgressIndicator(
                                       strokeWidth: 2,
-                                      color: AppColors.ocean,
+                                      color: colors.brand,
                                     ),
                                   )
                                 : Switch(
                                     value: room.isActive,
-                                    activeTrackColor: AppColors.ocean,
-                                    onChanged: (val) =>
-                                        _toggleActive(val),
+                                    activeTrackColor: colors.brand,
+                                    onChanged: (val) => _toggleActive(val),
                                   ),
                           ],
                         ),
@@ -183,14 +188,14 @@ class _PropertyManageScreenState
                       ),
                       child: Container(
                         decoration: BoxDecoration(
-                          color: AppColors.surface,
+                          color: colors.bgSurface,
                           borderRadius: BorderRadius.circular(
                             AppRadius.lg,
                           ),
                           boxShadow: [
                             BoxShadow(
                               color: Colors.black
-                                  .withValues(alpha: 0.04),
+                                  .withValues(alpha: isDark ? 0.30 : 0.04),
                               blurRadius: 8,
                               offset: const Offset(0, 2),
                             ),
@@ -270,40 +275,38 @@ class _PropertyManageScreenState
                     const SizedBox(height: 24),
 
                     // ── Delete button (ADMIN + OWNER only) ──
-                    if (ref.watch(currentUserProvider)
-                            ?.canManageProperty ??
+                    if (ref.watch(currentUserProvider)?.canManageProperty ??
                         false)
-                    Padding(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 20,
-                      ),
-                      child: OutlinedButton.icon(
-                        onPressed: () => _deleteHomestay(context),
-                        icon: const Icon(
-                          Icons.delete_outline_rounded,
-                          color: AppColors.coral,
+                      Padding(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 20,
                         ),
-                        label: Text(
-                          'Xoá căn này',
-                          style: GoogleFonts.beVietnamPro(
-                            fontWeight: FontWeight.w600,
-                            color: AppColors.coral,
+                        child: OutlinedButton.icon(
+                          onPressed: () => _deleteHomestay(context),
+                          icon: Icon(
+                            Icons.delete_outline_rounded,
+                            color: colors.error,
                           ),
-                        ),
-                        style: OutlinedButton.styleFrom(
-                          side: const BorderSide(
-                            color: AppColors.coral,
+                          label: Text(
+                            'Xoá căn này',
+                            style: GoogleFonts.beVietnamPro(
+                              fontWeight: FontWeight.w600,
+                              color: colors.error,
+                            ),
                           ),
-                          minimumSize:
-                              const Size(double.infinity, 48),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(
-                              AppRadius.lg,
+                          style: OutlinedButton.styleFrom(
+                            side: BorderSide(
+                              color: colors.error,
+                            ),
+                            minimumSize: const Size(double.infinity, 48),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(
+                                AppRadius.lg,
+                              ),
                             ),
                           ),
                         ),
-                      ),
-                    ).animate(delay: 300.ms).fadeIn(duration: 300.ms),
+                      ).animate(delay: 300.ms).fadeIn(duration: 300.ms),
 
                     const SizedBox(height: 40),
                   ],
@@ -332,6 +335,7 @@ class _PropertyManageScreenState
   }
 
   Future<void> _deleteHomestay(BuildContext context) async {
+    final colors = context.colors;
     final ok = await showDialog<bool>(
       context: context,
       builder: (_) => AlertDialog(
@@ -352,7 +356,7 @@ class _PropertyManageScreenState
           ),
           FilledButton(
             style: FilledButton.styleFrom(
-              backgroundColor: AppColors.error,
+              backgroundColor: colors.error,
               foregroundColor: Colors.white,
             ),
             onPressed: () => Navigator.pop(context, true),
@@ -380,7 +384,6 @@ class _PropertyManageScreenState
       AppSnackBar.error(context, msg);
     }
   }
-
 }
 
 // ─── Gradient Header ─────────────────────────────────────────────────────────
@@ -398,6 +401,10 @@ class _GradientHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final topPadding = MediaQuery.of(context).padding.top;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final headerGradient = isDark
+        ? const [AppColors.darkBg, AppColors.darkBorder]
+        : const [AppColors.jade500, _jadeMidLight];
 
     return Stack(
       children: [
@@ -405,11 +412,11 @@ class _GradientHeader extends StatelessWidget {
         Container(
           width: double.infinity,
           height: topPadding + 180,
-          decoration: const BoxDecoration(
+          decoration: BoxDecoration(
             gradient: LinearGradient(
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
-              colors: [AppColors.oceanDeep, AppColors.oceanMid],
+              colors: headerGradient,
             ),
           ),
           child: coverImageUrl != null
@@ -430,14 +437,12 @@ class _GradientHeader extends StatelessWidget {
           child: Row(
             children: [
               IconButton(
-                icon: const Icon(Icons.arrow_back_rounded,
-                    color: Colors.white),
+                icon: const Icon(Icons.arrow_back_rounded, color: Colors.white),
                 onPressed: onBack,
               ),
               const Spacer(),
               IconButton(
-                icon: const Icon(Icons.edit_rounded,
-                    color: Colors.white),
+                icon: const Icon(Icons.edit_rounded, color: Colors.white),
                 onPressed: onEdit,
               ),
             ],
@@ -464,6 +469,7 @@ class _MenuItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.colors;
     return InkWell(
       onTap: onTap,
       child: Padding(
@@ -473,7 +479,7 @@ class _MenuItem extends StatelessWidget {
         ),
         child: Row(
           children: [
-            Icon(icon, color: AppColors.ocean, size: 22),
+            Icon(icon, color: colors.brand, size: 22),
             const SizedBox(width: 14),
             Expanded(
               child: Text(
@@ -481,7 +487,7 @@ class _MenuItem extends StatelessWidget {
                 style: GoogleFonts.beVietnamPro(
                   fontSize: 14,
                   fontWeight: FontWeight.w500,
-                  color: AppColors.navy,
+                  color: colors.textPrimary,
                 ),
               ),
             ),
@@ -492,13 +498,13 @@ class _MenuItem extends StatelessWidget {
                   trailing!,
                   style: GoogleFonts.beVietnamPro(
                     fontSize: 13,
-                    color: AppColors.muted,
+                    color: colors.textSecondary,
                   ),
                 ),
               ),
-            const Icon(
+            Icon(
               Icons.chevron_right_rounded,
-              color: AppColors.slate,
+              color: colors.textTertiary,
               size: 20,
             ),
           ],
@@ -514,11 +520,11 @@ class _MenuDivider extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const Divider(
+    final colors = context.colors;
+    return Divider(
       height: 1,
-      color: AppColors.border,
+      color: colors.borderDefault,
       indent: 52,
     );
   }
 }
-

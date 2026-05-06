@@ -169,8 +169,7 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
 
             // ── Form body ────────────────────────────────────
             Padding(
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
               child: AnimatedSwitcher(
                 duration: const Duration(milliseconds: 300),
                 child: _otpSent ? _buildResetForm() : _buildIdentifierForm(),

@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:go_router/go_router.dart';
 import '../../../core/constants/app_constants.dart';
+import '../../../core/theme/app_color_scheme.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../core/utils/helpers.dart';
@@ -12,12 +13,22 @@ import '../../../data/models/booking_model.dart';
 import '../../auth/controllers/auth_controller.dart';
 import '../controllers/report_controller.dart';
 
+// gradient.brandHero stop "jade-mid" theo spec section 3.7
+const _jadeMidLight = Color(0xFF1B7E94);
+
 class ReportScreen extends ConsumerWidget {
   const ReportScreen({super.key});
 
   Widget _header(BuildContext context, WidgetRef ref, DateTime now) {
+    final colors = context.colors;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     final user = ref.watch(currentUserProvider);
     final userName = user?.name ?? user?.phone ?? '';
+
+    final headerGradient = isDark
+        ? const [AppColors.darkBg, AppColors.darkBorder]
+        : const [AppColors.jade500, _jadeMidLight];
+
     return Container(
       width: double.infinity,
       padding: EdgeInsets.only(
@@ -26,11 +37,11 @@ class ReportScreen extends ConsumerWidget {
         right: 20,
         bottom: 24,
       ),
-      decoration: const BoxDecoration(
+      decoration: BoxDecoration(
         gradient: LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
-          colors: [AppColors.oceanDeep, AppColors.ocean],
+          colors: headerGradient,
         ),
       ),
       child: Stack(
@@ -44,7 +55,7 @@ class ReportScreen extends ConsumerWidget {
               height: 160,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                color: AppColors.teal.withValues(alpha: 0.10),
+                color: colors.brandLight.withValues(alpha: 0.10),
               ),
             ),
           ),
@@ -56,7 +67,7 @@ class ReportScreen extends ConsumerWidget {
               height: 100,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                color: AppColors.gold.withValues(alpha: 0.08),
+                color: AppColors.gold500.withValues(alpha: 0.08),
               ),
             ),
           ),
@@ -93,10 +104,9 @@ class ReportScreen extends ConsumerWidget {
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
                     gradient: const LinearGradient(
-                        colors: [AppColors.teal, AppColors.gold]),
+                        colors: [AppColors.jade500, AppColors.gold500]),
                     border: Border.all(
-                        color: Colors.white.withValues(alpha: 0.3),
-                        width: 1.5),
+                        color: Colors.white.withValues(alpha: 0.3), width: 1.5),
                   ),
                   child: Center(
                     child: Text(
@@ -119,6 +129,7 @@ class ReportScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final colors = context.colors;
     final now = DateTime.now();
     final reportAsync = ref.watch(reportDataProvider(null));
 
@@ -149,7 +160,7 @@ class ReportScreen extends ConsumerWidget {
                 final occupancyRate = report.occupancyRate;
 
                 return RefreshIndicator(
-                  color: AppColors.ocean,
+                  color: colors.brand,
                   onRefresh: () async {
                     ref.invalidate(reportDataProvider(null));
                   },
@@ -162,8 +173,8 @@ class ReportScreen extends ConsumerWidget {
                           Expanded(
                             child: _StatCard(
                               icon: Icons.apartment_rounded,
-                              iconBg: AppColors.oceanLight,
-                              iconColor: AppColors.ocean,
+                              iconBg: colors.bgSurfaceContainer,
+                              iconColor: colors.brand,
                               label: 'Tổng phòng',
                               value: '$totalRooms',
                               sub: '$activeRooms đang hoạt động',
@@ -173,8 +184,8 @@ class ReportScreen extends ConsumerWidget {
                           Expanded(
                             child: _StatCard(
                               icon: Icons.percent_rounded,
-                              iconBg: AppColors.emeraldLight,
-                              iconColor: AppColors.emerald,
+                              iconBg: colors.successBg,
+                              iconColor: colors.success,
                               label: 'Tỷ lệ lấp đầy',
                               value: '${occupancyRate.toStringAsFixed(0)}%',
                               sub: 'Phòng có booking',
@@ -190,8 +201,8 @@ class ReportScreen extends ConsumerWidget {
                           Expanded(
                             child: _StatCard(
                               icon: Icons.book_rounded,
-                              iconBg: AppColors.tealLight,
-                              iconColor: AppColors.teal,
+                              iconBg: colors.bgSurfaceContainer,
+                              iconColor: colors.brandLight,
                               label: 'Tổng booking',
                               value: '$totalBookings',
                               sub: '$thisMonthCount tháng này',
@@ -201,8 +212,8 @@ class ReportScreen extends ConsumerWidget {
                           Expanded(
                             child: _StatCard(
                               icon: Icons.payments_rounded,
-                              iconBg: AppColors.goldLight,
-                              iconColor: AppColors.gold,
+                              iconBg: colors.warningBg,
+                              iconColor: AppColors.gold500,
                               label: 'Tiền cọc thu',
                               value: totalDeposit > 0
                                   ? AppHelpers.formatPrice(totalDeposit)
@@ -216,50 +227,38 @@ class ReportScreen extends ConsumerWidget {
                       const SizedBox(height: 24),
 
                       // ── Booking Status Breakdown ───────
-                      _SectionTitle(title: 'TRẠNG THÁI BOOKING'),
+                      const _SectionTitle(title: 'TRẠNG THÁI BOOKING'),
                       const SizedBox(height: 12),
 
-                      Container(
-                        padding: const EdgeInsets.all(16),
-                        decoration: BoxDecoration(
-                          color: AppColors.surface,
-                          borderRadius: BorderRadius.circular(AppRadius.lg),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withValues(alpha: 0.04),
-                              blurRadius: 8,
-                              offset: const Offset(0, 2),
-                            ),
-                          ],
-                        ),
+                      _CardContainer(
                         child: Column(
                           children: [
                             _StatusRow(
                               label: 'Đang giữ',
                               count: holdCount,
                               total: totalBookings,
-                              color: AppColors.hold,
+                              color: colors.warning,
                             ),
                             const SizedBox(height: 12),
                             _StatusRow(
                               label: 'Đã xác nhận',
                               count: confirmedCount,
                               total: totalBookings,
-                              color: AppColors.confirmed,
+                              color: colors.success,
                             ),
                             const SizedBox(height: 12),
                             _StatusRow(
                               label: 'Hoàn thành',
                               count: completedCount,
                               total: totalBookings,
-                              color: AppColors.completed,
+                              color: colors.brandLight,
                             ),
                             const SizedBox(height: 12),
                             _StatusRow(
                               label: 'Đã huỷ',
                               count: cancelledCount,
                               total: totalBookings,
-                              color: AppColors.cancelled,
+                              color: colors.error,
                             ),
                           ],
                         ),
@@ -268,46 +267,34 @@ class ReportScreen extends ConsumerWidget {
                       const SizedBox(height: 24),
 
                       // ── Phòng theo homestay ────────────
-                      _SectionTitle(title: 'THÔNG TIN PHÒNG'),
+                      const _SectionTitle(title: 'THÔNG TIN PHÒNG'),
                       const SizedBox(height: 12),
 
-                      Container(
-                        padding: const EdgeInsets.all(16),
-                        decoration: BoxDecoration(
-                          color: AppColors.surface,
-                          borderRadius: BorderRadius.circular(AppRadius.lg),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withValues(alpha: 0.04),
-                              blurRadius: 8,
-                              offset: const Offset(0, 2),
-                            ),
-                          ],
-                        ),
+                      _CardContainer(
                         child: Column(
                           children: [
                             _InfoRow(
                               label: 'Tổng số phòng',
                               value: '$totalRooms',
                             ),
-                            const Divider(height: 20, color: AppColors.border),
+                            Divider(height: 20, color: colors.borderDefault),
                             _InfoRow(
                               label: 'Phòng hoạt động',
                               value: '$activeRooms',
-                              valueColor: AppColors.emerald,
+                              valueColor: colors.success,
                             ),
-                            const Divider(height: 20, color: AppColors.border),
+                            Divider(height: 20, color: colors.borderDefault),
                             _InfoRow(
                               label: 'Phòng tạm ngưng',
                               value: '${totalRooms - activeRooms}',
-                              valueColor: AppColors.slate,
+                              valueColor: colors.textTertiary,
                             ),
-                            const Divider(height: 20, color: AppColors.border),
+                            Divider(height: 20, color: colors.borderDefault),
                             _InfoRow(
                               label: 'Có ảnh bìa',
                               value: '${report.roomsWithCover}',
                             ),
-                            const Divider(height: 20, color: AppColors.border),
+                            Divider(height: 20, color: colors.borderDefault),
                             _InfoRow(
                               label: 'Đã cập nhật giá',
                               value: '${report.roomsWithPrice}',
@@ -319,7 +306,7 @@ class ReportScreen extends ConsumerWidget {
                       const SizedBox(height: 24),
 
                       // ── Booking gần đây ────────────────
-                      _SectionTitle(title: 'BOOKING GẦN ĐÂY'),
+                      const _SectionTitle(title: 'BOOKING GẦN ĐÂY'),
                       const SizedBox(height: 12),
 
                       if (report.recentBookings.isEmpty)
@@ -351,7 +338,33 @@ class ReportScreen extends ConsumerWidget {
   }
 }
 
+// ─── Card Container (theme-aware shadow) ─────────────────────────────────────
+class _CardContainer extends StatelessWidget {
+  final Widget child;
+  const _CardContainer({required this.child});
 
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.colors;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: colors.bgSurface,
+        borderRadius: BorderRadius.circular(AppRadius.lg),
+        border: Border.all(color: colors.borderSubtle),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: isDark ? 0.30 : 0.04),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: child,
+    );
+  }
+}
 
 // ─── Stat Card ────────────────────────────────────────────────────────────────
 class _StatCard extends StatelessWidget {
@@ -373,14 +386,17 @@ class _StatCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.colors;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: AppColors.surface,
+        color: colors.bgSurface,
         borderRadius: BorderRadius.circular(AppRadius.lg),
+        border: Border.all(color: colors.borderSubtle),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.04),
+            color: Colors.black.withValues(alpha: isDark ? 0.30 : 0.04),
             blurRadius: 8,
             offset: const Offset(0, 2),
           ),
@@ -404,7 +420,7 @@ class _StatCard extends StatelessWidget {
             style: GoogleFonts.beVietnamPro(
               fontSize: 22,
               fontWeight: FontWeight.w700,
-              color: AppColors.navy,
+              color: colors.textPrimary,
             ),
           ),
           const SizedBox(height: 2),
@@ -413,7 +429,7 @@ class _StatCard extends StatelessWidget {
             style: GoogleFonts.beVietnamPro(
               fontSize: 12,
               fontWeight: FontWeight.w500,
-              color: AppColors.muted,
+              color: colors.textSecondary,
             ),
           ),
           const SizedBox(height: 2),
@@ -421,7 +437,7 @@ class _StatCard extends StatelessWidget {
             sub,
             style: GoogleFonts.beVietnamPro(
               fontSize: 11,
-              color: AppColors.slate,
+              color: colors.textTertiary,
             ),
           ),
         ],
@@ -437,12 +453,13 @@ class _SectionTitle extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.colors;
     return Text(
       title,
       style: GoogleFonts.beVietnamPro(
         fontSize: 13,
         fontWeight: FontWeight.w700,
-        color: AppColors.navy,
+        color: colors.textPrimary,
         letterSpacing: 0.8,
       ),
     );
@@ -465,6 +482,7 @@ class _StatusRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.colors;
     final ratio = total > 0 ? count / total : 0.0;
 
     return Column(
@@ -485,7 +503,7 @@ class _StatusRow extends StatelessWidget {
                 label,
                 style: GoogleFonts.beVietnamPro(
                   fontSize: 13,
-                  color: AppColors.ink,
+                  color: colors.textPrimary,
                 ),
               ),
             ),
@@ -494,7 +512,7 @@ class _StatusRow extends StatelessWidget {
               style: GoogleFonts.beVietnamPro(
                 fontSize: 14,
                 fontWeight: FontWeight.w700,
-                color: AppColors.navy,
+                color: colors.textPrimary,
               ),
             ),
             const SizedBox(width: 4),
@@ -502,7 +520,7 @@ class _StatusRow extends StatelessWidget {
               '(${(ratio * 100).toStringAsFixed(0)}%)',
               style: GoogleFonts.beVietnamPro(
                 fontSize: 11,
-                color: AppColors.muted,
+                color: colors.textSecondary,
               ),
             ),
           ],
@@ -513,7 +531,7 @@ class _StatusRow extends StatelessWidget {
           child: LinearProgressIndicator(
             value: ratio,
             minHeight: 6,
-            backgroundColor: AppColors.slateLight,
+            backgroundColor: colors.bgSurfaceContainer,
             valueColor: AlwaysStoppedAnimation(color),
           ),
         ),
@@ -536,6 +554,7 @@ class _InfoRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.colors;
     return Row(
       children: [
         Expanded(
@@ -543,7 +562,7 @@ class _InfoRow extends StatelessWidget {
             label,
             style: GoogleFonts.beVietnamPro(
               fontSize: 13,
-              color: AppColors.muted,
+              color: colors.textSecondary,
             ),
           ),
         ),
@@ -552,7 +571,7 @@ class _InfoRow extends StatelessWidget {
           style: GoogleFonts.beVietnamPro(
             fontSize: 14,
             fontWeight: FontWeight.w700,
-            color: valueColor ?? AppColors.navy,
+            color: valueColor ?? colors.textPrimary,
           ),
         ),
       ],
@@ -567,18 +586,20 @@ class _RecentBookingCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.colors;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     final statusLabel = booking.status.label;
-    final statusColor =
-        AppHelpers.bookingStatusColor(booking.status.value);
+    final statusColor = AppHelpers.bookingStatusColor(booking.status.value);
 
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: AppColors.surface,
+        color: colors.bgSurface,
         borderRadius: BorderRadius.circular(AppRadius.md),
+        border: Border.all(color: colors.borderSubtle),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.04),
+            color: Colors.black.withValues(alpha: isDark ? 0.30 : 0.04),
             blurRadius: 8,
             offset: const Offset(0, 2),
           ),
@@ -590,12 +611,12 @@ class _RecentBookingCard extends StatelessWidget {
             width: 40,
             height: 40,
             decoration: BoxDecoration(
-              color: AppColors.oceanLight,
+              color: colors.bgSurfaceContainer,
               borderRadius: BorderRadius.circular(AppRadius.sm),
             ),
-            child: const Icon(
+            child: Icon(
               Icons.book_outlined,
-              color: AppColors.ocean,
+              color: colors.brand,
               size: 20,
             ),
           ),
@@ -609,7 +630,7 @@ class _RecentBookingCard extends StatelessWidget {
                   style: GoogleFonts.beVietnamPro(
                     fontSize: 14,
                     fontWeight: FontWeight.w600,
-                    color: AppColors.navy,
+                    color: colors.textPrimary,
                   ),
                 ),
                 const SizedBox(height: 2),
@@ -617,15 +638,14 @@ class _RecentBookingCard extends StatelessWidget {
                   '${booking.propertyName} · ${booking.nights} đêm',
                   style: GoogleFonts.beVietnamPro(
                     fontSize: 12,
-                    color: AppColors.muted,
+                    color: colors.textSecondary,
                   ),
                 ),
               ],
             ),
           ),
           Container(
-            padding: const EdgeInsets.symmetric(
-                horizontal: 8, vertical: 3),
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
             decoration: BoxDecoration(
               color: statusColor.withValues(alpha: 0.12),
               borderRadius: BorderRadius.circular(20),
@@ -644,4 +664,3 @@ class _RecentBookingCard extends StatelessWidget {
     );
   }
 }
-
