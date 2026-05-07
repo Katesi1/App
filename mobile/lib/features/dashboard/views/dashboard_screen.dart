@@ -106,7 +106,9 @@ class DashboardScreen extends ConsumerWidget {
                   ),
 
                 // ── Cảnh báo SALE chưa gán owner ─────────────────────
-                if (user != null && user.isSale && !user.hasOwner)
+                if (user != null &&
+                    user.isSale &&
+                    !user.isSaleMembershipActive)
                   Consumer(
                     builder: (context, ref, _) {
                       final dismissed =
@@ -137,7 +139,14 @@ class DashboardScreen extends ConsumerWidget {
                                   child: Padding(
                                     padding: const EdgeInsets.only(top: 1),
                                     child: Text(
-                                      'Bạn chưa được gán cho chủ nhà nào. Hãy liên hệ chủ nhà để được thêm vào đội.',
+                                      switch (user.saleMembershipState) {
+                                        'invited' =>
+                                          'Tài khoản của bạn đang chờ chủ nhà kích hoạt phân quyền.',
+                                        'suspended' =>
+                                          'Phân quyền của bạn đang tạm khóa. Liên hệ chủ nhà để mở lại.',
+                                        _ =>
+                                          'Bạn chưa được gán cho chủ nhà nào. Hãy liên hệ chủ nhà để được thêm vào đội.',
+                                      },
                                       style: GoogleFonts.beVietnamPro(
                                         fontSize: 12,
                                         color: colors.warning,
@@ -311,7 +320,7 @@ class DashboardScreen extends ConsumerWidget {
                           title: 'Quản lý phòng',
                           subtitle:
                               'Xem & cập nhật phòng của chủ nhà bạn phụ trách',
-                          locked: !user.hasOwner,
+                          locked: !user.isSaleMembershipActive,
                           onTap: () => context.go('/rooms'),
                         ),
                         const SizedBox(height: 10),
@@ -320,7 +329,7 @@ class DashboardScreen extends ConsumerWidget {
                           iconColor: colors.brandLight,
                           title: 'Lịch booking',
                           subtitle: 'Xem lịch booking các phòng của chủ nhà',
-                          locked: !user.hasOwner,
+                          locked: !user.isSaleMembershipActive,
                           onTap: () => context.go('/calendar'),
                         ),
                       ],

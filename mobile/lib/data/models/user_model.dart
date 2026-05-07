@@ -10,6 +10,7 @@ class UserModel {
   final int? gender;
   final String? dateOfBirth;
   final String? ownerId;
+  final String? saleMembershipStatus;
 
   // ── KYC + Subscription (backend trả từ /auth/profile sau Đợt 2) ──
   final String kycStatus; // none | pending | approved | rejected
@@ -31,6 +32,7 @@ class UserModel {
     this.gender,
     this.dateOfBirth,
     this.ownerId,
+    this.saleMembershipStatus,
     this.kycStatus = 'none',
     this.kycSubmissionId,
     this.subscriptionStatus = 'none',
@@ -50,6 +52,7 @@ class UserModel {
         gender: json['gender'],
         dateOfBirth: json['dateOfBirth'],
         ownerId: json['ownerId'],
+        saleMembershipStatus: json['saleMembershipStatus'],
         kycStatus: json['kycStatus'] ?? 'none',
         kycSubmissionId: json['kycSubmissionId'],
         subscriptionStatus: json['subscriptionStatus'] ?? 'none',
@@ -74,6 +77,8 @@ class UserModel {
         if (gender != null) 'gender': gender,
         if (dateOfBirth != null) 'dateOfBirth': dateOfBirth,
         if (ownerId != null) 'ownerId': ownerId,
+        if (saleMembershipStatus != null)
+          'saleMembershipStatus': saleMembershipStatus,
         'kycStatus': kycStatus,
         if (kycSubmissionId != null) 'kycSubmissionId': kycSubmissionId,
         'subscriptionStatus': subscriptionStatus,
@@ -108,6 +113,24 @@ class UserModel {
   /// SALE đã được gán cho owner chưa
   bool get hasOwner => ownerId != null;
 
+  /// Trạng thái membership của SALE dưới owner:
+  /// invited | active | suspended | unassigned.
+  /// Fallback từ ownerId để tương thích backend cũ chưa trả field này.
+  String get saleMembershipState {
+    if (!isSale) return 'active';
+    final status = saleMembershipStatus?.trim();
+    if (status != null && status.isNotEmpty) {
+      return status;
+    }
+    return hasOwner ? 'active' : 'unassigned';
+  }
+
+  bool get isSaleMembershipActive =>
+      !isSale || saleMembershipState == 'active';
+  bool get isSaleMembershipInvited => saleMembershipState == 'invited';
+  bool get isSaleMembershipSuspended => saleMembershipState == 'suspended';
+  bool get isSaleMembershipUnassigned => saleMembershipState == 'unassigned';
+
   /// ID owner hiệu lực: OWNER → mình, SALE → ownerId
   String? get effectiveOwnerId => isOwner ? id : (isSale ? ownerId : null);
 
@@ -120,6 +143,12 @@ class UserModel {
   /// OWNER chưa hoàn thành KYC → bị chặn tạo/sửa property.
   /// ADMIN, SALE không yêu cầu KYC. CUSTOMER không quan tâm.
   bool get needsKyc => isOwner && !isKycApproved;
+
+  /// Quyền mutate trong management:
+  /// - ADMIN/OWNER luôn được
+  /// - SALE chỉ khi membership active
+  bool get canMutateManagementData =>
+      isAdmin || isOwner || (isSale && isSaleMembershipActive);
 
   // ── Subscription helpers ──
   bool get isInTrial => subscriptionStatus == 'trial';
@@ -144,6 +173,7 @@ class UserModel {
     int? gender,
     String? dateOfBirth,
     String? ownerId,
+    String? saleMembershipStatus,
     String? kycStatus,
     String? kycSubmissionId,
     String? subscriptionStatus,
@@ -162,6 +192,7 @@ class UserModel {
         gender: gender ?? this.gender,
         dateOfBirth: dateOfBirth ?? this.dateOfBirth,
         ownerId: ownerId ?? this.ownerId,
+        saleMembershipStatus: saleMembershipStatus ?? this.saleMembershipStatus,
         kycStatus: kycStatus ?? this.kycStatus,
         kycSubmissionId: kycSubmissionId ?? this.kycSubmissionId,
         subscriptionStatus: subscriptionStatus ?? this.subscriptionStatus,

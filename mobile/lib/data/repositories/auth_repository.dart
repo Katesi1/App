@@ -32,18 +32,41 @@ class AuthRepository {
           if (phone != null && phone.isNotEmpty) 'phone': phone,
         },
       );
-      final data = response.data['data'];
+      final payload = _extractAuthPayload(response.data);
+      if (payload == null) {
+        return ApiResponse(
+          success: false,
+          message: _extractMessage(response.data) ??
+              'Phản hồi đăng ký không đúng định dạng',
+        );
+      }
+      final tokens = _extractTokens(payload);
+      if (tokens == null || tokens.$1.isEmpty || tokens.$2.isEmpty) {
+        return ApiResponse(
+          success: false,
+          message: 'Thiếu access/refresh token từ máy chủ',
+        );
+      }
+      final userMap = _extractUser(payload);
+      if (userMap == null) {
+        return ApiResponse(
+          success: false,
+          message: 'Thiếu thông tin người dùng từ máy chủ',
+        );
+      }
 
-      await SecureStorage.saveAccessToken(data['accessToken']);
-      await SecureStorage.saveRefreshToken(data['refreshToken']);
+      await SecureStorage.saveAccessToken(tokens.$1);
+      await SecureStorage.saveRefreshToken(tokens.$2);
 
-      final user = UserModel.fromJson(data['user']);
+      final user = UserModel.fromJson(userMap);
       await SecureStorage.saveUserData(user.toJsonString());
 
       return ApiResponse(
           success: true, data: user, message: 'Đăng ký thành công');
     } on DioException catch (e) {
       return ApiResponse(success: false, message: parseDioError(e));
+    } catch (e) {
+      return ApiResponse(success: false, message: 'Đăng ký thất bại: $e');
     }
   }
 
@@ -51,21 +74,46 @@ class AuthRepository {
     try {
       final response = await _dio.post(
         ApiConstants.login,
-        data: {'email': email, 'password': password},
+        data: {
+          'password': password,
+          'email': email.trim(),
+        },
       );
-      final data = response.data['data'];
+      final payload = _extractAuthPayload(response.data);
+      if (payload == null) {
+        return ApiResponse(
+          success: false,
+          message: _extractMessage(response.data) ??
+              'Phản hồi đăng nhập không đúng định dạng',
+        );
+      }
+      final tokens = _extractTokens(payload);
+      if (tokens == null || tokens.$1.isEmpty || tokens.$2.isEmpty) {
+        return ApiResponse(
+          success: false,
+          message: 'Thiếu access/refresh token từ máy chủ',
+        );
+      }
+      final userMap = _extractUser(payload);
+      if (userMap == null) {
+        return ApiResponse(
+          success: false,
+          message: 'Thiếu thông tin người dùng từ máy chủ',
+        );
+      }
 
-      await SecureStorage.saveAccessToken(data['accessToken']);
-      await SecureStorage.saveRefreshToken(data['refreshToken']);
+      await SecureStorage.saveAccessToken(tokens.$1);
+      await SecureStorage.saveRefreshToken(tokens.$2);
 
-      // Login API đã trả về user object — dùng trực tiếp, không cần gọi /profile
-      final user = UserModel.fromJson(data['user']);
+      final user = UserModel.fromJson(userMap);
       await SecureStorage.saveUserData(user.toJsonString());
 
       return ApiResponse(
           success: true, data: user, message: 'Đăng nhập thành công');
     } on DioException catch (e) {
       return ApiResponse(success: false, message: parseDioError(e));
+    } catch (e) {
+      return ApiResponse(success: false, message: 'Đăng nhập thất bại: $e');
     }
   }
 
@@ -93,12 +141,33 @@ class AuthRepository {
           if (role != null) 'role': role,
         },
       );
-      final data = response.data['data'];
+      final payload = _extractAuthPayload(response.data);
+      if (payload == null) {
+        return ApiResponse(
+          success: false,
+          message: _extractMessage(response.data) ??
+              'Phản hồi đăng nhập Google không đúng định dạng',
+        );
+      }
+      final tokens = _extractTokens(payload);
+      if (tokens == null || tokens.$1.isEmpty || tokens.$2.isEmpty) {
+        return ApiResponse(
+          success: false,
+          message: 'Thiếu access/refresh token từ máy chủ',
+        );
+      }
+      final userMap = _extractUser(payload);
+      if (userMap == null) {
+        return ApiResponse(
+          success: false,
+          message: 'Thiếu thông tin người dùng từ máy chủ',
+        );
+      }
 
-      await SecureStorage.saveAccessToken(data['accessToken']);
-      await SecureStorage.saveRefreshToken(data['refreshToken']);
+      await SecureStorage.saveAccessToken(tokens.$1);
+      await SecureStorage.saveRefreshToken(tokens.$2);
 
-      final user = UserModel.fromJson(data['user']);
+      final user = UserModel.fromJson(userMap);
       await SecureStorage.saveUserData(user.toJsonString());
 
       return ApiResponse(
@@ -218,5 +287,43 @@ class AuthRepository {
   Future<bool> isLoggedIn() async {
     final token = await SecureStorage.getAccessToken();
     return token != null;
+  }
+
+  Map<String, dynamic>? _extractAuthPayload(dynamic body) {
+    if (body is! Map<String, dynamic>) {
+      return null;
+    }
+    final data = body['data'];
+    if (data is Map<String, dynamic>) {
+      return data;
+    }
+    // Một số backend trả token/user trực tiếp ở root response.
+    return body;
+  }
+
+  (String, String)? _extractTokens(Map<String, dynamic> payload) {
+    final access =
+        (payload['accessToken'] ?? payload['access_token']) as String?;
+    final refresh =
+        (payload['refreshToken'] ?? payload['refresh_token']) as String?;
+    if (access == null || refresh == null) {
+      return null;
+    }
+    return (access, refresh);
+  }
+
+  Map<String, dynamic>? _extractUser(Map<String, dynamic> payload) {
+    final user = payload['user'];
+    if (user is Map<String, dynamic>) {
+      return user;
+    }
+    return null;
+  }
+
+  String? _extractMessage(dynamic body) {
+    if (body is Map && body['message'] != null) {
+      return body['message'].toString();
+    }
+    return null;
   }
 }

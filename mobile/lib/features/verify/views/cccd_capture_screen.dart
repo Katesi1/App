@@ -100,8 +100,8 @@ class _CCCDCaptureScreenState extends ConsumerState<CCCDCaptureScreen> {
       context: context,
       builder: (_) => AlertDialog(
         backgroundColor: colors.bgSurfaceElevated,
-        icon: Icon(Icons.warning_amber_rounded,
-            color: colors.warning, size: 32),
+        icon:
+            Icon(Icons.warning_amber_rounded, color: colors.warning, size: 32),
         title: const Text('Ảnh có thể không phải CCCD'),
         content: Text(
           reason ??

@@ -1,6 +1,9 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_native_splash/flutter_native_splash.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'core/monitoring/crash_reporter.dart';
 import 'core/theme/app_theme.dart';
 import 'core/utils/app_router.dart';
 import 'features/auth/controllers/auth_controller.dart';
@@ -9,10 +12,16 @@ import 'shared/providers/theme_provider.dart';
 void main() {
   final widgetsBinding = WidgetsFlutterBinding.ensureInitialized();
   FlutterNativeSplash.preserve(widgetsBinding: widgetsBinding);
-  runApp(
-    const ProviderScope(
-      child: HomestayApp(),
-    ),
+  CrashReporter.init();
+  runZonedGuarded(
+    () {
+      runApp(
+        const ProviderScope(
+          child: HomestayApp(),
+        ),
+      );
+    },
+    CrashReporter.record,
   );
 }
 

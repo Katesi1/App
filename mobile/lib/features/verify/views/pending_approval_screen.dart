@@ -182,7 +182,7 @@ class _PendingApprovalScreenState extends ConsumerState<PendingApprovalScreen> {
                   child: SizedBox(
                     height: 48,
                     child: OutlinedButton(
-                      onPressed: () {},
+                      onPressed: () => context.push('/profile/help'),
                       child: const Text('Liên hệ HT'),
                     ),
                   ),

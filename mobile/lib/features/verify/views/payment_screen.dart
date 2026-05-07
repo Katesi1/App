@@ -8,6 +8,7 @@ import 'package:go_router/go_router.dart';
 import '../../../core/theme/app_color_scheme.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
+import '../../../core/monitoring/analytics_service.dart';
 import '../../../shared/widgets/status_strip.dart';
 import '../controllers/verify_flow_controller.dart';
 import '../data/models/payment_session.dart';
@@ -46,11 +47,18 @@ class _PaymentScreenState extends ConsumerState<PaymentScreen> {
   }
 
   Future<void> _handlePay() async {
+    AnalyticsService.logEvent('verify_payment_submit', params: {
+      'method': _selected.name,
+    });
     setState(() => _processing = true);
     try {
       final session = await ref
           .read(verifyFlowControllerProvider.notifier)
           .initiatePayment(_selected);
+      AnalyticsService.logEvent('verify_payment_session_created', params: {
+        'method': _selected.name,
+        'amount': session.totalAmount,
+      });
 
       if (!mounted) return;
 
@@ -71,6 +79,9 @@ class _PaymentScreenState extends ConsumerState<PaymentScreen> {
       if (!mounted) return;
       final msg = e.toString().replaceAll('Exception: ', '');
       _showError('Khởi tạo thanh toán thất bại: $msg');
+      AnalyticsService.logEvent('verify_payment_session_failed', params: {
+        'method': _selected.name,
+      });
       setState(() => _processing = false);
     }
   }
@@ -207,21 +218,73 @@ class _PaymentScreenState extends ConsumerState<PaymentScreen> {
   }
 
   void _showCardFormDialog(PaymentSession s) {
+    final cardHolderCtrl = TextEditingController();
+    final cardNumberCtrl = TextEditingController();
+    final expiryCtrl = TextEditingController();
+    final cvvCtrl = TextEditingController();
     showDialog<void>(
       context: context,
       builder: (_) => AlertDialog(
         backgroundColor: context.colors.bgSurfaceElevated,
-        title: const Text('Nhập thông tin thẻ'),
-        content: const Text(
-            '(Stub) Form thẻ tín dụng sẽ ghép sau khi VNPay sandbox sẵn sàng.'),
+        title: const Text('Thanh toán bằng thẻ'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(
+              controller: cardHolderCtrl,
+              decoration: const InputDecoration(labelText: 'Tên chủ thẻ'),
+            ),
+            const SizedBox(height: 8),
+            TextField(
+              controller: cardNumberCtrl,
+              keyboardType: TextInputType.number,
+              decoration: const InputDecoration(labelText: 'Số thẻ'),
+            ),
+            const SizedBox(height: 8),
+            Row(
+              children: [
+                Expanded(
+                  child: TextField(
+                    controller: expiryCtrl,
+                    keyboardType: TextInputType.datetime,
+                    decoration: const InputDecoration(labelText: 'MM/YY'),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: TextField(
+                    controller: cvvCtrl,
+                    keyboardType: TextInputType.number,
+                    obscureText: true,
+                    decoration: const InputDecoration(labelText: 'CVV'),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Số tiền: ${VerifyFormat.priceVND(s.totalAmount)}',
+              style: const TextStyle(fontWeight: FontWeight.w700),
+            ),
+          ],
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).maybePop(),
-            child: const Text('Đóng'),
+            child: const Text('Hủy'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(context).maybePop(),
+            child: const Text('Xác nhận'),
           ),
         ],
       ),
-    );
+    ).whenComplete(() {
+      cardHolderCtrl.dispose();
+      cardNumberCtrl.dispose();
+      expiryCtrl.dispose();
+      cvvCtrl.dispose();
+    });
   }
 
   void _showError(String msg) {
