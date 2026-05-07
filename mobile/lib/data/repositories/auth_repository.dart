@@ -76,8 +76,8 @@ class AuthRepository {
       final response = await _dio.post(
         ApiConstants.login,
         data: {
+          'identifier': identifier.trim(),
           'password': password,
-          'email': email.trim(),
         },
       );
       final payload = _extractAuthPayload(response.data);
