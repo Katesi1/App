@@ -25,6 +25,7 @@ import '../../features/bookings/views/hold_room_screen.dart';
 import '../../features/dashboard/views/dashboard_screen.dart';
 import '../../features/properties/views/property_amenities_screen.dart';
 import '../../features/properties/views/property_cancellation_screen.dart';
+import '../../features/notifications/views/notification_detail_screen.dart';
 import '../../features/notifications/views/notification_screen.dart';
 import '../../features/properties/views/property_manage_screen.dart';
 import '../../features/properties/views/property_add_screen.dart';
@@ -249,6 +250,17 @@ final routerProvider = Provider<GoRouter>((ref) {
           key: state.pageKey,
           child: const NotificationScreen(),
         ),
+        routes: [
+          GoRoute(
+            path: ':id',
+            pageBuilder: (_, state) => slideUpPage(
+              key: state.pageKey,
+              child: NotificationDetailScreen(
+                id: state.pathParameters['id']!,
+              ),
+            ),
+          ),
+        ],
       ),
 
       // ── Profile ──────────────────────────────────────────────────────

@@ -18,6 +18,7 @@ import '../utils/camera_picker.dart';
 import '../utils/cccd_image_validator.dart';
 import 'cccd_scanner_screen.dart';
 import 'widgets/camera_frame_overlay.dart';
+import 'widgets/not_cccd_warning_dialog.dart';
 import 'widgets/verify_app_bar.dart';
 
 /// Screen 2 — Chụp CCCD (mặt trước hoặc mặt sau).
@@ -81,7 +82,10 @@ class _CCCDCaptureScreenState extends ConsumerState<CCCDCaptureScreen> {
     setState(() => _uploading = false);
 
     if (!validation.isCccd) {
-      final force = await _confirmNotCccd(validation.reason);
+      final force = await showNotCccdWarning(
+        context,
+        reason: validation.reason,
+      );
       if (!mounted || force != true) return;
       // User cố ý upload dù validator nghi ngờ — cho phép upload với
       // `ocr: null`, admin sẽ duyệt thủ công.
@@ -89,39 +93,6 @@ class _CCCDCaptureScreenState extends ConsumerState<CCCDCaptureScreen> {
       return;
     }
     await _upload(file, ocr: validation.ocrResult);
-  }
-
-  /// Dialog cảnh báo ảnh không phải CCCD. User chọn:
-  /// - "Chọn lại" → cancel (return false/null)
-  /// - "Vẫn upload" → bypass validation (return true)
-  Future<bool?> _confirmNotCccd(String? reason) {
-    final colors = context.colors;
-    return showDialog<bool>(
-      context: context,
-      builder: (_) => AlertDialog(
-        backgroundColor: colors.bgSurfaceElevated,
-        icon:
-            Icon(Icons.warning_amber_rounded, color: colors.warning, size: 32),
-        title: const Text('Ảnh có thể không phải CCCD'),
-        content: Text(
-          reason ??
-              'Hệ thống không nhận diện được CCCD trong ảnh. '
-                  'Bạn có chắc muốn dùng ảnh này?',
-          style: const TextStyle(fontSize: 13, height: 1.45),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(false),
-            child: const Text('Chọn lại'),
-          ),
-          TextButton(
-            style: TextButton.styleFrom(foregroundColor: colors.warning),
-            onPressed: () => Navigator.of(context).pop(true),
-            child: const Text('Vẫn upload'),
-          ),
-        ],
-      ),
-    );
   }
 
   Future<void> _upload(File file, {required OCRResult? ocr}) async {
