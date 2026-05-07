@@ -1,50 +1,111 @@
-import 'dart:io';
-
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:image_picker/image_picker.dart';
 
+import '../../../core/theme/app_color_scheme.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
+import '../../../data/models/room_model.dart';
 import '../../../shared/widgets/loading_widget.dart';
+import '../../rooms/controllers/room_controller.dart';
 
-class PropertyImagesScreen extends StatefulWidget {
+class PropertyImagesScreen extends ConsumerStatefulWidget {
   final String homestayId;
 
   const PropertyImagesScreen({super.key, required this.homestayId});
 
   @override
-  State<PropertyImagesScreen> createState() => _PropertyImagesScreenState();
+  ConsumerState<PropertyImagesScreen> createState() =>
+      _PropertyImagesScreenState();
 }
 
-class _PropertyImagesScreenState extends State<PropertyImagesScreen> {
+class _PropertyImagesScreenState extends ConsumerState<PropertyImagesScreen> {
   final ImagePicker _picker = ImagePicker();
-  final List<XFile> _images = [];
+  bool _uploading = false;
 
-  Future<void> _pickImage(ImageSource source) async {
-    Navigator.pop(context); // đóng bottom sheet
-    try {
-      final picked = await _picker.pickMultiImage();
-      if (picked.isEmpty) return;
-      setState(() => _images.addAll(picked));
-    } catch (_) {
-      if (mounted) AppSnackBar.error(context, 'Không thể chọn ảnh');
+  Future<void> _pickAndUpload() async {
+    final picked = await _picker.pickMultiImage();
+    if (picked.isEmpty) return;
+
+    setState(() => _uploading = true);
+    final paths = picked.map((f) => f.path).toList();
+    final (ok, err) = await ref
+        .read(roomActionsProvider.notifier)
+        .uploadImages(widget.homestayId, paths);
+
+    if (!mounted) return;
+    setState(() => _uploading = false);
+    if (ok) {
+      AppSnackBar.success(context, 'Đã tải lên ${picked.length} ảnh');
+    } else {
+      AppSnackBar.error(context, 'Không thể tải ảnh: $err');
     }
   }
 
   Future<void> _takePhoto() async {
-    Navigator.pop(context); // đóng bottom sheet
-    try {
-      final picked = await _picker.pickImage(source: ImageSource.camera);
-      if (picked == null) return;
-      setState(() => _images.add(picked));
-    } catch (_) {
-      if (mounted) AppSnackBar.error(context, 'Không thể chụp ảnh');
+    final picked = await _picker.pickImage(source: ImageSource.camera);
+    if (picked == null) return;
+
+    setState(() => _uploading = true);
+    final (ok, err) = await ref
+        .read(roomActionsProvider.notifier)
+        .uploadImages(widget.homestayId, [picked.path]);
+
+    if (!mounted) return;
+    setState(() => _uploading = false);
+    if (ok) {
+      AppSnackBar.success(context, 'Đã tải lên ảnh');
+    } else {
+      AppSnackBar.error(context, 'Không thể tải ảnh: $err');
     }
   }
 
-  void _removeImage(int index) {
-    setState(() => _images.removeAt(index));
+  Future<void> _deleteImage(RoomImageModel img) async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (ctx) {
+        final colors = ctx.colors;
+        return AlertDialog(
+          title: const Text('Xoá ảnh'),
+          content: const Text('Bạn chắc chắn muốn xoá ảnh này?'),
+          actions: [
+            TextButton(
+                onPressed: () => Navigator.pop(ctx, false),
+                child: const Text('Huỷ')),
+            TextButton(
+                onPressed: () => Navigator.pop(ctx, true),
+                child: Text('Xoá', style: TextStyle(color: colors.error))),
+          ],
+        );
+      },
+    );
+    if (confirm != true) return;
+
+    final ok = await ref
+        .read(roomActionsProvider.notifier)
+        .deleteImage(widget.homestayId, img.id);
+
+    if (!mounted) return;
+    if (ok) {
+      AppSnackBar.success(context, 'Đã xoá ảnh');
+    } else {
+      AppSnackBar.error(context, 'Không thể xoá ảnh');
+    }
+  }
+
+  Future<void> _setCover(RoomImageModel img) async {
+    final ok = await ref
+        .read(roomActionsProvider.notifier)
+        .setCoverImage(widget.homestayId, img.id);
+
+    if (!mounted) return;
+    if (ok) {
+      AppSnackBar.success(context, 'Đã đặt ảnh bìa');
+    } else {
+      AppSnackBar.error(context, 'Không thể đặt ảnh bìa');
+    }
   }
 
   void _showPickerSheet() {
@@ -53,224 +114,169 @@ class _PropertyImagesScreenState extends State<PropertyImagesScreen> {
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
-      builder: (_) => SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: AppSpacing.md),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
-                width: 40,
-                height: 4,
-                decoration: BoxDecoration(
-                  color: AppColors.border,
-                  borderRadius: BorderRadius.circular(2),
-                ),
-              ),
-              const SizedBox(height: AppSpacing.md),
-              Text(
-                'Thêm ảnh',
-                style: GoogleFonts.beVietnamPro(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w700,
-                  color: AppColors.navy,
-                ),
-              ),
-              const SizedBox(height: AppSpacing.sm),
-              ListTile(
-                leading: Container(
-                  width: 44,
-                  height: 44,
+      builder: (ctx) {
+        final colors = ctx.colors;
+        final isDark = Theme.of(ctx).brightness == Brightness.dark;
+        return SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: AppSpacing.md),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  width: 40,
+                  height: 4,
                   decoration: BoxDecoration(
-                    color: AppColors.oceanLight,
-                    borderRadius: BorderRadius.circular(AppRadius.md),
-                  ),
-                  child: const Icon(
-                    Icons.camera_alt_outlined,
-                    color: AppColors.ocean,
+                    color: colors.borderDefault,
+                    borderRadius: BorderRadius.circular(2),
                   ),
                 ),
-                title: Text(
-                  'Chụp ảnh',
-                  style: GoogleFonts.beVietnamPro(
-                    fontWeight: FontWeight.w600,
-                    color: AppColors.navy,
+                const SizedBox(height: AppSpacing.md),
+                Text('Thêm ảnh',
+                    style: GoogleFonts.beVietnamPro(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w700,
+                      color: colors.textPrimary,
+                    )),
+                const SizedBox(height: AppSpacing.sm),
+                ListTile(
+                  leading: Container(
+                    width: 44,
+                    height: 44,
+                    decoration: BoxDecoration(
+                      color:
+                          colors.brand.withValues(alpha: isDark ? 0.18 : 0.12),
+                      borderRadius: BorderRadius.circular(AppRadius.md),
+                    ),
+                    child: Icon(Icons.camera_alt_outlined, color: colors.brand),
                   ),
+                  title: Text('Chụp ảnh',
+                      style: GoogleFonts.beVietnamPro(
+                          fontWeight: FontWeight.w600,
+                          color: colors.textPrimary)),
+                  onTap: () {
+                    Navigator.pop(context);
+                    _takePhoto();
+                  },
                 ),
-                subtitle: Text(
-                  'Dùng camera để chụp ảnh mới',
-                  style: GoogleFonts.beVietnamPro(
-                    fontSize: 12,
-                    color: AppColors.muted,
+                ListTile(
+                  leading: Container(
+                    width: 44,
+                    height: 44,
+                    decoration: BoxDecoration(
+                      color: colors.brandSecondary
+                          .withValues(alpha: isDark ? 0.22 : 0.18),
+                      borderRadius: BorderRadius.circular(AppRadius.md),
+                    ),
+                    child: Icon(Icons.photo_library_outlined,
+                        color: colors.brandSecondary),
                   ),
+                  title: Text('Chọn từ thư viện',
+                      style: GoogleFonts.beVietnamPro(
+                          fontWeight: FontWeight.w600,
+                          color: colors.textPrimary)),
+                  onTap: () {
+                    Navigator.pop(context);
+                    _pickAndUpload();
+                  },
                 ),
-                onTap: _takePhoto,
-              ),
-              ListTile(
-                leading: Container(
-                  width: 44,
-                  height: 44,
-                  decoration: BoxDecoration(
-                    color: AppColors.tealLight,
-                    borderRadius: BorderRadius.circular(AppRadius.md),
-                  ),
-                  child: const Icon(
-                    Icons.photo_library_outlined,
-                    color: AppColors.teal,
-                  ),
-                ),
-                title: Text(
-                  'Chọn từ thư viện',
-                  style: GoogleFonts.beVietnamPro(
-                    fontWeight: FontWeight.w600,
-                    color: AppColors.navy,
-                  ),
-                ),
-                subtitle: Text(
-                  'Có thể chọn nhiều ảnh cùng lúc',
-                  style: GoogleFonts.beVietnamPro(
-                    fontSize: 12,
-                    color: AppColors.muted,
-                  ),
-                ),
-                onTap: () => _pickImage(ImageSource.gallery),
-              ),
-              const SizedBox(height: AppSpacing.sm),
-            ],
+              ],
+            ),
           ),
-        ),
-      ),
+        );
+      },
     );
   }
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.colors;
+    final roomAsync = ref.watch(roomDetailProvider(widget.homestayId));
+
     return Scaffold(
+      backgroundColor: colors.bgCanvas,
       appBar: AppBar(
         title: const Text('Ảnh căn'),
         actions: [
-          if (_images.isNotEmpty)
-            Container(
-              margin: const EdgeInsets.only(right: AppSpacing.md),
-              padding: const EdgeInsets.symmetric(
-                horizontal: AppSpacing.sm,
-                vertical: AppSpacing.xs,
-              ),
-              decoration: BoxDecoration(
-                color: AppColors.oceanLight,
-                borderRadius: BorderRadius.circular(AppRadius.full),
-              ),
-              child: Text(
-                '${_images.length} ảnh',
-                style: GoogleFonts.beVietnamPro(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w600,
-                  color: AppColors.ocean,
-                ),
+          if (_uploading)
+            Padding(
+              padding: const EdgeInsets.only(right: AppSpacing.md),
+              child: SizedBox(
+                width: 20,
+                height: 20,
+                child: CircularProgressIndicator(
+                    strokeWidth: 2, color: colors.brand),
               ),
             ),
         ],
       ),
-      body: _images.isEmpty ? _buildEmptyState() : _buildImageGrid(),
-      floatingActionButton: _images.isEmpty ? null : _buildFab(),
-    );
-  }
-
-  Widget _buildEmptyState() {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(AppSpacing.xl),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              width: 100,
-              height: 100,
-              decoration: BoxDecoration(
-                color: AppColors.oceanLight,
-                borderRadius: BorderRadius.circular(AppRadius.full),
-              ),
-              child: const Icon(
-                Icons.photo_library_outlined,
-                size: 48,
-                color: AppColors.ocean,
-              ),
-            ),
-            const SizedBox(height: AppSpacing.lg),
-            Text(
-              'Chưa có ảnh nào',
-              style: GoogleFonts.beVietnamPro(
-                fontSize: 18,
-                fontWeight: FontWeight.w700,
-                color: AppColors.navy,
-              ),
-            ),
-            const SizedBox(height: AppSpacing.sm),
-            Text(
-              'Thêm ảnh để khách hàng có thể\nhình dung rõ hơn về căn phòng của bạn.',
-              textAlign: TextAlign.center,
-              style: GoogleFonts.beVietnamPro(
-                fontSize: 14,
-                color: AppColors.muted,
-                height: 1.5,
-              ),
-            ),
-            const SizedBox(height: AppSpacing.xl),
-            Container(
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(AppRadius.lg),
-                gradient: const LinearGradient(
-                  colors: [AppColors.ocean, AppColors.oceanMid],
-                ),
-                boxShadow: [
-                  BoxShadow(
-                    color: AppColors.ocean.withValues(alpha: 0.3),
-                    blurRadius: 12,
-                    offset: const Offset(0, 4),
-                  ),
-                ],
-              ),
-              child: Material(
-                color: Colors.transparent,
-                borderRadius: BorderRadius.circular(AppRadius.lg),
-                child: InkWell(
-                  onTap: _showPickerSheet,
-                  borderRadius: BorderRadius.circular(AppRadius.lg),
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: AppSpacing.xl,
-                      vertical: AppSpacing.md,
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        const Icon(
-                          Icons.camera_alt_outlined,
-                          color: Colors.white,
-                          size: 20,
-                        ),
-                        const SizedBox(width: AppSpacing.sm),
-                        Text(
-                          'Thêm ảnh',
-                          style: GoogleFonts.beVietnamPro(
-                            fontSize: 15,
-                            fontWeight: FontWeight.w600,
-                            color: Colors.white,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
-            ),
-          ],
+      body: roomAsync.when(
+        loading: () => const LoadingWidget(),
+        error: (e, _) => ErrorStateWidget(
+          message: e.toString().replaceAll('Exception: ', ''),
+          onRetry: () => ref.invalidate(roomDetailProvider(widget.homestayId)),
         ),
+        data: (room) {
+          if (room.images.isEmpty) {
+            return _buildEmptyState(context);
+          }
+          return _buildImageGrid(context, room.images);
+        },
+      ),
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: _uploading ? null : _showPickerSheet,
+        backgroundColor: colors.brand,
+        icon:
+            const Icon(Icons.add_photo_alternate_outlined, color: Colors.white),
+        label: Text('Thêm ảnh',
+            style: GoogleFonts.beVietnamPro(
+              fontSize: 14,
+              fontWeight: FontWeight.w600,
+              color: Colors.white,
+            )),
       ),
     );
   }
 
-  Widget _buildImageGrid() {
+  Widget _buildEmptyState(BuildContext context) {
+    final colors = context.colors;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return Center(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            width: 100,
+            height: 100,
+            decoration: BoxDecoration(
+              color: colors.brand.withValues(alpha: isDark ? 0.18 : 0.12),
+              borderRadius: BorderRadius.circular(AppRadius.full),
+            ),
+            child: Icon(Icons.photo_library_outlined,
+                size: 48, color: colors.brand),
+          ),
+          const SizedBox(height: AppSpacing.lg),
+          Text('Chưa có ảnh nào',
+              style: GoogleFonts.beVietnamPro(
+                fontSize: 18,
+                fontWeight: FontWeight.w700,
+                color: colors.textPrimary,
+              )),
+          const SizedBox(height: AppSpacing.sm),
+          Text('Thêm ảnh để khách hàng hình dung\nvề căn phòng của bạn.',
+              textAlign: TextAlign.center,
+              style: GoogleFonts.beVietnamPro(
+                fontSize: 14,
+                color: colors.textSecondary,
+                height: 1.5,
+              )),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildImageGrid(BuildContext context, List<RoomImageModel> images) {
+    final colors = context.colors;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -279,14 +285,12 @@ class _PropertyImagesScreenState extends State<PropertyImagesScreen> {
             horizontal: AppSpacing.md,
             vertical: AppSpacing.sm,
           ),
-          child: Text(
-            'Nhấn giữ để sắp xếp · Nhấn X để xoá',
-            style: GoogleFonts.beVietnamPro(
-              fontSize: 12,
-              fontStyle: FontStyle.italic,
-              color: AppColors.muted,
-            ),
-          ),
+          child: Text('Nhấn "Đặt ảnh chính" để chọn ảnh hiển thị · X = xoá',
+              style: GoogleFonts.beVietnamPro(
+                fontSize: 12,
+                fontStyle: FontStyle.italic,
+                color: colors.textSecondary,
+              )),
         ),
         Expanded(
           child: GridView.builder(
@@ -295,104 +299,99 @@ class _PropertyImagesScreenState extends State<PropertyImagesScreen> {
               crossAxisCount: 2,
               crossAxisSpacing: AppSpacing.sm,
               mainAxisSpacing: AppSpacing.sm,
-              childAspectRatio: 1.0,
             ),
-            itemCount: _images.length,
-            itemBuilder: (context, index) => _buildImageCard(index),
+            itemCount: images.length,
+            itemBuilder: (_, i) => _buildImageCard(context, images[i]),
           ),
         ),
       ],
     );
   }
 
-  Widget _buildImageCard(int index) {
+  Widget _buildImageCard(BuildContext context, RoomImageModel img) {
+    final colors = context.colors;
     return Stack(
       children: [
         ClipRRect(
           borderRadius: BorderRadius.circular(AppRadius.md),
-          child: Image.file(
-            File(_images[index].path),
-            width: double.infinity,
-            height: double.infinity,
-            fit: BoxFit.cover,
+          child: Container(
+            color: colors.bgSurfaceContainer,
+            child: CachedNetworkImage(
+              imageUrl: img.imageUrl,
+              width: double.infinity,
+              height: double.infinity,
+              fit: BoxFit.cover,
+              memCacheWidth: 400,
+            ),
           ),
         ),
+        // Delete button
         Positioned(
           top: AppSpacing.xs,
           right: AppSpacing.xs,
           child: GestureDetector(
-            onTap: () => _removeImage(index),
+            onTap: () => _deleteImage(img),
             child: Container(
               width: 28,
               height: 28,
-              decoration: const BoxDecoration(
-                color: AppColors.coral,
+              decoration: BoxDecoration(
+                color: colors.error,
                 shape: BoxShape.circle,
               ),
-              child: const Icon(
-                Icons.close,
-                size: 16,
-                color: Colors.white,
-              ),
+              child: const Icon(Icons.close, size: 16, color: Colors.white),
             ),
           ),
         ),
-        if (index == 0)
-          Positioned(
-            bottom: AppSpacing.sm,
-            left: AppSpacing.sm,
-            child: Container(
-              padding: const EdgeInsets.symmetric(
-                horizontal: AppSpacing.sm,
-                vertical: 2,
-              ),
-              decoration: BoxDecoration(
-                color: AppColors.ocean.withValues(alpha: 0.85),
-                borderRadius: BorderRadius.circular(AppRadius.xs),
-              ),
-              child: Text(
-                'Ảnh bìa',
-                style: GoogleFonts.beVietnamPro(
-                  fontSize: 11,
-                  fontWeight: FontWeight.w600,
-                  color: Colors.white,
+        // Cover badge or set cover button
+        Positioned(
+          bottom: AppSpacing.sm,
+          left: AppSpacing.sm,
+          child: img.isCover
+              ? Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: AppSpacing.sm,
+                    vertical: 4,
+                  ),
+                  decoration: BoxDecoration(
+                    color: AppColors.jade500.withValues(alpha: 0.85),
+                    borderRadius: BorderRadius.circular(AppRadius.xs),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(Icons.star_rounded,
+                          size: 14, color: AppColors.gold500),
+                      const SizedBox(width: 4),
+                      Text('Ảnh chính',
+                          style: GoogleFonts.beVietnamPro(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w600,
+                            color: Colors.white,
+                          )),
+                    ],
+                  ),
+                )
+              : GestureDetector(
+                  onTap: () => _setCover(img),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: AppSpacing.sm,
+                      vertical: 4,
+                    ),
+                    decoration: BoxDecoration(
+                      color: Colors.black.withValues(alpha: 0.5),
+                      borderRadius: BorderRadius.circular(AppRadius.xs),
+                    ),
+                    child: Text('Đặt ảnh chính',
+                        style: GoogleFonts.beVietnamPro(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w500,
+                          color: Colors.white,
+                        )),
+                  ),
                 ),
-              ),
-            ),
-          ),
+        ),
       ],
-    );
-  }
-
-  Widget _buildFab() {
-    return Container(
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(AppRadius.lg),
-        gradient: const LinearGradient(
-          colors: [AppColors.ocean, AppColors.oceanMid],
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: AppColors.ocean.withValues(alpha: 0.3),
-            blurRadius: 12,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      child: FloatingActionButton.extended(
-        onPressed: _showPickerSheet,
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        icon: const Icon(Icons.add_photo_alternate_outlined, color: Colors.white),
-        label: Text(
-          'Thêm ảnh',
-          style: GoogleFonts.beVietnamPro(
-            fontSize: 14,
-            fontWeight: FontWeight.w600,
-            color: Colors.white,
-          ),
-        ),
-      ),
     );
   }
 }

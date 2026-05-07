@@ -22,10 +22,9 @@ class ReportRepository {
       final data = response.data['data'] as Map<String, dynamic>;
       // Parse recentBookings nếu có
       if (data['recentBookings'] != null) {
-        data['recentBookingsParsed'] =
-            (data['recentBookings'] as List)
-                .map((e) => BookingModel.fromJson(e))
-                .toList();
+        data['recentBookingsParsed'] = (data['recentBookings'] as List)
+            .map((e) => BookingModel.fromJson(e))
+            .toList();
       }
       return ApiResponse(success: true, data: data, message: '');
     } on DioException catch (e) {

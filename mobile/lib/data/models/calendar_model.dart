@@ -1,33 +1,12 @@
-/// Nhóm property cho calendar (từ /calendar/property-groups)
-class CalendarPropertyGroup {
-  final String id;
-  final String name;
-  final String? category;
-  final int roomCount;
-
-  const CalendarPropertyGroup({
-    required this.id,
-    required this.name,
-    this.category,
-    this.roomCount = 0,
-  });
-
-  factory CalendarPropertyGroup.fromJson(Map<String, dynamic> json) =>
-      CalendarPropertyGroup(
-        id: json['id'] ?? '',
-        name: json['name'] ?? '',
-        category: json['category'],
-        roomCount: json['roomCount'] ?? 0,
-      );
-}
-
 /// Trạng thái ngày trong calendar grid
-enum CalendarDayStatus { available, hold, booked }
+enum CalendarDayStatus { available, hold, booked, locked }
 
 extension CalendarDayStatusX on CalendarDayStatus {
-  static CalendarDayStatus fromString(String? value) => switch (value) {
-        'HOLD' => CalendarDayStatus.hold,
-        'BOOKED' || 'CONFIRMED' => CalendarDayStatus.booked,
+  static CalendarDayStatus fromString(String? value) =>
+      switch (value?.toLowerCase()) {
+        'hold' => CalendarDayStatus.hold,
+        'booked' || 'confirmed' => CalendarDayStatus.booked,
+        'locked' => CalendarDayStatus.locked,
         _ => CalendarDayStatus.available,
       };
 }
@@ -51,24 +30,34 @@ class CalendarDay {
       );
 }
 
-/// Một phòng trong calendar grid
+/// Một property (phòng/căn) trong calendar grid
 class CalendarRoomRow {
   final String id;
   final String code;
   final String name;
+  final int? type;
+  final String? address;
+  final String? view; // "sea", "city", null
   final List<CalendarDay> days;
 
   const CalendarRoomRow({
     required this.id,
     required this.code,
     required this.name,
+    this.type,
+    this.address,
+    this.view,
     this.days = const [],
   });
 
-  factory CalendarRoomRow.fromJson(Map<String, dynamic> json) => CalendarRoomRow(
+  factory CalendarRoomRow.fromJson(Map<String, dynamic> json) =>
+      CalendarRoomRow(
         id: json['id'] ?? '',
         code: json['code'] ?? '',
         name: json['name'] ?? '',
+        type: json['type'] as int?,
+        address: json['address'],
+        view: json['view'],
         days: (json['days'] as List<dynamic>?)
                 ?.map((e) => CalendarDay.fromJson(e))
                 .toList() ??
@@ -76,25 +65,18 @@ class CalendarRoomRow {
       );
 }
 
-/// Response từ /calendar/grid
+/// Response từ /calendar/grid và /calendar/public-grid
 class CalendarGrid {
-  final Map<String, dynamic> propertyGroup;
-  final List<CalendarRoomRow> rooms;
+  final List<CalendarRoomRow> properties;
 
-  const CalendarGrid({
-    required this.propertyGroup,
-    this.rooms = const [],
-  });
+  const CalendarGrid({this.properties = const []});
 
   factory CalendarGrid.fromJson(Map<String, dynamic> json) => CalendarGrid(
-        propertyGroup: json['propertyGroup'] ?? {},
-        rooms: (json['rooms'] as List<dynamic>?)
+        properties: (json['properties'] as List<dynamic>?)
                 ?.map((e) => CalendarRoomRow.fromJson(e))
                 .toList() ??
             [],
       );
-
-  String get propertyGroupName => propertyGroup['name'] ?? '';
 }
 
 /// Thông tin liên hệ admin (từ /calendar/admin-contact)

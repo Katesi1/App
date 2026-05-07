@@ -21,8 +21,7 @@ class NotificationRepository {
 
   Future<ApiResponse<int>> getUnreadCount() async {
     try {
-      final response =
-          await _dio.get(ApiConstants.notificationsUnreadCount);
+      final response = await _dio.get(ApiConstants.notificationsUnreadCount);
       final count = response.data['data']['count'] as int? ?? 0;
       return ApiResponse(success: true, data: count, message: '');
     } on DioException catch (e) {

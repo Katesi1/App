@@ -39,17 +39,51 @@ class ApiConstants {
 
   // Customer bookings
   static const String customerHold = '/bookings/customer-hold';
-  static const String myBookings = '/bookings/my';
+  static const String myBookings = '/bookings/my-bookings';
   static String customerCancel(String id) => '/bookings/$id/customer-cancel';
 
   // Public properties (cho customer)
   static const String propertiesPublic = '/properties/public';
 
+  // Property share (public, không trả giá)
+  static String propertyShare(String id) => '/properties/share/$id';
+
+  // KYC (verify identity cho OWNER)
+  static const String kycUploadCccdFront = '/kyc/upload-cccd-front';
+  static const String kycUploadCccdBack = '/kyc/upload-cccd-back';
+  static const String kycUploadSelfie = '/kyc/upload-selfie';
+  static const String kycSubmit = '/kyc/submit';
+  static const String kycStatus = '/kyc/status';
+  static String kycSubmissionDetail(String id) => '/kyc/submissions/$id';
+  static String kycSubmissionResubmit(String id) =>
+      '/kyc/submissions/$id/resubmit';
+
+  // Billing
+  static const String billingPlans = '/billing/plans';
+
+  // Payment
+  static const String paymentInitiate = '/payments/initiate';
+  static String paymentStatus(String sessionId) =>
+      '/payments/$sessionId/status';
+  static String paymentRefund(String sessionId) =>
+      '/payments/$sessionId/refund';
+
+  // Admin KYC (chỉ ADMIN)
+  static const String adminKycQueue = '/admin/kyc/queue';
+  static String adminKycApprove(String id) =>
+      '/admin/kyc/submissions/$id/approve';
+  static String adminKycReject(String id) =>
+      '/admin/kyc/submissions/$id/reject';
+
   // Calendar
-  static const String calendarProperties = '/calendar/properties';
-  static const String calendarGrid = '/calendar/grid';
-  static const String calendarLock = '/calendar/lock';
-  static const String calendarUnlock = '/calendar/unlock';
+  static const String calendarPublicGrid =
+      '/calendar/public-grid'; // GET — public, no auth
+  static const String calendarGrid =
+      '/calendar/grid'; // GET — management, Bearer token
+  static const String calendarLock =
+      '/calendar/lock'; // POST = lock, DELETE = unlock
+  static const String calendarSold =
+      '/calendar/sold'; // PATCH = đánh dấu đã bán
   static const String calendarAdminContact = '/calendar/admin-contact';
 
   // Dashboard & Reports

@@ -1,8 +1,16 @@
+import 'dart:async';
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../../core/network/api_client.dart';
 import '../../../core/storage/secure_storage.dart';
 import '../../../data/models/user_model.dart';
 import '../../../data/repositories/auth_repository.dart';
 import '../../../shared/providers/view_mode_provider.dart';
+import '../../bookings/controllers/booking_controller.dart';
+import '../../calendar/controllers/calendar_controller.dart';
+import '../../dashboard/controllers/dashboard_controller.dart';
+import '../../properties/controllers/property_controller.dart';
+import '../../rooms/controllers/room_controller.dart';
 
 final authRepositoryProvider =
     Provider<AuthRepository>((ref) => AuthRepository());
@@ -13,11 +21,17 @@ class AuthState {
   final bool isLoggedIn;
   final String? error;
 
+  /// Đặt = true khi server từ chối token (refresh fail). Login screen detect
+  /// transition false→true qua `ref.listen` → show snackbar + gọi
+  /// `consumeForceLogoutFlag()` để reset.
+  final bool forceLoggedOut;
+
   AuthState({
     this.user,
     this.isLoading = false,
     this.isLoggedIn = false,
     this.error,
+    this.forceLoggedOut = false,
   });
 
   AuthState copyWith({
@@ -25,20 +39,62 @@ class AuthState {
     bool? isLoading,
     bool? isLoggedIn,
     String? error,
+    bool? forceLoggedOut,
   }) =>
       AuthState(
         user: user ?? this.user,
         isLoading: isLoading ?? this.isLoading,
         isLoggedIn: isLoggedIn ?? this.isLoggedIn,
         error: error,
+        forceLoggedOut: forceLoggedOut ?? this.forceLoggedOut,
       );
 }
 
 class AuthNotifier extends StateNotifier<AuthState> {
   final AuthRepository _repo;
+  final Ref _ref;
 
-  AuthNotifier(this._repo) : super(AuthState()) {
+  StreamSubscription<void>? _forceLogoutSub;
+
+  AuthNotifier(this._repo, this._ref) : super(AuthState()) {
     _init();
+    // Lắng nghe force-logout từ ApiClient (refresh token fail).
+    // SecureStorage đã được clear bởi interceptor trước khi event fire — chỉ
+    // cần reset state để router redirect /login + flag để login screen
+    // show snackbar.
+    _forceLogoutSub = ApiClient.onForceLogout.listen((_) {
+      if (!mounted) return;
+      state = AuthState(forceLoggedOut: true);
+    });
+  }
+
+  @override
+  void dispose() {
+    _forceLogoutSub?.cancel();
+    super.dispose();
+  }
+
+  /// Login screen gọi sau khi đã hiển thị snackbar — clear flag để không
+  /// trigger lần 2 khi user back ra rồi vào lại.
+  void consumeForceLogoutFlag() {
+    if (state.forceLoggedOut) {
+      state = state.copyWith(forceLoggedOut: false);
+    }
+  }
+
+  /// Invalidate tất cả data providers sau login/register
+  /// Để screen watch lại → tự re-fetch với token mới
+  void _invalidateDataProviders() {
+    _ref.invalidate(dashboardStatsProvider);
+    _ref.invalidate(roomListProvider);
+    _ref.invalidate(allRoomsProvider);
+    _ref.invalidate(homestayListProvider);
+    _ref.invalidate(bookingListProvider);
+    _ref.invalidate(calendarGridProvider);
+    // Reset banner "STAFF chưa được gán owner" — hiện lại 1 lần / phiên login
+    _ref.invalidate(unassignedBannerDismissedProvider);
+    // staffListProvider không cần invalidate — nó watch currentUserProvider
+    // nên tự re-fetch khi user thay đổi
   }
 
   Future<void> _init() async {
@@ -66,10 +122,11 @@ class AuthNotifier extends StateNotifier<AuthState> {
     }
   }
 
-  Future<String?> login(String phone, String password) async {
-    final result = await _repo.login(phone, password);
+  Future<String?> login(String identifier, String password) async {
+    final result = await _repo.login(identifier, password);
     if (result.success) {
       state = AuthState(user: result.data, isLoggedIn: true);
+      _invalidateDataProviders();
       return null;
     } else {
       state = state.copyWith(error: result.message);
@@ -79,20 +136,21 @@ class AuthNotifier extends StateNotifier<AuthState> {
 
   Future<String?> register({
     required String name,
-    required String phone,
+    required String email,
     required String password,
     required int role,
-    String? email,
+    String? phone,
   }) async {
     final result = await _repo.register(
       name: name,
-      phone: phone,
+      email: email,
       password: password,
       role: role,
-      email: email,
+      phone: phone,
     );
     if (result.success) {
       state = AuthState(user: result.data, isLoggedIn: true);
+      _invalidateDataProviders();
       return null;
     } else {
       state = state.copyWith(error: result.message);
@@ -105,6 +163,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
     final result = await _repo.loginWithGoogle(role: role);
     if (result.success) {
       state = AuthState(user: result.data, isLoggedIn: true);
+      _invalidateDataProviders();
       return null;
     } else {
       state = state.copyWith(error: result.message);
@@ -162,7 +221,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
 }
 
 final authProvider = StateNotifierProvider<AuthNotifier, AuthState>((ref) {
-  return AuthNotifier(ref.read(authRepositoryProvider));
+  return AuthNotifier(ref.read(authRepositoryProvider), ref);
 });
 
 final currentUserProvider = Provider<UserModel?>((ref) {

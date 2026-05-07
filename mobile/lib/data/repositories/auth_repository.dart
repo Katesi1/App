@@ -16,20 +16,20 @@ class AuthRepository {
 
   Future<ApiResponse<UserModel>> register({
     required String name,
-    required String phone,
+    required String email,
     required String password,
     required int role,
-    String? email,
+    String? phone,
   }) async {
     try {
       final response = await _dio.post(
         ApiConstants.register,
         data: {
           'name': name,
-          'phone': phone,
+          'email': email,
           'password': password,
           'role': role,
-          if (email != null && email.isNotEmpty) 'email': email,
+          if (phone != null && phone.isNotEmpty) 'phone': phone,
         },
       );
       final data = response.data['data'];
@@ -47,11 +47,15 @@ class AuthRepository {
     }
   }
 
-  Future<ApiResponse<UserModel>> login(String phone, String password) async {
+  Future<ApiResponse<UserModel>> login(
+      String identifier, String password) async {
     try {
       final response = await _dio.post(
         ApiConstants.login,
-        data: {'phone': phone, 'password': password},
+        data: {
+          'identifier': identifier.trim(),
+          'password': password,
+        },
       );
       final data = response.data['data'];
 

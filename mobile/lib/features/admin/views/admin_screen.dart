@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
+import '../../../core/theme/app_color_scheme.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../core/utils/helpers.dart';
@@ -10,7 +11,7 @@ import '../../../shared/widgets/loading_widget.dart';
 import '../../auth/controllers/auth_controller.dart';
 import '../../bookings/controllers/booking_controller.dart';
 import '../../properties/controllers/property_controller.dart';
-import '../../rooms/controllers/room_controller.dart';
+import '../controllers/kyc_approval_controller.dart';
 import '../controllers/user_controller.dart';
 
 class AdminScreen extends ConsumerWidget {
@@ -18,11 +19,13 @@ class AdminScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final colors = context.colors;
     final user = ref.watch(currentUserProvider);
-    final usersAsync = ref.watch(userListProvider(null));
+    final isAdmin = user?.isAdmin ?? false;
+    final usersAsync = ref.watch(staffListProvider);
     final homestaysAsync = ref.watch(homestayListProvider(true));
-    final roomsAsync = ref.watch(roomListProvider(null));
     final bookingsAsync = ref.watch(bookingListProvider(null));
+    final pendingKycCount = ref.watch(pendingKycCountProvider).valueOrNull ?? 0;
 
     return AppScaffold(
       title: '',
@@ -43,7 +46,7 @@ class AdminScreen extends ConsumerWidget {
               gradient: LinearGradient(
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
-                colors: [AppColors.oceanDeep, AppColors.ocean],
+                colors: [AppColors.jade900, AppColors.jade500],
               ),
             ),
             child: Stack(
@@ -57,7 +60,7 @@ class AdminScreen extends ConsumerWidget {
                     height: 160,
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
-                      color: AppColors.teal.withValues(alpha: 0.10),
+                      color: AppColors.jade300.withValues(alpha: 0.10),
                     ),
                   ),
                 ),
@@ -69,7 +72,7 @@ class AdminScreen extends ConsumerWidget {
                     height: 100,
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
-                      color: AppColors.gold.withValues(alpha: 0.08),
+                      color: AppColors.gold500.withValues(alpha: 0.08),
                     ),
                   ),
                 ),
@@ -80,7 +83,7 @@ class AdminScreen extends ConsumerWidget {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            'Quản lý hệ thống',
+                            isAdmin ? 'Quản lý hệ thống' : 'Quản lý',
                             style: GoogleFonts.beVietnamPro(
                               fontSize: 20,
                               fontWeight: FontWeight.w700,
@@ -89,7 +92,9 @@ class AdminScreen extends ConsumerWidget {
                           ),
                           const SizedBox(height: 2),
                           Text(
-                            'Toàn quyền quản trị',
+                            isAdmin
+                                ? 'Toàn quyền quản trị'
+                                : 'Phòng & nhân viên của tôi',
                             style: GoogleFonts.beVietnamPro(
                               fontSize: 12,
                               color: Colors.white.withValues(alpha: 0.65),
@@ -111,11 +116,10 @@ class AdminScreen extends ConsumerWidget {
           // ── Content ──────────────────────────────────────────────
           Expanded(
             child: RefreshIndicator(
-              color: AppColors.ocean,
+              color: colors.brand,
               onRefresh: () async {
-                ref.invalidate(userListProvider(null));
+                ref.invalidate(staffListProvider);
                 ref.invalidate(homestayListProvider(true));
-                ref.invalidate(roomListProvider(null));
                 ref.invalidate(bookingListProvider(null));
               },
               child: ListView(
@@ -127,8 +131,8 @@ class AdminScreen extends ConsumerWidget {
                       Expanded(
                         child: _KpiCard(
                           icon: Icons.people_rounded,
-                          iconBg: AppColors.oceanLight,
-                          iconColor: AppColors.ocean,
+                          iconBg: AppColors.jade50,
+                          iconColor: colors.brand,
                           label: 'Nhân viên',
                           asyncValue: usersAsync.whenData(
                             (users) => '${users.length}',
@@ -143,14 +147,15 @@ class AdminScreen extends ConsumerWidget {
                       const SizedBox(width: 12),
                       Expanded(
                         child: _KpiCard(
-                          icon: Icons.home_work_rounded,
-                          iconBg: AppColors.tealLight,
-                          iconColor: AppColors.teal,
-                          label: 'Homestay',
+                          icon: Icons.villa_rounded,
+                          iconBg: colors.successBg,
+                          iconColor: colors.success,
+                          label: 'Villa',
                           asyncValue: homestaysAsync.whenData(
-                            (list) => '${list.length}',
+                            (list) =>
+                                '${list.where((h) => h.type == 0).length}',
                           ),
-                          sub: 'Cơ sở lưu trú',
+                          sub: 'Biệt thự',
                         ),
                       ),
                     ],
@@ -162,26 +167,23 @@ class AdminScreen extends ConsumerWidget {
                     children: [
                       Expanded(
                         child: _KpiCard(
-                          icon: Icons.apartment_rounded,
-                          iconBg: AppColors.emeraldLight,
-                          iconColor: AppColors.emerald,
+                          icon: Icons.home_work_rounded,
+                          iconBg: AppColors.jade50,
+                          iconColor: colors.brandLight,
                           label: 'Phòng',
-                          asyncValue: roomsAsync.whenData(
-                            (rooms) => '${rooms.length}',
+                          asyncValue: homestaysAsync.whenData(
+                            (list) =>
+                                '${list.where((h) => h.type != 0).length}',
                           ),
-                          sub: roomsAsync.whenOrNull(
-                                data: (rooms) =>
-                                    '${rooms.where((r) => r.isActive).length} hoạt động',
-                              ) ??
-                              '',
+                          sub: 'Cơ sở lưu trú',
                         ),
                       ),
                       const SizedBox(width: 12),
                       Expanded(
                         child: _KpiCard(
                           icon: Icons.book_rounded,
-                          iconBg: AppColors.goldLight,
-                          iconColor: AppColors.gold,
+                          iconBg: AppColors.gold50,
+                          iconColor: AppColors.gold700,
                           label: 'Booking',
                           asyncValue: bookingsAsync.whenData(
                             (list) => '${list.length}',
@@ -196,11 +198,11 @@ class AdminScreen extends ConsumerWidget {
 
                   // ── Quản lý Section ─────────────────────────
                   Text(
-                    'QUẢN LÝ HỆ THỐNG',
+                    isAdmin ? 'QUẢN LÝ HỆ THỐNG' : 'QUẢN LÝ',
                     style: GoogleFonts.beVietnamPro(
                       fontSize: 11,
                       fontWeight: FontWeight.w600,
-                      color: AppColors.muted,
+                      color: colors.textSecondary,
                       letterSpacing: 1.2,
                     ),
                   ),
@@ -208,10 +210,12 @@ class AdminScreen extends ConsumerWidget {
 
                   _MenuCard(
                     icon: Icons.people_rounded,
-                    iconBg: AppColors.oceanLight,
-                    iconColor: AppColors.ocean,
-                    title: 'Quản lý nhân viên',
-                    subtitle: 'Thêm, sửa, vô hiệu hoá tài khoản',
+                    iconBg: AppColors.jade50,
+                    iconColor: colors.brand,
+                    title: isAdmin ? 'Quản lý nhân viên' : 'Nhân viên của tôi',
+                    subtitle: isAdmin
+                        ? 'Thêm, sửa, vô hiệu hoá tài khoản'
+                        : 'Thêm, gỡ nhân viên khỏi đội',
                     trailing: usersAsync.whenOrNull(
                       data: (users) => '${users.length} người',
                     ),
@@ -222,12 +226,12 @@ class AdminScreen extends ConsumerWidget {
 
                   _MenuCard(
                     icon: Icons.home_work_rounded,
-                    iconBg: AppColors.tealLight,
-                    iconColor: AppColors.teal,
+                    iconBg: AppColors.jade50,
+                    iconColor: colors.brandLight,
                     title: 'Quản lý phòng',
                     subtitle: 'Villa, Homestay, Khách sạn',
-                    trailing: roomsAsync.whenOrNull(
-                      data: (rooms) => '${rooms.length} phòng',
+                    trailing: homestaysAsync.whenOrNull(
+                      data: (list) => '${list.length} phòng',
                     ),
                     onTap: () => context.push('/admin/rooms'),
                   ),
@@ -236,8 +240,8 @@ class AdminScreen extends ConsumerWidget {
 
                   _MenuCard(
                     icon: Icons.book_rounded,
-                    iconBg: AppColors.goldLight,
-                    iconColor: AppColors.gold,
+                    iconBg: AppColors.gold50,
+                    iconColor: AppColors.gold700,
                     title: 'Quản lý booking',
                     subtitle: 'Xem, xác nhận, huỷ đặt phòng',
                     trailing: bookingsAsync.whenOrNull(
@@ -250,13 +254,27 @@ class AdminScreen extends ConsumerWidget {
 
                   _MenuCard(
                     icon: Icons.calendar_month_rounded,
-                    iconBg: AppColors.emeraldLight,
-                    iconColor: AppColors.emerald,
+                    iconBg: colors.successBg,
+                    iconColor: colors.success,
                     title: 'Lịch phòng',
                     subtitle: 'Quản lý lịch lock/mở phòng của chủ nhà',
                     onTap: () => context.push('/admin/owner-calendar'),
                   ),
 
+                  if (isAdmin) ...[
+                    const SizedBox(height: 10),
+                    _MenuCard(
+                      icon: Icons.verified_user_rounded,
+                      iconBg: AppColors.goldBg,
+                      iconColor: AppColors.goldText,
+                      title: 'Duyệt KYC',
+                      subtitle: 'Xét duyệt CCCD + selfie chủ nhà mới',
+                      trailing: pendingKycCount > 0
+                          ? '$pendingKycCount chờ'
+                          : 'Trống',
+                      onTap: () => context.push('/admin/kyc'),
+                    ),
+                  ],
 
                   const SizedBox(height: 28),
 
@@ -266,7 +284,7 @@ class AdminScreen extends ConsumerWidget {
                     style: GoogleFonts.beVietnamPro(
                       fontSize: 11,
                       fontWeight: FontWeight.w600,
-                      color: AppColors.muted,
+                      color: colors.textSecondary,
                       letterSpacing: 1.2,
                     ),
                   ),
@@ -274,20 +292,22 @@ class AdminScreen extends ConsumerWidget {
 
                   Row(
                     children: [
-                      Expanded(
-                        child: _QuickAction(
-                          icon: Icons.person_add_rounded,
-                          label: 'Thêm\nnhân viên',
-                          color: AppColors.ocean,
-                          onTap: () => context.push('/admin/users/new'),
+                      if (isAdmin) ...[
+                        Expanded(
+                          child: _QuickAction(
+                            icon: Icons.person_add_rounded,
+                            label: 'Thêm\nnhân viên',
+                            color: colors.brand,
+                            onTap: () => context.push('/admin/users/new'),
+                          ),
                         ),
-                      ),
-                      const SizedBox(width: 10),
+                        const SizedBox(width: 10),
+                      ],
                       Expanded(
                         child: _QuickAction(
                           icon: Icons.add_home_work_rounded,
                           label: 'Thêm\nphòng',
-                          color: AppColors.teal,
+                          color: colors.brandLight,
                           onTap: () => context.push('/properties/new'),
                         ),
                       ),
@@ -302,7 +322,7 @@ class AdminScreen extends ConsumerWidget {
                     style: GoogleFonts.beVietnamPro(
                       fontSize: 11,
                       fontWeight: FontWeight.w600,
-                      color: AppColors.muted,
+                      color: colors.textSecondary,
                       letterSpacing: 1.2,
                     ),
                   ),
@@ -315,7 +335,7 @@ class AdminScreen extends ConsumerWidget {
                     ),
                     error: (e, _) => ErrorStateWidget(
                       message: e.toString().replaceAll('Exception: ', ''),
-                      onRetry: () => ref.invalidate(userListProvider(null)),
+                      onRetry: () => ref.invalidate(staffListProvider),
                     ),
                     data: (users) {
                       if (users.isEmpty) {
@@ -325,13 +345,16 @@ class AdminScreen extends ConsumerWidget {
                         );
                       }
                       final recent = users.take(5).toList();
+                      final isDark =
+                          Theme.of(context).brightness == Brightness.dark;
                       return Container(
                         decoration: BoxDecoration(
-                          color: AppColors.surface,
+                          color: colors.bgSurface,
                           borderRadius: BorderRadius.circular(AppRadius.lg),
                           boxShadow: [
                             BoxShadow(
-                              color: Colors.black.withValues(alpha: 0.04),
+                              color: Colors.black
+                                  .withValues(alpha: isDark ? 0.30 : 0.04),
                               blurRadius: 8,
                               offset: const Offset(0, 2),
                             ),
@@ -341,9 +364,9 @@ class AdminScreen extends ConsumerWidget {
                           children: [
                             for (int i = 0; i < recent.length; i++) ...[
                               if (i > 0)
-                                const Divider(
+                                Divider(
                                   height: 1,
-                                  color: AppColors.border,
+                                  color: colors.borderDefault,
                                   indent: 60,
                                 ),
                               _UserRow(
@@ -365,14 +388,13 @@ class AdminScreen extends ConsumerWidget {
                             ? Padding(
                                 padding: const EdgeInsets.only(top: 8),
                                 child: TextButton(
-                                  onPressed: () =>
-                                      context.push('/admin/users'),
+                                  onPressed: () => context.push('/admin/users'),
                                   child: Text(
                                     'Xem tất cả ${users.length} nhân viên →',
                                     style: GoogleFonts.beVietnamPro(
                                       fontSize: 13,
                                       fontWeight: FontWeight.w600,
-                                      color: AppColors.ocean,
+                                      color: colors.brand,
                                     ),
                                   ),
                                 ),
@@ -391,7 +413,6 @@ class AdminScreen extends ConsumerWidget {
     );
   }
 }
-
 
 // ─── KPI Card ────────────────────────────────────────────────────────────────
 class _KpiCard extends StatelessWidget {
@@ -413,14 +434,16 @@ class _KpiCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.colors;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: AppColors.surface,
+        color: colors.bgSurface,
         borderRadius: BorderRadius.circular(AppRadius.lg),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.04),
+            color: Colors.black.withValues(alpha: isDark ? 0.30 : 0.04),
             blurRadius: 8,
             offset: const Offset(0, 2),
           ),
@@ -445,15 +468,15 @@ class _KpiCard extends StatelessWidget {
               style: GoogleFonts.beVietnamPro(
                 fontSize: 22,
                 fontWeight: FontWeight.w700,
-                color: AppColors.navy,
+                color: colors.textPrimary,
               ),
             ),
-            loading: () => const SizedBox(
+            loading: () => SizedBox(
               height: 28,
               width: 28,
               child: CircularProgressIndicator(
                 strokeWidth: 2,
-                color: AppColors.ocean,
+                color: colors.brand,
               ),
             ),
             error: (_, __) => Text(
@@ -461,7 +484,7 @@ class _KpiCard extends StatelessWidget {
               style: GoogleFonts.beVietnamPro(
                 fontSize: 22,
                 fontWeight: FontWeight.w700,
-                color: AppColors.muted,
+                color: colors.textSecondary,
               ),
             ),
           ),
@@ -471,7 +494,7 @@ class _KpiCard extends StatelessWidget {
             style: GoogleFonts.beVietnamPro(
               fontSize: 12,
               fontWeight: FontWeight.w500,
-              color: AppColors.muted,
+              color: colors.textSecondary,
             ),
           ),
           const SizedBox(height: 2),
@@ -479,7 +502,7 @@ class _KpiCard extends StatelessWidget {
             sub,
             style: GoogleFonts.beVietnamPro(
               fontSize: 11,
-              color: AppColors.slate,
+              color: colors.textTertiary,
             ),
           ),
         ],
@@ -510,11 +533,13 @@ class _MenuCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.colors;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Material(
-      color: AppColors.surface,
+      color: colors.bgSurface,
       borderRadius: BorderRadius.circular(AppRadius.lg),
       elevation: 1,
-      shadowColor: Colors.black.withValues(alpha: 0.06),
+      shadowColor: Colors.black.withValues(alpha: isDark ? 0.30 : 0.06),
       child: InkWell(
         onTap: onTap,
         borderRadius: BorderRadius.circular(AppRadius.lg),
@@ -530,8 +555,7 @@ class _MenuCard extends StatelessWidget {
                 height: 42,
                 decoration: BoxDecoration(
                   color: iconBg,
-                  borderRadius:
-                      BorderRadius.circular(AppRadius.md),
+                  borderRadius: BorderRadius.circular(AppRadius.md),
                 ),
                 child: Icon(icon, color: iconColor, size: 22),
               ),
@@ -545,7 +569,7 @@ class _MenuCard extends StatelessWidget {
                       style: GoogleFonts.beVietnamPro(
                         fontSize: 14,
                         fontWeight: FontWeight.w600,
-                        color: AppColors.navy,
+                        color: colors.textPrimary,
                       ),
                     ),
                     const SizedBox(height: 2),
@@ -553,7 +577,7 @@ class _MenuCard extends StatelessWidget {
                       subtitle,
                       style: GoogleFonts.beVietnamPro(
                         fontSize: 12,
-                        color: AppColors.muted,
+                        color: colors.textSecondary,
                       ),
                     ),
                   ],
@@ -566,23 +590,22 @@ class _MenuCard extends StatelessWidget {
                     vertical: 4,
                   ),
                   decoration: BoxDecoration(
-                    color: AppColors.background,
-                    borderRadius:
-                        BorderRadius.circular(AppRadius.full),
+                    color: colors.bgSurfaceContainer,
+                    borderRadius: BorderRadius.circular(AppRadius.full),
                   ),
                   child: Text(
                     trailing!,
                     style: GoogleFonts.beVietnamPro(
                       fontSize: 11,
                       fontWeight: FontWeight.w600,
-                      color: AppColors.muted,
+                      color: colors.textSecondary,
                     ),
                   ),
                 ),
               const SizedBox(width: 4),
-              const Icon(
+              Icon(
                 Icons.chevron_right_rounded,
-                color: AppColors.slate,
+                color: colors.textTertiary,
                 size: 20,
               ),
             ],
@@ -609,11 +632,13 @@ class _QuickAction extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.colors;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Material(
-      color: AppColors.surface,
+      color: colors.bgSurface,
       borderRadius: BorderRadius.circular(AppRadius.lg),
       elevation: 1,
-      shadowColor: Colors.black.withValues(alpha: 0.06),
+      shadowColor: Colors.black.withValues(alpha: isDark ? 0.30 : 0.06),
       child: InkWell(
         onTap: onTap,
         borderRadius: BorderRadius.circular(AppRadius.lg),
@@ -629,8 +654,7 @@ class _QuickAction extends StatelessWidget {
                 height: 44,
                 decoration: BoxDecoration(
                   color: color.withValues(alpha: 0.12),
-                  borderRadius:
-                      BorderRadius.circular(AppRadius.md),
+                  borderRadius: BorderRadius.circular(AppRadius.md),
                 ),
                 child: Icon(icon, color: color, size: 22),
               ),
@@ -641,7 +665,7 @@ class _QuickAction extends StatelessWidget {
                 style: GoogleFonts.beVietnamPro(
                   fontSize: 11,
                   fontWeight: FontWeight.w600,
-                  color: AppColors.navy,
+                  color: colors.textPrimary,
                   height: 1.3,
                 ),
               ),
@@ -662,6 +686,7 @@ class _UserRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.colors;
     final roleColor = AppHelpers.roleColor(user.role);
     final roleLabel = AppHelpers.roleLabel(user.role);
 
@@ -676,12 +701,9 @@ class _UserRow extends StatelessWidget {
           children: [
             CircleAvatar(
               radius: 18,
-              backgroundColor:
-                  roleColor.withValues(alpha: 0.12),
+              backgroundColor: roleColor.withValues(alpha: 0.12),
               child: Text(
-                user.name.isNotEmpty
-                    ? user.name[0].toUpperCase()
-                    : 'U',
+                user.name.isNotEmpty ? user.name[0].toUpperCase() : 'U',
                 style: GoogleFonts.beVietnamPro(
                   color: roleColor,
                   fontWeight: FontWeight.w700,
@@ -699,7 +721,7 @@ class _UserRow extends StatelessWidget {
                     style: GoogleFonts.beVietnamPro(
                       fontSize: 13,
                       fontWeight: FontWeight.w600,
-                      color: AppColors.navy,
+                      color: colors.textPrimary,
                     ),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
@@ -708,7 +730,7 @@ class _UserRow extends StatelessWidget {
                     user.phone,
                     style: GoogleFonts.beVietnamPro(
                       fontSize: 11,
-                      color: AppColors.muted,
+                      color: colors.textSecondary,
                     ),
                   ),
                 ],
@@ -721,8 +743,7 @@ class _UserRow extends StatelessWidget {
               ),
               decoration: BoxDecoration(
                 color: roleColor.withValues(alpha: 0.1),
-                borderRadius:
-                    BorderRadius.circular(AppRadius.full),
+                borderRadius: BorderRadius.circular(AppRadius.full),
               ),
               child: Text(
                 roleLabel,
@@ -738,8 +759,8 @@ class _UserRow extends StatelessWidget {
               Container(
                 width: 8,
                 height: 8,
-                decoration: const BoxDecoration(
-                  color: AppColors.coral,
+                decoration: BoxDecoration(
+                  color: colors.error,
                   shape: BoxShape.circle,
                 ),
               ),
@@ -750,7 +771,6 @@ class _UserRow extends StatelessWidget {
     );
   }
 }
-
 
 // ─── Avatar Button ─────────────────────────────────────────────────────────────
 class _AvatarBtn extends StatelessWidget {
@@ -769,7 +789,7 @@ class _AvatarBtn extends StatelessWidget {
         decoration: BoxDecoration(
           shape: BoxShape.circle,
           gradient: const LinearGradient(
-              colors: [AppColors.teal, AppColors.gold]),
+              colors: [AppColors.jade300, AppColors.gold500]),
           border: Border.all(
               color: Colors.white.withValues(alpha: 0.3), width: 1.5),
         ),

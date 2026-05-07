@@ -55,7 +55,7 @@ class HomestayRepository {
       String id, Map<String, dynamic> data) async {
     try {
       final response =
-          await _dio.put(ApiConstants.propertyDetail(id), data: data);
+          await _dio.patch(ApiConstants.propertyDetail(id), data: data);
       return ApiResponse(
         success: true,
         data: HomestayModel.fromJson(response.data['data']),

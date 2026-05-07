@@ -7,6 +7,7 @@ import 'package:flutter_svg/flutter_svg.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 
+import '../../../core/storage/secure_storage.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../controllers/auth_controller.dart';
@@ -21,7 +22,7 @@ class LoginScreen extends ConsumerStatefulWidget {
 class _LoginScreenState extends ConsumerState<LoginScreen>
     with TickerProviderStateMixin {
   final _formKey = GlobalKey<FormState>();
-  final _phoneCtrl = TextEditingController();
+  final _emailCtrl = TextEditingController();
   final _passwordCtrl = TextEditingController();
 
   late final AnimationController _shakeCtrl;
@@ -30,6 +31,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
 
   bool _obscurePassword = true;
   bool _isLoading = false;
+  bool _rememberMe = false;
 
   @override
   void initState() {
@@ -46,11 +48,22 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
       vsync: this,
       duration: const Duration(milliseconds: 8000),
     )..repeat();
+    _loadSavedCredentials();
+  }
+
+  Future<void> _loadSavedCredentials() async {
+    final saved = await SecureStorage.getSavedCredentials();
+    if (saved == null || !mounted) return;
+    setState(() {
+      _emailCtrl.text = saved.email;
+      _passwordCtrl.text = saved.password;
+      _rememberMe = true;
+    });
   }
 
   @override
   void dispose() {
-    _phoneCtrl.dispose();
+    _emailCtrl.dispose();
     _passwordCtrl.dispose();
     _shakeCtrl.dispose();
     _floatCtrl.dispose();
@@ -61,12 +74,13 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
   Future<void> _login() async {
     if (!_formKey.currentState!.validate()) return;
     setState(() => _isLoading = true);
-    final error = await ref.read(authProvider.notifier).login(
-          _phoneCtrl.text.trim(),
-          _passwordCtrl.text,
-        );
+    final identifier = _normalizeIdentifier(_emailCtrl.text);
+    final password = _passwordCtrl.text;
+    final error =
+        await ref.read(authProvider.notifier).login(identifier, password);
     if (!mounted) return;
     setState(() => _isLoading = false);
+
     if (error != null) {
       _shakeCtrl.forward(from: 0);
       ScaffoldMessenger.of(context).showSnackBar(
@@ -85,7 +99,32 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
           margin: const EdgeInsets.all(AppSpacing.md),
         ),
       );
+      return;
     }
+
+    // Đăng nhập thành công → lưu hoặc xoá credentials theo checkbox
+    if (_rememberMe) {
+      await SecureStorage.saveCredentials(identifier, password);
+    } else {
+      await SecureStorage.clearCredentials();
+    }
+  }
+
+  String _normalizeIdentifier(String raw) {
+    var v = raw.trim();
+    // Remove spaces commonly inserted in phone numbers
+    v = v.replaceAll(' ', '');
+
+    // Normalize VN phone formats to match DB (usually stored as 0xxxxxxxxx)
+    if (!v.contains('@')) {
+      if (v.startsWith('+84')) {
+        v = '0${v.substring(3)}';
+      } else if (v.startsWith('84') && v.length >= 11) {
+        v = '0${v.substring(2)}';
+      }
+    }
+
+    return v;
   }
 
   Future<void> _loginWithGoogle() async {
@@ -111,400 +150,493 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
   Widget build(BuildContext context) {
     final size = MediaQuery.of(context).size;
     final topPadding = MediaQuery.of(context).padding.top;
+    final bottomInset = MediaQuery.of(context).viewPadding.bottom;
 
-    return Scaffold(
-      resizeToAvoidBottomInset: true,
-      body: Stack(
-        children: [
-          // ── Background gradient ────────────────────────────────
-          Container(
-            width: size.width,
-            height: size.height,
-            decoration: const BoxDecoration(
+    // Detect force-logout (token refresh fail) → show snackbar 1 lần.
+    ref.listen(authProvider, (prev, next) {
+      if (next.forceLoggedOut && (prev?.forceLoggedOut ?? false) == false) {
+        ScaffoldMessenger.of(context)
+          ..hideCurrentSnackBar()
+          ..showSnackBar(
+            SnackBar(
+              content: Row(
+                children: const [
+                  Icon(Icons.lock_clock_rounded, color: Colors.white, size: 18),
+                  SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      'Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.',
+                    ),
+                  ),
+                ],
+              ),
+              backgroundColor: AppColors.coral,
+              behavior: SnackBarBehavior.floating,
+              duration: const Duration(seconds: 4),
+            ),
+          );
+        // Clear flag để snackbar không hiện lại khi user back-vào lại screen.
+        ref.read(authProvider.notifier).consumeForceLogoutFlag();
+      }
+    });
+
+    return Stack(
+      children: [
+        // ── Background gradient (ngoài Scaffold để keyboard không ảnh hưởng) ──
+        const Positioned.fill(
+          child: DecoratedBox(
+            decoration: BoxDecoration(
               gradient: LinearGradient(
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
                 colors: [
                   AppColors.oceanDeep,
-                  Color(0xFF0A3D5C),
+                  Color(
+                      0xFF0A3D5C), // custom interpolation, không thuộc token brand
                   AppColors.ocean,
                 ],
                 stops: [0.0, 0.5, 1.0],
               ),
             ),
           ),
+        ),
 
-          // ── Animated wave circles ──────────────────────────────
-          AnimatedBuilder(
+        // ── Animated wave circles (ngoài Scaffold) ──────────────────
+        Positioned.fill(
+          child: AnimatedBuilder(
             animation: _waveCtrl,
-            builder: (_, __) {
-              return CustomPaint(
-                size: size,
-                painter: _WavePainter(_waveCtrl.value),
-              );
-            },
+            builder: (_, __) => CustomPaint(
+              size: size,
+              painter: _WavePainter(_waveCtrl.value),
+            ),
           ),
+        ),
 
-          // ── Main content ───────────────────────────────────────
-          SafeArea(
-            child: SingleChildScrollView(
-              physics: const ClampingScrollPhysics(),
-              child: SizedBox(
-                height: size.height - topPadding,
-                child: Column(
-                  children: [
-                    // ── Logo section ─────────────────────────────
-                    Expanded(
-                      flex: 4,
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          // Floating logo
-                          AnimatedBuilder(
-                            animation: _floatCtrl,
-                            builder: (_, child) {
-                              final offset = math.sin(
-                                      _floatCtrl.value * math.pi) *
-                                  8.0;
-                              return Transform.translate(
-                                offset: Offset(0, offset),
-                                child: child,
-                              );
-                            },
-                            child: Container(
-                              width: 90,
-                              height: 90,
-                              decoration: BoxDecoration(
-                                shape: BoxShape.circle,
-                                color: Colors.white.withValues(alpha: 0.12),
-                                border: Border.all(
-                                  color: Colors.white.withValues(alpha: 0.25),
-                                  width: 1.5,
+        Scaffold(
+          backgroundColor: Colors.transparent,
+          resizeToAvoidBottomInset: true,
+          body: GestureDetector(
+            onTap: () => FocusScope.of(context).unfocus(),
+            behavior: HitTestBehavior.opaque,
+            child: SafeArea(
+              bottom: false,
+              child: SingleChildScrollView(
+                physics: const ClampingScrollPhysics(),
+                child: SizedBox(
+                  height: size.height - topPadding,
+                  child: Column(
+                    children: [
+                      // ── Logo section ─────────────────────────────
+                      Expanded(
+                        flex: 4,
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            // Floating logo
+                            AnimatedBuilder(
+                              animation: _floatCtrl,
+                              builder: (_, child) {
+                                final offset =
+                                    math.sin(_floatCtrl.value * math.pi) * 8.0;
+                                return Transform.translate(
+                                  offset: Offset(0, offset),
+                                  child: child,
+                                );
+                              },
+                              child: Container(
+                                width: 90,
+                                height: 90,
+                                decoration: BoxDecoration(
+                                  shape: BoxShape.circle,
+                                  color: Colors.white.withValues(alpha: 0.12),
+                                  border: Border.all(
+                                    color: Colors.white.withValues(alpha: 0.25),
+                                    width: 1.5,
+                                  ),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color:
+                                          AppColors.teal.withValues(alpha: 0.3),
+                                      blurRadius: 30,
+                                      spreadRadius: 5,
+                                    ),
+                                  ],
                                 ),
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: AppColors.teal.withValues(alpha: 0.3),
-                                    blurRadius: 30,
-                                    spreadRadius: 5,
+                                child: Image.asset(
+                                  'assets/images/logohalong24h.png',
+                                  fit: BoxFit.contain,
+                                  errorBuilder: (_, __, ___) => Text(
+                                    'HALONG24h',
+                                    style: GoogleFonts.playfairDisplay(
+                                      fontSize: 12,
+                                      color: Colors.white,
+                                      fontWeight: FontWeight.w700,
+                                    ),
+                                    textAlign: TextAlign.center,
+                                  ),
+                                ),
+                              ).animate().scale(
+                                    begin: const Offset(0.5, 0.5),
+                                    end: const Offset(1.0, 1.0),
+                                    duration: 600.ms,
+                                    curve: Curves.elasticOut,
+                                  ),
+                            ),
+
+                            const SizedBox(height: 20),
+
+                            // Brand name
+                            RichText(
+                              text: TextSpan(
+                                style: GoogleFonts.playfairDisplay(
+                                  fontSize: 32,
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.w700,
+                                  letterSpacing: 1,
+                                ),
+                                children: const [
+                                  TextSpan(text: 'Halong'),
+                                  TextSpan(
+                                    text: '24h',
+                                    style: TextStyle(color: AppColors.gold),
                                   ),
                                 ],
                               ),
-                              child: Image.asset(
-                                'assets/images/logohalong24h.png',
-                                fit: BoxFit.contain,
-                                errorBuilder: (_, __, ___) => Text(
-                                  'HALONG24h',
-                                  style: GoogleFonts.playfairDisplay(
-                                    fontSize: 12,
-                                    color: Colors.white,
-                                    fontWeight: FontWeight.w700,
-                                  ),
-                                  textAlign: TextAlign.center,
-                                ),
-                              ),
-                            ).animate().scale(
-                                  begin: const Offset(0.5, 0.5),
-                                  end: const Offset(1.0, 1.0),
-                                  duration: 600.ms,
-                                  curve: Curves.elasticOut,
-                                ),
-                          ),
+                            )
+                                .animate(delay: 200.ms)
+                                .fadeIn(duration: 500.ms)
+                                .slideY(begin: 0.3, end: 0),
 
-                          const SizedBox(height: 20),
+                            const SizedBox(height: 8),
 
-                          // Brand name
-                          RichText(
-                            text: TextSpan(
-                              style: GoogleFonts.playfairDisplay(
-                                fontSize: 32,
-                                color: Colors.white,
-                                fontWeight: FontWeight.w700,
-                                letterSpacing: 1,
+                            Text(
+                              'Hệ thống quản lý lưu trú Hạ Long',
+                              style: GoogleFonts.beVietnamPro(
+                                fontSize: 13,
+                                color: Colors.white.withValues(alpha: 0.6),
+                                letterSpacing: 0.3,
                               ),
-                              children: const [
-                                TextSpan(text: 'Halong'),
-                                TextSpan(
-                                  text: '24h',
-                                  style: TextStyle(color: AppColors.gold),
+                            ).animate(delay: 350.ms).fadeIn(duration: 500.ms),
+                          ],
+                        ),
+                      ),
+
+                      // ── Form card ─────────────────────────────────
+                      Expanded(
+                        flex: 7,
+                        child: AnimatedBuilder(
+                          animation: _shakeCtrl,
+                          builder: (context, child) {
+                            final offset = _shakeCtrl.isAnimating
+                                ? 8 *
+                                    (1 - _shakeCtrl.value) *
+                                    ((_shakeCtrl.value * 10).floor() % 2 == 0
+                                        ? 1
+                                        : -1)
+                                : 0.0;
+                            return Transform.translate(
+                              offset: Offset(offset, 0),
+                              child: child,
+                            );
+                          },
+                          child: Container(
+                            width: double.infinity,
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: const BorderRadius.only(
+                                topLeft: Radius.circular(32),
+                                topRight: Radius.circular(32),
+                              ),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withValues(alpha: 0.2),
+                                  blurRadius: 40,
+                                  offset: const Offset(0, -8),
                                 ),
                               ],
                             ),
-                          )
-                              .animate(delay: 200.ms)
-                              .fadeIn(duration: 500.ms)
-                              .slideY(begin: 0.3, end: 0),
-
-                          const SizedBox(height: 8),
-
-                          Text(
-                            'Hệ thống quản lý lưu trú Hạ Long',
-                            style: GoogleFonts.beVietnamPro(
-                              fontSize: 13,
-                              color: Colors.white.withValues(alpha: 0.6),
-                              letterSpacing: 0.3,
-                            ),
-                          )
-                              .animate(delay: 350.ms)
-                              .fadeIn(duration: 500.ms),
-                        ],
-                      ),
-                    ),
-
-                    // ── Form card ─────────────────────────────────
-                    Expanded(
-                      flex: 7,
-                      child: AnimatedBuilder(
-                        animation: _shakeCtrl,
-                        builder: (context, child) {
-                          final offset = _shakeCtrl.isAnimating
-                              ? 8 *
-                                  (1 - _shakeCtrl.value) *
-                                  ((_shakeCtrl.value * 10).floor() % 2 == 0
-                                      ? 1
-                                      : -1)
-                              : 0.0;
-                          return Transform.translate(
-                            offset: Offset(offset, 0),
-                            child: child,
-                          );
-                        },
-                        child: Container(
-                          width: double.infinity,
-                          decoration: BoxDecoration(
-                            color: Colors.white,
-                            borderRadius: const BorderRadius.only(
-                              topLeft: Radius.circular(32),
-                              topRight: Radius.circular(32),
-                            ),
-                            boxShadow: [
-                              BoxShadow(
-                                color: Colors.black.withValues(alpha: 0.2),
-                                blurRadius: 40,
-                                offset: const Offset(0, -8),
-                              ),
-                            ],
-                          ),
-                          child: SingleChildScrollView(
-                            padding: const EdgeInsets.fromLTRB(28, 32, 28, 24),
-                            child: Form(
-                              key: _formKey,
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  // Handle indicator
-                                  Center(
-                                    child: Container(
-                                      width: 40,
-                                      height: 4,
-                                      margin:
-                                          const EdgeInsets.only(bottom: 24),
-                                      decoration: BoxDecoration(
-                                        color: AppColors.border,
-                                        borderRadius:
-                                            BorderRadius.circular(2),
-                                      ),
-                                    ),
-                                  ),
-
-                                  Text(
-                                    'Chào mừng trở lại',
-                                    style: GoogleFonts.beVietnamPro(
-                                      fontSize: 22,
-                                      fontWeight: FontWeight.w700,
-                                      color: AppColors.navy,
-                                    ),
-                                  ).animate(delay: 400.ms).fadeIn(
-                                      duration: 400.ms).slideX(
-                                      begin: -0.1, end: 0),
-
-                                  const SizedBox(height: 4),
-
-                                  Text(
-                                    'Đăng nhập để tiếp tục quản lý',
-                                    style: GoogleFonts.beVietnamPro(
-                                      fontSize: 13,
-                                      color: AppColors.slate,
-                                    ),
-                                  ).animate(delay: 450.ms).fadeIn(
-                                      duration: 400.ms),
-
-                                  const SizedBox(height: 28),
-
-                                  // Phone / Email field
-                                  _AnimatedField(
-                                    delay: 500.ms,
-                                    child: TextFormField(
-                                      controller: _phoneCtrl,
-                                      keyboardType: TextInputType.text,
-                                      textInputAction: TextInputAction.next,
-                                      style: GoogleFonts.beVietnamPro(
-                                          fontSize: 15,
-                                          color: AppColors.ink),
-                                      decoration: _inputDecor(
-                                        label: 'Email / Số điện thoại',
-                                        hint: 'manager@halong24h.vn',
-                                        icon: Icons.person_outline_rounded,
-                                      ),
-                                      validator: (v) =>
-                                          v?.trim().isEmpty == true
-                                              ? 'Nhập tài khoản'
-                                              : null,
-                                    ),
-                                  ),
-
-                                  const SizedBox(height: 16),
-
-                                  // Password field
-                                  _AnimatedField(
-                                    delay: 580.ms,
-                                    child: TextFormField(
-                                      controller: _passwordCtrl,
-                                      obscureText: _obscurePassword,
-                                      textInputAction: TextInputAction.done,
-                                      onFieldSubmitted: (_) => _login(),
-                                      style: GoogleFonts.beVietnamPro(
-                                          fontSize: 15,
-                                          color: AppColors.ink),
-                                      decoration: _inputDecor(
-                                        label: 'Mật khẩu',
-                                        hint: '••••••••',
-                                        icon: Icons.lock_outline_rounded,
-                                        suffixIcon: IconButton(
-                                          icon: Icon(
-                                            _obscurePassword
-                                                ? Icons.visibility_outlined
-                                                : Icons
-                                                    .visibility_off_outlined,
-                                            color: AppColors.slate,
-                                            size: 20,
-                                          ),
-                                          onPressed: () => setState(() =>
-                                              _obscurePassword =
-                                                  !_obscurePassword),
+                            child: SingleChildScrollView(
+                              padding: EdgeInsets.fromLTRB(
+                                  28, 32, 28, 24 + bottomInset),
+                              child: Form(
+                                key: _formKey,
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    // Handle indicator
+                                    Center(
+                                      child: Container(
+                                        width: 40,
+                                        height: 4,
+                                        margin:
+                                            const EdgeInsets.only(bottom: 24),
+                                        decoration: BoxDecoration(
+                                          color: AppColors.border,
+                                          borderRadius:
+                                              BorderRadius.circular(2),
                                         ),
                                       ),
-                                      validator: (v) =>
-                                          v?.isEmpty == true
-                                              ? 'Nhập mật khẩu'
-                                              : null,
                                     ),
-                                  ),
 
-                                  // Forgot password
-                                  Align(
-                                    alignment: Alignment.centerRight,
-                                    child: TextButton(
-                                      onPressed: () =>
-                                          context.go('/forgot-password'),
-                                      style: TextButton.styleFrom(
-                                        padding: const EdgeInsets.symmetric(
-                                            vertical: 8, horizontal: 4),
+                                    Text(
+                                      'Chào mừng trở lại',
+                                      style: GoogleFonts.beVietnamPro(
+                                        fontSize: 22,
+                                        fontWeight: FontWeight.w700,
+                                        color: AppColors.navy,
                                       ),
-                                      child: Text(
-                                        'Quên mật khẩu?',
+                                    )
+                                        .animate(delay: 400.ms)
+                                        .fadeIn(duration: 400.ms)
+                                        .slideX(begin: -0.1, end: 0),
+
+                                    const SizedBox(height: 4),
+
+                                    Text(
+                                      'Đăng nhập để tiếp tục quản lý',
+                                      style: GoogleFonts.beVietnamPro(
+                                        fontSize: 13,
+                                        color: AppColors.slate,
+                                      ),
+                                    )
+                                        .animate(delay: 450.ms)
+                                        .fadeIn(duration: 400.ms),
+
+                                    const SizedBox(height: 28),
+
+                                    // Email / Phone field
+                                    _AnimatedField(
+                                      delay: 500.ms,
+                                      child: TextFormField(
+                                        controller: _emailCtrl,
+                                        keyboardType: TextInputType.text,
+                                        textInputAction: TextInputAction.next,
                                         style: GoogleFonts.beVietnamPro(
-                                          fontSize: 13,
-                                          color: AppColors.oceanMid,
-                                          fontWeight: FontWeight.w500,
+                                            fontSize: 15, color: AppColors.ink),
+                                        decoration: _inputDecor(
+                                          label: 'Email / Số điện thoại',
+                                          hint:
+                                              'admin@halong24h.vn hoặc 0xxxxxxxxx',
+                                          icon: Icons.email_outlined,
                                         ),
+                                        validator: (v) => v?.trim().isEmpty ==
+                                                true
+                                            ? 'Nhập email hoặc số điện thoại'
+                                            : null,
                                       ),
                                     ),
-                                  ),
 
-                                  const SizedBox(height: 4),
+                                    const SizedBox(height: 16),
 
-                                  // Login button
-                                  _LoginButton(
-                                    isLoading: _isLoading,
-                                    onTap: _login,
-                                  ).animate(delay: 650.ms).fadeIn(
-                                      duration: 400.ms).slideY(
-                                      begin: 0.2, end: 0),
-
-                                  const SizedBox(height: 24),
-
-                                  // Divider
-                                  Row(
-                                    children: [
-                                      const Expanded(
-                                          child: Divider(
-                                              color: AppColors.border,
-                                              thickness: 1)),
-                                      Padding(
-                                        padding: const EdgeInsets.symmetric(
-                                            horizontal: 16),
-                                        child: Text(
-                                          'hoặc',
-                                          style: GoogleFonts.beVietnamPro(
-                                            fontSize: 12,
-                                            color: AppColors.slate,
+                                    // Password field
+                                    _AnimatedField(
+                                      delay: 580.ms,
+                                      child: TextFormField(
+                                        controller: _passwordCtrl,
+                                        obscureText: _obscurePassword,
+                                        textInputAction: TextInputAction.done,
+                                        onFieldSubmitted: (_) => _login(),
+                                        style: GoogleFonts.beVietnamPro(
+                                            fontSize: 15, color: AppColors.ink),
+                                        decoration: _inputDecor(
+                                          label: 'Mật khẩu',
+                                          hint: '••••••••',
+                                          icon: Icons.lock_outline_rounded,
+                                          suffixIcon: IconButton(
+                                            icon: Icon(
+                                              _obscurePassword
+                                                  ? Icons.visibility_outlined
+                                                  : Icons
+                                                      .visibility_off_outlined,
+                                              color: AppColors.slate,
+                                              size: 20,
+                                            ),
+                                            onPressed: () => setState(() =>
+                                                _obscurePassword =
+                                                    !_obscurePassword),
                                           ),
                                         ),
+                                        validator: (v) => v?.isEmpty == true
+                                            ? 'Nhập mật khẩu'
+                                            : null,
                                       ),
-                                      const Expanded(
-                                          child: Divider(
-                                              color: AppColors.border,
-                                              thickness: 1)),
-                                    ],
-                                  ).animate(delay: 700.ms).fadeIn(
-                                      duration: 400.ms),
+                                    ),
 
-                                  const SizedBox(height: 20),
-
-                                  // Google button
-                                  _GoogleButton(
-                                    isLoading: _isLoading,
-                                    onTap: _loginWithGoogle,
-                                  ).animate(delay: 750.ms).fadeIn(
-                                      duration: 400.ms).slideY(
-                                      begin: 0.1, end: 0),
-
-                                  const SizedBox(height: 28),
-
-                                  // Register link
-                                  Center(
-                                    child: Row(
-                                      mainAxisSize: MainAxisSize.min,
+                                    // Remember me + Forgot password
+                                    Row(
+                                      mainAxisAlignment:
+                                          MainAxisAlignment.spaceBetween,
                                       children: [
-                                        Text(
-                                          'Chưa có tài khoản? ',
-                                          style: GoogleFonts.beVietnamPro(
-                                            fontSize: 13,
-                                            color: AppColors.slate,
+                                        // Remember me checkbox
+                                        InkWell(
+                                          onTap: () => setState(
+                                              () => _rememberMe = !_rememberMe),
+                                          borderRadius:
+                                              BorderRadius.circular(6),
+                                          child: Padding(
+                                            padding: const EdgeInsets.symmetric(
+                                                vertical: 8, horizontal: 4),
+                                            child: Row(
+                                              mainAxisSize: MainAxisSize.min,
+                                              children: [
+                                                SizedBox(
+                                                  width: 20,
+                                                  height: 20,
+                                                  child: Checkbox(
+                                                    value: _rememberMe,
+                                                    onChanged: (v) => setState(
+                                                        () => _rememberMe =
+                                                            v ?? false),
+                                                    activeColor:
+                                                        AppColors.ocean,
+                                                    shape:
+                                                        RoundedRectangleBorder(
+                                                      borderRadius:
+                                                          BorderRadius.circular(
+                                                              4),
+                                                    ),
+                                                    materialTapTargetSize:
+                                                        MaterialTapTargetSize
+                                                            .shrinkWrap,
+                                                    visualDensity:
+                                                        VisualDensity.compact,
+                                                  ),
+                                                ),
+                                                const SizedBox(width: 8),
+                                                Text(
+                                                  'Ghi nhớ tài khoản',
+                                                  style:
+                                                      GoogleFonts.beVietnamPro(
+                                                    fontSize: 13,
+                                                    color: AppColors.slate,
+                                                    fontWeight: FontWeight.w500,
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
                                           ),
                                         ),
-                                        GestureDetector(
-                                          onTap: () =>
-                                              context.go('/register'),
+                                        // Forgot password
+                                        TextButton(
+                                          onPressed: () =>
+                                              context.go('/forgot-password'),
+                                          style: TextButton.styleFrom(
+                                            padding: const EdgeInsets.symmetric(
+                                                vertical: 8, horizontal: 4),
+                                          ),
                                           child: Text(
-                                            'Đăng ký ngay',
+                                            'Quên mật khẩu?',
                                             style: GoogleFonts.beVietnamPro(
                                               fontSize: 13,
-                                              fontWeight: FontWeight.w700,
                                               color: AppColors.oceanMid,
+                                              fontWeight: FontWeight.w500,
                                             ),
                                           ),
                                         ),
                                       ],
                                     ),
-                                  ).animate(delay: 800.ms).fadeIn(
-                                      duration: 400.ms),
-                                ],
+
+                                    const SizedBox(height: 4),
+
+                                    // Login button
+                                    _LoginButton(
+                                      isLoading: _isLoading,
+                                      onTap: _login,
+                                    )
+                                        .animate(delay: 650.ms)
+                                        .fadeIn(duration: 400.ms)
+                                        .slideY(begin: 0.2, end: 0),
+
+                                    const SizedBox(height: 24),
+
+                                    // Divider
+                                    Row(
+                                      children: [
+                                        const Expanded(
+                                            child: Divider(
+                                                color: AppColors.border,
+                                                thickness: 1)),
+                                        Padding(
+                                          padding: const EdgeInsets.symmetric(
+                                              horizontal: 16),
+                                          child: Text(
+                                            'hoặc',
+                                            style: GoogleFonts.beVietnamPro(
+                                              fontSize: 12,
+                                              color: AppColors.slate,
+                                            ),
+                                          ),
+                                        ),
+                                        const Expanded(
+                                            child: Divider(
+                                                color: AppColors.border,
+                                                thickness: 1)),
+                                      ],
+                                    )
+                                        .animate(delay: 700.ms)
+                                        .fadeIn(duration: 400.ms),
+
+                                    const SizedBox(height: 20),
+
+                                    // Google button
+                                    _GoogleButton(
+                                      isLoading: _isLoading,
+                                      onTap: _loginWithGoogle,
+                                    )
+                                        .animate(delay: 750.ms)
+                                        .fadeIn(duration: 400.ms)
+                                        .slideY(begin: 0.1, end: 0),
+
+                                    const SizedBox(height: 28),
+
+                                    // Register link
+                                    Center(
+                                      child: Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          Text(
+                                            'Chưa có tài khoản? ',
+                                            style: GoogleFonts.beVietnamPro(
+                                              fontSize: 13,
+                                              color: AppColors.slate,
+                                            ),
+                                          ),
+                                          GestureDetector(
+                                            onTap: () =>
+                                                context.go('/register'),
+                                            child: Text(
+                                              'Đăng ký ngay',
+                                              style: GoogleFonts.beVietnamPro(
+                                                fontSize: 13,
+                                                fontWeight: FontWeight.w700,
+                                                color: AppColors.oceanMid,
+                                              ),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    )
+                                        .animate(delay: 800.ms)
+                                        .fadeIn(duration: 400.ms),
+                                  ],
+                                ),
                               ),
                             ),
-                          ),
-                        ).animate(delay: 300.ms).slideY(
-                            begin: 0.15, end: 0, curve: Curves.easeOutCubic,
-                            duration: 600.ms),
+                          ).animate(delay: 300.ms).slideY(
+                              begin: 0.15,
+                              end: 0,
+                              curve: Curves.easeOutCubic,
+                              duration: 600.ms),
+                        ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
               ),
             ),
           ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 
@@ -529,8 +661,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
       suffixIcon: suffixIcon,
       filled: true,
       fillColor: AppColors.background,
-      contentPadding:
-          const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
       border: OutlineInputBorder(
         borderRadius: BorderRadius.circular(14),
         borderSide: const BorderSide(color: AppColors.border),
@@ -567,16 +698,15 @@ class _WavePainter extends CustomPainter {
     final t = progress * math.pi * 2;
 
     // Large circle top-right — tần số 1 (1 vòng đầy đủ)
-    paint.color = const Color(0x0DFFFFFF);
+    paint.color = Colors.white.withValues(alpha: 0.05);
     canvas.drawCircle(
-      Offset(size.width + 40 + math.sin(t) * 20,
-          -60 + math.cos(t) * 30),
+      Offset(size.width + 40 + math.sin(t) * 20, -60 + math.cos(t) * 30),
       180,
       paint,
     );
 
     // Medium circle bottom-left — tần số 1, phase +π (ngược chiều)
-    paint.color = const Color(0x08FFFFFF);
+    paint.color = Colors.white.withValues(alpha: 0.03);
     canvas.drawCircle(
       Offset(-60 + math.sin(t + math.pi) * 40,
           size.height * 0.35 + math.cos(t + math.pi) * 20),
@@ -585,7 +715,7 @@ class _WavePainter extends CustomPainter {
     );
 
     // Small teal accent — tần số 2 (2 vòng, nhanh hơn)
-    paint.color = const Color(0x1200B4D8);
+    paint.color = AppColors.jadeBright.withValues(alpha: 0.07);
     canvas.drawCircle(
       Offset(size.width * 0.7 + math.sin(t * 2) * 18,
           size.height * 0.25 + math.cos(t * 2) * 14),
@@ -594,7 +724,7 @@ class _WavePainter extends CustomPainter {
     );
 
     // Gold accent dot — tần số 1, phase +π/2
-    paint.color = const Color(0x15C9A84C);
+    paint.color = AppColors.gold500.withValues(alpha: 0.08);
     canvas.drawCircle(
       Offset(size.width * 0.15 + math.cos(t + math.pi / 2) * 10,
           size.height * 0.2 + math.sin(t + math.pi / 2) * 10),

@@ -3,11 +3,17 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
+import '../../../core/theme/app_color_scheme.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import '../../../shared/widgets/loading_widget.dart';
 import '../../rooms/controllers/room_controller.dart';
+import '../../auth/controllers/auth_controller.dart';
 import '../controllers/property_controller.dart';
+
+// gradient.brandHero stop "jade-mid" theo spec section 3.7
+const _jadeMidLight = Color(0xFF1B7E94);
 
 class PropertyManageScreen extends ConsumerStatefulWidget {
   final String homestayId;
@@ -18,17 +24,16 @@ class PropertyManageScreen extends ConsumerStatefulWidget {
       _PropertyManageScreenState();
 }
 
-class _PropertyManageScreenState
-    extends ConsumerState<PropertyManageScreen> {
+class _PropertyManageScreenState extends ConsumerState<PropertyManageScreen> {
   bool _togglingActive = false;
 
   @override
   Widget build(BuildContext context) {
-    final homestayAsync =
-        ref.watch(homestayDetailProvider(widget.homestayId));
-    final roomsAsync = ref.watch(roomListProvider(widget.homestayId));
+    final colors = context.colors;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final roomAsync = ref.watch(roomDetailProvider(widget.homestayId));
 
-    return homestayAsync.when(
+    return roomAsync.when(
       loading: () => Scaffold(
         appBar: AppBar(),
         body: const LoadingWidget(),
@@ -38,23 +43,18 @@ class _PropertyManageScreenState
         body: ErrorStateWidget(
           message: e.toString().replaceAll('Exception: ', ''),
           onRetry: () => ref.invalidate(
-            homestayDetailProvider(widget.homestayId),
+            roomDetailProvider(widget.homestayId),
           ),
         ),
       ),
-      data: (homestay) {
-        final roomCount = roomsAsync.whenOrNull(
-              data: (rooms) => rooms.length,
-            ) ??
-            homestay.roomCount ??
-            0;
-
+      data: (room) {
         return Scaffold(
-          backgroundColor: AppColors.background,
+          backgroundColor: colors.bgCanvas,
           body: Column(
             children: [
               // ── Gradient Header ──────────────────────────
               _GradientHeader(
+                coverImageUrl: room.coverImageUrl,
                 onBack: () => context.pop(),
                 onEdit: () => context.push(
                   '/properties/${widget.homestayId}/info',
@@ -69,26 +69,37 @@ class _PropertyManageScreenState
                     // ── Name + subtitle ─────────────────────
                     Padding(
                       padding: const EdgeInsets.fromLTRB(
-                        20, 20, 20, 0,
+                        20,
+                        20,
+                        20,
+                        0,
                       ),
                       child: Column(
-                        crossAxisAlignment:
-                            CrossAxisAlignment.start,
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            homestay.name,
+                            '${room.code} · ${room.name}',
                             style: GoogleFonts.beVietnamPro(
                               fontSize: 22,
                               fontWeight: FontWeight.w700,
-                              color: AppColors.navy,
+                              color: colors.textPrimary,
                             ),
                           ),
                           const SizedBox(height: 4),
                           Text(
-                            '$roomCount Phòng ngủ · ${homestay.address}',
+                            [
+                              room.bedrooms == 0
+                                  ? 'Studio'
+                                  : '${room.bedrooms}PN',
+                              '${room.bathrooms}WC',
+                              '${room.standardGuests} người',
+                              if (room.address != null &&
+                                  room.address!.isNotEmpty)
+                                room.address!,
+                            ].join(' · '),
                             style: GoogleFonts.beVietnamPro(
                               fontSize: 13,
-                              color: AppColors.muted,
+                              color: colors.textSecondary,
                             ),
                             maxLines: 2,
                             overflow: TextOverflow.ellipsis,
@@ -113,14 +124,14 @@ class _PropertyManageScreenState
                           vertical: 12,
                         ),
                         decoration: BoxDecoration(
-                          color: AppColors.surface,
+                          color: colors.bgSurface,
                           borderRadius: BorderRadius.circular(
                             AppRadius.lg,
                           ),
                           boxShadow: [
                             BoxShadow(
                               color: Colors.black
-                                  .withValues(alpha: 0.04),
+                                  .withValues(alpha: isDark ? 0.30 : 0.04),
                               blurRadius: 8,
                               offset: const Offset(0, 2),
                             ),
@@ -132,40 +143,36 @@ class _PropertyManageScreenState
                               width: 10,
                               height: 10,
                               decoration: BoxDecoration(
-                                color: homestay.isActive
-                                    ? AppColors.emerald
-                                    : AppColors.slate,
+                                color: room.isActive
+                                    ? colors.success
+                                    : colors.textTertiary,
                                 shape: BoxShape.circle,
                               ),
                             ),
                             const SizedBox(width: 10),
                             Expanded(
                               child: Text(
-                                homestay.isActive
-                                    ? 'Đang hoạt động'
-                                    : 'Tạm ngưng',
+                                room.isActive ? 'Đang hoạt động' : 'Tạm ngưng',
                                 style: GoogleFonts.beVietnamPro(
                                   fontSize: 14,
                                   fontWeight: FontWeight.w600,
-                                  color: AppColors.navy,
+                                  color: colors.textPrimary,
                                 ),
                               ),
                             ),
                             _togglingActive
-                                ? const SizedBox(
+                                ? SizedBox(
                                     width: 24,
                                     height: 24,
-                                    child:
-                                        CircularProgressIndicator(
+                                    child: CircularProgressIndicator(
                                       strokeWidth: 2,
-                                      color: AppColors.ocean,
+                                      color: colors.brand,
                                     ),
                                   )
                                 : Switch(
-                                    value: homestay.isActive,
-                                    activeTrackColor: AppColors.ocean,
-                                    onChanged: (val) =>
-                                        _toggleActive(val),
+                                    value: room.isActive,
+                                    activeTrackColor: colors.brand,
+                                    onChanged: (val) => _toggleActive(val),
                                   ),
                           ],
                         ),
@@ -181,14 +188,14 @@ class _PropertyManageScreenState
                       ),
                       child: Container(
                         decoration: BoxDecoration(
-                          color: AppColors.surface,
+                          color: colors.bgSurface,
                           borderRadius: BorderRadius.circular(
                             AppRadius.lg,
                           ),
                           boxShadow: [
                             BoxShadow(
                               color: Colors.black
-                                  .withValues(alpha: 0.04),
+                                  .withValues(alpha: isDark ? 0.30 : 0.04),
                               blurRadius: 8,
                               offset: const Offset(0, 2),
                             ),
@@ -267,130 +274,39 @@ class _PropertyManageScreenState
 
                     const SizedBox(height: 24),
 
-                    // ── Rooms preview ───────────────────────
-                    Padding(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 20,
-                      ),
-                      child: Text(
-                        'PHÒNG TRONG CĂN NÀY',
-                        style: GoogleFonts.beVietnamPro(
-                          fontSize: 11,
-                          fontWeight: FontWeight.w600,
-                          color: AppColors.muted,
-                          letterSpacing: 1.2,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 10),
-
-                    roomsAsync.when(
-                      loading: () => const Padding(
-                        padding: EdgeInsets.all(20),
-                        child: LoadingWidget(),
-                      ),
-                      error: (e, _) => Padding(
+                    // ── Delete button (ADMIN + OWNER only) ──
+                    if (ref.watch(currentUserProvider)?.canManageProperty ??
+                        false)
+                      Padding(
                         padding: const EdgeInsets.symmetric(
                           horizontal: 20,
                         ),
-                        child: ErrorStateWidget(
-                          message: e
-                              .toString()
-                              .replaceAll('Exception: ', ''),
-                          onRetry: () => ref.invalidate(
-                            roomListProvider(widget.homestayId),
+                        child: OutlinedButton.icon(
+                          onPressed: () => _deleteHomestay(context),
+                          icon: Icon(
+                            Icons.delete_outline_rounded,
+                            color: colors.error,
                           ),
-                        ),
-                      ),
-                      data: (rooms) {
-                        if (rooms.isEmpty) {
-                          return const Padding(
-                            padding: EdgeInsets.symmetric(
-                              horizontal: 20,
+                          label: Text(
+                            'Xoá căn này',
+                            style: GoogleFonts.beVietnamPro(
+                              fontWeight: FontWeight.w600,
+                              color: colors.error,
                             ),
-                            child: EmptyStateWidget(
-                              icon: Icons.apartment_outlined,
-                              message: 'Chưa có phòng nào',
+                          ),
+                          style: OutlinedButton.styleFrom(
+                            side: BorderSide(
+                              color: colors.error,
                             ),
-                          );
-                        }
-                        return Padding(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 20,
-                          ),
-                          child: Column(
-                            children: [
-                              for (final room in rooms.take(5))
-                                Padding(
-                                  padding:
-                                      const EdgeInsets.only(
-                                    bottom: 8,
-                                  ),
-                                  child: _RoomPreviewCard(
-                                    name: room.name,
-                                    code: room.code,
-                                    isActive: room.isActive,
-                                    price: room.priceDisplay,
-                                    onTap: () => context.push(
-                                      '/rooms/${room.id}',
-                                    ),
-                                  ),
-                                ),
-                              if (rooms.length > 5)
-                                TextButton(
-                                  onPressed: () => context.push(
-                                    '/rooms?homestayId=${widget.homestayId}',
-                                  ),
-                                  child: Text(
-                                    'Xem tất cả ${rooms.length} phòng →',
-                                    style:
-                                        GoogleFonts.beVietnamPro(
-                                      fontSize: 13,
-                                      fontWeight: FontWeight.w600,
-                                      color: AppColors.ocean,
-                                    ),
-                                  ),
-                                ),
-                            ],
-                          ),
-                        );
-                      },
-                    ),
-
-                    const SizedBox(height: 24),
-
-                    // ── Delete button ───────────────────────
-                    Padding(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 20,
-                      ),
-                      child: OutlinedButton.icon(
-                        onPressed: () => _deleteHomestay(context),
-                        icon: const Icon(
-                          Icons.delete_outline_rounded,
-                          color: AppColors.coral,
-                        ),
-                        label: Text(
-                          'Xoá căn này',
-                          style: GoogleFonts.beVietnamPro(
-                            fontWeight: FontWeight.w600,
-                            color: AppColors.coral,
-                          ),
-                        ),
-                        style: OutlinedButton.styleFrom(
-                          side: const BorderSide(
-                            color: AppColors.coral,
-                          ),
-                          minimumSize:
-                              const Size(double.infinity, 48),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(
-                              AppRadius.lg,
+                            minimumSize: const Size(double.infinity, 48),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(
+                                AppRadius.lg,
+                              ),
                             ),
                           ),
                         ),
-                      ),
-                    ).animate(delay: 300.ms).fadeIn(duration: 300.ms),
+                      ).animate(delay: 300.ms).fadeIn(duration: 300.ms),
 
                     const SizedBox(height: 40),
                   ],
@@ -407,11 +323,11 @@ class _PropertyManageScreenState
     setState(() => _togglingActive = true);
     final ok = await ref
         .read(homestayActionsProvider.notifier)
-        .update(widget.homestayId, {'isActive': value});
+        .toggleActive(widget.homestayId, value);
     if (mounted) {
       setState(() => _togglingActive = false);
       if (ok) {
-        ref.invalidate(homestayDetailProvider(widget.homestayId));
+        ref.invalidate(roomDetailProvider(widget.homestayId));
       } else {
         AppSnackBar.error(context, 'Không thể cập nhật trạng thái');
       }
@@ -419,6 +335,7 @@ class _PropertyManageScreenState
   }
 
   Future<void> _deleteHomestay(BuildContext context) async {
+    final colors = context.colors;
     final ok = await showDialog<bool>(
       context: context,
       builder: (_) => AlertDialog(
@@ -439,7 +356,7 @@ class _PropertyManageScreenState
           ),
           FilledButton(
             style: FilledButton.styleFrom(
-              backgroundColor: AppColors.error,
+              backgroundColor: colors.error,
               foregroundColor: Colors.white,
             ),
             onPressed: () => Navigator.pop(context, true),
@@ -456,21 +373,27 @@ class _PropertyManageScreenState
     if (!context.mounted) return;
 
     if (result) {
+      ref.invalidate(roomListProvider);
       AppSnackBar.success(context, 'Đã xoá thành công');
       context.pop();
     } else {
-      AppSnackBar.error(context, 'Không thể xoá');
+      final error = ref.read(homestayActionsProvider);
+      final msg = error.hasError
+          ? error.error.toString().replaceAll('Exception: ', '')
+          : 'Không thể xoá';
+      AppSnackBar.error(context, msg);
     }
   }
-
 }
 
 // ─── Gradient Header ─────────────────────────────────────────────────────────
 class _GradientHeader extends StatelessWidget {
+  final String? coverImageUrl;
   final VoidCallback onBack;
   final VoidCallback onEdit;
 
   const _GradientHeader({
+    this.coverImageUrl,
     required this.onBack,
     required this.onEdit,
   });
@@ -478,99 +401,54 @@ class _GradientHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final topPadding = MediaQuery.of(context).padding.top;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final headerGradient = isDark
+        ? const [AppColors.darkBg, AppColors.darkBorder]
+        : const [AppColors.jade500, _jadeMidLight];
 
-    return Container(
-      width: double.infinity,
-      padding: EdgeInsets.only(top: topPadding),
-      decoration: const BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [AppColors.oceanDeep, AppColors.oceanMid],
+    return Stack(
+      children: [
+        // Background: cover image or gradient
+        Container(
+          width: double.infinity,
+          height: topPadding + 180,
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: headerGradient,
+            ),
+          ),
+          child: coverImageUrl != null
+              ? CachedNetworkImage(
+                  imageUrl: coverImageUrl!,
+                  fit: BoxFit.cover,
+                  memCacheWidth: 800,
+                  color: Colors.black.withValues(alpha: 0.3),
+                  colorBlendMode: BlendMode.darken,
+                )
+              : null,
         ),
-      ),
-      child: Column(
-        children: [
-          // ── Top bar (back + edit) ──────────────────────
-          Padding(
-            padding: const EdgeInsets.symmetric(
-              horizontal: 8,
-              vertical: 4,
-            ),
-            child: Row(
-              children: [
-                IconButton(
-                  icon: const Icon(
-                    Icons.arrow_back_rounded,
-                    color: Colors.white,
-                  ),
-                  onPressed: onBack,
-                ),
-                const Spacer(),
-                IconButton(
-                  icon: const Icon(
-                    Icons.edit_rounded,
-                    color: Colors.white,
-                  ),
-                  onPressed: onEdit,
-                ),
-              ],
-            ),
-          ),
-
-          // ── Icon ───────────────────────────────────────
-          Container(
-            width: 72,
-            height: 72,
-            decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.15),
-              borderRadius: BorderRadius.circular(AppRadius.lg),
-            ),
-            child: const Icon(
-              Icons.home_work_rounded,
-              color: Colors.white,
-              size: 36,
-            ),
-          ),
-
-          const SizedBox(height: 12),
-
-          // ── Dot indicators (decorative) ────────────────
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
+        // Top bar
+        Positioned(
+          top: topPadding,
+          left: 8,
+          right: 8,
+          child: Row(
             children: [
-              Container(
-                width: 20,
-                height: 8,
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(4),
-                ),
+              IconButton(
+                icon: const Icon(Icons.arrow_back_rounded, color: Colors.white),
+                onPressed: onBack,
               ),
-              const SizedBox(width: 6),
-              Container(
-                width: 8,
-                height: 8,
-                decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.4),
-                  borderRadius: BorderRadius.circular(4),
-                ),
-              ),
-              const SizedBox(width: 6),
-              Container(
-                width: 8,
-                height: 8,
-                decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.4),
-                  borderRadius: BorderRadius.circular(4),
-                ),
+              const Spacer(),
+              IconButton(
+                icon: const Icon(Icons.edit_rounded, color: Colors.white),
+                onPressed: onEdit,
               ),
             ],
           ),
-
-          const SizedBox(height: 16),
-        ],
-      ),
+        ),
+      ],
     );
   }
 }
@@ -591,6 +469,7 @@ class _MenuItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.colors;
     return InkWell(
       onTap: onTap,
       child: Padding(
@@ -600,7 +479,7 @@ class _MenuItem extends StatelessWidget {
         ),
         child: Row(
           children: [
-            Icon(icon, color: AppColors.ocean, size: 22),
+            Icon(icon, color: colors.brand, size: 22),
             const SizedBox(width: 14),
             Expanded(
               child: Text(
@@ -608,7 +487,7 @@ class _MenuItem extends StatelessWidget {
                 style: GoogleFonts.beVietnamPro(
                   fontSize: 14,
                   fontWeight: FontWeight.w500,
-                  color: AppColors.navy,
+                  color: colors.textPrimary,
                 ),
               ),
             ),
@@ -619,13 +498,13 @@ class _MenuItem extends StatelessWidget {
                   trailing!,
                   style: GoogleFonts.beVietnamPro(
                     fontSize: 13,
-                    color: AppColors.muted,
+                    color: colors.textSecondary,
                   ),
                 ),
               ),
-            const Icon(
+            Icon(
               Icons.chevron_right_rounded,
-              color: AppColors.slate,
+              color: colors.textTertiary,
               size: 20,
             ),
           ],
@@ -641,107 +520,11 @@ class _MenuDivider extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const Divider(
+    final colors = context.colors;
+    return Divider(
       height: 1,
-      color: AppColors.border,
+      color: colors.borderDefault,
       indent: 52,
-    );
-  }
-}
-
-// ─── Room Preview Card ───────────────────────────────────────────────────────
-class _RoomPreviewCard extends StatelessWidget {
-  final String name;
-  final String code;
-  final bool isActive;
-  final String price;
-  final VoidCallback onTap;
-
-  const _RoomPreviewCard({
-    required this.name,
-    required this.code,
-    required this.isActive,
-    required this.price,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Material(
-      color: AppColors.surface,
-      borderRadius: BorderRadius.circular(AppRadius.md),
-      elevation: 1,
-      shadowColor: Colors.black.withValues(alpha: 0.04),
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(AppRadius.md),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(
-            horizontal: 14,
-            vertical: 12,
-          ),
-          child: Row(
-            children: [
-              Container(
-                width: 40,
-                height: 40,
-                decoration: BoxDecoration(
-                  color: AppColors.oceanLight,
-                  borderRadius:
-                      BorderRadius.circular(AppRadius.sm),
-                ),
-                child: const Icon(
-                  Icons.bed_outlined,
-                  color: AppColors.ocean,
-                  size: 20,
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      '$code · $name',
-                      style: GoogleFonts.beVietnamPro(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w600,
-                        color: AppColors.navy,
-                      ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      price,
-                      style: GoogleFonts.beVietnamPro(
-                        fontSize: 12,
-                        color: AppColors.muted,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              Container(
-                width: 8,
-                height: 8,
-                decoration: BoxDecoration(
-                  color: isActive
-                      ? AppColors.emerald
-                      : AppColors.slate,
-                  shape: BoxShape.circle,
-                ),
-              ),
-              const SizedBox(width: 8),
-              const Icon(
-                Icons.chevron_right_rounded,
-                color: AppColors.slate,
-                size: 18,
-              ),
-            ],
-          ),
-        ),
-      ),
     );
   }
 }

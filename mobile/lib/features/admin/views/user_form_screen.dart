@@ -1,11 +1,14 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
+import '../../../core/theme/app_color_scheme.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../core/utils/helpers.dart';
+import '../../../core/utils/phone_input.dart';
 import '../../../shared/widgets/loading_widget.dart';
 import '../controllers/user_controller.dart';
 
@@ -130,9 +133,10 @@ class _UserFormScreenState extends ConsumerState<UserFormScreen> {
 
   // ── Detail view (xem thông tin + gán vai trò) ──────────────────────────────
   Widget _buildDetailView() {
+    final colors = context.colors;
     final roleColor = AppHelpers.roleColor(_role);
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: colors.bgCanvas,
       body: CustomScrollView(
         slivers: [
           // ── Gradient header với avatar ──────────────────
@@ -160,8 +164,7 @@ class _UserFormScreenState extends ConsumerState<UserFormScreen> {
                       _InfoRow(
                         icon: Icons.phone_outlined,
                         label: 'Số điện thoại',
-                        value:
-                            _userPhone.isNotEmpty ? _userPhone : '-',
+                        value: _userPhone.isNotEmpty ? _userPhone : '-',
                       ),
                       if (_userEmail.isNotEmpty) ...[
                         const _Divider(),
@@ -186,7 +189,7 @@ class _UserFormScreenState extends ConsumerState<UserFormScreen> {
                     'Chỉ có thể gán vai trò Sale hoặc Chủ nhà',
                     style: GoogleFonts.beVietnamPro(
                       fontSize: 12,
-                      color: AppColors.muted,
+                      color: colors.textSecondary,
                     ),
                   ),
                   const SizedBox(height: AppSpacing.md),
@@ -196,7 +199,7 @@ class _UserFormScreenState extends ConsumerState<UserFormScreen> {
                         label: 'Sale',
                         value: 2,
                         icon: Icons.headset_mic_outlined,
-                        color: AppColors.ocean,
+                        color: colors.brand,
                         selected: _role == 2,
                         onTap: () => setState(() => _role = 2),
                       ),
@@ -205,14 +208,12 @@ class _UserFormScreenState extends ConsumerState<UserFormScreen> {
                         label: 'Chủ nhà',
                         value: 1,
                         icon: Icons.home_outlined,
-                        color: AppColors.amber,
+                        color: colors.warning,
                         selected: _role == 1,
                         onTap: () => setState(() => _role = 1),
                       ),
                     ],
-                  )
-                      .animate(delay: 100.ms)
-                      .fadeIn(duration: 300.ms),
+                  ).animate(delay: 100.ms).fadeIn(duration: 300.ms),
 
                   const SizedBox(height: AppSpacing.xl),
 
@@ -232,15 +233,14 @@ class _UserFormScreenState extends ConsumerState<UserFormScreen> {
                               decoration: BoxDecoration(
                                 shape: BoxShape.circle,
                                 color: _isActive
-                                    ? AppColors.emerald
-                                    : AppColors.slate,
+                                    ? colors.success
+                                    : colors.textTertiary,
                               ),
                             ),
                             const SizedBox(width: 10),
                             Expanded(
                               child: Column(
-                                crossAxisAlignment:
-                                    CrossAxisAlignment.start,
+                                crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
                                   Text(
                                     _isActive
@@ -249,7 +249,7 @@ class _UserFormScreenState extends ConsumerState<UserFormScreen> {
                                     style: GoogleFonts.beVietnamPro(
                                       fontWeight: FontWeight.w600,
                                       fontSize: 14,
-                                      color: AppColors.navy,
+                                      color: colors.textPrimary,
                                     ),
                                   ),
                                   Text(
@@ -258,7 +258,7 @@ class _UserFormScreenState extends ConsumerState<UserFormScreen> {
                                         : 'Nhân viên không thể đăng nhập',
                                     style: GoogleFonts.beVietnamPro(
                                       fontSize: 12,
-                                      color: AppColors.muted,
+                                      color: colors.textSecondary,
                                     ),
                                   ),
                                 ],
@@ -266,17 +266,14 @@ class _UserFormScreenState extends ConsumerState<UserFormScreen> {
                             ),
                             Switch(
                               value: _isActive,
-                              activeTrackColor: AppColors.emerald,
-                              onChanged: (v) =>
-                                  setState(() => _isActive = v),
+                              activeTrackColor: colors.success,
+                              onChanged: (v) => setState(() => _isActive = v),
                             ),
                           ],
                         ),
                       ),
                     ],
-                  )
-                      .animate(delay: 200.ms)
-                      .fadeIn(duration: 300.ms),
+                  ).animate(delay: 200.ms).fadeIn(duration: 300.ms),
 
                   const SizedBox(height: AppSpacing.xl),
 
@@ -303,7 +300,7 @@ class _UserFormScreenState extends ConsumerState<UserFormScreen> {
         gradient: LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
-          colors: [AppColors.oceanDeep, AppColors.oceanMid],
+          colors: [AppColors.jade900, AppColors.jade300],
         ),
       ),
       child: Column(
@@ -354,9 +351,7 @@ class _UserFormScreenState extends ConsumerState<UserFormScreen> {
             ),
             child: Center(
               child: Text(
-                _userName.isNotEmpty
-                    ? _userName[0].toUpperCase()
-                    : '?',
+                _userName.isNotEmpty ? _userName[0].toUpperCase() : '?',
                 style: GoogleFonts.beVietnamPro(
                   color: Colors.white,
                   fontWeight: FontWeight.w800,
@@ -377,13 +372,11 @@ class _UserFormScreenState extends ConsumerState<UserFormScreen> {
           const SizedBox(height: 6),
           // Role badge
           Container(
-            padding: const EdgeInsets.symmetric(
-                horizontal: 14, vertical: 4),
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
             decoration: BoxDecoration(
               color: Colors.white.withValues(alpha: 0.15),
               borderRadius: BorderRadius.circular(20),
-              border: Border.all(
-                  color: Colors.white.withValues(alpha: 0.3)),
+              border: Border.all(color: Colors.white.withValues(alpha: 0.3)),
             ),
             child: Text(
               AppHelpers.roleLabel(_role),
@@ -402,8 +395,9 @@ class _UserFormScreenState extends ConsumerState<UserFormScreen> {
 
   // ── Create view (tạo nhân viên mới) ───────────────────────────────────────
   Widget _buildCreateView() {
+    final colors = context.colors;
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: colors.bgCanvas,
       appBar: AppBar(
         title: Text(
           'Thêm nhân viên',
@@ -432,12 +426,12 @@ class _UserFormScreenState extends ConsumerState<UserFormScreen> {
                   _FormField(
                     controller: _phoneCtrl,
                     label: 'Số điện thoại *',
+                    hintText: '0xxxxxxxxx (10 số)',
                     icon: Icons.phone_outlined,
                     keyboardType: TextInputType.phone,
                     textInputAction: TextInputAction.next,
-                    validator: (v) => v?.trim().isEmpty == true
-                        ? 'Nhập số điện thoại'
-                        : null,
+                    inputFormatters: PhoneInput.formatters,
+                    validator: PhoneInput.validate,
                   ),
                   const _Divider(),
                   _FormField(
@@ -450,8 +444,8 @@ class _UserFormScreenState extends ConsumerState<UserFormScreen> {
                       icon: Icon(_obscurePassword
                           ? Icons.visibility_outlined
                           : Icons.visibility_off_outlined),
-                      onPressed: () => setState(
-                          () => _obscurePassword = !_obscurePassword),
+                      onPressed: () =>
+                          setState(() => _obscurePassword = !_obscurePassword),
                     ),
                     validator: (v) {
                       if (v?.isEmpty == true) return 'Nhập mật khẩu';
@@ -475,7 +469,7 @@ class _UserFormScreenState extends ConsumerState<UserFormScreen> {
                     label: 'Sale',
                     value: 2,
                     icon: Icons.headset_mic_outlined,
-                    color: AppColors.ocean,
+                    color: colors.brand,
                     selected: _role == 2,
                     onTap: () => setState(() => _role = 2),
                   ),
@@ -484,7 +478,7 @@ class _UserFormScreenState extends ConsumerState<UserFormScreen> {
                     label: 'Chủ nhà',
                     value: 1,
                     icon: Icons.home_outlined,
-                    color: AppColors.amber,
+                    color: colors.warning,
                     selected: _role == 1,
                     onTap: () => setState(() => _role = 1),
                   ),
@@ -514,12 +508,13 @@ class _SectionTitle extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.colors;
     return Text(
       text,
       style: GoogleFonts.beVietnamPro(
         fontSize: 13,
         fontWeight: FontWeight.w700,
-        color: AppColors.navy,
+        color: colors.textPrimary,
       ),
     );
   }
@@ -531,13 +526,15 @@ class _InfoCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.colors;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Container(
       decoration: BoxDecoration(
-        color: AppColors.surface,
+        color: colors.bgSurface,
         borderRadius: BorderRadius.circular(AppRadius.lg),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.04),
+            color: Colors.black.withValues(alpha: isDark ? 0.30 : 0.04),
             blurRadius: 8,
             offset: const Offset(0, 2),
           ),
@@ -557,11 +554,12 @@ class _InfoRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.colors;
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
       child: Row(
         children: [
-          Icon(icon, size: 18, color: AppColors.ocean),
+          Icon(icon, size: 18, color: colors.brand),
           const SizedBox(width: 12),
           Expanded(
             child: Column(
@@ -571,7 +569,7 @@ class _InfoRow extends StatelessWidget {
                   label,
                   style: GoogleFonts.beVietnamPro(
                     fontSize: 11,
-                    color: AppColors.muted,
+                    color: colors.textSecondary,
                     fontWeight: FontWeight.w500,
                   ),
                 ),
@@ -581,7 +579,8 @@ class _InfoRow extends StatelessWidget {
                   style: GoogleFonts.beVietnamPro(
                     fontSize: 14,
                     fontWeight: FontWeight.w600,
-                    color: value == '-' ? AppColors.slate : AppColors.navy,
+                    color:
+                        value == '-' ? colors.textTertiary : colors.textPrimary,
                   ),
                 ),
               ],
@@ -602,6 +601,8 @@ class _FormField extends StatelessWidget {
   final bool obscureText;
   final Widget? suffixIcon;
   final String? Function(String?)? validator;
+  final List<TextInputFormatter>? inputFormatters;
+  final String? hintText;
 
   const _FormField({
     required this.controller,
@@ -612,32 +613,37 @@ class _FormField extends StatelessWidget {
     this.obscureText = false,
     this.suffixIcon,
     this.validator,
+    this.inputFormatters,
+    this.hintText,
   });
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.colors;
     return Padding(
-      padding:
-          const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
       child: TextFormField(
         controller: controller,
         keyboardType: keyboardType,
         textInputAction: textInputAction,
         obscureText: obscureText,
+        inputFormatters: inputFormatters,
         decoration: InputDecoration(
           labelText: label,
-          prefixIcon: Icon(icon, color: AppColors.ocean),
+          hintText: hintText,
+          prefixIcon: Icon(icon, color: colors.brand),
           suffixIcon: suffixIcon,
           border: InputBorder.none,
+          counterText: '',
           labelStyle: GoogleFonts.beVietnamPro(
             fontSize: 13,
-            color: AppColors.muted,
+            color: colors.textSecondary,
           ),
         ),
         style: GoogleFonts.beVietnamPro(
           fontSize: 14,
           fontWeight: FontWeight.w600,
-          color: AppColors.navy,
+          color: colors.textPrimary,
         ),
         validator: validator,
       ),
@@ -650,7 +656,8 @@ class _Divider extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const Divider(height: 1, color: AppColors.border, indent: 52);
+    final colors = context.colors;
+    return Divider(height: 1, color: colors.borderDefault, indent: 52);
   }
 }
 
@@ -673,6 +680,8 @@ class _RoleCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.colors;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Expanded(
       child: GestureDetector(
         onTap: onTap,
@@ -680,12 +689,10 @@ class _RoleCard extends StatelessWidget {
           duration: const Duration(milliseconds: 200),
           padding: const EdgeInsets.symmetric(vertical: 16),
           decoration: BoxDecoration(
-            color: selected
-                ? color.withValues(alpha: 0.08)
-                : AppColors.surface,
+            color: selected ? color.withValues(alpha: 0.08) : colors.bgSurface,
             borderRadius: BorderRadius.circular(AppRadius.lg),
             border: Border.all(
-              color: selected ? color : AppColors.border,
+              color: selected ? color : colors.borderDefault,
               width: selected ? 2 : 1,
             ),
             boxShadow: selected
@@ -698,7 +705,8 @@ class _RoleCard extends StatelessWidget {
                   ]
                 : [
                     BoxShadow(
-                      color: Colors.black.withValues(alpha: 0.03),
+                      color:
+                          Colors.black.withValues(alpha: isDark ? 0.30 : 0.03),
                       blurRadius: 4,
                     ),
                   ],
@@ -712,11 +720,11 @@ class _RoleCard extends StatelessWidget {
                   shape: BoxShape.circle,
                   color: selected
                       ? color.withValues(alpha: 0.15)
-                      : AppColors.slateLight,
+                      : colors.bgSurfaceContainer,
                 ),
                 child: Icon(
                   icon,
-                  color: selected ? color : AppColors.slate,
+                  color: selected ? color : colors.textTertiary,
                   size: 22,
                 ),
               ),
@@ -726,7 +734,7 @@ class _RoleCard extends StatelessWidget {
                 style: GoogleFonts.beVietnamPro(
                   fontWeight: FontWeight.w700,
                   fontSize: 14,
-                  color: selected ? color : AppColors.muted,
+                  color: selected ? color : colors.textSecondary,
                 ),
               ),
               const SizedBox(height: 2),
@@ -760,22 +768,23 @@ class _SaveButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.colors;
     return SizedBox(
       width: double.infinity,
       height: 52,
       child: isLoading
-          ? const Center(
-              child: CircularProgressIndicator(color: AppColors.ocean),
+          ? Center(
+              child: CircularProgressIndicator(color: colors.brand),
             )
           : Container(
               decoration: BoxDecoration(
-                gradient: const LinearGradient(
-                  colors: [AppColors.oceanMid, AppColors.ocean],
+                gradient: LinearGradient(
+                  colors: [colors.brandLight, colors.brand],
                 ),
                 borderRadius: BorderRadius.circular(AppRadius.lg),
                 boxShadow: [
                   BoxShadow(
-                    color: AppColors.ocean.withValues(alpha: 0.3),
+                    color: colors.brand.withValues(alpha: 0.3),
                     blurRadius: 12,
                     offset: const Offset(0, 4),
                   ),

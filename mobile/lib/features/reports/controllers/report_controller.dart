@@ -71,8 +71,10 @@ final reportRepositoryProvider =
     Provider<ReportRepository>((ref) => ReportRepository());
 
 /// Provider lấy report từ real API /reports
-final reportDataProvider =
-    FutureProvider.family<ReportData, ReportParams?>((ref, params) async {
+final reportDataProvider = FutureProvider.autoDispose
+    .family<ReportData, ReportParams?>((ref, params) async {
+  final link = ref.keepAlive();
+  Future.delayed(const Duration(minutes: 2), link.close);
   final repo = ref.read(reportRepositoryProvider);
   final result = await repo.getReport(
     month: params?.month,

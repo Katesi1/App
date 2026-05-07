@@ -218,8 +218,7 @@ class UserCardSkeleton extends StatelessWidget {
               child: _ShimmerBox(width: 100, height: 12),
             ),
           ),
-          trailing:
-              _ShimmerBox(width: 52, height: 22, radius: AppRadius.full),
+          trailing: _ShimmerBox(width: 52, height: 22, radius: AppRadius.full),
         ),
       );
 }
@@ -480,16 +479,13 @@ class ErrorStateWidget extends StatelessWidget {
 // ─── App SnackBar helper ──────────────────────────────────────────────────────
 class AppSnackBar {
   static void success(BuildContext context, String message) => _show(
-      context, message, AppColors.emerald,
-      Icons.check_circle_outline_rounded);
+      context, message, AppColors.emerald, Icons.check_circle_outline_rounded);
 
   static void error(BuildContext context, String message) =>
-      _show(context, message, AppColors.coral,
-          Icons.error_outline_rounded);
+      _show(context, message, AppColors.coral, Icons.error_outline_rounded);
 
   static void info(BuildContext context, String message) =>
-      _show(context, message, AppColors.ocean,
-          Icons.info_outline_rounded);
+      _show(context, message, AppColors.ocean, Icons.info_outline_rounded);
 
   static void _show(
       BuildContext context, String message, Color color, IconData icon) {

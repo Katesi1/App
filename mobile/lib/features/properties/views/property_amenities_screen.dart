@@ -1,10 +1,13 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 
-import '../../../core/theme/app_colors.dart';
+import '../../../core/theme/app_color_scheme.dart';
 import '../../../core/theme/app_spacing.dart';
+import '../../../shared/widgets/loading_widget.dart';
+import '../../rooms/controllers/room_controller.dart';
 
-class PropertyAmenitiesScreen extends StatefulWidget {
+class PropertyAmenitiesScreen extends ConsumerStatefulWidget {
   final String homestayId;
 
   const PropertyAmenitiesScreen({
@@ -13,204 +16,262 @@ class PropertyAmenitiesScreen extends StatefulWidget {
   });
 
   @override
-  State<PropertyAmenitiesScreen> createState() =>
+  ConsumerState<PropertyAmenitiesScreen> createState() =>
       _PropertyAmenitiesScreenState();
 }
 
 class _PropertyAmenitiesScreenState
-    extends State<PropertyAmenitiesScreen> {
-  late List<Map<String, dynamic>> _amenities;
+    extends ConsumerState<PropertyAmenitiesScreen> {
+  final Set<String> _selectedAmenities = {};
+  bool _isLoading = false;
+  bool _initialized = false;
 
-  @override
-  void initState() {
-    super.initState();
-    _amenities = [
-      {'name': 'Bể bơi riêng', 'enabled': true},
-      {'name': 'Bếp nướng BBQ ngoài trời', 'enabled': true},
-      {'name': 'Free wifi tốc độ cao', 'enabled': true},
-      {'name': 'Karaoke loa kéo miễn phí', 'enabled': true},
-      {'name': 'Đỗ xe ô tô miễn phí', 'enabled': true},
-      {'name': 'Bếp từ tủ lạnh ấm siêu tốc', 'enabled': true},
-      {'name': 'Bồn tắm phòng master', 'enabled': true},
-      {'name': 'Máy sấy tóc đèn sưởi', 'enabled': true},
-      {'name': 'Quản gia hỗ trợ 24/7', 'enabled': true},
-      {'name': 'Bàn Bi-a', 'enabled': false},
-      {'name': 'Bàn Piano', 'enabled': false},
-      {'name': 'View biển', 'enabled': false},
-      {'name': 'Sân vườn BBQ rộng', 'enabled': false},
-    ];
+  static const _amenityGroups = {
+    'Phòng khách': [
+      'Điều hòa',
+      'Wifi',
+      'TV',
+      'Karaoke',
+      'Loa di động',
+    ],
+    'Bếp & Ăn uống': [
+      'Bếp đầy đủ',
+      'Tủ lạnh',
+      'Lò vi sóng',
+      'Bếp từ',
+      'BBQ ngoài trời',
+      'Bát đũa',
+      'Nước lọc free',
+    ],
+    'Phòng ngủ & Tắm': [
+      'Bồn tắm',
+      'Vòi sen',
+      'Nước nóng',
+      'Máy sấy tóc',
+      'Đèn sưởi',
+      'Khăn tắm',
+      'Dầu gội/Sữa tắm',
+    ],
+    'Ngoài trời': [
+      'Bể bơi',
+      'Ban công',
+      'View biển',
+      'Sân vườn',
+      'Sân thượng',
+      'Đỗ xe',
+    ],
+    'Tiện ích chung': [
+      'Máy giặt',
+      'Bàn là',
+      'Tủ quần áo',
+      'Két sắt',
+      'Thang máy',
+    ],
+    'Giải trí': [
+      'Bida',
+      'Bàn bóng bàn',
+      'Xích đu',
+      'Khu vui chơi trẻ em',
+    ],
+  };
+
+  void _initFromRoom() {
+    if (_initialized) return;
+    final room = ref.read(roomDetailProvider(widget.homestayId)).valueOrNull;
+    if (room == null) return;
+    _initialized = true;
+    _selectedAmenities.addAll(room.amenities);
   }
 
-  int get _enabledCount =>
-      _amenities.where((a) => a['enabled'] == true).length;
+  Future<void> _onSave() async {
+    setState(() => _isLoading = true);
 
-  void _toggleAmenity(int index) {
-    setState(() {
-      _amenities[index] = {
-        ..._amenities[index],
-        'enabled': !(_amenities[index]['enabled'] as bool),
-      };
+    final ok =
+        await ref.read(roomActionsProvider.notifier).update(widget.homestayId, {
+      'amenities': _selectedAmenities.toList(),
     });
-  }
 
-  void _onAddAmenity() {
-    // TODO: implement add amenity dialog
-  }
+    if (!mounted) return;
+    setState(() => _isLoading = false);
 
-  void _onSave() {
-    // TODO: implement save logic
+    if (ok) {
+      AppSnackBar.success(context, 'Đã lưu tiện ích');
+      Navigator.of(context).pop();
+    } else {
+      AppSnackBar.error(context, 'Có lỗi xảy ra, vui lòng thử lại');
+    }
   }
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Text('Tiện ích'),
-            const SizedBox(width: AppSpacing.sm),
-            Container(
-              padding: const EdgeInsets.symmetric(
-                horizontal: AppSpacing.sm,
-                vertical: 2,
-              ),
-              decoration: BoxDecoration(
-                color: AppColors.oceanLight,
-                borderRadius:
-                    BorderRadius.circular(AppRadius.full),
-              ),
-              child: Text(
-                '$_enabledCount',
-                style: GoogleFonts.beVietnamPro(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w600,
-                  color: AppColors.ocean,
+    final colors = context.colors;
+    final roomAsync = ref.watch(roomDetailProvider(widget.homestayId));
+
+    return GestureDetector(
+      onTap: () => FocusScope.of(context).unfocus(),
+      child: Scaffold(
+        appBar: AppBar(
+          title: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text('Tiện ích'),
+              const SizedBox(width: AppSpacing.sm),
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: AppSpacing.sm,
+                  vertical: 2,
+                ),
+                decoration: BoxDecoration(
+                  color: colors.bgSurfaceContainer,
+                  borderRadius: BorderRadius.circular(AppRadius.full),
+                ),
+                child: Text(
+                  '${_selectedAmenities.length}',
+                  style: GoogleFonts.beVietnamPro(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    color: colors.textBrand,
+                  ),
                 ),
               ),
-            ),
-          ],
+            ],
+          ),
+          centerTitle: true,
         ),
-        centerTitle: true,
-      ),
-      body: Column(
-        children: [
-          Expanded(
-            child: ListView(
-              padding: const EdgeInsets.symmetric(
-                horizontal: AppSpacing.md,
-              ),
+        body: roomAsync.when(
+          loading: () => const LoadingWidget(),
+          error: (e, _) => ErrorStateWidget(
+            message: e.toString().replaceAll('Exception: ', ''),
+            onRetry: () =>
+                ref.invalidate(roomDetailProvider(widget.homestayId)),
+          ),
+          data: (room) {
+            _initFromRoom();
+
+            final allPreset = _amenityGroups.values.expand((v) => v).toSet();
+            final extraAmenities = _selectedAmenities
+                .where((a) => !allPreset.contains(a))
+                .toList();
+
+            return Column(
               children: [
-                const SizedBox(height: AppSpacing.md),
-                Padding(
-                  padding: const EdgeInsets.only(
-                    bottom: AppSpacing.sm,
-                  ),
-                  child: Text(
-                    'TIỆN ÍCH MIỄN PHÍ',
-                    style: GoogleFonts.beVietnamPro(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w600,
-                      color: AppColors.muted,
-                      letterSpacing: 1.2,
-                    ),
-                  ),
-                ),
-                ListView.separated(
-                  shrinkWrap: true,
-                  physics: const NeverScrollableScrollPhysics(),
-                  itemCount: _amenities.length,
-                  separatorBuilder: (_, __) => const Divider(
-                    height: 1,
-                    color: AppColors.border,
-                  ),
-                  itemBuilder: (context, index) {
-                    final amenity = _amenities[index];
-                    final enabled = amenity['enabled'] as bool;
-                    return _AmenityRow(
-                      name: amenity['name'] as String,
-                      enabled: enabled,
-                      onToggle: () => _toggleAmenity(index),
-                    );
-                  },
-                ),
-                const SizedBox(height: AppSpacing.md),
-                InkWell(
-                  onTap: _onAddAmenity,
-                  borderRadius:
-                      BorderRadius.circular(AppRadius.sm),
-                  child: Padding(
+                Expanded(
+                  child: ListView(
                     padding: const EdgeInsets.symmetric(
-                      vertical: AppSpacing.sm,
+                      horizontal: AppSpacing.md,
                     ),
-                    child: Row(
-                      mainAxisAlignment:
-                          MainAxisAlignment.center,
-                      children: [
-                        const Icon(
-                          Icons.add_circle_outline,
-                          color: AppColors.ocean,
-                          size: 20,
-                        ),
-                        const SizedBox(width: AppSpacing.sm),
-                        Text(
-                          'Thêm tiện ích khác',
-                          style: GoogleFonts.beVietnamPro(
-                            fontSize: 14,
-                            fontWeight: FontWeight.w600,
-                            color: AppColors.ocean,
+                    children: [
+                      const SizedBox(height: AppSpacing.sm),
+                      ..._amenityGroups.entries.map((group) => Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Padding(
+                                padding: const EdgeInsets.only(
+                                  bottom: AppSpacing.xs,
+                                  top: AppSpacing.md,
+                                ),
+                                child: Text(
+                                  group.key.toUpperCase(),
+                                  style: GoogleFonts.beVietnamPro(
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.w600,
+                                    color: colors.textSecondary,
+                                    letterSpacing: 1.2,
+                                  ),
+                                ),
+                              ),
+                              ...group.value.map((amenity) {
+                                final on = _selectedAmenities.contains(amenity);
+                                return _AmenityRow(
+                                  name: amenity,
+                                  enabled: on,
+                                  onToggle: () => setState(() {
+                                    if (on) {
+                                      _selectedAmenities.remove(amenity);
+                                    } else {
+                                      _selectedAmenities.add(amenity);
+                                    }
+                                  }),
+                                );
+                              }),
+                            ],
+                          )),
+                      if (extraAmenities.isNotEmpty) ...[
+                        Padding(
+                          padding: const EdgeInsets.only(
+                            bottom: AppSpacing.xs,
+                            top: AppSpacing.md,
+                          ),
+                          child: Text(
+                            'KHÁC',
+                            style: GoogleFonts.beVietnamPro(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w600,
+                              color: colors.textSecondary,
+                              letterSpacing: 1.2,
+                            ),
                           ),
                         ),
+                        ...extraAmenities.map((amenity) => _AmenityRow(
+                              name: amenity,
+                              enabled: true,
+                              onToggle: () => setState(() {
+                                _selectedAmenities.remove(amenity);
+                              }),
+                            )),
                       ],
-                    ),
+                      const SizedBox(height: AppSpacing.lg),
+                    ],
                   ),
                 ),
-                const SizedBox(height: AppSpacing.md),
-              ],
-            ),
-          ),
-          SafeArea(
-            child: Padding(
-              padding: const EdgeInsets.all(AppSpacing.md),
-              child: SizedBox(
-                width: double.infinity,
-                height: 48,
-                child: DecoratedBox(
-                  decoration: BoxDecoration(
-                    gradient: const LinearGradient(
-                      colors: [
-                        AppColors.ocean,
-                        AppColors.oceanMid,
-                      ],
-                    ),
-                    borderRadius:
-                        BorderRadius.circular(AppRadius.md),
-                  ),
-                  child: ElevatedButton(
-                    onPressed: _onSave,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.transparent,
-                      shadowColor: Colors.transparent,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(
-                          AppRadius.md,
+                SafeArea(
+                  child: Padding(
+                    padding: const EdgeInsets.all(AppSpacing.md),
+                    child: SizedBox(
+                      width: double.infinity,
+                      height: 48,
+                      child: DecoratedBox(
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            colors: [colors.brand, colors.brandLight],
+                          ),
+                          borderRadius: BorderRadius.circular(AppRadius.md),
+                        ),
+                        child: ElevatedButton(
+                          onPressed: _isLoading ? null : _onSave,
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.transparent,
+                            shadowColor: Colors.transparent,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(AppRadius.md),
+                            ),
+                          ),
+                          child: _isLoading
+                              ? const SizedBox(
+                                  width: 20,
+                                  height: 20,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                    color: Colors.white,
+                                  ),
+                                )
+                              : Text(
+                                  'Lưu',
+                                  style: GoogleFonts.beVietnamPro(
+                                    fontSize: 15,
+                                    fontWeight: FontWeight.w600,
+                                    color: Colors.white,
+                                  ),
+                                ),
                         ),
                       ),
                     ),
-                    child: Text(
-                      'Lưu',
-                      style: GoogleFonts.beVietnamPro(
-                        fontSize: 15,
-                        fontWeight: FontWeight.w600,
-                        color: Colors.white,
-                      ),
-                    ),
                   ),
                 ),
-              ),
-            ),
-          ),
-        ],
+              ],
+            );
+          },
+        ),
       ),
     );
   }
@@ -229,19 +290,14 @@ class _AmenityRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.colors;
     return Padding(
-      padding: const EdgeInsets.symmetric(
-        vertical: AppSpacing.sm,
-      ),
+      padding: const EdgeInsets.symmetric(vertical: 2),
       child: Row(
         children: [
           Icon(
-            enabled
-                ? Icons.check_circle
-                : Icons.cancel,
-            color: enabled
-                ? AppColors.emerald
-                : AppColors.slate,
+            enabled ? Icons.check_circle : Icons.cancel,
+            color: enabled ? colors.success : colors.textTertiary,
             size: 22,
           ),
           const SizedBox(width: AppSpacing.sm + 4),
@@ -251,16 +307,14 @@ class _AmenityRow extends StatelessWidget {
               style: GoogleFonts.beVietnamPro(
                 fontSize: 14,
                 fontWeight: FontWeight.w400,
-                color: enabled
-                    ? AppColors.ink
-                    : AppColors.muted,
+                color: enabled ? colors.textPrimary : colors.textSecondary,
               ),
             ),
           ),
           Switch(
             value: enabled,
             onChanged: (_) => onToggle(),
-            activeTrackColor: AppColors.ocean,
+            activeTrackColor: colors.brand,
             activeThumbColor: Colors.white,
           ),
         ],

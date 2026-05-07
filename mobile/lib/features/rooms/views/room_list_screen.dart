@@ -3,12 +3,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
+import '../../../core/theme/app_color_scheme.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../data/models/room_model.dart';
 import '../../../shared/widgets/app_scaffold.dart';
 import '../../../shared/widgets/date_picker_tile.dart';
 import '../../../shared/widgets/filter_chip_tile.dart';
-import '../../../shared/widgets/guest_counter.dart';
 import '../../../shared/widgets/loading_widget.dart';
 import '../../../shared/widgets/section_label.dart';
 import '../../auth/controllers/auth_controller.dart';
@@ -40,16 +40,22 @@ class _RoomListScreenState extends ConsumerState<RoomListScreen>
   int _adults = 0;
   int _children = 0;
 
+  // Sort theo giá: null = mặc định, true = tăng dần, false = giảm dần
+  bool? _priceAscending;
+
   // Tabs
-  // typeValue: 0=VILLA, 1=HOMESTAY, 2=HOTEL
+  // typeValues: 0=VILLA, 1=HOMESTAY, 2=HOTEL
+  // typeValues == null nghĩa là tab "Tất cả" — không filter theo type
   static const _tabs = [
-    (label: 'Villa', icon: Icons.villa_rounded, typeValue: 0),
-    (label: 'Homestay', icon: Icons.cottage_rounded, typeValue: 1),
-    (label: 'Khách sạn', icon: Icons.hotel_rounded, typeValue: 2),
+    (label: 'Tất cả', icon: Icons.apps_rounded, typeValues: null),
+    (label: 'Villa', icon: Icons.villa_rounded, typeValues: [0]),
+    (label: 'Homestay', icon: Icons.cottage_rounded, typeValues: [1]),
+    (label: 'Khách sạn', icon: Icons.hotel_rounded, typeValues: [2]),
   ];
 
   bool get _hasActiveFilters =>
       _selectedViews.isNotEmpty ||
+      _priceAscending != null ||
       _checkIn != null ||
       _checkOut != null ||
       _adults > 0 ||
@@ -60,6 +66,8 @@ class _RoomListScreenState extends ConsumerState<RoomListScreen>
     for (final v in _selectedViews) {
       labels.add(_viewLabels[v] ?? v);
     }
+    if (_priceAscending == true) labels.add('Giá tăng dần');
+    if (_priceAscending == false) labels.add('Giá giảm dần');
     if (_checkIn != null) {
       labels.add('Check-in: ${_checkIn!.day}/${_checkIn!.month}');
     }
@@ -74,7 +82,6 @@ class _RoomListScreenState extends ConsumerState<RoomListScreen>
   static const _viewLabels = {
     'sea': 'View biển',
     'city': 'View thành phố',
-    'garden': 'View sân vườn',
   };
 
   @override
@@ -102,8 +109,15 @@ class _RoomListScreenState extends ConsumerState<RoomListScreen>
     });
   }
 
-  List<RoomModel> _filterByTab(List<RoomModel> rooms, int typeValue) {
-    var list = rooms.where((r) => r.type == typeValue).toList();
+  /// Lọc rooms theo tab.
+  /// [typeValues] null = tab "Tất cả" → không filter theo type.
+  /// [typeValues] có thể chứa nhiều type (vd: Homestay = [1]).
+  List<RoomModel> _filterByTab(List<RoomModel> rooms, List<int>? typeValues) {
+    // Ẩn phòng tạm nghỉ
+    var list = rooms.where((r) => r.isActive).toList();
+    list = typeValues == null
+        ? List<RoomModel>.from(list)
+        : list.where((r) => typeValues.contains(r.type)).toList();
 
     // Search
     if (_searchQuery.isNotEmpty) {
@@ -115,7 +129,29 @@ class _RoomListScreenState extends ConsumerState<RoomListScreen>
           .toList();
     }
 
-    // TODO: Apply view, date, guest filters khi API hỗ trợ
+    // Sort theo giá (weekdayPrice). Phòng chưa có giá → đẩy xuống cuối.
+    if (_priceAscending != null) {
+      list.sort((a, b) {
+        final pa = a.price?.weekdayPrice;
+        final pb = b.price?.weekdayPrice;
+        if (pa == null && pb == null) return 0;
+        if (pa == null) return 1;
+        if (pb == null) return -1;
+        return _priceAscending! ? pa.compareTo(pb) : pb.compareTo(pa);
+      });
+    }
+
+    // Filter theo view
+    if (_selectedViews.isNotEmpty) {
+      list = list.where((r) => _selectedViews.contains(r.view)).toList();
+    }
+
+    // Filter theo số khách: standardGuests >= tổng (người lớn + trẻ em)
+    final totalGuests = _adults + _children;
+    if (totalGuests > 0) {
+      list = list.where((r) => r.standardGuests >= totalGuests).toList();
+    }
+
     return list;
   }
 
@@ -136,6 +172,7 @@ class _RoomListScreenState extends ConsumerState<RoomListScreen>
   void _resetFilters() {
     setState(() {
       _selectedViews.clear();
+      _priceAscending = null;
       _checkIn = null;
       _checkOut = null;
       _adults = 0;
@@ -145,6 +182,7 @@ class _RoomListScreenState extends ConsumerState<RoomListScreen>
 
   void _showFilterSheet() {
     final tempViews = Set<String>.from(_selectedViews);
+    bool? tempPriceAsc = _priceAscending;
     var tempCheckIn = _checkIn;
     var tempCheckOut = _checkOut;
     var tempAdults = _adults;
@@ -156,6 +194,7 @@ class _RoomListScreenState extends ConsumerState<RoomListScreen>
       isScrollControlled: true,
       builder: (ctx) => StatefulBuilder(
         builder: (ctx, setSheetState) {
+          final colors = ctx.colors;
           void toggleSet(Set<String> set, String key) {
             setSheetState(() {
               if (set.contains(key)) {
@@ -170,16 +209,17 @@ class _RoomListScreenState extends ConsumerState<RoomListScreen>
             final now = DateTime.now();
             final picked = await showDatePicker(
               context: ctx,
-              initialDate:
-                  (isCheckIn ? tempCheckIn : tempCheckOut) ?? now,
+              initialDate: (isCheckIn ? tempCheckIn : tempCheckOut) ?? now,
               firstDate: now,
               lastDate: now.add(const Duration(days: 365)),
               builder: (c, child) => Theme(
                 data: Theme.of(c).copyWith(
-                  colorScheme: const ColorScheme.light(
-                    primary: AppColors.ocean,
-                    onPrimary: Colors.white,
-                    surface: Colors.white,
+                  colorScheme: ColorScheme.fromSeed(
+                    seedColor: colors.brand,
+                    brightness: Theme.of(c).brightness,
+                    primary: colors.brand,
+                    onPrimary: colors.textOnPrimary,
+                    surface: colors.bgSurface,
                   ),
                 ),
                 child: child!,
@@ -189,10 +229,8 @@ class _RoomListScreenState extends ConsumerState<RoomListScreen>
               setSheetState(() {
                 if (isCheckIn) {
                   tempCheckIn = picked;
-                  if (tempCheckOut != null &&
-                      tempCheckOut!.isBefore(picked)) {
-                    tempCheckOut =
-                        picked.add(const Duration(days: 1));
+                  if (tempCheckOut != null && tempCheckOut!.isBefore(picked)) {
+                    tempCheckOut = picked.add(const Duration(days: 1));
                   }
                 } else {
                   tempCheckOut = picked;
@@ -209,9 +247,9 @@ class _RoomListScreenState extends ConsumerState<RoomListScreen>
           }
 
           return Container(
-            decoration: const BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.vertical(
+            decoration: BoxDecoration(
+              color: colors.bgSurface,
+              borderRadius: const BorderRadius.vertical(
                 top: Radius.circular(20),
               ),
             ),
@@ -226,15 +264,14 @@ class _RoomListScreenState extends ConsumerState<RoomListScreen>
                     width: 40,
                     height: 4,
                     decoration: BoxDecoration(
-                      color: AppColors.border,
+                      color: colors.borderDefault,
                       borderRadius: BorderRadius.circular(2),
                     ),
                   ),
                 ),
                 // Header
                 Padding(
-                  padding:
-                      const EdgeInsets.fromLTRB(20, 16, 20, 12),
+                  padding: const EdgeInsets.fromLTRB(20, 16, 20, 12),
                   child: Row(
                     children: [
                       Text(
@@ -242,7 +279,7 @@ class _RoomListScreenState extends ConsumerState<RoomListScreen>
                         style: GoogleFonts.beVietnamPro(
                           fontSize: 17,
                           fontWeight: FontWeight.w700,
-                          color: AppColors.ink,
+                          color: colors.textPrimary,
                         ),
                       ),
                       const Spacer(),
@@ -250,6 +287,7 @@ class _RoomListScreenState extends ConsumerState<RoomListScreen>
                         onTap: () {
                           setSheetState(() {
                             tempViews.clear();
+                            tempPriceAsc = null;
                             tempCheckIn = null;
                             tempCheckOut = null;
                             tempAdults = 0;
@@ -261,20 +299,19 @@ class _RoomListScreenState extends ConsumerState<RoomListScreen>
                           style: GoogleFonts.beVietnamPro(
                             fontSize: 13,
                             fontWeight: FontWeight.w500,
-                            color: AppColors.ocean,
+                            color: colors.textBrand,
                           ),
                         ),
                       ),
                     ],
                   ),
                 ),
-                const Divider(height: 1, color: AppColors.border),
+                Divider(height: 1, color: colors.borderDefault),
 
                 // ── View ──
                 SectionLabel(label: 'VIEW'),
                 Padding(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 20),
+                  padding: const EdgeInsets.symmetric(horizontal: 20),
                   child: Wrap(
                     spacing: 10,
                     runSpacing: 8,
@@ -285,22 +322,49 @@ class _RoomListScreenState extends ConsumerState<RoomListScreen>
                         icon: switch (e.key) {
                           'sea' => Icons.waves_rounded,
                           'city' => Icons.location_city_rounded,
-                          'garden' => Icons.park_rounded,
                           _ => Icons.home_rounded,
                         },
                         isSelected: selected,
-                        onTap: () =>
-                            toggleSet(tempViews, e.key),
+                        onTap: () => toggleSet(tempViews, e.key),
                       );
                     }).toList(),
+                  ),
+                ),
+
+                // ── Sắp xếp giá ──
+                SectionLabel(label: 'SẮP XẾP GIÁ'),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 20),
+                  child: Wrap(
+                    spacing: 10,
+                    runSpacing: 8,
+                    children: [
+                      FilterChipTile(
+                        label: 'Mặc định',
+                        icon: Icons.sort_rounded,
+                        isSelected: tempPriceAsc == null,
+                        onTap: () => setSheetState(() => tempPriceAsc = null),
+                      ),
+                      FilterChipTile(
+                        label: 'Giá tăng dần',
+                        icon: Icons.arrow_upward_rounded,
+                        isSelected: tempPriceAsc == true,
+                        onTap: () => setSheetState(() => tempPriceAsc = true),
+                      ),
+                      FilterChipTile(
+                        label: 'Giá giảm dần',
+                        icon: Icons.arrow_downward_rounded,
+                        isSelected: tempPriceAsc == false,
+                        onTap: () => setSheetState(() => tempPriceAsc = false),
+                      ),
+                    ],
                   ),
                 ),
 
                 // ── Check-in / Check-out ──
                 SectionLabel(label: 'NGÀY'),
                 Padding(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 20),
+                  padding: const EdgeInsets.symmetric(horizontal: 20),
                   child: Row(
                     children: [
                       Expanded(
@@ -308,8 +372,7 @@ class _RoomListScreenState extends ConsumerState<RoomListScreen>
                           label: 'Check-in',
                           value: formatDate(tempCheckIn),
                           hasValue: tempCheckIn != null,
-                          onTap: () =>
-                              pickSheetDate(isCheckIn: true),
+                          onTap: () => pickSheetDate(isCheckIn: true),
                         ),
                       ),
                       const SizedBox(width: 12),
@@ -318,8 +381,7 @@ class _RoomListScreenState extends ConsumerState<RoomListScreen>
                           label: 'Check-out',
                           value: formatDate(tempCheckOut),
                           hasValue: tempCheckOut != null,
-                          onTap: () =>
-                              pickSheetDate(isCheckIn: false),
+                          onTap: () => pickSheetDate(isCheckIn: false),
                         ),
                       ),
                     ],
@@ -329,25 +391,48 @@ class _RoomListScreenState extends ConsumerState<RoomListScreen>
                 // ── Số khách ──
                 SectionLabel(label: 'SỐ KHÁCH'),
                 Padding(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 20),
+                  padding: const EdgeInsets.symmetric(horizontal: 20),
                   child: Row(
                     children: [
                       Expanded(
-                        child: GuestCounter(
-                          label: 'Người lớn',
-                          value: tempAdults,
-                          onChanged: (v) =>
-                              setSheetState(() => tempAdults = v),
+                        child: TextField(
+                          keyboardType: TextInputType.number,
+                          decoration: InputDecoration(
+                            labelText: 'Người lớn',
+                            hintText: '0',
+                            prefixIcon: const Icon(Icons.person_outline_rounded,
+                                size: 20),
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            contentPadding: const EdgeInsets.symmetric(
+                                horizontal: 12, vertical: 12),
+                          ),
+                          controller: TextEditingController(
+                              text: tempAdults > 0 ? '$tempAdults' : ''),
+                          onChanged: (v) => setSheetState(
+                              () => tempAdults = int.tryParse(v) ?? 0),
                         ),
                       ),
                       const SizedBox(width: 16),
                       Expanded(
-                        child: GuestCounter(
-                          label: 'Trẻ em',
-                          value: tempChildren,
+                        child: TextField(
+                          keyboardType: TextInputType.number,
+                          decoration: InputDecoration(
+                            labelText: 'Trẻ em',
+                            hintText: '0',
+                            prefixIcon:
+                                const Icon(Icons.child_care_rounded, size: 20),
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            contentPadding: const EdgeInsets.symmetric(
+                                horizontal: 12, vertical: 12),
+                          ),
+                          controller: TextEditingController(
+                              text: tempChildren > 0 ? '$tempChildren' : ''),
                           onChanged: (v) => setSheetState(
-                              () => tempChildren = v),
+                              () => tempChildren = int.tryParse(v) ?? 0),
                         ),
                       ),
                     ],
@@ -357,8 +442,7 @@ class _RoomListScreenState extends ConsumerState<RoomListScreen>
                 const SizedBox(height: 20),
                 // Apply button
                 Padding(
-                  padding:
-                      const EdgeInsets.fromLTRB(20, 0, 20, 20),
+                  padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
                   child: SizedBox(
                     width: double.infinity,
                     height: 48,
@@ -368,6 +452,7 @@ class _RoomListScreenState extends ConsumerState<RoomListScreen>
                           _selectedViews
                             ..clear()
                             ..addAll(tempViews);
+                          _priceAscending = tempPriceAsc;
                           _checkIn = tempCheckIn;
                           _checkOut = tempCheckOut;
                           _adults = tempAdults;
@@ -376,8 +461,8 @@ class _RoomListScreenState extends ConsumerState<RoomListScreen>
                         Navigator.pop(ctx);
                       },
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: AppColors.ocean,
-                        foregroundColor: Colors.white,
+                        backgroundColor: colors.brand,
+                        foregroundColor: colors.textOnPrimary,
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(12),
                         ),
@@ -408,16 +493,21 @@ class _RoomListScreenState extends ConsumerState<RoomListScreen>
   Widget build(BuildContext context) {
     final user = ref.watch(currentUserProvider);
     final userName = user?.name ?? user?.phone ?? '';
-    final roomsAsync = ref.watch(roomListProvider(null));
+    final roomsAsync = ref.watch(allRoomsProvider);
+    final colors = context.colors;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final headerGradient = isDark
+        ? const [AppColors.darkBg, AppColors.darkBorder]
+        : const [AppColors.jade900, AppColors.jade500];
 
     return AppScaffold(
       title: '',
       selectedIndex: 1,
       showAppBar: false,
       body: RefreshIndicator(
-        color: AppColors.ocean,
+        color: colors.brand,
         onRefresh: () async {
-          ref.invalidate(roomListProvider(null));
+          ref.invalidate(allRoomsProvider);
         },
         child: NestedScrollView(
           headerSliverBuilder: (context, innerBoxIsScrolled) => [
@@ -430,11 +520,11 @@ class _RoomListScreenState extends ConsumerState<RoomListScreen>
                   right: 20,
                   bottom: 4,
                 ),
-                decoration: const BoxDecoration(
+                decoration: BoxDecoration(
                   gradient: LinearGradient(
                     begin: Alignment.topLeft,
                     end: Alignment.bottomRight,
-                    colors: [AppColors.oceanDeep, AppColors.ocean],
+                    colors: headerGradient,
                   ),
                 ),
                 child: Column(
@@ -450,7 +540,7 @@ class _RoomListScreenState extends ConsumerState<RoomListScreen>
                             height: 140,
                             decoration: BoxDecoration(
                               shape: BoxShape.circle,
-                              color: AppColors.teal.withValues(alpha: 0.10),
+                              color: AppColors.jade300.withValues(alpha: 0.10),
                             ),
                           ),
                         ),
@@ -462,7 +552,7 @@ class _RoomListScreenState extends ConsumerState<RoomListScreen>
                             height: 90,
                             decoration: BoxDecoration(
                               shape: BoxShape.circle,
-                              color: AppColors.gold.withValues(alpha: 0.08),
+                              color: AppColors.gold500.withValues(alpha: 0.08),
                             ),
                           ),
                         ),
@@ -484,8 +574,8 @@ class _RoomListScreenState extends ConsumerState<RoomListScreen>
                                     'Villa · Homestay · Khách sạn',
                                     style: GoogleFonts.beVietnamPro(
                                       fontSize: 12,
-                                      color: Colors.white
-                                          .withValues(alpha: 0.65),
+                                      color:
+                                          Colors.white.withValues(alpha: 0.65),
                                     ),
                                   ),
                                 ],
@@ -511,10 +601,13 @@ class _RoomListScreenState extends ConsumerState<RoomListScreen>
                                 height: 40,
                                 decoration: BoxDecoration(
                                   shape: BoxShape.circle,
-                                  gradient: const LinearGradient(
-                                      colors: [AppColors.teal, AppColors.gold]),
+                                  gradient: const LinearGradient(colors: [
+                                    AppColors.jade500,
+                                    AppColors.gold500
+                                  ]),
                                   border: Border.all(
-                                      color: Colors.white.withValues(alpha: 0.3),
+                                      color:
+                                          Colors.white.withValues(alpha: 0.3),
                                       width: 1.5),
                                 ),
                                 child: Center(
@@ -557,13 +650,11 @@ class _RoomListScreenState extends ConsumerState<RoomListScreen>
                             hintText: 'Tìm theo tên hoặc mã phòng...',
                             hintStyle: GoogleFonts.beVietnamPro(
                               fontSize: 13,
-                              color:
-                                  Colors.white.withValues(alpha: 0.6),
+                              color: Colors.white.withValues(alpha: 0.6),
                             ),
                             prefixIcon: Icon(
                               Icons.search_rounded,
-                              color:
-                                  Colors.white.withValues(alpha: 0.6),
+                              color: Colors.white.withValues(alpha: 0.6),
                               size: 18,
                             ),
                             suffixIcon: _searchQuery.isNotEmpty
@@ -574,27 +665,28 @@ class _RoomListScreenState extends ConsumerState<RoomListScreen>
                                     }),
                                     child: Icon(
                                       Icons.clear_rounded,
-                                      color: Colors.white
-                                          .withValues(alpha: 0.6),
+                                      color:
+                                          Colors.white.withValues(alpha: 0.6),
                                       size: 18,
                                     ),
                                   )
                                 : null,
                             border: InputBorder.none,
                             contentPadding:
-                                const EdgeInsets.symmetric(
-                                    vertical: 10),
+                                const EdgeInsets.symmetric(vertical: 10),
                           ),
                         ),
                       ),
                     ],
                     const SizedBox(height: 12),
-                    // ── TabBar ──
+                    // ── TabBar — scrollable để tránh overflow ──
                     TabBar(
                       controller: _tabController,
+                      isScrollable: true,
+                      tabAlignment: TabAlignment.start,
+                      labelPadding: const EdgeInsets.symmetric(horizontal: 14),
                       labelColor: Colors.white,
-                      unselectedLabelColor:
-                          Colors.white.withValues(alpha: 0.6),
+                      unselectedLabelColor: Colors.white.withValues(alpha: 0.6),
                       labelStyle: GoogleFonts.beVietnamPro(
                         fontSize: 13,
                         fontWeight: FontWeight.w700,
@@ -639,14 +731,14 @@ class _RoomListScreenState extends ConsumerState<RoomListScreen>
                               style: GoogleFonts.beVietnamPro(
                                 fontSize: 12,
                                 fontWeight: FontWeight.w500,
-                                color: AppColors.ocean,
+                                color: colors.textBrand,
                               ),
                             ),
-                            backgroundColor: AppColors.oceanPale,
+                            backgroundColor:
+                                colors.brand.withValues(alpha: 0.10),
                             side: BorderSide.none,
                             shape: RoundedRectangleBorder(
-                              borderRadius:
-                                  BorderRadius.circular(20),
+                              borderRadius: BorderRadius.circular(20),
                             ),
                             materialTapTargetSize:
                                 MaterialTapTargetSize.shrinkWrap,
@@ -660,19 +752,18 @@ class _RoomListScreenState extends ConsumerState<RoomListScreen>
                             style: GoogleFonts.beVietnamPro(
                               fontSize: 12,
                               fontWeight: FontWeight.w500,
-                              color: AppColors.coral,
+                              color: colors.error,
                             ),
                           ),
-                          avatar: const Icon(
+                          avatar: Icon(
                             Icons.close_rounded,
                             size: 14,
-                            color: AppColors.coral,
+                            color: colors.error,
                           ),
-                          backgroundColor: AppColors.coralLight,
+                          backgroundColor: colors.errorBg,
                           side: BorderSide.none,
                           shape: RoundedRectangleBorder(
-                            borderRadius:
-                                BorderRadius.circular(20),
+                            borderRadius: BorderRadius.circular(20),
                           ),
                           materialTapTargetSize:
                               MaterialTapTargetSize.shrinkWrap,
@@ -691,16 +782,14 @@ class _RoomListScreenState extends ConsumerState<RoomListScreen>
             ),
             error: (e, _) => Center(
               child: ErrorStateWidget(
-                message:
-                    e.toString().replaceAll('Exception: ', ''),
-                onRetry: () =>
-                    ref.invalidate(roomListProvider(null)),
+                message: e.toString().replaceAll('Exception: ', ''),
+                onRetry: () => ref.invalidate(allRoomsProvider),
               ),
             ),
             data: (rooms) => TabBarView(
               controller: _tabController,
               children: _tabs.map((tab) {
-                final filtered = _filterByTab(rooms, tab.typeValue);
+                final filtered = _filterByTab(rooms, tab.typeValues);
                 if (filtered.isEmpty) {
                   return Center(
                     child: EmptyStateWidget(
@@ -711,16 +800,13 @@ class _RoomListScreenState extends ConsumerState<RoomListScreen>
                   );
                 }
                 return ListView.separated(
-                  padding: const EdgeInsets.fromLTRB(
-                      16, 16, 16, 100),
+                  padding: const EdgeInsets.fromLTRB(16, 16, 16, 100),
                   itemCount: filtered.length,
-                  separatorBuilder: (_, __) =>
-                      const SizedBox(height: 12),
+                  separatorBuilder: (_, __) => const SizedBox(height: 12),
                   itemBuilder: (_, i) => RoomCard(
                     room: filtered[i],
                     animationIndex: i,
-                    onTap: () => context
-                        .push('/rooms/${filtered[i].id}'),
+                    onTap: () => context.push('/rooms/${filtered[i].id}'),
                   ),
                 );
               }).toList(),
@@ -766,8 +852,8 @@ class _HeaderIconBtn extends StatelessWidget {
               child: Container(
                 width: 8,
                 height: 8,
-                decoration: const BoxDecoration(
-                  color: AppColors.coral,
+                decoration: BoxDecoration(
+                  color: context.colors.error,
                   shape: BoxShape.circle,
                 ),
               ),

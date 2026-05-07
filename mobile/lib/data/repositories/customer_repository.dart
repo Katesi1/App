@@ -15,6 +15,7 @@ class CustomerRepository {
     int? guests,
     double? minPrice,
     double? maxPrice,
+    String? view,
   }) async {
     try {
       final response = await _dio.get(
@@ -27,10 +28,12 @@ class CustomerRepository {
           if (guests != null) 'guests': guests,
           if (minPrice != null) 'minPrice': minPrice,
           if (maxPrice != null) 'maxPrice': maxPrice,
+          if (view != null) 'view': view,
         },
       );
       final list = (response.data['data'] as List)
           .map((e) => RoomModel.fromJson(e))
+          .where((r) => r.isActive)
           .toList();
       return ApiResponse(success: true, data: list, message: '');
     } on DioException catch (e) {
@@ -42,8 +45,7 @@ class CustomerRepository {
   Future<ApiResponse<BookingModel>> customerHoldRoom(
       Map<String, dynamic> data) async {
     try {
-      final response =
-          await _dio.post(ApiConstants.customerHold, data: data);
+      final response = await _dio.post(ApiConstants.customerHold, data: data);
       return ApiResponse(
         success: true,
         data: BookingModel.fromJson(response.data['data']),

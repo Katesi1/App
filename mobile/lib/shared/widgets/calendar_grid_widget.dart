@@ -1,5 +1,3 @@
-import 'dart:math';
-
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
@@ -11,21 +9,7 @@ import '../../core/theme/app_spacing.dart';
 
 enum CalendarViewMode { weekly, monthly }
 
-enum PropertyCategory { villa, homestay, hotel }
-
-class PropertyGroup {
-  final String id;
-  final String name;
-  final PropertyCategory category;
-  final List<CalendarRoom> rooms;
-
-  const PropertyGroup({
-    required this.id,
-    required this.name,
-    required this.category,
-    required this.rooms,
-  });
-}
+enum PropertyCategory { all, villa, homestay, hotel }
 
 class CalendarRoom {
   final String id;
@@ -39,75 +23,13 @@ class CalendarRoom {
   });
 }
 
-enum DayCellStatus { available, booked, hold }
+enum DayCellStatus { available, booked, hold, locked }
 
 class DayCell {
   final double price;
   final DayCellStatus status;
 
   const DayCell({required this.price, required this.status});
-}
-
-// ─── Mock data generator ─────────────────────────────────────────────────────
-
-List<PropertyGroup> generateMockCalendarData(PropertyCategory category) {
-  final random = Random(category.index * 42);
-
-  final names = switch (category) {
-    PropertyCategory.villa => ['Sunferia', 'Harborbay', 'Grandbay'],
-    PropertyCategory.homestay => [
-        'Hạ Long View',
-        'Bãi Cháy House',
-        'Tuần Châu Stay',
-      ],
-    PropertyCategory.hotel => ['Grand Palace', 'Ocean Resort', 'Bay Hotel'],
-  };
-
-  final roomPrefixes = switch (category) {
-    PropertyCategory.villa => ['C', 'M'],
-    PropertyCategory.homestay => ['H', 'P'],
-    PropertyCategory.hotel => ['R', 'S'],
-  };
-
-  return names.asMap().entries.map((entry) {
-    final groupId = '${category.name}_${entry.key}';
-    final rooms = <CalendarRoom>[];
-
-    for (var i = 0; i < 8 + random.nextInt(5); i++) {
-      final prefix = roomPrefixes[random.nextInt(roomPrefixes.length)];
-      final code =
-          '$prefix${random.nextInt(9) + 1}-${(random.nextInt(40) + 1).toString().padLeft(2, '0')}';
-      final basePrice = (random.nextInt(5) + 5) * 1000000.0;
-
-      final dayCells = <DateTime, DayCell>{};
-      final now = DateTime.now();
-      for (var d = -30; d < 60; d++) {
-        final date = DateTime(now.year, now.month, now.day + d);
-        final isWeekend = date.weekday == 6 || date.weekday == 7;
-        final price = isWeekend ? basePrice * 1.8 : basePrice;
-
-        final statusRoll = random.nextDouble();
-        final status = statusRoll < 0.12
-            ? DayCellStatus.booked
-            : statusRoll < 0.2
-                ? DayCellStatus.hold
-                : DayCellStatus.available;
-
-        dayCells[date] = DayCell(price: price, status: status);
-      }
-
-      rooms.add(
-        CalendarRoom(id: '${groupId}_$i', code: code, dayCells: dayCells),
-      );
-    }
-
-    return PropertyGroup(
-      id: groupId,
-      name: entry.value,
-      category: category,
-      rooms: rooms,
-    );
-  }).toList();
 }
 
 // ─── Callbacks ───────────────────────────────────────────────────────────────
@@ -144,12 +66,44 @@ class CalendarGridWidget extends StatefulWidget {
 
 class _CalendarGridWidgetState extends State<CalendarGridWidget> {
   final _verticalController = ScrollController();
-  final _horizontalController = ScrollController();
+  final _headerHorizontalController = ScrollController();
+  final _bodyHorizontalController = ScrollController();
+  bool _isSyncing = false;
+
+  @override
+  void initState() {
+    super.initState();
+    // Sync header → body
+    _headerHorizontalController.addListener(_syncHeaderToBody);
+    // Sync body → header
+    _bodyHorizontalController.addListener(_syncBodyToHeader);
+  }
+
+  void _syncHeaderToBody() {
+    if (_isSyncing) return;
+    _isSyncing = true;
+    if (_bodyHorizontalController.hasClients) {
+      _bodyHorizontalController.jumpTo(_headerHorizontalController.offset);
+    }
+    _isSyncing = false;
+  }
+
+  void _syncBodyToHeader() {
+    if (_isSyncing) return;
+    _isSyncing = true;
+    if (_headerHorizontalController.hasClients) {
+      _headerHorizontalController.jumpTo(_bodyHorizontalController.offset);
+    }
+    _isSyncing = false;
+  }
 
   @override
   void dispose() {
+    _headerHorizontalController.removeListener(_syncHeaderToBody);
+    _bodyHorizontalController.removeListener(_syncBodyToHeader);
     _verticalController.dispose();
-    _horizontalController.dispose();
+    _headerHorizontalController.dispose();
+    _bodyHorizontalController.dispose();
     super.dispose();
   }
 
@@ -300,7 +254,7 @@ class _CalendarGridWidgetState extends State<CalendarGridWidget> {
             ),
             Expanded(
               child: SingleChildScrollView(
-                controller: _horizontalController,
+                controller: _headerHorizontalController,
                 scrollDirection: Axis.horizontal,
                 physics: const ClampingScrollPhysics(),
                 child: SizedBox(width: gridWidth, child: dateHeaders()),
@@ -349,21 +303,16 @@ class _CalendarGridWidgetState extends State<CalendarGridWidget> {
               Expanded(
                 child: NotificationListener<ScrollNotification>(
                   onNotification: (notification) {
-                    if (notification is ScrollUpdateNotification) {
-                      if (notification.metrics.axis == Axis.horizontal) {
-                        _horizontalController.jumpTo(
-                          notification.metrics.pixels,
-                        );
-                      }
-                      if (notification.metrics.axis == Axis.vertical) {
-                        _verticalController.jumpTo(
-                          notification.metrics.pixels,
-                        );
-                      }
+                    if (notification is ScrollUpdateNotification &&
+                        notification.metrics.axis == Axis.vertical) {
+                      _verticalController.jumpTo(
+                        notification.metrics.pixels,
+                      );
                     }
                     return false;
                   },
                   child: SingleChildScrollView(
+                    controller: _bodyHorizontalController,
                     scrollDirection: Axis.horizontal,
                     child: SizedBox(
                       width: gridWidth,
@@ -415,12 +364,12 @@ class _CalendarGridWidgetState extends State<CalendarGridWidget> {
     }
 
     final bgColor = switch (cell.status) {
-      DayCellStatus.booked => isDark
-          ? AppColors.coral.withValues(alpha: 0.2)
-          : AppColors.coralLight,
-      DayCellStatus.hold => isDark
-          ? AppColors.amber.withValues(alpha: 0.18)
-          : AppColors.amberLight,
+      DayCellStatus.booked =>
+        isDark ? AppColors.coral.withValues(alpha: 0.2) : AppColors.coralLight,
+      DayCellStatus.hold =>
+        isDark ? AppColors.amber.withValues(alpha: 0.18) : AppColors.amberLight,
+      DayCellStatus.locked =>
+        isDark ? AppColors.slate.withValues(alpha: 0.25) : AppColors.slateLight,
       DayCellStatus.available => isWeekend
           ? isDark
               ? AppColors.gold.withValues(alpha: 0.1)
@@ -456,7 +405,7 @@ class _CalendarGridWidgetState extends State<CalendarGridWidget> {
           ],
         ),
       DayCellStatus.hold => Icon(
-          Icons.lock_rounded,
+          Icons.lock_clock_rounded,
           size: 18,
           color: isDark ? AppColors.amber : AppColors.brownDark,
         ),
@@ -469,18 +418,31 @@ class _CalendarGridWidgetState extends State<CalendarGridWidget> {
             color: AppColors.coral,
           ),
         ),
+      DayCellStatus.locked => Icon(
+          Icons.lock_rounded,
+          size: 18,
+          color: isDark ? AppColors.slate : AppColors.muted,
+        ),
     };
 
+    // Disable tap cho ngày quá khứ
+    final today = DateTime.now();
+    final todayDate = DateTime(today.year, today.month, today.day);
+    final isPast = date.isBefore(todayDate);
+
     return GestureDetector(
-      onTap: widget.onCellTap != null
+      onTap: (widget.onCellTap != null && !isPast)
           ? () => widget.onCellTap!(room, date, cell)
           : null,
-      child: _calendarCellShell(
-        width: width,
-        height: height,
-        bgColor: bgColor,
-        borderColor: borderColor,
-        child: statusChild,
+      child: Opacity(
+        opacity: isPast ? 0.4 : 1.0,
+        child: _calendarCellShell(
+          width: width,
+          height: height,
+          bgColor: bgColor,
+          borderColor: borderColor,
+          child: statusChild,
+        ),
       ),
     );
   }
@@ -537,13 +499,13 @@ class _CalendarGridWidgetState extends State<CalendarGridWidget> {
             label: 'Trống',
             labelColor: labelColor,
           ),
-          const SizedBox(width: AppSpacing.md),
+          const SizedBox(width: AppSpacing.sm),
           _buildLegendSymbol(
-            child: Icon(Icons.lock_rounded, size: 14, color: lockColor),
+            child: Icon(Icons.lock_clock_rounded, size: 14, color: lockColor),
             label: 'Giữ chỗ',
             labelColor: labelColor,
           ),
-          const SizedBox(width: AppSpacing.md),
+          const SizedBox(width: AppSpacing.sm),
           _buildLegendSymbol(
             child: Text(
               '×',
@@ -556,7 +518,17 @@ class _CalendarGridWidgetState extends State<CalendarGridWidget> {
             label: 'Đã đặt',
             labelColor: labelColor,
           ),
-          const SizedBox(width: AppSpacing.md),
+          const SizedBox(width: AppSpacing.sm),
+          _buildLegendSymbol(
+            child: Icon(
+              Icons.lock_rounded,
+              size: 14,
+              color: isDark ? AppColors.slate : AppColors.muted,
+            ),
+            label: 'Khoá',
+            labelColor: labelColor,
+          ),
+          const SizedBox(width: AppSpacing.sm),
           Flexible(
             child: Text(
               widget.legendTapHint,
@@ -745,7 +717,8 @@ class CalendarDateNavigation extends StatelessWidget {
                 style: GoogleFonts.beVietnamPro(
                   fontSize: 16,
                   fontWeight: FontWeight.w700,
-                  color: isDark ? AppColors.darkTextPrimary : AppColors.oceanDeep,
+                  color:
+                      isDark ? AppColors.darkTextPrimary : AppColors.oceanDeep,
                 ),
               ),
               if (isWeekly)
@@ -820,6 +793,7 @@ class CalendarCategoryTabs extends StatelessWidget {
         children: PropertyCategory.values.map((cat) {
           final isSelected = selected == cat;
           final label = switch (cat) {
+            PropertyCategory.all => 'Tất cả',
             PropertyCategory.villa => 'Villa',
             PropertyCategory.homestay => 'Homestay',
             PropertyCategory.hotel => 'Khách sạn',
@@ -871,74 +845,6 @@ class CalendarCategoryTabs extends StatelessWidget {
   }
 }
 
-class CalendarSubCategoryChips extends StatelessWidget {
-  final List<PropertyGroup> groups;
-  final int selectedIndex;
-  final ValueChanged<int> onChanged;
-
-  const CalendarSubCategoryChips({
-    super.key,
-    required this.groups,
-    required this.selectedIndex,
-    required this.onChanged,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    return SizedBox(
-      height: 44,
-      child: ListView.separated(
-        scrollDirection: Axis.horizontal,
-        padding: const EdgeInsets.symmetric(
-          horizontal: AppSpacing.md,
-          vertical: AppSpacing.xs,
-        ),
-        itemCount: groups.length,
-        separatorBuilder: (_, __) => const SizedBox(width: AppSpacing.sm),
-        itemBuilder: (_, i) {
-          final isSelected = selectedIndex == i;
-          return GestureDetector(
-            onTap: () => onChanged(i),
-            child: Chip(
-              label: Text(groups[i].name),
-              labelStyle: GoogleFonts.beVietnamPro(
-                fontSize: 12,
-                fontWeight: FontWeight.w600,
-                color: isSelected
-                    ? isDark
-                        ? AppColors.oceanBright
-                        : AppColors.oceanDeep
-                    : isDark
-                        ? AppColors.darkHint
-                        : AppColors.muted,
-              ),
-              backgroundColor: isSelected
-                  ? isDark
-                      ? AppColors.ocean.withValues(alpha: 0.25)
-                      : AppColors.oceanLight
-                  : isDark
-                      ? AppColors.darkContainer
-                      : AppColors.surface,
-              side: BorderSide(
-                color: isSelected
-                    ? isDark
-                        ? AppColors.oceanBright
-                        : AppColors.ocean
-                    : isDark
-                        ? AppColors.darkBorder
-                        : AppColors.border,
-              ),
-              visualDensity: VisualDensity.compact,
-              padding: const EdgeInsets.symmetric(horizontal: 4),
-            ),
-          );
-        },
-      ),
-    );
-  }
-}
-
 class CalendarGradientHeader extends StatelessWidget {
   final String title;
   final String? subtitle;
@@ -985,8 +891,8 @@ class CalendarGradientHeader extends StatelessWidget {
                 decoration: BoxDecoration(
                   color: Colors.white.withValues(alpha: 0.12),
                   shape: BoxShape.circle,
-                  border: Border.all(
-                      color: Colors.white.withValues(alpha: 0.18)),
+                  border:
+                      Border.all(color: Colors.white.withValues(alpha: 0.18)),
                 ),
                 child: const Icon(Icons.arrow_back_rounded,
                     color: Colors.white, size: 18),

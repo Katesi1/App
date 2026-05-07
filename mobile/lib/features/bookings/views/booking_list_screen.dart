@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 import '../../../core/constants/app_constants.dart';
+import '../../../core/theme/app_color_scheme.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../data/models/booking_model.dart';
@@ -34,9 +35,9 @@ class _BookingListScreenState extends ConsumerState<BookingListScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.colors;
     final bookingsAsync = ref.watch(bookingListProvider(null));
     final user = ref.watch(currentUserProvider);
-    final colors = Theme.of(context).colorScheme;
 
     return AppScaffold(
       title: '',
@@ -57,7 +58,7 @@ class _BookingListScreenState extends ConsumerState<BookingListScreen> {
               gradient: LinearGradient(
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
-                colors: [AppColors.oceanDeep, AppColors.ocean],
+                colors: [AppColors.jade900, AppColors.jade500],
               ),
             ),
             child: Stack(
@@ -71,7 +72,7 @@ class _BookingListScreenState extends ConsumerState<BookingListScreen> {
                     height: 160,
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
-                      color: AppColors.teal.withValues(alpha: 0.10),
+                      color: AppColors.jade300.withValues(alpha: 0.10),
                     ),
                   ),
                 ),
@@ -83,14 +84,22 @@ class _BookingListScreenState extends ConsumerState<BookingListScreen> {
                     height: 100,
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
-                      color: AppColors.gold.withValues(alpha: 0.08),
+                      color: AppColors.gold500.withValues(alpha: 0.08),
                     ),
                   ),
                 ),
                 Row(
                   children: [
                     GestureDetector(
-                      onTap: () => context.pop(),
+                      // /bookings là top-level (vào qua bottom nav `context.go`
+                      // → stack rỗng, pop = no-op). Fallback /dashboard.
+                      onTap: () {
+                        if (context.canPop()) {
+                          context.pop();
+                        } else {
+                          context.go('/dashboard');
+                        }
+                      },
                       child: Container(
                         width: 36,
                         height: 36,
@@ -150,7 +159,7 @@ class _BookingListScreenState extends ConsumerState<BookingListScreen> {
               itemBuilder: (_, i) {
                 final status = _filters[i];
                 final selected = _filterStatus == status;
-                final color = _statusColor(status);
+                final color = _statusColor(status, colors);
 
                 return FilterChip(
                   label: Text(_filterLabels[i]),
@@ -160,7 +169,7 @@ class _BookingListScreenState extends ConsumerState<BookingListScreen> {
                   checkmarkColor: color,
                   labelStyle: GoogleFonts.beVietnamPro(
                     fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
-                    color: selected ? color : colors.onSurface,
+                    color: selected ? color : colors.textPrimary,
                     fontSize: 12,
                   ),
                 );
@@ -192,7 +201,8 @@ class _BookingListScreenState extends ConsumerState<BookingListScreen> {
                 }
 
                 return RefreshIndicator(
-                  onRefresh: () async => ref.invalidate(bookingListProvider(null)),
+                  onRefresh: () async =>
+                      ref.invalidate(bookingListProvider(null)),
                   child: ListView.separated(
                     padding: const EdgeInsets.fromLTRB(AppSpacing.md,
                         AppSpacing.sm, AppSpacing.md, AppSpacing.xxl),
@@ -215,16 +225,16 @@ class _BookingListScreenState extends ConsumerState<BookingListScreen> {
     );
   }
 
-  Color _statusColor(BookingStatus? status) {
+  Color _statusColor(BookingStatus? status, AppColorScheme colors) {
     switch (status) {
       case BookingStatus.hold:
-        return AppColors.hold;
+        return colors.warning;
       case BookingStatus.confirmed:
-        return AppColors.confirmed;
+        return colors.success;
       case BookingStatus.cancelled:
-        return AppColors.error;
+        return colors.error;
       default:
-        return AppColors.primary;
+        return colors.brand;
     }
   }
 }
@@ -258,16 +268,16 @@ class _BookingCardState extends ConsumerState<_BookingCard> {
     return '$formatted đ';
   }
 
-  Color get _statusColor {
+  Color _statusColorOf(AppColorScheme colors) {
     switch (widget.booking.status) {
       case BookingStatus.hold:
-        return AppColors.hold;
+        return colors.warning;
       case BookingStatus.confirmed:
-        return AppColors.confirmed;
+        return colors.success;
       case BookingStatus.cancelled:
-        return AppColors.error;
+        return colors.error;
       default:
-        return Colors.grey;
+        return colors.textTertiary;
     }
   }
 
@@ -287,6 +297,7 @@ class _BookingCardState extends ConsumerState<_BookingCard> {
   }
 
   Future<void> _cancel() async {
+    final colors = context.colors;
     final ok = await showDialog<bool>(
       context: context,
       builder: (_) => AlertDialog(
@@ -300,8 +311,7 @@ class _BookingCardState extends ConsumerState<_BookingCard> {
               child: const Text('Không')),
           FilledButton(
             style: FilledButton.styleFrom(
-                backgroundColor: AppColors.error,
-                foregroundColor: Colors.white),
+                backgroundColor: colors.error, foregroundColor: Colors.white),
             onPressed: () => Navigator.pop(context, true),
             child: const Text('Huỷ booking'),
           ),
@@ -325,23 +335,26 @@ class _BookingCardState extends ConsumerState<_BookingCard> {
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.colors;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     final booking = widget.booking;
     final fmt = DateFormat('dd/MM/yyyy');
     final isHold = booking.status == BookingStatus.hold;
-    final colors = Theme.of(context).colorScheme;
+    final statusColor = _statusColorOf(colors);
 
     return Card(
       clipBehavior: Clip.antiAlias,
+      color: colors.bgSurface,
       shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(AppRadius.lg)),
       elevation: 2,
-      shadowColor: colors.shadow.withValues(alpha: 0.06),
+      shadowColor: Colors.black.withValues(alpha: isDark ? 0.30 : 0.06),
       child: IntrinsicHeight(
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             // ── Left status bar ─────────────────────────────────────
-            Container(width: 4, color: _statusColor),
+            Container(width: 4, color: statusColor),
 
             // ── Content ─────────────────────────────────────────────
             Expanded(
@@ -359,7 +372,7 @@ class _BookingCardState extends ConsumerState<_BookingCard> {
                             style: GoogleFonts.beVietnamPro(
                               fontWeight: FontWeight.w700,
                               fontSize: 15,
-                              color: colors.onSurface,
+                              color: colors.textPrimary,
                             ),
                           ),
                         ),
@@ -368,15 +381,16 @@ class _BookingCardState extends ConsumerState<_BookingCard> {
                           padding: const EdgeInsets.symmetric(
                               horizontal: AppSpacing.sm, vertical: 3),
                           decoration: BoxDecoration(
-                            color: _statusColor.withValues(alpha: 0.1),
+                            color: statusColor.withValues(
+                                alpha: isDark ? 0.18 : 0.1),
                             borderRadius: BorderRadius.circular(AppRadius.full),
                             border: Border.all(
-                                color: _statusColor.withValues(alpha: 0.4)),
+                                color: statusColor.withValues(alpha: 0.4)),
                           ),
                           child: Text(
                             booking.status.label,
                             style: GoogleFonts.beVietnamPro(
-                              color: _statusColor,
+                              color: statusColor,
                               fontSize: 11,
                               fontWeight: FontWeight.w700,
                             ),
@@ -390,7 +404,7 @@ class _BookingCardState extends ConsumerState<_BookingCard> {
                       booking.propertyName,
                       style: GoogleFonts.beVietnamPro(
                         fontSize: 12,
-                        color: colors.onSurface.withValues(alpha: 0.5),
+                        color: colors.textSecondary,
                       ),
                     ),
 
@@ -400,14 +414,13 @@ class _BookingCardState extends ConsumerState<_BookingCard> {
                     Row(
                       children: [
                         Icon(Icons.date_range_rounded,
-                            size: 14,
-                            color: colors.onSurface.withValues(alpha: 0.45)),
+                            size: 14, color: colors.textTertiary),
                         const SizedBox(width: 4),
                         Text(
                           '${fmt.format(booking.checkinDate)} → ${fmt.format(booking.checkoutDate)}',
                           style: GoogleFonts.beVietnamPro(
                             fontSize: 13,
-                            color: colors.onSurface.withValues(alpha: 0.7),
+                            color: colors.textSecondary,
                           ),
                         ),
                         const SizedBox(width: AppSpacing.sm),
@@ -415,7 +428,7 @@ class _BookingCardState extends ConsumerState<_BookingCard> {
                           '(${booking.nights} đêm)',
                           style: GoogleFonts.beVietnamPro(
                             fontSize: 11,
-                            color: colors.primary,
+                            color: colors.brand,
                             fontWeight: FontWeight.w600,
                           ),
                         ),
@@ -428,14 +441,13 @@ class _BookingCardState extends ConsumerState<_BookingCard> {
                       Row(
                         children: [
                           Icon(Icons.person_outline_rounded,
-                              size: 14,
-                              color: colors.onSurface.withValues(alpha: 0.45)),
+                              size: 14, color: colors.textTertiary),
                           const SizedBox(width: 4),
                           Text(
                             booking.customerName!,
                             style: GoogleFonts.beVietnamPro(
                               fontSize: 13,
-                              color: colors.onSurface.withValues(alpha: 0.7),
+                              color: colors.textSecondary,
                             ),
                           ),
                           if (booking.customerPhone != null) ...[
@@ -444,7 +456,7 @@ class _BookingCardState extends ConsumerState<_BookingCard> {
                               booking.customerPhone!,
                               style: GoogleFonts.beVietnamPro(
                                 fontSize: 12,
-                                color: colors.onSurface.withValues(alpha: 0.45),
+                                color: colors.textTertiary,
                               ),
                             ),
                           ],
@@ -459,28 +471,26 @@ class _BookingCardState extends ConsumerState<_BookingCard> {
                         if (booking.depositAmount != null &&
                             booking.depositAmount! > 0) ...[
                           Icon(Icons.payments_outlined,
-                              size: 14,
-                              color: colors.onSurface.withValues(alpha: 0.45)),
+                              size: 14, color: colors.textTertiary),
                           const SizedBox(width: 4),
                           Text(
                             _formatPrice(booking.depositAmount!),
                             style: GoogleFonts.beVietnamPro(
                               fontSize: 13,
                               fontWeight: FontWeight.w600,
-                              color: AppColors.ocean,
+                              color: colors.brand,
                             ),
                           ),
                           const SizedBox(width: AppSpacing.md),
                         ],
                         Icon(Icons.people_outline_rounded,
-                            size: 14,
-                            color: colors.onSurface.withValues(alpha: 0.45)),
+                            size: 14, color: colors.textTertiary),
                         const SizedBox(width: 4),
                         Text(
                           '${booking.guestCount} khách',
                           style: GoogleFonts.beVietnamPro(
                             fontSize: 13,
-                            color: colors.onSurface.withValues(alpha: 0.7),
+                            color: colors.textSecondary,
                           ),
                         ),
                       ],
@@ -493,21 +503,22 @@ class _BookingCardState extends ConsumerState<_BookingCard> {
                         padding: const EdgeInsets.symmetric(
                             horizontal: AppSpacing.sm, vertical: 4),
                         decoration: BoxDecoration(
-                          color: AppColors.warning.withValues(alpha: 0.1),
+                          color: colors.warning
+                              .withValues(alpha: isDark ? 0.18 : 0.1),
                           borderRadius: BorderRadius.circular(AppRadius.sm),
                           border: Border.all(
-                              color: AppColors.warning.withValues(alpha: 0.3)),
+                              color: colors.warning.withValues(alpha: 0.3)),
                         ),
                         child: Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            const Icon(Icons.timer_outlined,
-                                size: 13, color: AppColors.warning),
+                            Icon(Icons.timer_outlined,
+                                size: 13, color: colors.warning),
                             const SizedBox(width: 4),
                             Text(
                               'Còn ${(booking.holdRemainingSeconds / 60).ceil()} phút',
                               style: GoogleFonts.beVietnamPro(
-                                color: AppColors.warning,
+                                color: colors.warning,
                                 fontSize: 12,
                                 fontWeight: FontWeight.w600,
                               ),
@@ -533,9 +544,8 @@ class _BookingCardState extends ConsumerState<_BookingCard> {
                                   child: OutlinedButton(
                                     onPressed: _cancel,
                                     style: OutlinedButton.styleFrom(
-                                      foregroundColor: AppColors.error,
-                                      side: const BorderSide(
-                                          color: AppColors.error),
+                                      foregroundColor: colors.error,
+                                      side: BorderSide(color: colors.error),
                                       padding: const EdgeInsets.symmetric(
                                           vertical: 6),
                                     ),
@@ -551,7 +561,7 @@ class _BookingCardState extends ConsumerState<_BookingCard> {
                                     child: FilledButton(
                                       onPressed: _confirm,
                                       style: FilledButton.styleFrom(
-                                        backgroundColor: AppColors.confirmed,
+                                        backgroundColor: colors.success,
                                         foregroundColor: Colors.white,
                                         padding: const EdgeInsets.symmetric(
                                             vertical: 6),
@@ -594,7 +604,7 @@ class _AvatarBtn extends StatelessWidget {
         decoration: BoxDecoration(
           shape: BoxShape.circle,
           gradient: const LinearGradient(
-              colors: [AppColors.teal, AppColors.gold]),
+              colors: [AppColors.jade300, AppColors.gold500]),
           border: Border.all(
               color: Colors.white.withValues(alpha: 0.3), width: 1.5),
         ),

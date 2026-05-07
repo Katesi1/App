@@ -41,8 +41,7 @@ class NotificationActionsNotifier extends StateNotifier<AsyncValue<void>> {
 }
 
 final notificationActionsProvider =
-    StateNotifierProvider<NotificationActionsNotifier, AsyncValue<void>>(
-        (ref) {
+    StateNotifierProvider<NotificationActionsNotifier, AsyncValue<void>>((ref) {
   final repo = ref.read(notificationRepositoryProvider);
   return NotificationActionsNotifier(repo, ref);
 });

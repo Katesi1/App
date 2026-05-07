@@ -91,7 +91,7 @@ class RoomModel {
   final String homestayId;
   final String name;
   final String code;
-  final int? type; // 0=VILLA, 1=HOMESTAY, 2=HOTEL, 3=APARTMENT
+  final int? type; // 0=VILLA, 1=HOMESTAY, 2=HOTEL
   final int bedrooms;
   final int bathrooms;
   final int standardGuests;
@@ -101,6 +101,10 @@ class RoomModel {
   final String? mapLink;
   final List<String> amenities;
   final int? cancellationPolicy; // 0=FLEXIBLE, 1=MODERATE, 2=STRICT
+  final String?
+      view; // "sea" = view biển, "city" = view thành phố, null = không
+  final String? rules; // Quy định (1 chuỗi text)
+  final List<String> services; // Dịch vụ trả phí
   final double? adultSurcharge;
   final double? childSurcharge;
   final bool isActive;
@@ -123,6 +127,9 @@ class RoomModel {
     this.mapLink,
     this.amenities = const [],
     this.cancellationPolicy,
+    this.view,
+    this.rules,
+    this.services = const [],
     this.adultSurcharge,
     this.childSurcharge,
     this.isActive = true,
@@ -150,6 +157,12 @@ class RoomModel {
                 .toList() ??
             [],
         cancellationPolicy: json['cancellationPolicy'],
+        view: json['view'],
+        rules: json['rules'],
+        services: (json['services'] as List<dynamic>?)
+                ?.map((e) => e.toString())
+                .toList() ??
+            [],
         adultSurcharge: (json['adultSurcharge'] as num?)?.toDouble(),
         childSurcharge: (json['childSurcharge'] as num?)?.toDouble(),
         isActive: json['isActive'] ?? true,
@@ -157,13 +170,30 @@ class RoomModel {
                 ?.map((e) => RoomImageModel.fromJson(e))
                 .toList() ??
             [],
+        // API mới trả price flat (weekdayPrice/weekendPrice/holidayPrice ở root).
+        // API cũ trả nested object json['price']. Hỗ trợ cả 2.
         price: json['price'] != null
             ? RoomPriceModel.fromJson(json['price'])
-            : null,
+            : (json['weekdayPrice'] != null ||
+                    json['weekendPrice'] != null ||
+                    json['holidayPrice'] != null)
+                ? RoomPriceModel(
+                    id: '',
+                    roomId: json['id'] ?? '',
+                    weekdayPrice:
+                        (json['weekdayPrice'] as num?)?.toDouble() ?? 0,
+                    // API mới chỉ có 1 weekendPrice — gán cho cả friday + saturday
+                    fridayPrice:
+                        (json['weekendPrice'] as num?)?.toDouble() ?? 0,
+                    saturdayPrice:
+                        (json['weekendPrice'] as num?)?.toDouble() ?? 0,
+                    holidayPrice:
+                        (json['holidayPrice'] as num?)?.toDouble() ?? 0,
+                  )
+                : null,
         // Hỗ trợ cả property (API mới) và homestay (API cũ)
         homestay: (json['property'] ?? json['homestay']) != null
-            ? HomestaySimpleModel.fromJson(
-                json['property'] ?? json['homestay'])
+            ? HomestaySimpleModel.fromJson(json['property'] ?? json['homestay'])
             : null,
       );
 

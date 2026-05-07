@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:dio/dio.dart';
 import '../constants/api_constants.dart';
 import '../storage/secure_storage.dart';
@@ -5,6 +7,17 @@ import '../storage/secure_storage.dart';
 class ApiClient {
   static late final Dio _dio;
   static bool _initialized = false;
+
+  /// Broadcast event khi token refresh fail → app phải đẩy user về login.
+  ///
+  /// Subscriber: `AuthNotifier` (xem `auth_controller.dart`). Khi nhận:
+  /// 1. SecureStorage đã được clear bởi interceptor
+  /// 2. AuthNotifier reset state → router tự redirect `/login`
+  /// 3. Login screen show snackbar "Phiên đăng nhập đã hết hạn"
+  static final StreamController<void> _forceLogoutController =
+      StreamController<void>.broadcast();
+
+  static Stream<void> get onForceLogout => _forceLogoutController.stream;
 
   static Dio get instance {
     if (!_initialized) _init();
@@ -29,7 +42,8 @@ class _AuthInterceptor extends Interceptor {
   bool _isRefreshing = false;
 
   // Hàng chờ: các request nhận 401 trong khi đang refresh sẽ đợi ở đây
-  final List<({RequestOptions options, ErrorInterceptorHandler handler})> _queue = [];
+  final List<({RequestOptions options, ErrorInterceptorHandler handler})>
+      _queue = [];
 
   _AuthInterceptor(this._dio);
 
@@ -92,8 +106,10 @@ class _AuthInterceptor extends Interceptor {
       // Replay tất cả request đang chờ trong hàng
       await _replayQueue(newAccessToken, err);
     } catch (_) {
-      // Refresh thất bại → xoá token, đăng xuất
+      // Refresh thất bại → xoá token + broadcast force-logout cho AuthNotifier
+      // (state reset → router redirect /login + snackbar).
       await SecureStorage.clear();
+      ApiClient._forceLogoutController.add(null);
       await _failAll(err);
       handler.next(err);
     } finally {

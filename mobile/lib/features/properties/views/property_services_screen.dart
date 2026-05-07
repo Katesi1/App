@@ -1,276 +1,211 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 
+import '../../../core/theme/app_color_scheme.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../shared/widgets/loading_widget.dart';
+import '../../rooms/controllers/room_controller.dart';
 
-class PropertyServicesScreen extends StatefulWidget {
+// gradient.brandHero stop "jade-mid" theo spec section 3.7
+const _jadeMidLight = Color(0xFF1B7E94);
+
+class PropertyServicesScreen extends ConsumerStatefulWidget {
   final String homestayId;
 
   const PropertyServicesScreen({super.key, required this.homestayId});
 
   @override
-  State<PropertyServicesScreen> createState() => _PropertyServicesScreenState();
+  ConsumerState<PropertyServicesScreen> createState() =>
+      _PropertyServicesScreenState();
 }
 
-class _PropertyServicesScreenState extends State<PropertyServicesScreen> {
-  final List<String> _services = [
-    'Dịch vụ thuê nấu ăn tại Villa',
-    'Setup BBQ tại Villa',
-    'Tiệc Gala Dinner theo thực đơn yêu cầu',
-    'Thuê Dọn dẹp bếp, dụng cụ BBQ sau bữa ăn',
-    'Than hoa, thực phẩm',
-    'Hỗ trợ đặt xe đưa đón, vé tàu, vé công viên chiết khấu cao',
-  ];
+class _PropertyServicesScreenState
+    extends ConsumerState<PropertyServicesScreen> {
+  final List<String> _services = [];
+  bool _isLoading = false;
+  bool _initialized = false;
 
-  Future<void> _showServiceDialog({int? index}) async {
-    final isEdit = index != null;
-    final controller = TextEditingController(
-      text: isEdit ? _services[index] : '',
-    );
-    final formKey = GlobalKey<FormState>();
+  void _initFromRoom() {
+    if (_initialized) return;
+    final room = ref.read(roomDetailProvider(widget.homestayId)).valueOrNull;
+    if (room == null) return;
+    _initialized = true;
+    _services.addAll(room.services);
+  }
 
-    final result = await showDialog<String>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Text(
-          isEdit ? 'Sửa dịch vụ' : 'Thêm dịch vụ',
-          style: GoogleFonts.beVietnamPro(
-            fontWeight: FontWeight.w700,
-            fontSize: 18,
-            color: AppColors.navy,
-          ),
-        ),
-        content: Form(
-          key: formKey,
-          child: TextFormField(
-            controller: controller,
-            autofocus: true,
-            maxLines: 2,
-            style: GoogleFonts.beVietnamPro(fontSize: 14),
-            decoration: InputDecoration(
-              hintText: 'Nhập tên dịch vụ',
-              hintStyle: GoogleFonts.beVietnamPro(
-                color: AppColors.muted,
-              ),
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(AppRadius.sm),
-              ),
-              focusedBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(AppRadius.sm),
-                borderSide: const BorderSide(
-                  color: AppColors.ocean,
-                  width: 1.5,
-                ),
-              ),
-            ),
-            validator: (value) {
-              if (value == null || value.trim().isEmpty) {
-                return 'Vui lòng nhập tên dịch vụ';
-              }
-              return null;
-            },
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: Text(
-              'Huỷ',
-              style: GoogleFonts.beVietnamPro(
-                color: AppColors.muted,
-              ),
-            ),
-          ),
-          FilledButton(
-            onPressed: () {
-              if (formKey.currentState!.validate()) {
-                Navigator.pop(context, controller.text.trim());
-              }
-            },
-            style: FilledButton.styleFrom(
-              backgroundColor: AppColors.ocean,
-            ),
-            child: Text(
-              isEdit ? 'Cập nhật' : 'Thêm',
-              style: GoogleFonts.beVietnamPro(),
-            ),
-          ),
-        ],
-      ),
-    );
+  Future<void> _onSave() async {
+    setState(() => _isLoading = true);
 
-    if (result != null && mounted) {
-      setState(() {
-        if (isEdit) {
-          _services[index] = result;
-        } else {
-          _services.add(result);
-        }
-      });
+    final ok =
+        await ref.read(roomActionsProvider.notifier).update(widget.homestayId, {
+      'services': _services,
+    });
+
+    if (!mounted) return;
+    setState(() => _isLoading = false);
+
+    if (ok) {
+      AppSnackBar.success(context, 'Đã lưu dịch vụ');
+      Navigator.of(context).pop();
+    } else {
+      AppSnackBar.error(context, 'Có lỗi xảy ra');
     }
   }
 
-  void _deleteService(int index) {
-    setState(() {
-      _services.removeAt(index);
-    });
+  void _addService() {
+    final ctrl = TextEditingController();
+    showDialog(
+      context: context,
+      builder: (ctx) {
+        final colors = ctx.colors;
+        return AlertDialog(
+          title: Text('Thêm dịch vụ',
+              style: GoogleFonts.beVietnamPro(fontWeight: FontWeight.w700)),
+          content: TextField(
+            controller: ctrl,
+            autofocus: true,
+            style: GoogleFonts.beVietnamPro(fontSize: 14),
+            decoration: InputDecoration(
+              hintText: 'VD: Thuê xe máy',
+              hintStyle: GoogleFonts.beVietnamPro(
+                  fontSize: 14, color: colors.textSecondary),
+            ),
+          ),
+          actions: [
+            TextButton(
+                onPressed: () => Navigator.pop(ctx), child: const Text('Huỷ')),
+            TextButton(
+              onPressed: () {
+                if (ctrl.text.trim().isNotEmpty) {
+                  setState(() => _services.add(ctrl.text.trim()));
+                }
+                Navigator.pop(ctx);
+              },
+              child: const Text('Thêm'),
+            ),
+          ],
+        );
+      },
+    );
   }
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.colors;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final gradient = isDark
+        ? const [AppColors.darkBg, AppColors.darkBorder]
+        : const [AppColors.jade500, _jadeMidLight];
+    final roomAsync = ref.watch(roomDetailProvider(widget.homestayId));
+
     return Scaffold(
+      backgroundColor: colors.bgCanvas,
       appBar: AppBar(
         title: const Text('Dịch vụ trả phí'),
-      ),
-      body: Column(
-        children: [
-          _buildInfoBanner(),
-          Expanded(
-            child: _services.isEmpty
-                ? const EmptyStateWidget(
-                    icon: Icons.room_service_outlined,
-                    message: 'Chưa có dịch vụ',
-                    subMessage: 'Nhấn + để thêm dịch vụ mới',
-                  )
-                : ListView.separated(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: AppSpacing.md,
-                      vertical: AppSpacing.sm,
-                    ),
-                    itemCount: _services.length,
-                    separatorBuilder: (_, __) => const Divider(
-                      height: 1,
-                      color: AppColors.border,
-                    ),
-                    itemBuilder: (context, index) =>
-                        _buildServiceItem(index),
-                  ),
+        actions: [
+          IconButton(
+            onPressed: _addService,
+            icon: const Icon(Icons.add_rounded),
           ),
-          _buildSaveButton(),
         ],
       ),
-      floatingActionButton: SizedBox(
-        width: 40,
-        height: 40,
-        child: FloatingActionButton(
-          onPressed: () => _showServiceDialog(),
-          backgroundColor: AppColors.ocean,
-          shape: const CircleBorder(),
-          child: const Icon(Icons.add, color: Colors.white, size: 20),
+      body: roomAsync.when(
+        loading: () => const LoadingWidget(),
+        error: (e, _) => ErrorStateWidget(
+          message: e.toString().replaceAll('Exception: ', ''),
+          onRetry: () => ref.invalidate(roomDetailProvider(widget.homestayId)),
         ),
-      ),
-    );
-  }
-
-  Widget _buildInfoBanner() {
-    return Container(
-      margin: const EdgeInsets.all(AppSpacing.md),
-      padding: const EdgeInsets.all(AppSpacing.md),
-      decoration: BoxDecoration(
-        color: AppColors.oceanPale,
-        borderRadius: BorderRadius.circular(AppRadius.md),
-      ),
-      child: Row(
-        children: [
-          const Icon(
-            Icons.info_outline,
-            color: AppColors.oceanMid,
-            size: 20,
-          ),
-          const SizedBox(width: AppSpacing.sm),
-          Expanded(
-            child: Text(
-              'Khách liên hệ sale để đặt dịch vụ',
-              style: GoogleFonts.beVietnamPro(
-                fontSize: 13,
-                color: AppColors.ocean,
-                fontWeight: FontWeight.w500,
+        data: (_) {
+          _initFromRoom();
+          if (_services.isEmpty) {
+            return Center(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.room_service_outlined,
+                      size: 48, color: colors.textTertiary),
+                  const SizedBox(height: 12),
+                  Text('Chưa có dịch vụ nào',
+                      style: GoogleFonts.beVietnamPro(
+                        fontSize: 15,
+                        color: colors.textSecondary,
+                      )),
+                  const SizedBox(height: 8),
+                  TextButton.icon(
+                    onPressed: _addService,
+                    icon: const Icon(Icons.add_rounded),
+                    label: const Text('Thêm dịch vụ'),
+                  ),
+                ],
+              ),
+            );
+          }
+          return ListView.separated(
+            padding: const EdgeInsets.all(AppSpacing.md),
+            itemCount: _services.length,
+            separatorBuilder: (_, __) =>
+                Divider(height: 1, color: colors.borderDefault),
+            itemBuilder: (_, i) => ListTile(
+              contentPadding: EdgeInsets.zero,
+              leading: Container(
+                width: 40,
+                height: 40,
+                decoration: BoxDecoration(
+                  color: colors.brand.withValues(alpha: isDark ? 0.18 : 0.12),
+                  borderRadius: BorderRadius.circular(AppRadius.sm),
+                ),
+                child: Icon(Icons.room_service_outlined,
+                    color: colors.brand, size: 20),
+              ),
+              title: Text(_services[i],
+                  style: GoogleFonts.beVietnamPro(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w500,
+                    color: colors.textPrimary,
+                  )),
+              trailing: IconButton(
+                onPressed: () => setState(() => _services.removeAt(i)),
+                icon: Icon(Icons.delete_outline_rounded,
+                    color: colors.error, size: 20),
               ),
             ),
-          ),
-        ],
+          );
+        },
       ),
-    );
-  }
-
-  Widget _buildServiceItem(int index) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: AppSpacing.sm),
-      child: Row(
-        children: [
-          Expanded(
-            child: Text(
-              _services[index],
-              style: GoogleFonts.beVietnamPro(
-                fontSize: 14,
-                fontWeight: FontWeight.w500,
-                color: AppColors.navy,
-              ),
-            ),
-          ),
-          IconButton(
-            onPressed: () => _showServiceDialog(index: index),
-            icon: const Icon(Icons.edit_outlined, size: 20),
-            color: AppColors.ocean,
-            constraints: const BoxConstraints(
-              minWidth: 36,
-              minHeight: 36,
-            ),
-            padding: EdgeInsets.zero,
-          ),
-          IconButton(
-            onPressed: () => _deleteService(index),
-            icon: const Icon(Icons.delete_outline, size: 20),
-            color: AppColors.coral,
-            constraints: const BoxConstraints(
-              minWidth: 36,
-              minHeight: 36,
-            ),
-            padding: EdgeInsets.zero,
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildSaveButton() {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(
-        AppSpacing.md,
-        AppSpacing.sm,
-        AppSpacing.md,
-        AppSpacing.lg,
-      ),
-      child: SizedBox(
-        width: double.infinity,
-        height: 48,
-        child: DecoratedBox(
-          decoration: BoxDecoration(
-            gradient: const LinearGradient(
-              colors: [AppColors.oceanMid, AppColors.ocean],
-            ),
-            borderRadius: BorderRadius.circular(AppRadius.md),
-          ),
-          child: ElevatedButton(
-            onPressed: () {
-              AppSnackBar.success(context, 'Đã lưu dịch vụ');
-              Navigator.pop(context);
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.transparent,
-              shadowColor: Colors.transparent,
-              shape: RoundedRectangleBorder(
+      bottomNavigationBar: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.all(AppSpacing.md),
+          child: SizedBox(
+            width: double.infinity,
+            height: 48,
+            child: DecoratedBox(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(colors: gradient),
                 borderRadius: BorderRadius.circular(AppRadius.md),
               ),
-            ),
-            child: Text(
-              'Lưu',
-              style: GoogleFonts.beVietnamPro(
-                fontSize: 15,
-                fontWeight: FontWeight.w600,
-                color: Colors.white,
+              child: ElevatedButton(
+                onPressed: _isLoading ? null : _onSave,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.transparent,
+                  shadowColor: Colors.transparent,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(AppRadius.md),
+                  ),
+                ),
+                child: _isLoading
+                    ? const SizedBox(
+                        width: 20,
+                        height: 20,
+                        child: CircularProgressIndicator(
+                            strokeWidth: 2, color: Colors.white))
+                    : Text('Lưu',
+                        style: GoogleFonts.beVietnamPro(
+                          fontWeight: FontWeight.w700,
+                          fontSize: 15,
+                          color: Colors.white,
+                        )),
               ),
             ),
           ),

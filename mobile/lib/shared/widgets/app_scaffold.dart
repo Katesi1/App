@@ -54,28 +54,23 @@ class AppScaffold extends ConsumerWidget {
                       tooltip: isDark ? 'Chế độ sáng' : 'Chế độ tối',
                       icon: AnimatedSwitcher(
                         duration: const Duration(milliseconds: 300),
-                        transitionBuilder: (child, anim) =>
-                            RotationTransition(
+                        transitionBuilder: (child, anim) => RotationTransition(
                           turns: anim,
-                          child: FadeTransition(
-                              opacity: anim, child: child),
+                          child: FadeTransition(opacity: anim, child: child),
                         ),
                         child: Icon(
                           isDark
                               ? Icons.light_mode_rounded
                               : Icons.dark_mode_rounded,
                           key: ValueKey(isDark),
-                          color: isDark
-                              ? AppColors.oceanBright
-                              : Colors.white,
+                          color: isDark ? AppColors.oceanBright : Colors.white,
                         ),
                       ),
                       onPressed: () =>
                           ref.read(themeProvider.notifier).toggle(),
                     ),
                     Padding(
-                      padding:
-                          const EdgeInsets.only(right: AppSpacing.sm),
+                      padding: const EdgeInsets.only(right: AppSpacing.sm),
                       child: GestureDetector(
                         onTap: () => context.push('/profile'),
                         child: Container(
@@ -107,13 +102,11 @@ class AppScaffold extends ConsumerWidget {
               : null),
       body: body,
       floatingActionButton: floatingActionButton,
-      bottomNavigationBar: showBottomNav
-          ? _BottomNav(selectedIndex: selectedIndex ?? 0)
-          : null,
+      bottomNavigationBar:
+          showBottomNav ? _BottomNav(selectedIndex: selectedIndex ?? 0) : null,
       bottomSheet: bottomSheet,
     );
   }
-
 }
 
 // ─── Bottom Navigation — dynamic tabs based on user role ────────────────────
@@ -197,12 +190,12 @@ class _BottomNavState extends ConsumerState<_BottomNav> {
     // Chế độ khách (CUSTOMER thuần hoặc ADMIN/STAFF toggle)
     if (isCustomerMode) return _customerNavItems;
 
-    // ADMIN: staff tabs + quản lý tab
-    if (user.isAdmin) {
+    // ADMIN + OWNER: staff tabs + quản lý tab
+    if (user.isAdmin || user.isOwner) {
       return [..._staffNavItems, _adminExtraItem];
     }
 
-    // STAFF: chỉ staff tabs
+    // SALE: chỉ staff tabs
     return _staffNavItems;
   }
 
@@ -311,8 +304,7 @@ class _BottomNavState extends ConsumerState<_BottomNav> {
               item.label,
               style: GoogleFonts.beVietnamPro(
                 fontSize: 10,
-                fontWeight:
-                    isSelected ? FontWeight.w700 : FontWeight.w500,
+                fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
                 color: isSelected ? activeColor : inactiveColor,
               ),
             ),

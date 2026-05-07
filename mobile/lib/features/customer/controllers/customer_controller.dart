@@ -2,6 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../data/models/booking_model.dart';
 import '../../../data/models/room_model.dart';
 import '../../../data/repositories/customer_repository.dart';
+import '../../calendar/controllers/calendar_controller.dart';
 
 // ── Repository provider ────────────────────────────────────────────────────
 
@@ -10,8 +11,9 @@ final customerRepositoryProvider =
 
 // ── Public rooms (cho customer tìm phòng) ──────────────────────────────────
 
-final publicRoomsProvider = FutureProvider.family<List<RoomModel>,
-    PublicRoomFilter?>((ref, filter) async {
+final publicRoomsProvider =
+    FutureProvider.family<List<RoomModel>, PublicRoomFilter?>(
+        (ref, filter) async {
   final repo = ref.read(customerRepositoryProvider);
   final result = await repo.getPublicRooms(
     checkinDate: filter?.checkinDate,
@@ -19,6 +21,7 @@ final publicRoomsProvider = FutureProvider.family<List<RoomModel>,
     guests: filter?.guests,
     minPrice: filter?.minPrice,
     maxPrice: filter?.maxPrice,
+    view: filter?.view,
   );
   if (result.success) return result.data!;
   throw Exception(result.message);
@@ -43,11 +46,17 @@ class CustomerBookingNotifier extends StateNotifier<AsyncValue<void>> {
   CustomerBookingNotifier(this._repo, this._ref)
       : super(const AsyncValue.data(null));
 
+  void _refreshAll() {
+    _ref.invalidate(myBookingsProvider);
+    _ref.invalidate(publicRoomsProvider);
+    _ref.invalidate(calendarGridProvider);
+  }
+
   Future<bool> holdRoom(Map<String, dynamic> data) async {
     state = const AsyncValue.loading();
     final result = await _repo.customerHoldRoom(data);
     if (result.success) {
-      _ref.invalidate(myBookingsProvider(null));
+      _refreshAll();
       state = const AsyncValue.data(null);
       return true;
     }
@@ -59,7 +68,7 @@ class CustomerBookingNotifier extends StateNotifier<AsyncValue<void>> {
     state = const AsyncValue.loading();
     final result = await _repo.customerCancelBooking(id);
     if (result.success) {
-      _ref.invalidate(myBookingsProvider(null));
+      _refreshAll();
       state = const AsyncValue.data(null);
       return true;
     }
@@ -84,6 +93,7 @@ class PublicRoomFilter {
   final int? guests;
   final double? minPrice;
   final double? maxPrice;
+  final String? view; // "sea", "city", null
 
   const PublicRoomFilter({
     this.checkinDate,
@@ -91,5 +101,6 @@ class PublicRoomFilter {
     this.guests,
     this.minPrice,
     this.maxPrice,
+    this.view,
   });
 }

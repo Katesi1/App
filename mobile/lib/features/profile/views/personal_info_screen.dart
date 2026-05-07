@@ -4,21 +4,24 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
+import '../../../core/theme/app_color_scheme.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
+import '../../../core/utils/phone_input.dart';
 import '../../../features/auth/controllers/auth_controller.dart';
 import '../../../shared/widgets/loading_widget.dart';
+
+// gradient.brandHero stop "jade-mid" theo spec section 3.7 — chưa có token sẵn
+const _jadeMidLight = Color(0xFF1B7E94);
 
 class PersonalInfoScreen extends ConsumerStatefulWidget {
   const PersonalInfoScreen({super.key});
 
   @override
-  ConsumerState<PersonalInfoScreen> createState() =>
-      _PersonalInfoScreenState();
+  ConsumerState<PersonalInfoScreen> createState() => _PersonalInfoScreenState();
 }
 
-class _PersonalInfoScreenState
-    extends ConsumerState<PersonalInfoScreen> {
+class _PersonalInfoScreenState extends ConsumerState<PersonalInfoScreen> {
   final _formKey = GlobalKey<FormState>();
   late final TextEditingController _nameController;
   late final TextEditingController _phoneController;
@@ -35,14 +38,11 @@ class _PersonalInfoScreenState
     super.initState();
     final user = ref.read(currentUserProvider);
     _nameController = TextEditingController(text: user?.name ?? '');
-    _phoneController =
-        TextEditingController(text: user?.phone ?? '');
-    _emailController =
-        TextEditingController(text: user?.email ?? '');
+    _phoneController = TextEditingController(text: user?.phone ?? '');
+    _emailController = TextEditingController(text: user?.email ?? '');
     _gender = user?.gender ?? 0;
 
-    if (user?.dateOfBirth != null &&
-        user!.dateOfBirth!.isNotEmpty) {
+    if (user?.dateOfBirth != null && user!.dateOfBirth!.isNotEmpty) {
       try {
         _dateOfBirth = DateTime.parse(user.dateOfBirth!);
         _dobController = TextEditingController(
@@ -66,6 +66,7 @@ class _PersonalInfoScreenState
   }
 
   Future<void> _pickDate() async {
+    final colors = context.colors;
     final now = DateTime.now();
     final picked = await showDatePicker(
       context: context,
@@ -76,7 +77,7 @@ class _PersonalInfoScreenState
         return Theme(
           data: Theme.of(context).copyWith(
             colorScheme: Theme.of(context).colorScheme.copyWith(
-                  primary: AppColors.ocean,
+                  primary: colors.brand,
                 ),
           ),
           child: child!,
@@ -86,8 +87,7 @@ class _PersonalInfoScreenState
     if (picked != null) {
       setState(() {
         _dateOfBirth = picked;
-        _dobController.text =
-            DateFormat('dd/MM/yyyy').format(picked);
+        _dobController.text = DateFormat('dd/MM/yyyy').format(picked);
       });
     }
   }
@@ -128,9 +128,10 @@ class _PersonalInfoScreenState
 
   @override
   Widget build(BuildContext context) {
-    final isDark =
-        Theme.of(context).brightness == Brightness.dark;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     final topPad = MediaQuery.of(context).padding.top;
+    final user = ref.watch(currentUserProvider);
+    final isAdmin = user?.isAdmin ?? false;
     final initial = _nameController.text.isNotEmpty
         ? _nameController.text[0].toUpperCase()
         : 'U';
@@ -161,13 +162,12 @@ class _PersonalInfoScreenState
                             field: TextFormField(
                               controller: _nameController,
                               decoration: _inputDecoration(
+                                context: context,
                                 hintText: 'Nhập họ và tên',
-                                prefixIcon:
-                                    Icons.person_outline_rounded,
+                                prefixIcon: Icons.person_outline_rounded,
                               ),
                               validator: (v) {
-                                if (v == null ||
-                                    v.trim().isEmpty) {
+                                if (v == null || v.trim().isEmpty) {
                                   return 'Vui lòng nhập họ tên';
                                 }
                                 return null;
@@ -180,18 +180,13 @@ class _PersonalInfoScreenState
                             field: TextFormField(
                               controller: _phoneController,
                               keyboardType: TextInputType.phone,
+                              inputFormatters: PhoneInput.formatters,
                               decoration: _inputDecoration(
-                                hintText: 'Nhập số điện thoại',
+                                context: context,
+                                hintText: '0xxxxxxxxx (10 số)',
                                 prefixIcon: Icons.phone_outlined,
-                                prefixText: '+84  ',
                               ),
-                              validator: (v) {
-                                if (v == null ||
-                                    v.trim().isEmpty) {
-                                  return 'Vui lòng nhập số điện thoại';
-                                }
-                                return null;
-                              },
+                              validator: PhoneInput.validate,
                             ),
                           ),
                           const SizedBox(height: 16),
@@ -199,10 +194,15 @@ class _PersonalInfoScreenState
                             label: 'Email',
                             field: TextFormField(
                               controller: _emailController,
-                              keyboardType:
-                                  TextInputType.emailAddress,
+                              enabled: isAdmin,
+                              keyboardType: TextInputType.emailAddress,
                               decoration: _inputDecoration(
-                                hintText: 'Nhập email',
+                                context: context,
+                                hintText: isAdmin
+                                    ? 'Nhập email'
+                                    : _emailController.text.isEmpty
+                                        ? 'Chưa có email'
+                                        : '',
                                 prefixIcon: Icons.email_outlined,
                               ),
                             ),
@@ -229,22 +229,19 @@ class _PersonalInfoScreenState
                                 _GenderChip(
                                   label: 'Nam',
                                   isSelected: _gender == 0,
-                                  onTap: () => setState(
-                                      () => _gender = 0),
+                                  onTap: () => setState(() => _gender = 0),
                                 ),
                                 const SizedBox(width: 10),
                                 _GenderChip(
                                   label: 'Nữ',
                                   isSelected: _gender == 1,
-                                  onTap: () => setState(
-                                      () => _gender = 1),
+                                  onTap: () => setState(() => _gender = 1),
                                 ),
                                 const SizedBox(width: 10),
                                 _GenderChip(
                                   label: 'Khác',
                                   isSelected: _gender == 2,
-                                  onTap: () => setState(
-                                      () => _gender = 2),
+                                  onTap: () => setState(() => _gender = 2),
                                 ),
                               ],
                             ),
@@ -257,11 +254,10 @@ class _PersonalInfoScreenState
                               readOnly: true,
                               onTap: _pickDate,
                               decoration: _inputDecoration(
+                                context: context,
                                 hintText: 'Chọn ngày sinh',
-                                prefixIcon:
-                                    Icons.calendar_today_outlined,
-                                suffixIcon:
-                                    Icons.chevron_right_rounded,
+                                prefixIcon: Icons.calendar_today_outlined,
+                                suffixIcon: Icons.chevron_right_rounded,
                               ),
                             ),
                           ),
@@ -293,8 +289,12 @@ class _PersonalInfoScreenState
     );
   }
 
-  Widget _buildHeader(BuildContext context, double topPad,
-      String initial, bool isDark) {
+  Widget _buildHeader(
+      BuildContext context, double topPad, String initial, bool isDark) {
+    final headerGradient = isDark
+        ? const [AppColors.darkBg, AppColors.darkBorder]
+        : const [AppColors.jade500, _jadeMidLight];
+
     return Container(
       width: double.infinity,
       padding: EdgeInsets.only(
@@ -303,13 +303,13 @@ class _PersonalInfoScreenState
         right: 20,
         bottom: 28,
       ),
-      decoration: const BoxDecoration(
+      decoration: BoxDecoration(
         gradient: LinearGradient(
-          begin: Alignment(-0.4, -1),
-          end: Alignment(0.6, 1),
-          colors: [AppColors.oceanDeep, AppColors.ocean],
+          begin: const Alignment(-0.4, -1),
+          end: const Alignment(0.6, 1),
+          colors: headerGradient,
         ),
-        borderRadius: BorderRadius.only(
+        borderRadius: const BorderRadius.only(
           bottomLeft: Radius.circular(32),
           bottomRight: Radius.circular(32),
         ),
@@ -361,6 +361,7 @@ class _PersonalInfoScreenState
     required String label,
     required Widget field,
   }) {
+    final colors = context.colors;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -369,7 +370,7 @@ class _PersonalInfoScreenState
           style: GoogleFonts.beVietnamPro(
             fontSize: 13,
             fontWeight: FontWeight.w500,
-            color: AppColors.muted,
+            color: colors.textSecondary,
           ),
         ),
         const SizedBox(height: 6),
@@ -379,39 +380,37 @@ class _PersonalInfoScreenState
   }
 
   InputDecoration _inputDecoration({
+    required BuildContext context,
     required String hintText,
     required IconData prefixIcon,
     String? prefixText,
     IconData? suffixIcon,
   }) {
+    final colors = context.colors;
     return InputDecoration(
       hintText: hintText,
-      hintStyle:
-          GoogleFonts.beVietnamPro(color: AppColors.slate),
-      prefixIcon:
-          Icon(prefixIcon, color: AppColors.muted, size: 20),
+      hintStyle: GoogleFonts.beVietnamPro(color: colors.textTertiary),
+      prefixIcon: Icon(prefixIcon, color: colors.textSecondary, size: 20),
       prefixText: prefixText,
       prefixStyle: GoogleFonts.beVietnamPro(
-        color: AppColors.muted,
+        color: colors.textSecondary,
         fontWeight: FontWeight.w500,
       ),
       suffixIcon: suffixIcon != null
-          ? Icon(suffixIcon, color: AppColors.slate, size: 22)
+          ? Icon(suffixIcon, color: colors.textTertiary, size: 22)
           : null,
-      contentPadding: const EdgeInsets.symmetric(
-          horizontal: 16, vertical: 14),
+      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
       border: OutlineInputBorder(
         borderRadius: BorderRadius.circular(AppRadius.md),
-        borderSide: const BorderSide(color: AppColors.border),
+        borderSide: BorderSide(color: colors.borderDefault),
       ),
       enabledBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(AppRadius.md),
-        borderSide: const BorderSide(color: AppColors.border),
+        borderSide: BorderSide(color: colors.borderDefault),
       ),
       focusedBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(AppRadius.md),
-        borderSide: const BorderSide(
-            color: AppColors.ocean, width: 1.5),
+        borderSide: BorderSide(color: colors.brand, width: 1.5),
       ),
     );
   }
@@ -425,6 +424,7 @@ class _HeaderAvatar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.colors;
     return Stack(
       alignment: Alignment.center,
       children: [
@@ -432,10 +432,10 @@ class _HeaderAvatar extends StatelessWidget {
         Container(
           width: 96,
           height: 96,
-          decoration: const BoxDecoration(
+          decoration: BoxDecoration(
             shape: BoxShape.circle,
             gradient: LinearGradient(
-              colors: [AppColors.teal, AppColors.gold],
+              colors: [colors.brand, AppColors.gold500],
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
             ),
@@ -454,10 +454,10 @@ class _HeaderAvatar extends StatelessWidget {
         Container(
           width: 84,
           height: 84,
-          decoration: const BoxDecoration(
+          decoration: BoxDecoration(
             shape: BoxShape.circle,
             gradient: LinearGradient(
-              colors: [AppColors.ocean, AppColors.oceanMid],
+              colors: [AppColors.jade500, _jadeMidLight],
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
             ),
@@ -492,6 +492,7 @@ class _GroupCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.colors;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -500,7 +501,7 @@ class _GroupCard extends StatelessWidget {
           style: GoogleFonts.beVietnamPro(
             fontSize: 11,
             fontWeight: FontWeight.w600,
-            color: AppColors.muted,
+            color: colors.textSecondary,
             letterSpacing: 1.2,
           ),
         ),
@@ -509,20 +510,15 @@ class _GroupCard extends StatelessWidget {
           width: double.infinity,
           padding: const EdgeInsets.all(20),
           decoration: BoxDecoration(
-            color: isDark
-                ? AppColors.darkContainer
-                : AppColors.surface,
+            color: colors.bgSurface,
             borderRadius: BorderRadius.circular(AppRadius.lg),
-            boxShadow: isDark
-                ? null
-                : [
-                    BoxShadow(
-                      color:
-                          AppColors.navy.withValues(alpha: 0.06),
-                      blurRadius: 20,
-                      offset: const Offset(0, 4),
-                    ),
-                  ],
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: isDark ? 0.30 : 0.06),
+                blurRadius: 20,
+                offset: const Offset(0, 4),
+              ),
+            ],
           ),
           child: child,
         ),
@@ -546,6 +542,7 @@ class _GradientButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.colors;
     return SizedBox(
       width: double.infinity,
       height: 52,
@@ -553,13 +550,12 @@ class _GradientButton extends StatelessWidget {
         decoration: BoxDecoration(
           gradient: onPressed == null
               ? null
-              : const LinearGradient(
-                  colors: [AppColors.ocean, AppColors.teal],
+              : LinearGradient(
+                  colors: [colors.brand, AppColors.jade300],
                   begin: Alignment.centerLeft,
                   end: Alignment.centerRight,
                 ),
-          color:
-              onPressed == null ? AppColors.slate : null,
+          color: onPressed == null ? colors.textTertiary : null,
           borderRadius: BorderRadius.circular(14),
         ),
         child: ElevatedButton(
@@ -607,27 +603,24 @@ class _GenderChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.colors;
     return GestureDetector(
       onTap: onTap,
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 200),
-        padding: const EdgeInsets.symmetric(
-            horizontal: 20, vertical: 10),
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
         decoration: BoxDecoration(
           gradient: isSelected
-              ? const LinearGradient(
-                  colors: [AppColors.ocean, AppColors.teal],
+              ? LinearGradient(
+                  colors: [colors.brand, AppColors.jade300],
                   begin: Alignment.centerLeft,
                   end: Alignment.centerRight,
                 )
               : null,
           color: isSelected ? null : Colors.transparent,
-          borderRadius:
-              BorderRadius.circular(AppRadius.full),
+          borderRadius: BorderRadius.circular(AppRadius.full),
           border: Border.all(
-            color: isSelected
-                ? AppColors.ocean
-                : AppColors.border,
+            color: isSelected ? colors.brand : colors.borderDefault,
             width: 1.5,
           ),
         ),
@@ -635,12 +628,8 @@ class _GenderChip extends StatelessWidget {
           label,
           style: GoogleFonts.beVietnamPro(
             fontSize: 14,
-            fontWeight: isSelected
-                ? FontWeight.w600
-                : FontWeight.w400,
-            color: isSelected
-                ? Colors.white
-                : AppColors.navy,
+            fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
+            color: isSelected ? Colors.white : colors.textPrimary,
           ),
         ),
       ),
