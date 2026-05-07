@@ -9,6 +9,7 @@ import '../../../core/theme/app_spacing.dart';
 import '../../../core/utils/helpers.dart';
 import '../../../shared/widgets/app_scaffold.dart';
 import '../../../shared/widgets/loading_widget.dart';
+import '../../../shared/widgets/pagination_bar.dart';
 import '../../../data/models/booking_model.dart';
 import '../../auth/controllers/auth_controller.dart';
 import '../controllers/report_controller.dart';
@@ -315,14 +316,9 @@ class ReportScreen extends ConsumerWidget {
                           message: 'Chưa có booking nào',
                         )
                       else
-                        ...report.recentBookings.map(
-                          (b) => Padding(
-                            padding: const EdgeInsets.only(bottom: 8),
-                            child: GestureDetector(
-                              onTap: () => context.push('/bookings'),
-                              child: _RecentBookingCard(booking: b),
-                            ),
-                          ),
+                        _PaginatedRecentBookings(
+                          key: ValueKey(report.recentBookings.length),
+                          bookings: report.recentBookings,
                         ),
 
                       const SizedBox(height: 80),
@@ -574,6 +570,76 @@ class _InfoRow extends StatelessWidget {
             color: valueColor ?? colors.textPrimary,
           ),
         ),
+      ],
+    );
+  }
+}
+
+// ─── Paginated recent bookings (client-side) ─────────────────────────────────
+class _PaginatedRecentBookings extends StatefulWidget {
+  final List<BookingModel> bookings;
+
+  const _PaginatedRecentBookings({
+    super.key,
+    required this.bookings,
+  });
+
+  @override
+  State<_PaginatedRecentBookings> createState() =>
+      _PaginatedRecentBookingsState();
+}
+
+class _PaginatedRecentBookingsState extends State<_PaginatedRecentBookings> {
+  static const int _pageSize = 5;
+  int _page = 0;
+
+  @override
+  void didUpdateWidget(covariant _PaginatedRecentBookings oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.bookings.length != widget.bookings.length) {
+      _page = 0;
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final list = widget.bookings;
+    final totalPages =
+        list.isEmpty ? 0 : (list.length + _pageSize - 1) ~/ _pageSize;
+    final safePage = totalPages == 0 ? 0 : _page.clamp(0, totalPages - 1);
+    if (safePage != _page) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) setState(() => _page = safePage);
+      });
+    }
+
+    final start = safePage * _pageSize;
+    final end = (start + _pageSize).clamp(0, list.length);
+    final pageItems = list.sublist(start, end);
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        ...pageItems.map(
+          (b) => Padding(
+            padding: const EdgeInsets.only(bottom: 8),
+            child: GestureDetector(
+              onTap: () => context.push('/bookings'),
+              child: _RecentBookingCard(booking: b),
+            ),
+          ),
+        ),
+        if (totalPages > 1)
+          AppPaginationBar(
+            currentPage: safePage,
+            totalPages: totalPages,
+            onPrevious: safePage > 0
+                ? () => setState(() => _page = safePage - 1)
+                : null,
+            onNext: safePage < totalPages - 1
+                ? () => setState(() => _page = safePage + 1)
+                : null,
+          ),
       ],
     );
   }

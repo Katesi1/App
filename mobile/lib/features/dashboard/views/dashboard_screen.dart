@@ -15,6 +15,7 @@ import '../../verify/data/models/verify_enums.dart';
 import '../../verify/views/paywall_modal.dart';
 import '../../../shared/widgets/app_scaffold.dart';
 import '../../../shared/widgets/loading_widget.dart';
+import '../../../shared/widgets/pagination_bar.dart';
 
 // gradient.brandHero stop "jade-mid" theo spec section 3.7
 const _jadeMidLight = Color(0xFF1B7E94);
@@ -43,7 +44,6 @@ class DashboardScreen extends ConsumerWidget {
     final colors = context.colors;
     final user = ref.watch(currentUserProvider);
     final statsAsync = ref.watch(dashboardStatsProvider);
-    final bookingsAsync = ref.watch(bookingListProvider(null));
     final now = DateTime.now();
     final dayOfWeek = AppHelpers.vietnameseDayOfWeek(now.weekday);
     final formattedDate = '$dayOfWeek, ${now.day} tháng ${now.month}';
@@ -64,6 +64,7 @@ class DashboardScreen extends ConsumerWidget {
             // Refresh stats + user profile cùng lúc để bắt KYC/subscription
             // status thay đổi từ backend (vd: admin vừa approve KYC).
             ref.invalidate(dashboardStatsProvider);
+            ref.invalidate(bookingListProvider(null));
             await ref.read(authProvider.notifier).refreshProfile();
           },
           child: SingleChildScrollView(
@@ -353,46 +354,7 @@ class DashboardScreen extends ConsumerWidget {
                         ],
                       ),
                       const SizedBox(height: 12),
-                      bookingsAsync.when(
-                        loading: () => const SizedBox(
-                          height: 60,
-                          child: Center(child: LoadingWidget()),
-                        ),
-                        error: (_, __) => const SizedBox.shrink(),
-                        data: (bookings) {
-                          if (bookings.isEmpty) {
-                            return const EmptyStateWidget(
-                              icon: Icons.book_outlined,
-                              message: 'Chưa có booking nào',
-                            );
-                          }
-                          final recent = bookings.take(5).toList();
-                          return Column(
-                            children: recent.map((b) {
-                              final statusColor =
-                                  AppHelpers.bookingStatusColor(b.status.value);
-                              return Padding(
-                                padding: const EdgeInsets.only(bottom: 10),
-                                child: _BookingItem(
-                                  initials: (b.customerName ?? 'K')
-                                      .substring(0, 1)
-                                      .toUpperCase(),
-                                  name: b.customerName ?? 'Không tên',
-                                  meta: '${b.propertyName} · ${b.nights} đêm',
-                                  status: b.status.label,
-                                  statusColor: statusColor,
-                                  statusBg: statusColor.withValues(alpha: 0.12),
-                                  price: (b.depositAmount != null &&
-                                          b.depositAmount! > 0)
-                                      ? '${AppHelpers.formatPrice(b.depositAmount!)}đ'
-                                      : '--',
-                                  onTap: () => context.push('/bookings'),
-                                ),
-                              );
-                            }).toList(),
-                          );
-                        },
-                      ),
+                      const _DashboardRecentBookingsSection(),
                     ],
                   ),
                 ),
@@ -403,6 +365,94 @@ class DashboardScreen extends ConsumerWidget {
           ),
         ),
       ),
+    );
+  }
+}
+
+// ─── Booking gần đây (phân trang) ────────────────────────────────────────────
+class _DashboardRecentBookingsSection extends ConsumerStatefulWidget {
+  const _DashboardRecentBookingsSection();
+
+  @override
+  ConsumerState<_DashboardRecentBookingsSection> createState() =>
+      _DashboardRecentBookingsSectionState();
+}
+
+class _DashboardRecentBookingsSectionState
+    extends ConsumerState<_DashboardRecentBookingsSection> {
+  static const int _pageSize = 5;
+  int _page = 0;
+
+  @override
+  Widget build(BuildContext context) {
+    final async = ref.watch(bookingListProvider(null));
+
+    return async.when(
+      loading: () => const SizedBox(
+        height: 60,
+        child: Center(child: LoadingWidget()),
+      ),
+      error: (_, __) => const SizedBox.shrink(),
+      data: (bookings) {
+        if (bookings.isEmpty) {
+          return const EmptyStateWidget(
+            icon: Icons.book_outlined,
+            message: 'Chưa có booking nào',
+          );
+        }
+
+        final totalPages = (bookings.length + _pageSize - 1) ~/ _pageSize;
+        final safePage = totalPages == 0 ? 0 : _page.clamp(0, totalPages - 1);
+        if (safePage != _page) {
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (mounted) setState(() => _page = safePage);
+          });
+        }
+
+        final start = safePage * _pageSize;
+        final end = start + _pageSize > bookings.length
+            ? bookings.length
+            : start + _pageSize;
+        final pageItems = bookings.sublist(start, end);
+
+        return Column(
+          children: [
+            ...pageItems.map((b) {
+              final statusColor = AppHelpers.bookingStatusColor(b.status.value);
+              final rawName = (b.customerName ?? '').trim();
+              final initials = rawName.isNotEmpty
+                  ? rawName.substring(0, 1).toUpperCase()
+                  : 'K';
+              return Padding(
+                padding: const EdgeInsets.only(bottom: 10),
+                child: _BookingItem(
+                  initials: initials,
+                  name: b.customerName ?? 'Không tên',
+                  meta: '${b.propertyName} · ${b.nights} đêm',
+                  status: b.status.label,
+                  statusColor: statusColor,
+                  statusBg: statusColor.withValues(alpha: 0.12),
+                  price: (b.depositAmount != null && b.depositAmount! > 0)
+                      ? '${AppHelpers.formatPrice(b.depositAmount!)}đ'
+                      : '--',
+                  onTap: () => context.push('/bookings'),
+                ),
+              );
+            }),
+            if (totalPages > 1)
+              AppPaginationBar(
+                currentPage: safePage,
+                totalPages: totalPages,
+                onPrevious: safePage > 0
+                    ? () => setState(() => _page = safePage - 1)
+                    : null,
+                onNext: safePage < totalPages - 1
+                    ? () => setState(() => _page = safePage + 1)
+                    : null,
+              ),
+          ],
+        );
+      },
     );
   }
 }

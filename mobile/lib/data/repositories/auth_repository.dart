@@ -47,11 +47,15 @@ class AuthRepository {
     }
   }
 
-  Future<ApiResponse<UserModel>> login(String email, String password) async {
+  Future<ApiResponse<UserModel>> login(
+      String identifier, String password) async {
     try {
       final response = await _dio.post(
         ApiConstants.login,
-        data: {'email': email, 'password': password},
+        data: {
+          'identifier': identifier.trim(),
+          'password': password,
+        },
       );
       final data = response.data['data'];
 
