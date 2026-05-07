@@ -70,7 +70,8 @@ class AuthRepository {
     }
   }
 
-  Future<ApiResponse<UserModel>> login(String email, String password) async {
+  Future<ApiResponse<UserModel>> login(
+      String identifier, String password) async {
     try {
       final response = await _dio.post(
         ApiConstants.login,

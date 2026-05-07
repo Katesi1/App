@@ -74,9 +74,10 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
   Future<void> _login() async {
     if (!_formKey.currentState!.validate()) return;
     setState(() => _isLoading = true);
-    final email = _emailCtrl.text.trim();
+    final identifier = _normalizeIdentifier(_emailCtrl.text);
     final password = _passwordCtrl.text;
-    final error = await ref.read(authProvider.notifier).login(email, password);
+    final error =
+        await ref.read(authProvider.notifier).login(identifier, password);
     if (!mounted) return;
     setState(() => _isLoading = false);
 
@@ -103,10 +104,27 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
 
     // Đăng nhập thành công → lưu hoặc xoá credentials theo checkbox
     if (_rememberMe) {
-      await SecureStorage.saveCredentials(email, password);
+      await SecureStorage.saveCredentials(identifier, password);
     } else {
       await SecureStorage.clearCredentials();
     }
+  }
+
+  String _normalizeIdentifier(String raw) {
+    var v = raw.trim();
+    // Remove spaces commonly inserted in phone numbers
+    v = v.replaceAll(' ', '');
+
+    // Normalize VN phone formats to match DB (usually stored as 0xxxxxxxxx)
+    if (!v.contains('@')) {
+      if (v.startsWith('+84')) {
+        v = '0${v.substring(3)}';
+      } else if (v.startsWith('84') && v.length >= 11) {
+        v = '0${v.substring(2)}';
+      }
+    }
+
+    return v;
   }
 
   Future<void> _loginWithGoogle() async {
@@ -386,25 +404,25 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
 
                                     const SizedBox(height: 28),
 
-                                    // Email field
+                                    // Email / Phone field
                                     _AnimatedField(
                                       delay: 500.ms,
                                       child: TextFormField(
                                         controller: _emailCtrl,
-                                        keyboardType:
-                                            TextInputType.emailAddress,
+                                        keyboardType: TextInputType.text,
                                         textInputAction: TextInputAction.next,
                                         style: GoogleFonts.beVietnamPro(
                                             fontSize: 15, color: AppColors.ink),
                                         decoration: _inputDecor(
-                                          label: 'Email',
-                                          hint: 'example@gmail.com',
+                                          label: 'Email / Số điện thoại',
+                                          hint:
+                                              'admin@halong24h.vn hoặc 0xxxxxxxxx',
                                           icon: Icons.email_outlined,
                                         ),
-                                        validator: (v) =>
-                                            v?.trim().isEmpty == true
-                                                ? 'Nhập email'
-                                                : null,
+                                        validator: (v) => v?.trim().isEmpty ==
+                                                true
+                                            ? 'Nhập email hoặc số điện thoại'
+                                            : null,
                                       ),
                                     ),
 

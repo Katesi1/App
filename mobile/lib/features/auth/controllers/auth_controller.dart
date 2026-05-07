@@ -122,8 +122,8 @@ class AuthNotifier extends StateNotifier<AuthState> {
     }
   }
 
-  Future<String?> login(String email, String password) async {
-    final result = await _repo.login(email, password);
+  Future<String?> login(String identifier, String password) async {
+    final result = await _repo.login(identifier, password);
     if (result.success) {
       state = AuthState(user: result.data, isLoggedIn: true);
       _invalidateDataProviders();
