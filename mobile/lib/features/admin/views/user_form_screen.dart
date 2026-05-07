@@ -10,6 +10,7 @@ import '../../../core/theme/app_spacing.dart';
 import '../../../core/utils/helpers.dart';
 import '../../../core/utils/phone_input.dart';
 import '../../../shared/widgets/loading_widget.dart';
+import '../../auth/controllers/auth_controller.dart';
 import '../controllers/user_controller.dart';
 
 // ─── Màn hình xem + quản lý nhân viên ────────────────────────────────────────
@@ -122,6 +123,35 @@ class _UserFormScreenState extends ConsumerState<UserFormScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final currentUser = ref.watch(currentUserProvider);
+    final isAdmin = currentUser?.isAdmin ?? false;
+    if (!isAdmin) {
+      return Scaffold(
+        appBar: AppBar(title: const Text('Không có quyền truy cập')),
+        body: Center(
+          child: Padding(
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(Icons.lock_outline_rounded, size: 40),
+                const SizedBox(height: 12),
+                const Text(
+                  'Chỉ quản trị viên mới có quyền tạo/sửa tài khoản nhân viên.',
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 16),
+                FilledButton(
+                  onPressed: () => context.go('/admin'),
+                  child: const Text('Quay lại quản lý'),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
+
     if (_isLoading && _isEdit && _userName.isEmpty) {
       return Scaffold(
         appBar: AppBar(title: const Text('Chi tiết nhân viên')),

@@ -1,5 +1,11 @@
 class ApiConstants {
-  static const String baseUrl = 'http://103.183.118.148:3000';
+  // Ưu tiên inject qua --dart-define để tách môi trường release/staging/dev.
+  // Mặc định giữ HTTP để tương thích backend hiện tại trong môi trường dev.
+  // Release nên truyền --dart-define=API_BASE_URL=https://... để dùng TLS.
+  static const String baseUrl = String.fromEnvironment(
+    'API_BASE_URL',
+    defaultValue: 'http://103.183.118.148:3000',
+  );
 
   // Auth
   static const String login = '/auth/login';

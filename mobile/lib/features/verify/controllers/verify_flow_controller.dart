@@ -1,6 +1,8 @@
 import 'dart:io';
+import 'dart:convert';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../data/models/cccd_upload.dart';
 import '../data/models/ocr_result.dart';
@@ -26,7 +28,11 @@ final verifyRepositoryProvider = Provider<VerifyRepository>(
 /// `billing_plans` theo spec mới (xem `api-kyc-self-host-update.md`),
 /// swap về `ref.read(verifyRepositoryProvider).fetchPlans()`.
 final verifyPlansProvider = FutureProvider<List<Plan>>((ref) async {
-  return kDefaultPlans;
+  try {
+    return await ref.read(verifyRepositoryProvider).fetchPlans();
+  } catch (_) {
+    return kDefaultPlans;
+  }
 });
 
 /// Controller cho toàn flow verify + subscription.
@@ -41,8 +47,11 @@ final verifyFlowControllerProvider =
 
 class VerifyFlowController extends StateNotifier<VerifyFlowState> {
   final VerifyRepository _repo;
+  static const _draftKey = 'verify_flow_draft_v1';
 
-  VerifyFlowController(this._repo) : super(const VerifyFlowState());
+  VerifyFlowController(this._repo) : super(const VerifyFlowState()) {
+    _restoreDraft();
+  }
 
   // ════════════════════════════════════════════════════════════
   // Hydrate — load state từ backend khi vào lại flow
@@ -65,6 +74,20 @@ class VerifyFlowController extends StateNotifier<VerifyFlowState> {
       );
     } catch (_) {
       // Hydrate fail không nên crash flow — user vẫn có thể start lại từ đầu.
+    }
+  }
+
+  Future<void> _restoreDraft() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final raw = prefs.getString(_draftKey);
+      if (raw == null || raw.isEmpty) {
+        return;
+      }
+      final json = jsonDecode(raw) as Map<String, dynamic>;
+      state = VerifyFlowState.fromJson(json);
+    } catch (_) {
+      // Không block flow nếu parse lỗi draft cũ.
     }
   }
 
@@ -270,12 +293,12 @@ class VerifyFlowController extends StateNotifier<VerifyFlowState> {
     _persistDraft();
   }
 
-  /// Persist draft xuống local storage.
-  ///
-  /// TODO(verify): Wire SharedPreferences khi backend ready.
-  /// Hiện tại stub no-op vì spec yêu cầu chỉ làm design + logic, mock data.
+  /// Persist draft xuống local storage để resume flow sau khi app restart.
   void _persistDraft() {
-    // intentionally empty — see TODO above
+    SharedPreferences.getInstance().then((prefs) {
+      final payload = jsonEncode(state.toJson());
+      prefs.setString(_draftKey, payload);
+    });
   }
 }
 

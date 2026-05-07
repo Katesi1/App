@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../../core/theme/app_color_scheme.dart';
 import '../../../core/theme/app_spacing.dart';
@@ -78,11 +79,10 @@ class _NotificationScreenState extends ConsumerState<NotificationScreen> {
                     return _NotificationCard(
                       notification: notification,
                       onTap: () {
-                        if (!notification.isRead) {
-                          ref
-                              .read(notificationActionsProvider.notifier)
-                              .markAsRead(notification.id);
-                        }
+                        // Navigate sang detail. Detail screen tự mark-as-read
+                        // sau khi mount + show smart "Mở liên kết" button
+                        // theo targetType (booking/kyc/payment).
+                        context.push('/notifications/${notification.id}');
                       },
                     );
                   },
@@ -242,18 +242,18 @@ class _NotificationCard extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(width: 8),
-                // Status dot — unread = brand, read = textTertiary
-                Container(
-                  width: 8,
-                  height: 8,
-                  margin: const EdgeInsets.only(right: 8),
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: notification.isRead
-                        ? colors.textTertiary
-                        : colors.brand,
+                // Unread dot — chỉ hiện khi chưa đọc. Khi mark-as-read,
+                // dot biến mất hoàn toàn (không đổi sang xám).
+                if (!notification.isRead)
+                  Container(
+                    width: 8,
+                    height: 8,
+                    margin: const EdgeInsets.only(right: 8),
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: colors.brand,
+                    ),
                   ),
-                ),
                 Text(
                   _timeAgo(notification.createdAt),
                   style: GoogleFonts.beVietnamPro(

@@ -55,8 +55,7 @@ class _SelectPlanScreenState extends ConsumerState<SelectPlanScreen> {
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (e, _) => Center(child: Text('Lỗi: $e')),
         data: (plans) {
-          final selectedPlan =
-              PlanPriceCalculator.planFor(_selected!, plans);
+          final selectedPlan = PlanPriceCalculator.planFor(_selected!, plans);
           final total = PlanPriceCalculator.total(selectedPlan, _cycle);
 
           return Stack(
@@ -199,8 +198,7 @@ class _ToggleSegment extends StatelessWidget {
             if (badge != null) ...[
               const SizedBox(width: 6),
               Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
+                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
                 decoration: BoxDecoration(
                   color: AppColors.goldBg,
                   borderRadius: BorderRadius.circular(4),

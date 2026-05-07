@@ -17,12 +17,23 @@ String parseDioError(DioException e) {
     }
   }
   switch (e.type) {
+    case DioExceptionType.badResponse:
+      return 'Lỗi máy chủ (${e.response?.statusCode ?? ''}).';
     case DioExceptionType.connectionTimeout:
     case DioExceptionType.receiveTimeout:
+    case DioExceptionType.sendTimeout:
       return 'Kết nối quá thời gian, vui lòng thử lại';
     case DioExceptionType.connectionError:
       return 'Không kết nối được server';
-    default:
-      return 'Có lỗi xảy ra, vui lòng thử lại';
+    case DioExceptionType.badCertificate:
+      return 'Kết nối bảo mật thất bại (SSL/TLS)';
+    case DioExceptionType.cancel:
+      return 'Yêu cầu đã bị huỷ';
+    case DioExceptionType.unknown:
+      final msg = e.message?.trim();
+      if (msg != null && msg.isNotEmpty) {
+        return 'Lỗi kết nối: $msg';
+      }
+      return 'Lỗi không xác định từ hệ thống mạng';
   }
 }

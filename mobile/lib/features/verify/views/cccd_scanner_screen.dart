@@ -16,7 +16,9 @@ import '../data/models/scanner_result.dart';
 import '../data/models/verify_enums.dart';
 import '../utils/cccd_front_ocr_parser.dart';
 import '../utils/cccd_image_cropper.dart';
+import '../utils/cccd_image_validator.dart';
 import '../utils/cccd_qr_parser.dart';
+import 'widgets/not_cccd_warning_dialog.dart';
 
 /// Full-screen scanner cho CCCD.
 ///
@@ -79,8 +81,7 @@ class _CCCDScannerScreenState extends State<CCCDScannerScreen>
     if (_isFront) {
       _recognizer = TextRecognizer(script: TextRecognitionScript.latin);
     } else {
-      _barcodeScanner =
-          BarcodeScanner(formats: const [BarcodeFormat.qrCode]);
+      _barcodeScanner = BarcodeScanner(formats: const [BarcodeFormat.qrCode]);
     }
     _initCamera();
   }
@@ -336,8 +337,9 @@ class _CCCDScannerScreenState extends State<CCCDScannerScreen>
       );
       if (!mounted) return;
 
-      // Parse extraction đã cached từ frame cuối cùng trigger auto-shutter.
-      // Nếu user nhấn shutter thủ công, _lastOcrText/_lastQrPayload có thể null.
+      final finalImage = cropped ?? File(shot.path);
+
+      // Parse extraction đã cached từ frame trigger auto-shutter.
       OCRResult? ocr;
       if (_isFront && _lastOcrText != null) {
         ocr = CccdFrontOcrParser.parse(_lastOcrText!);
@@ -346,8 +348,38 @@ class _CCCDScannerScreenState extends State<CCCDScannerScreen>
         ocr = VietnamCccdQrParser.parse(_lastQrPayload!);
       }
 
+      // Manual shutter ở mặt TRƯỚC (no cached OCR text) → chạy validator
+      // chặn user chụp bừa. Mặt sau bỏ qua validate (admin duyệt thủ công).
+      if (_isFront && ocr == null) {
+        final validation = await CccdImageValidator.validate(
+          image: finalImage,
+          side: widget.side,
+        );
+        if (!mounted) return;
+        if (validation.isCccd) {
+          ocr = validation.ocrResult;
+        } else {
+          final force = await showNotCccdWarning(
+            context,
+            reason: validation.reason,
+          );
+          if (!mounted) return;
+          if (force != true) {
+            // User chọn "Chụp lại" → restart stream + cho user thử lại.
+            _capturing = false;
+            _setStatus(_Status.searching);
+            try {
+              await c.startImageStream(_onFrame);
+            } catch (_) {}
+            return;
+          }
+          // User cố tình "Vẫn upload" → pop với ocr=null, admin duyệt thủ công.
+        }
+      }
+
+      if (!mounted) return;
       Navigator.of(context).pop<ScannerResult>(
-        ScannerResult(image: cropped ?? File(shot.path), ocrResult: ocr),
+        ScannerResult(image: finalImage, ocrResult: ocr),
       );
     } catch (e) {
       if (!mounted) return;

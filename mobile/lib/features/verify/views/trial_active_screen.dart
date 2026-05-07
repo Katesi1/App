@@ -266,7 +266,7 @@ class _SubscriptionCard extends StatelessWidget {
 
     return InkWell(
       onTap: () {
-        // TODO(verify): push subscription detail screen (Phase 3)
+        context.push('/verify/subscription-detail');
       },
       borderRadius: BorderRadius.circular(14),
       child: Container(

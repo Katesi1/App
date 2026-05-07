@@ -50,8 +50,7 @@ class VerifyRepositoryImpl implements VerifyRepository {
           filename: image.path.split('/').last,
         ),
         // Field optional — chỉ gửi khi scanner extract được data
-        if (ocr != null && !ocr.isEmpty)
-          'ocrResult': jsonEncode(ocr.toJson()),
+        if (ocr != null && !ocr.isEmpty) 'ocrResult': jsonEncode(ocr.toJson()),
       });
       final res = await _dio.post(
         path,
