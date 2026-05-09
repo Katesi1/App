@@ -1,84 +1,86 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../../data/models/booking_model.dart';
 import '../../../data/repositories/report_repository.dart';
+import '../data/report_models.dart';
 
-/// Report data model — thống kê tổng hợp
-class ReportData {
-  final int totalRooms;
-  final int activeRooms;
-  final int totalBookings;
-  final int thisMonthBookings;
-  final int holdCount;
-  final int confirmedCount;
-  final int cancelledCount;
-  final int completedCount;
-  final double totalDeposit;
-  final double occupancyRate;
-  final int roomsWithCover;
-  final int roomsWithPrice;
-  final List<BookingModel> recentBookings;
+// Re-export để các caller cũ vẫn import từ controller được.
+export '../data/report_models.dart';
 
-  const ReportData({
-    this.totalRooms = 0,
-    this.activeRooms = 0,
-    this.totalBookings = 0,
-    this.thisMonthBookings = 0,
-    this.holdCount = 0,
-    this.confirmedCount = 0,
-    this.cancelledCount = 0,
-    this.completedCount = 0,
-    this.totalDeposit = 0,
-    this.occupancyRate = 0,
-    this.roomsWithCover = 0,
-    this.roomsWithPrice = 0,
-    this.recentBookings = const [],
-  });
-
-  factory ReportData.fromJson(Map<String, dynamic> json) => ReportData(
-        totalRooms: json['totalRooms'] ?? 0,
-        activeRooms: json['activeRooms'] ?? 0,
-        totalBookings: json['totalBookings'] ?? 0,
-        thisMonthBookings: json['thisMonthBookings'] ?? 0,
-        holdCount: json['holdCount'] ?? 0,
-        confirmedCount: json['confirmedCount'] ?? 0,
-        cancelledCount: json['cancelledCount'] ?? 0,
-        completedCount: json['completedCount'] ?? 0,
-        totalDeposit: (json['totalDeposit'] as num?)?.toDouble() ?? 0,
-        occupancyRate: (json['occupancyRate'] as num?)?.toDouble() ?? 0,
-        roomsWithCover: json['roomsWithCover'] ?? 0,
-        roomsWithPrice: json['roomsWithPrice'] ?? 0,
-        recentBookings:
-            (json['recentBookingsParsed'] as List<BookingModel>?) ?? [],
-      );
-}
-
-/// Filter params cho report
+/// Filter params cho report. `period` là enum (today/week/month/year/custom).
+/// Khi `custom` → `from`/`to` bắt buộc. Backward-compat với `month/year`.
 class ReportParams {
+  final ReportPeriod period;
+  final DateTime? from;
+  final DateTime? to;
+
+  /// Legacy: chỉ dùng khi `period == ReportPeriod.month` mà gọi backend cũ.
   final int? month;
   final int? year;
 
-  const ReportParams({this.month, this.year});
+  const ReportParams({
+    this.period = ReportPeriod.month,
+    this.from,
+    this.to,
+    this.month,
+    this.year,
+  });
+
+  ReportParams copyWith({
+    ReportPeriod? period,
+    DateTime? from,
+    DateTime? to,
+    int? month,
+    int? year,
+  }) =>
+      ReportParams(
+        period: period ?? this.period,
+        from: from ?? this.from,
+        to: to ?? this.to,
+        month: month ?? this.month,
+        year: year ?? this.year,
+      );
 
   @override
   bool operator ==(Object other) =>
-      other is ReportParams && month == other.month && year == other.year;
+      other is ReportParams &&
+      period == other.period &&
+      from == other.from &&
+      to == other.to &&
+      month == other.month &&
+      year == other.year;
 
   @override
-  int get hashCode => Object.hash(month, year);
+  int get hashCode => Object.hash(period, from, to, month, year);
 }
 
 final reportRepositoryProvider =
     Provider<ReportRepository>((ref) => ReportRepository());
 
-/// Provider lấy report từ real API /reports
+/// State của period filter (UI controlled). Default = tháng hiện tại.
+final selectedReportParamsProvider =
+    StateProvider<ReportParams>((ref) => const ReportParams());
+
+/// Provider lấy report. Backend đã support `period/from/to` (mặc định
+/// `month` nếu không truyền). Custom period bắt buộc cả `from` lẫn `to`.
+/// Legacy `month/year` chỉ dùng khi explicit (rare).
 final reportDataProvider = FutureProvider.autoDispose
     .family<ReportData, ReportParams?>((ref, params) async {
   final link = ref.keepAlive();
   Future.delayed(const Duration(minutes: 2), link.close);
   final repo = ref.read(reportRepositoryProvider);
+
+  final p = params ?? const ReportParams();
+  // Custom period bắt buộc đủ from/to — nếu thiếu thì rơi về month mặc định
+  // để tránh request 400 ngay lúc user mới mở picker.
+  final useCustom = p.period == ReportPeriod.custom &&
+      p.from != null &&
+      p.to != null;
+
   final result = await repo.getReport(
-    month: params?.month,
-    year: params?.year,
+    period: useCustom ? 'custom' : p.period.apiValue,
+    from: useCustom ? p.from : null,
+    to: useCustom ? p.to : null,
+    month: p.month,
+    year: p.year,
   );
   if (result.success) return ReportData.fromJson(result.data!);
   throw Exception(result.message);

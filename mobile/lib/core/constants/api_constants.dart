@@ -69,6 +69,8 @@ class ApiConstants {
 
   // Payment
   static const String paymentInitiate = '/payments/initiate';
+  static const String paymentRenew = '/payments/renew';
+  static const String paymentHistory = '/payments/history';
   static String paymentStatus(String sessionId) =>
       '/payments/$sessionId/status';
   static String paymentRefund(String sessionId) =>
@@ -95,6 +97,14 @@ class ApiConstants {
   // Dashboard & Reports
   static const String dashboardStats = '/dashboard/stats';
   static const String reports = '/reports';
+
+  // Reviews (đánh giá ở cấp Property — 6 tiêu chí 1-5 sao)
+  static String propertyReviews(String propertyId) =>
+      '/properties/$propertyId/reviews';
+  static String propertyReviewReply(String propertyId, String reviewId) =>
+      '/properties/$propertyId/reviews/$reviewId/reply';
+  static String adminHideReview(String reviewId) =>
+      '/admin/reviews/$reviewId';
 
   // Notifications
   static const String notifications = '/notifications';

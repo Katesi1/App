@@ -6,6 +6,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../data/models/cccd_upload.dart';
 import '../data/models/ocr_result.dart';
+import '../data/models/payment_history_item.dart';
 import '../data/models/payment_session.dart';
 import '../data/models/plan.dart';
 import '../data/models/selfie_upload.dart';
@@ -33,6 +34,13 @@ final verifyPlansProvider = FutureProvider<List<Plan>>((ref) async {
   } catch (_) {
     return kDefaultPlans;
   }
+});
+
+/// Lịch sử thanh toán + hoàn tiền của user. Auto-refetch khi
+/// `verifyFlowControllerProvider` invalidate (sau renew/refund).
+final paymentHistoryProvider =
+    FutureProvider<List<PaymentHistoryItem>>((ref) async {
+  return ref.read(verifyRepositoryProvider).fetchPaymentHistory();
 });
 
 /// Controller cho toàn flow verify + subscription.
@@ -201,6 +209,18 @@ class VerifyFlowController extends StateNotifier<VerifyFlowState> {
       paymentSession: session,
       paymentStatus: PaymentStatus.pending,
       status: VerifyStatus.paymentPending,
+    );
+    _persistDraft();
+    return session;
+  }
+
+  /// Tạo phiên gia hạn subscription (renew). Backend dùng plan + cycle
+  /// hiện tại của user, app chỉ cần gửi method.
+  Future<PaymentSession> initiateRenewal(PaymentMethod method) async {
+    final session = await _repo.renewSubscription(method: method);
+    state = state.copyWith(
+      paymentSession: session,
+      paymentStatus: PaymentStatus.pending,
     );
     _persistDraft();
     return session;

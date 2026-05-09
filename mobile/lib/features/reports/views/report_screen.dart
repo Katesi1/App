@@ -1,18 +1,25 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:go_router/go_router.dart';
+import 'package:google_fonts/google_fonts.dart';
+
 import '../../../core/constants/app_constants.dart';
 import '../../../core/theme/app_color_scheme.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../core/utils/helpers.dart';
+import '../../../data/models/booking_model.dart';
 import '../../../shared/widgets/app_scaffold.dart';
 import '../../../shared/widgets/loading_widget.dart';
 import '../../../shared/widgets/pagination_bar.dart';
-import '../../../data/models/booking_model.dart';
 import '../../auth/controllers/auth_controller.dart';
 import '../controllers/report_controller.dart';
+import 'widgets/extra_charts.dart';
+import 'widgets/property_ratings_section.dart';
+import 'widgets/report_format.dart';
+import 'widgets/revenue_trend_chart.dart';
+import 'widgets/status_donut_chart.dart';
 
 // gradient.brandHero stop "jade-mid" theo spec section 3.7
 const _jadeMidLight = Color(0xFF1B7E94);
@@ -20,12 +27,131 @@ const _jadeMidLight = Color(0xFF1B7E94);
 class ReportScreen extends ConsumerWidget {
   const ReportScreen({super.key});
 
-  Widget _header(BuildContext context, WidgetRef ref, DateTime now) {
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final colors = context.colors;
+    final params = ref.watch(selectedReportParamsProvider);
+    final reportAsync = ref.watch(reportDataProvider(params));
+
+    return AppScaffold(
+      title: '',
+      selectedIndex: 3,
+      showAppBar: false,
+      body: Column(
+        children: [
+          _Header(period: params.period),
+          Expanded(
+            child: reportAsync.when(
+              loading: () => const LoadingWidget(),
+              error: (e, _) => ErrorStateWidget(
+                message: e.toString().replaceAll('Exception: ', ''),
+                onRetry: () => ref.invalidate(reportDataProvider(params)),
+              ),
+              data: (report) => RefreshIndicator(
+                color: colors.brand,
+                onRefresh: () async =>
+                    ref.invalidate(reportDataProvider(params)),
+                child: ListView(
+                  padding: const EdgeInsets.fromLTRB(16, 12, 16, 80),
+                  children: [
+                    // ── Period selector ─────────────────────────────
+                    _PeriodSelector(
+                      current: params.period,
+                      onChanged: (p) {
+                        ref.read(selectedReportParamsProvider.notifier).state =
+                            params.copyWith(period: p);
+                      },
+                    ),
+                    const SizedBox(height: AppSpacing.md),
+
+                    // ── 4 KPI cards (revenue first, with delta) ─────
+                    _KpiGrid(report: report),
+                    const SizedBox(height: AppSpacing.md),
+
+                    // ── Revenue trend chart ─────────────────────────
+                    RevenueTrendChart(points: report.revenueByDay),
+                    const SizedBox(height: AppSpacing.md),
+
+                    // ── Day-of-week occupancy heatmap ───────────────
+                    DayOfWeekChart(data: report.dayOfWeekOccupancy),
+                    const SizedBox(height: AppSpacing.md),
+
+                    // ── Length of stay histogram ────────────────────
+                    LengthOfStayChart(distribution: report.lengthOfStay),
+                    const SizedBox(height: AppSpacing.md),
+
+                    // ── Status donut ─────────────────────────────────
+                    _SectionTitle(title: 'TRẠNG THÁI BOOKING'),
+                    const SizedBox(height: 8),
+                    StatusDonutChart(
+                      holdCount: report.holdCount,
+                      confirmedCount: report.confirmedCount,
+                      completedCount: report.completedCount,
+                      cancelledCount: report.cancelledCount,
+                    ),
+                    const SizedBox(height: AppSpacing.md),
+
+                    // ── Top rooms ───────────────────────────────────
+                    if (report.topRooms.isNotEmpty) ...[
+                      _SectionTitle(title: 'TOP PHÒNG DOANH THU'),
+                      const SizedBox(height: 8),
+                      _TopRoomsList(rooms: report.topRooms),
+                      const SizedBox(height: AppSpacing.md),
+                    ],
+
+                    // ── Đánh giá khách ──────────────────────────────
+                    _SectionTitle(title: 'ĐÁNH GIÁ KHÁCH'),
+                    const SizedBox(height: 8),
+                    PropertyRatingsSection(
+                      ratings: report.propertyRatings,
+                      reviews: report.recentReviews,
+                      overallAvgRating: report.overallAvgRating,
+                      overallTotalReviews: report.overallTotalReviews,
+                      overallDistribution: report.overallDistribution,
+                    ),
+                    // ── Criteria breakdown 6 tiêu chí ───────────────
+                    if (!report.overallBreakdown.isEmpty) ...[
+                      const SizedBox(height: 12),
+                      CriteriaBreakdownCard(breakdown: report.overallBreakdown),
+                    ],
+                    const SizedBox(height: AppSpacing.md),
+
+                    // ── Recent bookings (giữ nguyên) ────────────────
+                    _SectionTitle(title: 'BOOKING GẦN ĐÂY'),
+                    const SizedBox(height: 8),
+                    if (report.recentBookings.isEmpty)
+                      const EmptyStateWidget(
+                        icon: Icons.book_outlined,
+                        message: 'Chưa có booking nào',
+                      )
+                    else
+                      _PaginatedRecentBookings(
+                        key: ValueKey(report.recentBookings.length),
+                        bookings: report.recentBookings,
+                      ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ─── Header ─────────────────────────────────────────────────────────────────
+
+class _Header extends ConsumerWidget {
+  final ReportPeriod period;
+  const _Header({required this.period});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
     final colors = context.colors;
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final user = ref.watch(currentUserProvider);
     final userName = user?.name ?? user?.phone ?? '';
-
     final headerGradient = isDark
         ? const [AppColors.darkBg, AppColors.darkBorder]
         : const [AppColors.jade500, _jadeMidLight];
@@ -88,7 +214,7 @@ class ReportScreen extends ConsumerWidget {
                     ),
                     const SizedBox(height: 2),
                     Text(
-                      'Thống kê tháng ${now.month}/${now.year}',
+                      'Thống kê ${period.label.toLowerCase()}',
                       style: GoogleFonts.beVietnamPro(
                         fontSize: 12,
                         color: Colors.white.withValues(alpha: 0.65),
@@ -107,7 +233,8 @@ class ReportScreen extends ConsumerWidget {
                     gradient: const LinearGradient(
                         colors: [AppColors.jade500, AppColors.gold500]),
                     border: Border.all(
-                        color: Colors.white.withValues(alpha: 0.3), width: 1.5),
+                        color: Colors.white.withValues(alpha: 0.3),
+                        width: 1.5),
                   ),
                   child: Center(
                     child: Text(
@@ -127,322 +254,353 @@ class ReportScreen extends ConsumerWidget {
       ),
     );
   }
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final colors = context.colors;
-    final now = DateTime.now();
-    final reportAsync = ref.watch(reportDataProvider(null));
-
-    return AppScaffold(
-      title: '',
-      selectedIndex: 3,
-      showAppBar: false,
-      body: Column(
-        children: [
-          _header(context, ref, now),
-          Expanded(
-            child: reportAsync.when(
-              loading: () => const LoadingWidget(),
-              error: (e, _) => ErrorStateWidget(
-                message: e.toString().replaceAll('Exception: ', ''),
-                onRetry: () => ref.invalidate(reportDataProvider(null)),
-              ),
-              data: (report) {
-                final totalRooms = report.totalRooms;
-                final activeRooms = report.activeRooms;
-                final holdCount = report.holdCount;
-                final confirmedCount = report.confirmedCount;
-                final cancelledCount = report.cancelledCount;
-                final completedCount = report.completedCount;
-                final totalBookings = report.totalBookings;
-                final totalDeposit = report.totalDeposit;
-                final thisMonthCount = report.thisMonthBookings;
-                final occupancyRate = report.occupancyRate;
-
-                return RefreshIndicator(
-                  color: colors.brand,
-                  onRefresh: () async {
-                    ref.invalidate(reportDataProvider(null));
-                  },
-                  child: ListView(
-                    padding: const EdgeInsets.all(20),
-                    children: [
-                      // ── KPI Cards (2x2) ────────────────
-                      Row(
-                        children: [
-                          Expanded(
-                            child: _StatCard(
-                              icon: Icons.apartment_rounded,
-                              iconBg: colors.bgSurfaceContainer,
-                              iconColor: colors.brand,
-                              label: 'Tổng phòng',
-                              value: '$totalRooms',
-                              sub: '$activeRooms đang hoạt động',
-                            ),
-                          ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: _StatCard(
-                              icon: Icons.percent_rounded,
-                              iconBg: colors.successBg,
-                              iconColor: colors.success,
-                              label: 'Tỷ lệ lấp đầy',
-                              value: '${occupancyRate.toStringAsFixed(0)}%',
-                              sub: 'Phòng có booking',
-                            ),
-                          ),
-                        ],
-                      ),
-
-                      const SizedBox(height: 12),
-
-                      Row(
-                        children: [
-                          Expanded(
-                            child: _StatCard(
-                              icon: Icons.book_rounded,
-                              iconBg: colors.bgSurfaceContainer,
-                              iconColor: colors.brandLight,
-                              label: 'Tổng booking',
-                              value: '$totalBookings',
-                              sub: '$thisMonthCount tháng này',
-                            ),
-                          ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: _StatCard(
-                              icon: Icons.payments_rounded,
-                              iconBg: colors.warningBg,
-                              iconColor: AppColors.gold500,
-                              label: 'Tiền cọc thu',
-                              value: totalDeposit > 0
-                                  ? AppHelpers.formatPrice(totalDeposit)
-                                  : '--',
-                              sub: 'Đã xác nhận + hoàn thành',
-                            ),
-                          ),
-                        ],
-                      ),
-
-                      const SizedBox(height: 24),
-
-                      // ── Booking Status Breakdown ───────
-                      const _SectionTitle(title: 'TRẠNG THÁI BOOKING'),
-                      const SizedBox(height: 12),
-
-                      _CardContainer(
-                        child: Column(
-                          children: [
-                            _StatusRow(
-                              label: 'Đang giữ',
-                              count: holdCount,
-                              total: totalBookings,
-                              color: colors.warning,
-                            ),
-                            const SizedBox(height: 12),
-                            _StatusRow(
-                              label: 'Đã xác nhận',
-                              count: confirmedCount,
-                              total: totalBookings,
-                              color: colors.success,
-                            ),
-                            const SizedBox(height: 12),
-                            _StatusRow(
-                              label: 'Hoàn thành',
-                              count: completedCount,
-                              total: totalBookings,
-                              color: colors.brandLight,
-                            ),
-                            const SizedBox(height: 12),
-                            _StatusRow(
-                              label: 'Đã huỷ',
-                              count: cancelledCount,
-                              total: totalBookings,
-                              color: colors.error,
-                            ),
-                          ],
-                        ),
-                      ),
-
-                      const SizedBox(height: 24),
-
-                      // ── Phòng theo homestay ────────────
-                      const _SectionTitle(title: 'THÔNG TIN PHÒNG'),
-                      const SizedBox(height: 12),
-
-                      _CardContainer(
-                        child: Column(
-                          children: [
-                            _InfoRow(
-                              label: 'Tổng số phòng',
-                              value: '$totalRooms',
-                            ),
-                            Divider(height: 20, color: colors.borderDefault),
-                            _InfoRow(
-                              label: 'Phòng hoạt động',
-                              value: '$activeRooms',
-                              valueColor: colors.success,
-                            ),
-                            Divider(height: 20, color: colors.borderDefault),
-                            _InfoRow(
-                              label: 'Phòng tạm ngưng',
-                              value: '${totalRooms - activeRooms}',
-                              valueColor: colors.textTertiary,
-                            ),
-                            Divider(height: 20, color: colors.borderDefault),
-                            _InfoRow(
-                              label: 'Có ảnh bìa',
-                              value: '${report.roomsWithCover}',
-                            ),
-                            Divider(height: 20, color: colors.borderDefault),
-                            _InfoRow(
-                              label: 'Đã cập nhật giá',
-                              value: '${report.roomsWithPrice}',
-                            ),
-                          ],
-                        ),
-                      ),
-
-                      const SizedBox(height: 24),
-
-                      // ── Booking gần đây ────────────────
-                      const _SectionTitle(title: 'BOOKING GẦN ĐÂY'),
-                      const SizedBox(height: 12),
-
-                      if (report.recentBookings.isEmpty)
-                        const EmptyStateWidget(
-                          icon: Icons.book_outlined,
-                          message: 'Chưa có booking nào',
-                        )
-                      else
-                        _PaginatedRecentBookings(
-                          key: ValueKey(report.recentBookings.length),
-                          bookings: report.recentBookings,
-                        ),
-
-                      const SizedBox(height: 80),
-                    ],
-                  ),
-                );
-              },
-            ),
-          ),
-        ],
-      ),
-    );
-  }
 }
 
-// ─── Card Container (theme-aware shadow) ─────────────────────────────────────
-class _CardContainer extends StatelessWidget {
-  final Widget child;
-  const _CardContainer({required this.child});
+// ─── Period selector ───────────────────────────────────────────────────────
+
+class _PeriodSelector extends StatelessWidget {
+  final ReportPeriod current;
+  final ValueChanged<ReportPeriod> onChanged;
+
+  const _PeriodSelector({required this.current, required this.onChanged});
 
   @override
   Widget build(BuildContext context) {
     final colors = context.colors;
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: colors.bgSurface,
-        borderRadius: BorderRadius.circular(AppRadius.lg),
-        border: Border.all(color: colors.borderSubtle),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: isDark ? 0.30 : 0.04),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
-          ),
-        ],
+    return SizedBox(
+      height: 36,
+      child: ListView.separated(
+        scrollDirection: Axis.horizontal,
+        itemCount: ReportPeriod.values.length,
+        separatorBuilder: (_, __) => const SizedBox(width: 8),
+        itemBuilder: (_, i) {
+          final p = ReportPeriod.values[i];
+          final selected = p == current;
+          return GestureDetector(
+            onTap: () => onChanged(p),
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 180),
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              decoration: BoxDecoration(
+                color: selected ? colors.brand : colors.bgSurfaceContainer,
+                borderRadius: BorderRadius.circular(100),
+                border: Border.all(
+                  color: selected ? colors.brand : colors.borderDefault,
+                ),
+              ),
+              child: Text(
+                p.label,
+                style: GoogleFonts.beVietnamPro(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w700,
+                  color: selected ? colors.textOnPrimary : colors.textPrimary,
+                ),
+              ),
+            ),
+          );
+        },
       ),
-      child: child,
     );
   }
 }
 
-// ─── Stat Card ────────────────────────────────────────────────────────────────
-class _StatCard extends StatelessWidget {
+// ─── KPI grid ──────────────────────────────────────────────────────────────
+
+class _KpiGrid extends StatelessWidget {
+  final ReportData report;
+  const _KpiGrid({required this.report});
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.colors;
+
+    return Column(
+      children: [
+        Row(
+          children: [
+            Expanded(
+              child: _KpiCard(
+                icon: Icons.payments_rounded,
+                iconColor: colors.success,
+                label: 'Doanh thu',
+                value: ReportFormat.vndShort(report.revenue),
+                fullValue: ReportFormat.vndFull(report.revenue),
+                delta: ReportFormat.percentDelta(
+                  report.revenue,
+                  report.previousPeriod.revenue,
+                ),
+              ),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: _KpiCard(
+                icon: Icons.percent_rounded,
+                iconColor: colors.brand,
+                label: 'Lấp đầy',
+                value: '${report.occupancyRate.toStringAsFixed(0)}%',
+                delta: ReportFormat.percentDelta(
+                  report.occupancyRate,
+                  report.previousPeriod.occupancy,
+                ),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 10),
+        Row(
+          children: [
+            Expanded(
+              child: _KpiCard(
+                icon: Icons.trending_up_rounded,
+                iconColor: colors.brandLight,
+                label: 'Đơn giá TB',
+                value: ReportFormat.vndShort(report.adr),
+                fullValue: ReportFormat.vndFull(report.adr),
+                delta: ReportFormat.percentDelta(
+                  report.adr,
+                  report.previousPeriod.adr,
+                ),
+              ),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: _KpiCard(
+                icon: Icons.book_rounded,
+                iconColor: AppColors.gold500,
+                label: 'Booking',
+                value: '${report.totalBookings}',
+                delta: ReportFormat.percentDelta(
+                  report.totalBookings,
+                  report.previousPeriod.bookings,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+}
+
+class _KpiCard extends StatelessWidget {
   final IconData icon;
-  final Color iconBg;
   final Color iconColor;
   final String label;
   final String value;
-  final String sub;
+  final String? fullValue;
+  final double? delta;
 
-  const _StatCard({
+  const _KpiCard({
     required this.icon,
-    required this.iconBg,
     required this.iconColor,
     required this.label,
     required this.value,
-    required this.sub,
+    this.fullValue,
+    this.delta,
   });
 
   @override
   Widget build(BuildContext context) {
     final colors = context.colors;
-    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final deltaColor = ReportFormat.deltaColor(colors, delta);
+
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
         color: colors.bgSurface,
-        borderRadius: BorderRadius.circular(AppRadius.lg),
-        border: Border.all(color: colors.borderSubtle),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: isDark ? 0.30 : 0.04),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
-          ),
-        ],
+        border: Border.all(color: colors.borderDefault),
+        borderRadius: BorderRadius.circular(14),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Container(
-            width: 36,
-            height: 36,
-            decoration: BoxDecoration(
-              color: iconBg,
-              borderRadius: BorderRadius.circular(AppRadius.sm),
-            ),
-            child: Icon(icon, color: iconColor, size: 18),
+          Row(
+            children: [
+              Container(
+                width: 28,
+                height: 28,
+                decoration: BoxDecoration(
+                  color: iconColor.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Icon(icon, color: iconColor, size: 16),
+              ),
+              const Spacer(),
+              if (delta != null)
+                Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: deltaColor.withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        ReportFormat.deltaIcon(delta),
+                        size: 10,
+                        color: deltaColor,
+                      ),
+                      const SizedBox(width: 2),
+                      Text(
+                        ReportFormat.deltaLabel(delta),
+                        style: GoogleFonts.beVietnamPro(
+                          fontSize: 10,
+                          fontWeight: FontWeight.w800,
+                          color: deltaColor,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+            ],
           ),
           const SizedBox(height: 10),
           Text(
             value,
             style: GoogleFonts.beVietnamPro(
-              fontSize: 22,
-              fontWeight: FontWeight.w700,
+              fontSize: 19,
+              fontWeight: FontWeight.w800,
               color: colors.textPrimary,
+              height: 1.1,
             ),
           ),
           const SizedBox(height: 2),
           Text(
             label,
             style: GoogleFonts.beVietnamPro(
-              fontSize: 12,
-              fontWeight: FontWeight.w500,
-              color: colors.textSecondary,
-            ),
-          ),
-          const SizedBox(height: 2),
-          Text(
-            sub,
-            style: GoogleFonts.beVietnamPro(
               fontSize: 11,
+              fontWeight: FontWeight.w500,
               color: colors.textTertiary,
             ),
           ),
+          if (fullValue != null && fullValue != value) ...[
+            const SizedBox(height: 1),
+            Text(
+              fullValue!,
+              style: GoogleFonts.beVietnamPro(
+                fontSize: 9,
+                fontWeight: FontWeight.w500,
+                color: colors.textTertiary,
+              ),
+            ),
+          ],
         ],
       ),
     );
   }
 }
 
-// ─── Section Title ────────────────────────────────────────────────────────────
+// ─── Top rooms list ───────────────────────────────────────────────────────
+
+class _TopRoomsList extends StatelessWidget {
+  final List<TopRoom> rooms;
+  const _TopRoomsList({required this.rooms});
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.colors;
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: colors.bgSurface,
+        border: Border.all(color: colors.borderDefault),
+        borderRadius: BorderRadius.circular(14),
+      ),
+      child: Column(
+        children: rooms.asMap().entries.map((e) {
+          final isLast = e.key == rooms.length - 1;
+          return Padding(
+            padding: EdgeInsets.only(bottom: isLast ? 0 : 12),
+            child: _TopRoomRow(rank: e.key + 1, room: e.value),
+          );
+        }).toList(),
+      ),
+    );
+  }
+}
+
+class _TopRoomRow extends StatelessWidget {
+  final int rank;
+  final TopRoom room;
+
+  const _TopRoomRow({required this.rank, required this.room});
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.colors;
+    final isPodium = rank <= 3;
+    final podiumColor = switch (rank) {
+      1 => AppColors.gold500,
+      2 => const Color(0xFFB0BEC5),
+      3 => const Color(0xFFA1887F),
+      _ => colors.textSecondary,
+    };
+
+    return Row(
+      children: [
+        Container(
+          width: 28,
+          height: 28,
+          decoration: BoxDecoration(
+            color: isPodium
+                ? podiumColor.withValues(alpha: 0.18)
+                : colors.bgSurfaceContainer,
+            shape: BoxShape.circle,
+          ),
+          alignment: Alignment.center,
+          child: Text(
+            '$rank',
+            style: GoogleFonts.beVietnamPro(
+              fontSize: 12,
+              fontWeight: FontWeight.w800,
+              color: isPodium ? podiumColor : colors.textSecondary,
+            ),
+          ),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                room.name,
+                style: GoogleFonts.beVietnamPro(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w700,
+                  color: colors.textPrimary,
+                ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+              const SizedBox(height: 2),
+              Text(
+                '${room.bookings} booking · ${(room.occupancy * 100).toStringAsFixed(0)}% lấp đầy',
+                style: GoogleFonts.beVietnamPro(
+                  fontSize: 11,
+                  color: colors.textTertiary,
+                ),
+              ),
+            ],
+          ),
+        ),
+        Text(
+          ReportFormat.vndShort(room.revenue),
+          style: GoogleFonts.beVietnamPro(
+            fontSize: 13,
+            fontWeight: FontWeight.w800,
+            color: colors.textBrand,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+// ─── Section title ────────────────────────────────────────────────────────
+
 class _SectionTitle extends StatelessWidget {
   final String title;
   const _SectionTitle({required this.title});
@@ -453,136 +611,20 @@ class _SectionTitle extends StatelessWidget {
     return Text(
       title,
       style: GoogleFonts.beVietnamPro(
-        fontSize: 13,
+        fontSize: 11,
         fontWeight: FontWeight.w700,
-        color: colors.textPrimary,
-        letterSpacing: 0.8,
+        letterSpacing: 1.2,
+        color: colors.textTertiary,
       ),
     );
   }
 }
 
-// ─── Status Row with progress bar ─────────────────────────────────────────────
-class _StatusRow extends StatelessWidget {
-  final String label;
-  final int count;
-  final int total;
-  final Color color;
+// ─── Recent bookings (giữ nguyên logic cũ) ────────────────────────────────
 
-  const _StatusRow({
-    required this.label,
-    required this.count,
-    required this.total,
-    required this.color,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final colors = context.colors;
-    final ratio = total > 0 ? count / total : 0.0;
-
-    return Column(
-      children: [
-        Row(
-          children: [
-            Container(
-              width: 10,
-              height: 10,
-              decoration: BoxDecoration(
-                color: color,
-                borderRadius: BorderRadius.circular(3),
-              ),
-            ),
-            const SizedBox(width: 8),
-            Expanded(
-              child: Text(
-                label,
-                style: GoogleFonts.beVietnamPro(
-                  fontSize: 13,
-                  color: colors.textPrimary,
-                ),
-              ),
-            ),
-            Text(
-              '$count',
-              style: GoogleFonts.beVietnamPro(
-                fontSize: 14,
-                fontWeight: FontWeight.w700,
-                color: colors.textPrimary,
-              ),
-            ),
-            const SizedBox(width: 4),
-            Text(
-              '(${(ratio * 100).toStringAsFixed(0)}%)',
-              style: GoogleFonts.beVietnamPro(
-                fontSize: 11,
-                color: colors.textSecondary,
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 6),
-        ClipRRect(
-          borderRadius: BorderRadius.circular(4),
-          child: LinearProgressIndicator(
-            value: ratio,
-            minHeight: 6,
-            backgroundColor: colors.bgSurfaceContainer,
-            valueColor: AlwaysStoppedAnimation(color),
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-// ─── Info Row ─────────────────────────────────────────────────────────────────
-class _InfoRow extends StatelessWidget {
-  final String label;
-  final String value;
-  final Color? valueColor;
-
-  const _InfoRow({
-    required this.label,
-    required this.value,
-    this.valueColor,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final colors = context.colors;
-    return Row(
-      children: [
-        Expanded(
-          child: Text(
-            label,
-            style: GoogleFonts.beVietnamPro(
-              fontSize: 13,
-              color: colors.textSecondary,
-            ),
-          ),
-        ),
-        Text(
-          value,
-          style: GoogleFonts.beVietnamPro(
-            fontSize: 14,
-            fontWeight: FontWeight.w700,
-            color: valueColor ?? colors.textPrimary,
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-// ─── Paginated recent bookings (client-side) ─────────────────────────────────
 class _PaginatedRecentBookings extends StatefulWidget {
   final List<BookingModel> bookings;
-
-  const _PaginatedRecentBookings({
-    super.key,
-    required this.bookings,
-  });
+  const _PaginatedRecentBookings({super.key, required this.bookings});
 
   @override
   State<_PaginatedRecentBookings> createState() =>
@@ -590,103 +632,87 @@ class _PaginatedRecentBookings extends StatefulWidget {
 }
 
 class _PaginatedRecentBookingsState extends State<_PaginatedRecentBookings> {
-  static const int _pageSize = 5;
+  static const _pageSize = 5;
   int _page = 0;
 
   @override
-  void didUpdateWidget(covariant _PaginatedRecentBookings oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    if (oldWidget.bookings.length != widget.bookings.length) {
-      _page = 0;
-    }
-  }
-
-  @override
   Widget build(BuildContext context) {
-    final list = widget.bookings;
-    final totalPages =
-        list.isEmpty ? 0 : (list.length + _pageSize - 1) ~/ _pageSize;
-    final safePage = totalPages == 0 ? 0 : _page.clamp(0, totalPages - 1);
-    if (safePage != _page) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted) setState(() => _page = safePage);
-      });
-    }
-
-    final start = safePage * _pageSize;
-    final end = (start + _pageSize).clamp(0, list.length);
-    final pageItems = list.sublist(start, end);
+    final total = widget.bookings.length;
+    final totalPages = (total / _pageSize).ceil();
+    final start = _page * _pageSize;
+    final end = (start + _pageSize).clamp(0, total);
+    final pageItems = widget.bookings.sublist(start, end);
 
     return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        ...pageItems.map(
-          (b) => Padding(
-            padding: const EdgeInsets.only(bottom: 8),
-            child: GestureDetector(
-              onTap: () => context.push('/bookings'),
-              child: _RecentBookingCard(booking: b),
-            ),
-          ),
-        ),
-        if (totalPages > 1)
+        ...pageItems.asMap().entries.map((e) => Padding(
+              padding: const EdgeInsets.only(bottom: 10),
+              child: _BookingRow(booking: e.value)
+                  .animate(delay: (e.key * 40).ms)
+                  .fadeIn(duration: 240.ms),
+            )),
+        if (totalPages > 1) ...[
+          const SizedBox(height: 8),
           AppPaginationBar(
-            currentPage: safePage,
+            currentPage: _page,
             totalPages: totalPages,
-            onPrevious: safePage > 0
-                ? () => setState(() => _page = safePage - 1)
-                : null,
-            onNext: safePage < totalPages - 1
-                ? () => setState(() => _page = safePage + 1)
-                : null,
+            onPrevious: _page > 0 ? () => setState(() => _page--) : null,
+            onNext:
+                _page < totalPages - 1 ? () => setState(() => _page++) : null,
           ),
+        ],
       ],
     );
   }
 }
 
-// ─── Recent Booking Card ──────────────────────────────────────────────────────
-class _RecentBookingCard extends StatelessWidget {
+class _BookingRow extends StatelessWidget {
   final BookingModel booking;
-  const _RecentBookingCard({required this.booking});
+  const _BookingRow({required this.booking});
 
   @override
   Widget build(BuildContext context) {
     final colors = context.colors;
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final statusLabel = booking.status.label;
     final statusColor = AppHelpers.bookingStatusColor(booking.status.value);
+    final initials =
+        (booking.customerName ?? 'K').substring(0, 1).toUpperCase();
 
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
         color: colors.bgSurface,
-        borderRadius: BorderRadius.circular(AppRadius.md),
-        border: Border.all(color: colors.borderSubtle),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: isDark ? 0.30 : 0.04),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
-          ),
-        ],
+        border: Border.all(color: colors.borderDefault),
+        borderRadius: BorderRadius.circular(12),
       ),
       child: Row(
         children: [
           Container(
-            width: 40,
-            height: 40,
+            width: 4,
+            height: 36,
             decoration: BoxDecoration(
-              color: colors.bgSurfaceContainer,
-              borderRadius: BorderRadius.circular(AppRadius.sm),
-            ),
-            child: Icon(
-              Icons.book_outlined,
-              color: colors.brand,
-              size: 20,
+              color: statusColor,
+              borderRadius: BorderRadius.circular(2),
             ),
           ),
-          const SizedBox(width: 12),
+          const SizedBox(width: 10),
+          Container(
+            width: 36,
+            height: 36,
+            decoration: BoxDecoration(
+              color: statusColor.withValues(alpha: 0.12),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            alignment: Alignment.center,
+            child: Text(
+              initials,
+              style: GoogleFonts.beVietnamPro(
+                fontSize: 14,
+                fontWeight: FontWeight.w700,
+                color: statusColor,
+              ),
+            ),
+          ),
+          const SizedBox(width: 10),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -694,16 +720,18 @@ class _RecentBookingCard extends StatelessWidget {
                 Text(
                   booking.customerName ?? 'Không tên',
                   style: GoogleFonts.beVietnamPro(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w600,
+                    fontSize: 13,
+                    fontWeight: FontWeight.w700,
                     color: colors.textPrimary,
                   ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                 ),
                 const SizedBox(height: 2),
                 Text(
                   '${booking.propertyName} · ${booking.nights} đêm',
                   style: GoogleFonts.beVietnamPro(
-                    fontSize: 12,
+                    fontSize: 11,
                     color: colors.textSecondary,
                   ),
                 ),
@@ -717,10 +745,10 @@ class _RecentBookingCard extends StatelessWidget {
               borderRadius: BorderRadius.circular(20),
             ),
             child: Text(
-              statusLabel,
+              booking.status.label,
               style: GoogleFonts.beVietnamPro(
                 fontSize: 10,
-                fontWeight: FontWeight.w600,
+                fontWeight: FontWeight.w700,
                 color: statusColor,
               ),
             ),

@@ -3,6 +3,7 @@ import 'dart:math';
 
 import '../models/cccd_upload.dart';
 import '../models/ocr_result.dart';
+import '../models/payment_history_item.dart';
 import '../models/payment_session.dart';
 import '../models/plan.dart';
 import '../models/selfie_upload.dart';
@@ -111,23 +112,33 @@ class MockVerifyRepository implements VerifyRepository {
   }) async {
     await Future.delayed(const Duration(milliseconds: 800));
     _paymentCheckCount = 0; // reset
+    final sid = 'pay_${_randomId()}';
+    final ckContent = 'HALONG24H ${sid.toUpperCase()}';
     return PaymentSession(
-      sessionId: 'pay_${_randomId()}',
+      sessionId: sid,
       method: method,
       totalAmount: totalAmount,
+      // EMV-like fake payload — đủ để render QR test, không decode ra tiền thật
       qrCode: method == PaymentMethod.vnpayQR
-          ? 'https://placehold.co/300x300/FFFFFF/16252B?text=VNPay+QR'
+          ? 'vnpay://halong24h.demo/pay?session=$sid&amount=$totalAmount'
           : null,
       bankInfo: method == PaymentMethod.bankTransfer
           ? BankInfo(
               bankName: 'Vietcombank',
               accountNumber: '0123456789',
               accountName: 'CTY HALONG24H',
-              content: 'VERIFY pay_${_randomId()}',
+              content: ckContent,
+              // Fake VietQR payload — render được; thực tế là EMV string từ
+              // VietQR.io/NAPAS với BIN ngân hàng thật.
+              vietQrPayload:
+                  'vietqr://demo?bank=VCB&account=0123456789&amount=$totalAmount&content=$ckContent',
             )
           : null,
       redirectUrl: method == PaymentMethod.card
-          ? 'https://sandbox.vnpay.vn/checkout?session=pay_${_randomId()}'
+          ? 'https://sandbox.vnpay.vn/checkout?session=$sid'
+          : null,
+      payUrl: method == PaymentMethod.vnpayQR
+          ? 'https://sandbox.vnpay.vn/paymentv2/vpcpay.html?session=$sid'
           : null,
       expiresAt: DateTime.now().add(const Duration(minutes: 15)),
     );
@@ -201,6 +212,78 @@ class MockVerifyRepository implements VerifyRepository {
     return RefundResult(
       refundedAt: DateTime.now(),
       refundAmount: 23602000,
+    );
+  }
+
+  @override
+  Future<List<PaymentHistoryItem>> fetchPaymentHistory() async {
+    await Future.delayed(const Duration(milliseconds: 500));
+    final now = DateTime.now();
+    return [
+      PaymentHistoryItem(
+        id: 'pay_renew_001',
+        kind: PaymentHistoryKind.renew,
+        planLabel: 'Standard · Tháng',
+        cycle: BillingCycle.monthly,
+        amount: 6589000,
+        method: PaymentMethod.vnpayQR,
+        status: PaymentStatus.paid,
+        createdAt: now.subtract(const Duration(days: 2)),
+        settledAt: now.subtract(const Duration(days: 2, minutes: -3)),
+        referenceCode: 'VNP-238910238',
+        invoiceNumber: 'INV-2026-0042',
+      ),
+      PaymentHistoryItem(
+        id: 'pay_renew_002',
+        kind: PaymentHistoryKind.renew,
+        planLabel: 'Standard · Tháng',
+        cycle: BillingCycle.monthly,
+        amount: 6589000,
+        method: PaymentMethod.bankTransfer,
+        status: PaymentStatus.paid,
+        createdAt: now.subtract(const Duration(days: 33)),
+        settledAt: now.subtract(const Duration(days: 33, hours: -1)),
+        referenceCode: 'VCB-09872341',
+        invoiceNumber: 'INV-2026-0029',
+      ),
+      PaymentHistoryItem(
+        id: 'pay_subscribe_001',
+        kind: PaymentHistoryKind.subscription,
+        planLabel: 'Standard · Tháng',
+        cycle: BillingCycle.monthly,
+        amount: 6589000,
+        method: PaymentMethod.vnpayQR,
+        status: PaymentStatus.paid,
+        createdAt: now.subtract(const Duration(days: 65)),
+        settledAt: now.subtract(const Duration(days: 65, minutes: -2)),
+        referenceCode: 'VNP-198273645',
+        invoiceNumber: 'INV-2026-0011',
+      ),
+      PaymentHistoryItem(
+        id: 'pay_failed_001',
+        kind: PaymentHistoryKind.renew,
+        planLabel: 'Standard · Tháng',
+        cycle: BillingCycle.monthly,
+        amount: 6589000,
+        method: PaymentMethod.bankTransfer,
+        status: PaymentStatus.expired,
+        createdAt: now.subtract(const Duration(days: 95)),
+        referenceCode: null,
+      ),
+    ];
+  }
+
+  @override
+  Future<PaymentSession> renewSubscription({
+    required PaymentMethod method,
+  }) async {
+    // Reuse mock initiatePayment với plan/cycle giả định.
+    return initiatePayment(
+      planId: 'rooms_10',
+      billingCycle: BillingCycle.monthly,
+      method: method,
+      rooms: 10,
+      totalAmount: 6589000,
     );
   }
 

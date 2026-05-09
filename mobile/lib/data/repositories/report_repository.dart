@@ -7,7 +7,13 @@ import '../models/booking_model.dart';
 class ReportRepository {
   final _dio = ApiClient.instance;
 
+  /// Lấy report. Param mới (`period`/`from`/`to`) ưu tiên hơn legacy
+  /// (`month`/`year`). Backend mặc định = `month` (tháng hiện tại) nếu
+  /// không truyền gì.
   Future<ApiResponse<Map<String, dynamic>>> getReport({
+    String? period,
+    DateTime? from,
+    DateTime? to,
     int? month,
     int? year,
   }) async {
@@ -15,6 +21,9 @@ class ReportRepository {
       final response = await _dio.get(
         ApiConstants.reports,
         queryParameters: {
+          if (period != null) 'period': period,
+          if (from != null) 'from': _formatDate(from),
+          if (to != null) 'to': _formatDate(to),
           if (month != null) 'month': month,
           if (year != null) 'year': year,
         },
@@ -30,5 +39,11 @@ class ReportRepository {
     } on DioException catch (e) {
       return ApiResponse(success: false, message: parseDioError(e));
     }
+  }
+
+  String _formatDate(DateTime d) {
+    final mm = d.month.toString().padLeft(2, '0');
+    final dd = d.day.toString().padLeft(2, '0');
+    return '${d.year}-$mm-$dd';
   }
 }

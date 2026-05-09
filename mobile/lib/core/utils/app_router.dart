@@ -51,8 +51,11 @@ import '../../features/profile/views/terms_of_service_screen.dart';
 import '../../features/rooms/views/room_detail_screen.dart';
 import '../../features/rooms/views/room_list_screen.dart';
 import '../../features/reports/views/report_screen.dart';
+import '../../features/reviews/views/property_reviews_screen.dart';
+import '../../features/reviews/views/write_review_screen.dart';
 import '../../features/verify/data/models/verify_enums.dart';
 import '../../features/verify/views/cccd_capture_screen.dart';
+import '../../features/verify/views/payment_history_screen.dart';
 import '../../features/verify/views/payment_screen.dart';
 import '../../features/verify/views/pending_approval_screen.dart';
 import '../../features/verify/views/rejected_screen.dart';
@@ -151,16 +154,15 @@ String? resolveRedirectPath({
       '/profile/help',
       '/notifications',
     ];
-    final isAllowed = allowedWhenInactiveSale
-        .any((p) => path == p || path.startsWith('$p/'));
+    final isAllowed =
+        allowedWhenInactiveSale.any((p) => path == p || path.startsWith('$p/'));
     if (!isAllowed) return '/dashboard';
   }
 
   // /properties mutate là owner/admin only; SALE không được mở trực tiếp
   // bằng URL kể cả khi backend sẽ chặn.
   if (user != null && user.isSale) {
-    final isPropertyMutatePath =
-        path == '/properties/new' ||
+    final isPropertyMutatePath = path == '/properties/new' ||
         path.startsWith('/properties/') && path != '/properties';
     if (isPropertyMutatePath) return '/dashboard';
   }
@@ -511,6 +513,45 @@ final routerProvider = Provider<GoRouter>((ref) {
         ],
       ),
 
+      // ── Reviews ─────────────────────────────────────────────────────
+      // `/reviews/:id` = public list. `/reviews/:id/write?bookingId=xxx` =
+      // customer viết review sau khi booking completed. Đặt ngoài
+      // `/properties/...` để không bị guard mode/role block (xem
+      // `resolveRedirectPath` — paths không trong customer/management
+      // list sẽ pass through cho cả 2 mode).
+      GoRoute(
+        path: '/reviews/:id',
+        pageBuilder: (_, state) => slideUpPage(
+          key: state.pageKey,
+          child: PropertyReviewsScreen(
+            propertyId: state.pathParameters['id']!,
+            propertyName: state.uri.queryParameters['name'],
+          ),
+        ),
+        routes: [
+          GoRoute(
+            path: 'write',
+            pageBuilder: (_, state) {
+              final bookingId = state.uri.queryParameters['bookingId'];
+              if (bookingId == null || bookingId.isEmpty) {
+                return slideUpPage(
+                  key: state.pageKey,
+                  child: const _MissingBookingScreen(),
+                );
+              }
+              return slideUpPage(
+                key: state.pageKey,
+                child: WriteReviewScreen(
+                  propertyId: state.pathParameters['id']!,
+                  bookingId: bookingId,
+                  propertyName: state.uri.queryParameters['name'],
+                ),
+              );
+            },
+          ),
+        ],
+      ),
+
       // ── Verify + Subscription Flow ──────────────────────────────────
       // 8 screens — paywall (modal, không nằm trong router) + 7 screens dưới đây.
       // Trigger paywall: gọi `showPaywallModal(context)` từ bất kỳ feature
@@ -578,6 +619,13 @@ final routerProvider = Provider<GoRouter>((ref) {
         pageBuilder: (_, state) => slideUpPage(
           key: state.pageKey,
           child: const SubscriptionDetailScreen(),
+        ),
+      ),
+      GoRoute(
+        path: '/verify/payment-history',
+        pageBuilder: (_, state) => slideUpPage(
+          key: state.pageKey,
+          child: const PaymentHistoryScreen(),
         ),
       ),
       GoRoute(
@@ -679,3 +727,25 @@ final routerProvider = Provider<GoRouter>((ref) {
     ),
   );
 });
+
+/// Fallback khi mở `/reviews/:id/write` mà thiếu `bookingId` query param —
+/// route hợp lệ nhưng thiếu data, không nên crash.
+class _MissingBookingScreen extends StatelessWidget {
+  const _MissingBookingScreen();
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Viết đánh giá')),
+      body: const Center(
+        child: Padding(
+          padding: EdgeInsets.all(24),
+          child: Text(
+            'Thiếu thông tin booking. Mở từ "Booking của tôi" → booking đã hoàn tất.',
+            textAlign: TextAlign.center,
+          ),
+        ),
+      ),
+    );
+  }
+}

@@ -2,6 +2,7 @@ import 'dart:io';
 
 import '../models/cccd_upload.dart';
 import '../models/ocr_result.dart';
+import '../models/payment_history_item.dart';
 import '../models/payment_session.dart';
 import '../models/plan.dart';
 import '../models/selfie_upload.dart';
@@ -113,4 +114,15 @@ abstract class VerifyRepository {
   Future<ApprovalResult> checkApprovalStatus(String submissionId);
   Future<void> resubmit({required List<RejectableItem> items});
   Future<RefundResult> requestRefund(String submissionId);
+
+  // ── Subscription history + renew ──
+  /// Lịch sử thanh toán + hoàn tiền (mới nhất trước). Có thể empty nếu user
+  /// chưa thanh toán bao giờ.
+  Future<List<PaymentHistoryItem>> fetchPaymentHistory();
+
+  /// Gia hạn subscription hiện tại — backend tạo phiên thanh toán mới với
+  /// `kind = 'renew'`, dùng cùng plan + cycle hiện tại của user.
+  Future<PaymentSession> renewSubscription({
+    required PaymentMethod method,
+  });
 }

@@ -11,13 +11,19 @@ import '../../../core/theme/app_spacing.dart';
 import '../../../core/monitoring/analytics_service.dart';
 import '../../../shared/widgets/status_strip.dart';
 import '../controllers/verify_flow_controller.dart';
-import '../data/models/payment_session.dart';
 import '../data/models/plan.dart';
 import '../data/models/verify_enums.dart';
 import 'widgets/order_summary_card.dart';
+import 'widgets/payment_dialogs.dart';
 import 'widgets/payment_method_tile.dart';
 import 'widgets/verify_app_bar.dart';
 import 'widgets/verify_format.dart';
+
+/// Methods còn enable. `card` đang lock vì chưa wire cổng thẻ.
+const _kAvailableMethods = <PaymentMethod>[
+  PaymentMethod.vnpayQR,
+  PaymentMethod.bankTransfer,
+];
 
 /// Screen 5 — Thanh toán.
 ///
@@ -62,16 +68,24 @@ class _PaymentScreenState extends ConsumerState<PaymentScreen> {
 
       if (!mounted) return;
 
-      // Mở dialog tương ứng method, không await để poll vẫn chạy.
+      // Mở dialog tương ứng method. Card đã lock ở UI nên không xử lý.
       switch (_selected) {
         case PaymentMethod.vnpayQR:
-          _showVNPayDialog(session);
+          showDialog<void>(
+            context: context,
+            barrierDismissible: false,
+            builder: (_) => VNPayQRDialog(session: session),
+          );
           break;
         case PaymentMethod.bankTransfer:
-          _showBankTransferDialog(session);
+          showDialog<void>(
+            context: context,
+            barrierDismissible: true,
+            builder: (_) => BankTransferDialog(session: session),
+          );
           break;
         case PaymentMethod.card:
-          _showCardFormDialog(session);
+          // Không reach: card đã disable trên UI.
           break;
       }
       _startPolling();
@@ -122,168 +136,6 @@ class _PaymentScreenState extends ConsumerState<PaymentScreen> {
       } catch (_) {
         // silent retry — exponential backoff không cần thiết với mock
       }
-    });
-  }
-
-  void _showVNPayDialog(PaymentSession s) {
-    showDialog<void>(
-      context: context,
-      barrierDismissible: false,
-      builder: (_) => Dialog(
-        backgroundColor: context.colors.bgSurfaceElevated,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        child: Padding(
-          padding: const EdgeInsets.all(20),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                'Quét QR bằng app ngân hàng',
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w700,
-                  color: context.colors.textPrimary,
-                ),
-              ),
-              const SizedBox(height: 12),
-              Container(
-                width: 200,
-                height: 200,
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Icon(Icons.qr_code, size: 160, color: AppColors.darkBg),
-              ),
-              const SizedBox(height: 12),
-              Text(
-                VerifyFormat.priceVND(s.totalAmount),
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.w800,
-                  color: context.colors.textBrand,
-                ),
-              ),
-              const SizedBox(height: 4),
-              Text(
-                'QR hết hạn lúc ${VerifyFormat.time(s.expiresAt)}',
-                style: TextStyle(
-                  fontSize: 11,
-                  fontWeight: FontWeight.w500,
-                  color: context.colors.textTertiary,
-                ),
-              ),
-              const SizedBox(height: 16),
-              SizedBox(
-                width: double.infinity,
-                height: 44,
-                child: OutlinedButton(
-                  onPressed: () => Navigator.of(context).maybePop(),
-                  child: const Text('Đóng'),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  void _showBankTransferDialog(PaymentSession s) {
-    showDialog<void>(
-      context: context,
-      builder: (_) => AlertDialog(
-        backgroundColor: context.colors.bgSurfaceElevated,
-        title: const Text('Chuyển khoản ngân hàng'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(s.bankInfo?.displayText ?? '—'),
-            const SizedBox(height: 8),
-            Text(
-              'Tổng: ${VerifyFormat.priceVND(s.totalAmount)}',
-              style: const TextStyle(fontWeight: FontWeight.w700),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).maybePop(),
-            child: const Text('Đóng'),
-          ),
-        ],
-      ),
-    );
-  }
-
-  void _showCardFormDialog(PaymentSession s) {
-    final cardHolderCtrl = TextEditingController();
-    final cardNumberCtrl = TextEditingController();
-    final expiryCtrl = TextEditingController();
-    final cvvCtrl = TextEditingController();
-    showDialog<void>(
-      context: context,
-      builder: (_) => AlertDialog(
-        backgroundColor: context.colors.bgSurfaceElevated,
-        title: const Text('Thanh toán bằng thẻ'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextField(
-              controller: cardHolderCtrl,
-              decoration: const InputDecoration(labelText: 'Tên chủ thẻ'),
-            ),
-            const SizedBox(height: 8),
-            TextField(
-              controller: cardNumberCtrl,
-              keyboardType: TextInputType.number,
-              decoration: const InputDecoration(labelText: 'Số thẻ'),
-            ),
-            const SizedBox(height: 8),
-            Row(
-              children: [
-                Expanded(
-                  child: TextField(
-                    controller: expiryCtrl,
-                    keyboardType: TextInputType.datetime,
-                    decoration: const InputDecoration(labelText: 'MM/YY'),
-                  ),
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: TextField(
-                    controller: cvvCtrl,
-                    keyboardType: TextInputType.number,
-                    obscureText: true,
-                    decoration: const InputDecoration(labelText: 'CVV'),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 8),
-            Text(
-              'Số tiền: ${VerifyFormat.priceVND(s.totalAmount)}',
-              style: const TextStyle(fontWeight: FontWeight.w700),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).maybePop(),
-            child: const Text('Hủy'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.of(context).maybePop(),
-            child: const Text('Xác nhận'),
-          ),
-        ],
-      ),
-    ).whenComplete(() {
-      cardHolderCtrl.dispose();
-      cardNumberCtrl.dispose();
-      expiryCtrl.dispose();
-      cvvCtrl.dispose();
     });
   }
 
@@ -346,19 +198,25 @@ class _PaymentScreenState extends ConsumerState<PaymentScreen> {
                 ),
               ),
               const SizedBox(height: 10),
-              ...PaymentMethod.values.asMap().entries.map(
-                    (e) => Padding(
-                      padding: const EdgeInsets.only(bottom: 8),
-                      child: PaymentMethodTile(
-                        method: e.value,
-                        isSelected: _selected == e.value,
-                        onTap: () => setState(() => _selected = e.value),
-                      )
-                          .animate(delay: (60 * e.key).ms)
-                          .fadeIn(duration: 240.ms)
-                          .slideY(begin: 0.05, end: 0),
-                    ),
-                  ),
+              ...PaymentMethod.values.asMap().entries.map((e) {
+                final method = e.value;
+                final isAvailable = _kAvailableMethods.contains(method);
+                return Padding(
+                  padding: const EdgeInsets.only(bottom: 8),
+                  child: PaymentMethodTile(
+                    method: method,
+                    isSelected: _selected == method,
+                    isComingSoon: !isAvailable,
+                    onTap: () {
+                      if (!isAvailable) return;
+                      setState(() => _selected = method);
+                    },
+                  )
+                      .animate(delay: (60 * e.key).ms)
+                      .fadeIn(duration: 240.ms)
+                      .slideY(begin: 0.05, end: 0),
+                );
+              }),
               const SizedBox(height: AppSpacing.md),
               const StatusStrip(
                 icon: Icons.lock_outline,
