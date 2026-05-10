@@ -1,20 +1,37 @@
 import 'dart:convert';
 
+import 'package:json_annotation/json_annotation.dart';
+
+part 'user_model.g.dart';
+
+/// Model chính cho user. Tất cả 3 endpoint auth (login/register/google) +
+/// /auth/profile + /staff/* đều dùng cùng shape — xem API.md Section 5.3.
+///
+/// Generate `.g.dart`:
+///   dart run build_runner build --delete-conflicting-outputs
+@JsonSerializable(explicitToJson: true)
 class UserModel {
   final String id;
   final String name;
   final String phone;
   final String? email;
+  final String? avatar;
+  @JsonKey(defaultValue: false)
+  final bool emailVerified;
+  @JsonKey(defaultValue: 3)
   final int role;
+  @JsonKey(defaultValue: true)
   final bool isActive;
   final int? gender;
   final String? dateOfBirth;
   final String? ownerId;
   final String? saleMembershipStatus;
 
-  // ── KYC + Subscription (backend trả từ /auth/profile sau Đợt 2) ──
+  // ── KYC + Subscription (BE trả từ /auth/profile) ──
+  @JsonKey(defaultValue: 'none')
   final String kycStatus; // none | pending | approved | rejected
   final String? kycSubmissionId;
+  @JsonKey(defaultValue: 'none')
   final String
       subscriptionStatus; // none | trial | active | past_due | cancelled
   final String? subscriptionPlanId; // starter | professional | enterprise
@@ -22,11 +39,13 @@ class UserModel {
   final DateTime? trialEndsAt;
   final DateTime? nextChargeAt;
 
-  UserModel({
+  const UserModel({
     required this.id,
     required this.name,
     required this.phone,
     this.email,
+    this.avatar,
+    this.emailVerified = false,
     required this.role,
     this.isActive = true,
     this.gender,
@@ -42,60 +61,25 @@ class UserModel {
     this.nextChargeAt,
   });
 
-  factory UserModel.fromJson(Map<String, dynamic> json) => UserModel(
-        id: json['id'] ?? '',
-        name: json['name'] ?? '',
-        phone: json['phone'] ?? '',
-        email: json['email'],
-        role: json['role'] ?? 3,
-        isActive: json['isActive'] ?? true,
-        gender: json['gender'],
-        dateOfBirth: json['dateOfBirth'],
-        ownerId: json['ownerId'],
-        saleMembershipStatus: json['saleMembershipStatus'],
-        kycStatus: json['kycStatus'] ?? 'none',
-        kycSubmissionId: json['kycSubmissionId'],
-        subscriptionStatus: json['subscriptionStatus'] ?? 'none',
-        subscriptionPlanId: json['subscriptionPlanId'],
-        subscriptionCycle: json['subscriptionCycle'],
-        trialEndsAt: _parseDate(json['trialEndsAt']),
-        nextChargeAt: _parseDate(json['nextChargeAt']),
-      );
+  /// Defensive fromJson — bao quanh `_$UserModelFromJson` để xử lý các field
+  /// required-but-null từ BE cũ (id/name/phone đôi khi missing trong response
+  /// fallback). KHÔNG sửa generated file.
+  factory UserModel.fromJson(Map<String, dynamic> json) =>
+      _$UserModelFromJson({
+        ...json,
+        'id': json['id'] ?? '',
+        'name': json['name'] ?? '',
+        'phone': json['phone'] ?? '',
+      });
 
-  static DateTime? _parseDate(dynamic raw) {
-    if (raw == null || raw is! String || raw.isEmpty) return null;
-    return DateTime.tryParse(raw);
-  }
-
-  Map<String, dynamic> toJson() => {
-        'id': id,
-        'name': name,
-        'phone': phone,
-        'email': email,
-        'role': role,
-        'isActive': isActive,
-        if (gender != null) 'gender': gender,
-        if (dateOfBirth != null) 'dateOfBirth': dateOfBirth,
-        if (ownerId != null) 'ownerId': ownerId,
-        if (saleMembershipStatus != null)
-          'saleMembershipStatus': saleMembershipStatus,
-        'kycStatus': kycStatus,
-        if (kycSubmissionId != null) 'kycSubmissionId': kycSubmissionId,
-        'subscriptionStatus': subscriptionStatus,
-        if (subscriptionPlanId != null)
-          'subscriptionPlanId': subscriptionPlanId,
-        if (subscriptionCycle != null) 'subscriptionCycle': subscriptionCycle,
-        if (trialEndsAt != null) 'trialEndsAt': trialEndsAt!.toIso8601String(),
-        if (nextChargeAt != null)
-          'nextChargeAt': nextChargeAt!.toIso8601String(),
-      };
+  Map<String, dynamic> toJson() => _$UserModelToJson(this);
 
   String toJsonString() => jsonEncode(toJson());
 
   factory UserModel.fromJsonString(String str) =>
-      UserModel.fromJson(jsonDecode(str));
+      UserModel.fromJson(jsonDecode(str) as Map<String, dynamic>);
 
-  // 0=ADMIN, 1=OWNER, 2=SALE, 3=CUSTOMER
+  // ── Role helpers (0=ADMIN, 1=OWNER, 2=SALE, 3=CUSTOMER) ──
   bool get isAdmin => role == 0;
   bool get isOwner => role == 1;
   bool get isSale => role == 2;
@@ -168,6 +152,8 @@ class UserModel {
     String? name,
     String? phone,
     String? email,
+    String? avatar,
+    bool? emailVerified,
     int? role,
     bool? isActive,
     int? gender,
@@ -187,6 +173,8 @@ class UserModel {
         name: name ?? this.name,
         phone: phone ?? this.phone,
         email: email ?? this.email,
+        avatar: avatar ?? this.avatar,
+        emailVerified: emailVerified ?? this.emailVerified,
         role: role ?? this.role,
         isActive: isActive ?? this.isActive,
         gender: gender ?? this.gender,

@@ -57,10 +57,19 @@ class _VNPayQRDialogState extends State<VNPayQRDialog> {
   Widget build(BuildContext context) {
     final colors = context.colors;
     final expired = _remaining.inSeconds <= 0;
+    final hasQr = (widget.session.qrCode != null &&
+            widget.session.qrCode!.isNotEmpty) ||
+        (widget.session.qrImageBase64 != null &&
+            widget.session.qrImageBase64!.isNotEmpty);
     final canOpenBankApp =
         (widget.session.payUrl != null && widget.session.payUrl!.isNotEmpty) ||
             (widget.session.redirectUrl != null &&
                 widget.session.redirectUrl!.isNotEmpty);
+
+    // Backend prod hiện chưa có VNPay createQR API → trả `qrCode = null` cho
+    // VNPay QR (xem `api-payments-frontend-spec.md` §7.1). FE rơi xuống
+    // branch redirect: hiển thị CTA mở payUrl thay vì placeholder QR rỗng.
+    final useRedirectMode = !hasQr && canOpenBankApp;
 
     return Dialog(
       backgroundColor: colors.bgSurfaceElevated,
@@ -72,10 +81,16 @@ class _VNPayQRDialogState extends State<VNPayQRDialog> {
           children: [
             Row(
               children: [
-                Icon(Icons.qr_code_2, size: 18, color: colors.textBrand),
+                Icon(
+                  useRedirectMode ? Icons.open_in_browser : Icons.qr_code_2,
+                  size: 18,
+                  color: colors.textBrand,
+                ),
                 const SizedBox(width: 6),
                 Text(
-                  'Quét QR bằng app ngân hàng',
+                  useRedirectMode
+                      ? 'Thanh toán qua VNPay'
+                      : 'Quét QR bằng app ngân hàng',
                   style: TextStyle(
                     fontSize: 14,
                     fontWeight: FontWeight.w800,
@@ -85,11 +100,14 @@ class _VNPayQRDialogState extends State<VNPayQRDialog> {
               ],
             ),
             const SizedBox(height: 14),
-            PaymentQrView(
-              payload: widget.session.qrCode,
-              imageBase64: widget.session.qrImageBase64,
-              size: 220,
-            ),
+            if (useRedirectMode)
+              _RedirectIllustration(disabled: expired)
+            else
+              PaymentQrView(
+                payload: widget.session.qrCode,
+                imageBase64: widget.session.qrImageBase64,
+                size: 220,
+              ),
             const SizedBox(height: 14),
             Text(
               VerifyFormat.priceVND(widget.session.totalAmount),
@@ -117,7 +135,7 @@ class _VNPayQRDialogState extends State<VNPayQRDialog> {
                   const SizedBox(width: 4),
                   Text(
                     expired
-                        ? 'QR đã hết hạn — tạo lại từ đầu'
+                        ? 'Phiên đã hết hạn — tạo lại từ đầu'
                         : 'Hết hạn sau ${_fmt(_remaining)}',
                     style: TextStyle(
                       fontSize: 11,
@@ -143,7 +161,9 @@ class _VNPayQRDialogState extends State<VNPayQRDialog> {
                   const SizedBox(width: 6),
                   Expanded(
                     child: Text(
-                      'Sau khi thanh toán xong, app sẽ tự xác nhận trong vài giây.',
+                      useRedirectMode
+                          ? 'Bạn sẽ được chuyển sang cổng VNPay để chọn ngân hàng và xác nhận thanh toán.'
+                          : 'Sau khi thanh toán xong, app sẽ tự xác nhận trong vài giây.',
                       style: TextStyle(
                         fontSize: 11,
                         fontWeight: FontWeight.w500,
@@ -159,11 +179,19 @@ class _VNPayQRDialogState extends State<VNPayQRDialog> {
             if (canOpenBankApp)
               SizedBox(
                 width: double.infinity,
-                height: 44,
+                height: 48,
                 child: FilledButton.icon(
                   onPressed: expired ? null : _openBankApp,
-                  icon: const Icon(Icons.open_in_new, size: 16),
-                  label: const Text('Mở app ngân hàng'),
+                  icon: const Icon(Icons.open_in_new, size: 18),
+                  label: Text(
+                    useRedirectMode
+                        ? 'Mở cổng VNPay'
+                        : 'Mở app ngân hàng',
+                    style: const TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
                 ),
               ),
             if (canOpenBankApp) const SizedBox(height: 6),
@@ -423,5 +451,61 @@ class _BankTransferDialogState extends State<BankTransferDialog> {
     final m = d.inMinutes.toString().padLeft(2, '0');
     final s = (d.inSeconds % 60).toString().padLeft(2, '0');
     return '$m:$s';
+  }
+}
+
+/// Placeholder visual cho VNPay redirect mode (khi backend trả `qrCode=null`,
+/// chỉ có `payUrl`). Thay vì vùng QR rỗng gây hiểu nhầm, hiển thị icon
+/// browser + caption hướng dẫn để CTA "Mở cổng VNPay" thành flow chính.
+class _RedirectIllustration extends StatelessWidget {
+  final bool disabled;
+  const _RedirectIllustration({required this.disabled});
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.colors;
+    return Container(
+      width: 220,
+      height: 168,
+      decoration: BoxDecoration(
+        color: colors.bgSurfaceContainer,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: colors.borderDefault),
+      ),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Container(
+            width: 56,
+            height: 56,
+            decoration: BoxDecoration(
+              color: disabled
+                  ? colors.bgSurfaceElevated
+                  : colors.brand.withValues(alpha: 0.12),
+              borderRadius: BorderRadius.circular(14),
+            ),
+            child: Icon(
+              Icons.account_balance_wallet_rounded,
+              size: 28,
+              color: disabled ? colors.textTertiary : colors.brand,
+            ),
+          ),
+          const SizedBox(height: 10),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: Text(
+              'Bấm nút bên dưới để mở cổng thanh toán VNPay',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: 11,
+                fontWeight: FontWeight.w600,
+                color: colors.textSecondary,
+                height: 1.4,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 }

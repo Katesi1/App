@@ -1,3 +1,4 @@
+import 'dart:io' show Platform;
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
@@ -11,6 +12,7 @@ import '../../../core/storage/secure_storage.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../controllers/auth_controller.dart';
+import 'role_picker_screen.dart';
 
 class LoginScreen extends ConsumerStatefulWidget {
   const LoginScreen({super.key});
@@ -129,20 +131,49 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
 
   Future<void> _loginWithGoogle() async {
     setState(() => _isLoading = true);
-    final error = await ref.read(authProvider.notifier).signInWithGoogle();
+    final outcome = await ref.read(authProvider.notifier).signInWithGoogle();
     if (!mounted) return;
     setState(() => _isLoading = false);
-    if (error != null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(error),
-          backgroundColor: AppColors.coral,
-          behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(AppRadius.sm)),
-          margin: const EdgeInsets.all(AppSpacing.md),
-        ),
-      );
+    _handleSocialOutcome(outcome);
+  }
+
+  Future<void> _loginWithApple() async {
+    setState(() => _isLoading = true);
+    final outcome = await ref.read(authProvider.notifier).signInWithApple();
+    if (!mounted) return;
+    setState(() => _isLoading = false);
+    _handleSocialOutcome(outcome, provider: SocialProvider.apple);
+  }
+
+  void _handleSocialOutcome(
+    GoogleSignInOutcome outcome, {
+    SocialProvider provider = SocialProvider.google,
+  }) {
+    switch (outcome) {
+      case GoogleSignInSuccess():
+        return;
+      case GoogleSignInNeedsRole():
+        context.push(
+          '/auth/role-picker',
+          extra: RolePickerArgs(
+            idToken: outcome.idToken,
+            profile: outcome.profile,
+            provider: provider,
+          ),
+        );
+      case GoogleSignInCancelled():
+        return;
+      case GoogleSignInFailure(:final message):
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(message),
+            backgroundColor: AppColors.coral,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(AppRadius.sm)),
+            margin: const EdgeInsets.all(AppSpacing.md),
+          ),
+        );
     }
   }
 
@@ -587,6 +618,19 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
                                         .fadeIn(duration: 400.ms)
                                         .slideY(begin: 0.1, end: 0),
 
+                                    // Apple button — chỉ hiện trên iOS theo
+                                    // Apple Guideline 4.8 (Android không bắt buộc).
+                                    if (Platform.isIOS) ...[
+                                      const SizedBox(height: 12),
+                                      _AppleButton(
+                                        isLoading: _isLoading,
+                                        onTap: _loginWithApple,
+                                      )
+                                          .animate(delay: 800.ms)
+                                          .fadeIn(duration: 400.ms)
+                                          .slideY(begin: 0.1, end: 0),
+                                    ],
+
                                     const SizedBox(height: 28),
 
                                     // Register link
@@ -617,6 +661,42 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
                                       ),
                                     )
                                         .animate(delay: 800.ms)
+                                        .fadeIn(duration: 400.ms),
+
+                                    const SizedBox(height: 12),
+
+                                    // Invite-by-email entry — cho nhân viên
+                                    Center(
+                                      child: GestureDetector(
+                                        onTap: () =>
+                                            context.push('/staff/accept'),
+                                        child: Padding(
+                                          padding: const EdgeInsets.symmetric(
+                                              vertical: 6, horizontal: 12),
+                                          child: Row(
+                                            mainAxisSize: MainAxisSize.min,
+                                            children: [
+                                              Icon(
+                                                Icons.qr_code_2_rounded,
+                                                size: 14,
+                                                color: AppColors.muted,
+                                              ),
+                                              const SizedBox(width: 6),
+                                              Text(
+                                                'Tôi có mã mời nhân viên',
+                                                style:
+                                                    GoogleFonts.beVietnamPro(
+                                                  fontSize: 12,
+                                                  fontWeight: FontWeight.w600,
+                                                  color: AppColors.muted,
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                      ),
+                                    )
+                                        .animate(delay: 850.ms)
                                         .fadeIn(duration: 400.ms),
                                   ],
                                 ),
@@ -942,6 +1022,51 @@ class _GoogleButtonState extends State<_GoogleButton>
               ),
             ],
           ),
+        ),
+      ),
+    );
+  }
+}
+
+// ── Apple button (iOS only) ───────────────────────────────────────────────────
+
+class _AppleButton extends StatelessWidget {
+  final bool isLoading;
+  final VoidCallback onTap;
+
+  const _AppleButton({required this.isLoading, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: isLoading ? null : onTap,
+      child: Container(
+        height: 52,
+        decoration: BoxDecoration(
+          color: Colors.black,
+          borderRadius: BorderRadius.circular(14),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.15),
+              blurRadius: 8,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Icon(Icons.apple, color: Colors.white, size: 22),
+            const SizedBox(width: 10),
+            Text(
+              'Đăng nhập bằng Apple',
+              style: GoogleFonts.beVietnamPro(
+                fontSize: 14,
+                fontWeight: FontWeight.w500,
+                color: Colors.white,
+              ),
+            ),
+          ],
         ),
       ),
     );

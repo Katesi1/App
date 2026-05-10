@@ -95,6 +95,40 @@ class PaymentHistoryItem extends Equatable {
       ];
 }
 
+/// 1 trang history + cursor cho lần fetch tiếp theo. Match response shape
+/// `{ data: [...], meta: { nextCursor, limit } }` của backend (xem
+/// `api-payments-frontend-spec.md` §5).
+class PaymentHistoryPage extends Equatable {
+  final List<PaymentHistoryItem> items;
+
+  /// Truyền vào query `?cursor=...` để fetch trang tiếp. `null` ⇒ hết data.
+  final String? nextCursor;
+
+  final int limit;
+
+  const PaymentHistoryPage({
+    required this.items,
+    this.nextCursor,
+    this.limit = 50,
+  });
+
+  bool get hasMore => nextCursor != null && nextCursor!.isNotEmpty;
+
+  factory PaymentHistoryPage.fromResponse(Map<String, dynamic> response) {
+    final list = (response['data'] as List?)?.cast<Map<String, dynamic>>() ??
+        const [];
+    final meta = response['meta'] as Map<String, dynamic>?;
+    return PaymentHistoryPage(
+      items: list.map(PaymentHistoryItem.fromJson).toList(),
+      nextCursor: meta?['nextCursor'] as String?,
+      limit: (meta?['limit'] as num?)?.toInt() ?? 50,
+    );
+  }
+
+  @override
+  List<Object?> get props => [items, nextCursor, limit];
+}
+
 enum PaymentHistoryKind { subscription, renew, upgrade, refund }
 
 extension PaymentHistoryKindX on PaymentHistoryKind {

@@ -296,6 +296,15 @@ class DashboardScreen extends ConsumerWidget {
                               color: colors.success,
                               onTap: () => context.push('/properties/new'),
                             ),
+                          if (user?.isOwner ?? false) ...[
+                            const SizedBox(width: 10),
+                            _QuickAction(
+                              icon: Icons.group_add_rounded,
+                              label: 'Nhân viên',
+                              color: colors.brandSecondary,
+                              onTap: () => context.push('/staff/manage'),
+                            ),
+                          ],
                         ],
                       ),
                     ],

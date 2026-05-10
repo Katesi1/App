@@ -52,6 +52,11 @@ app.*.map.json
 /android/local.properties
 /android/key.properties
 /android/app/google-services.json
+
+# Firebase Admin SDK service account JSON — NEVER commit (full project access)
+*firebase-adminsdk*.json
+*-service-account.json
+service-account*.json
 /android/**/GeneratedPluginRegistrant.java
 
 # Android native splash generated images

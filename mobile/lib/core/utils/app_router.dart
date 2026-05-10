@@ -13,7 +13,10 @@ import '../../features/auth/controllers/auth_controller.dart';
 import '../../features/auth/views/forgot_password_screen.dart';
 import '../../features/auth/views/login_screen.dart';
 import '../../features/auth/views/register_screen.dart';
+import '../../features/auth/views/role_picker_screen.dart';
 import '../../features/auth/views/splash_screen.dart';
+import '../../features/staff/views/invite_accept_screen.dart';
+import '../../features/staff/views/staff_management_screen.dart';
 import '../../features/bookings/views/booking_calendar_screen.dart';
 import '../../features/bookings/views/owner_calendar_screen.dart';
 import '../../features/customer/views/customer_home_screen.dart';
@@ -85,7 +88,14 @@ String? resolveRedirectPath({
   if (isLoading) return null;
 
   // Các trang public (không cần login)
-  const publicPaths = ['/splash', '/login', '/register', '/forgot-password'];
+  const publicPaths = [
+    '/splash',
+    '/login',
+    '/register',
+    '/forgot-password',
+    '/auth/role-picker',
+    '/staff/accept',
+  ];
   final isPublic = publicPaths.contains(path);
 
   // Chưa login -> redirect về login
@@ -124,6 +134,7 @@ String? resolveRedirectPath({
     '/admin',
     '/bookings',
     '/reports',
+    '/staff',
   ];
 
   // Đang ở mode khách -> chặn route quản lý
@@ -143,6 +154,13 @@ String? resolveRedirectPath({
   // Chỉ ADMIN và OWNER vào route admin
   if (user != null && !(user.isAdmin || user.isOwner)) {
     if (path.startsWith('/admin')) return '/dashboard';
+  }
+
+  // Chỉ OWNER quản lý nhân viên (SALE/CUSTOMER/ADMIN không vào /staff/manage)
+  if (user != null && !user.isOwner) {
+    if (path == '/staff/manage' || path.startsWith('/staff/manage/')) {
+      return '/dashboard';
+    }
   }
 
   // SALE chỉ được vào luồng quản lý khi membership active.
@@ -214,6 +232,32 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
           path: '/forgot-password',
           builder: (_, __) => const ForgotPasswordScreen()),
+      GoRoute(
+        path: '/auth/role-picker',
+        builder: (_, state) {
+          final args = state.extra as RolePickerArgs?;
+          if (args == null) {
+            // Defensive: nếu navigate sai (vd cold deeplink) → quay về login.
+            return const LoginScreen();
+          }
+          return RolePickerScreen(args: args);
+        },
+      ),
+
+      // Staff invite — public, dùng cho deep link email + entry "Tôi có mã mời"
+      GoRoute(
+        path: '/staff/accept',
+        builder: (_, state) {
+          final token = state.uri.queryParameters['token'];
+          return InviteAcceptScreen(initialToken: token);
+        },
+      ),
+
+      // OWNER quản lý nhân viên (mời + danh sách)
+      GoRoute(
+        path: '/staff/manage',
+        builder: (_, __) => const StaffManagementScreen(),
+      ),
 
       // ── Customer routes ────────────────────────────────────────────
       GoRoute(

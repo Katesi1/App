@@ -1,10 +1,11 @@
 class ApiConstants {
   // Ưu tiên inject qua --dart-define để tách môi trường release/staging/dev.
-  // Mặc định giữ HTTP để tương thích backend hiện tại trong môi trường dev.
-  // Release nên truyền --dart-define=API_BASE_URL=https://... để dùng TLS.
+  // Default = production (https://api.halong24h.com) — backend đã deploy
+  // ngày 2026-05-09 (xem `api-payments-frontend-spec.md` §2, có TLS).
+  // Dev/QA muốn hit VPS staging: truyền `--dart-define=API_BASE_URL=http://103.183.118.148:3000`.
   static const String baseUrl = String.fromEnvironment(
     'API_BASE_URL',
-    defaultValue: 'http://103.183.118.148:3000',
+    defaultValue: 'https://api.halong24h.com',
   );
 
   // Auth
@@ -12,6 +13,8 @@ class ApiConstants {
   static const String register = '/auth/register';
   static const String refresh = '/auth/refresh';
   static const String googleLogin = '/auth/google';
+  // Apple Sign-In — BE cần verify token với Apple (TODO confirm endpoint).
+  static const String appleLogin = '/auth/apple';
   static const String logout = '/auth/logout';
   static const String profile = '/auth/profile';
   static const String forgotPassword = '/auth/forgot-password';
@@ -98,6 +101,15 @@ class ApiConstants {
   static const String dashboardStats = '/dashboard/stats';
   static const String reports = '/reports';
 
+  // Staff (OWNER mời nhân viên qua email)
+  static const String staffInvites = '/staff/invites';
+  static String staffInviteDetail(String id) => '/staff/invites/$id';
+  static String staffInviteVerify(String token) =>
+      '/staff/invites/verify/$token';
+  static const String staffInviteAccept = '/staff/invites/accept';
+  static const String staff = '/staff';
+  static String staffDetail(String userId) => '/staff/$userId';
+
   // Reviews (đánh giá ở cấp Property — 6 tiêu chí 1-5 sao)
   static String propertyReviews(String propertyId) =>
       '/properties/$propertyId/reviews';
@@ -105,6 +117,14 @@ class ApiConstants {
       '/properties/$propertyId/reviews/$reviewId/reply';
   static String adminHideReview(String reviewId) =>
       '/admin/reviews/$reviewId';
+
+  // App version metadata cho force-update flow.
+  // BE trả: { latestVersion, minSupportedVersion, releaseNotes, storeUrl{ ios, android } }
+  static const String appVersion = '/app/version';
+
+  // Devices (FCM token registration cho push notification)
+  static const String devices = '/devices';
+  static String deviceDetail(String token) => '/devices/$token';
 
   // Notifications
   static const String notifications = '/notifications';

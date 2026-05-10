@@ -216,10 +216,13 @@ class MockVerifyRepository implements VerifyRepository {
   }
 
   @override
-  Future<List<PaymentHistoryItem>> fetchPaymentHistory() async {
+  Future<PaymentHistoryPage> fetchPaymentHistory({
+    int limit = 50,
+    String? cursor,
+  }) async {
     await Future.delayed(const Duration(milliseconds: 500));
     final now = DateTime.now();
-    return [
+    final all = [
       PaymentHistoryItem(
         id: 'pay_renew_001',
         kind: PaymentHistoryKind.renew,
@@ -271,6 +274,20 @@ class MockVerifyRepository implements VerifyRepository {
         referenceCode: null,
       ),
     ];
+
+    // Mock cursor: lấy `id` của item cuối page làm cursor; nếu request có
+    // `cursor` thì skip tới item sau cursor đó.
+    final startIdx = cursor == null
+        ? 0
+        : (all.indexWhere((i) => i.id == cursor) + 1).clamp(0, all.length);
+    final endIdx = (startIdx + limit).clamp(0, all.length);
+    final page = all.sublist(startIdx, endIdx);
+    final hasMore = endIdx < all.length;
+    return PaymentHistoryPage(
+      items: page,
+      nextCursor: hasMore ? page.last.id : null,
+      limit: limit,
+    );
   }
 
   @override

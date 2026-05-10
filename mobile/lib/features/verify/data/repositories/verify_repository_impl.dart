@@ -262,11 +262,19 @@ class VerifyRepositoryImpl implements VerifyRepository {
   // ── Subscription history + renew ───────────────────────────────────────────
 
   @override
-  Future<List<PaymentHistoryItem>> fetchPaymentHistory() async {
+  Future<PaymentHistoryPage> fetchPaymentHistory({
+    int limit = 50,
+    String? cursor,
+  }) async {
     try {
-      final res = await _dio.get(ApiConstants.paymentHistory);
-      final list = (res.data['data'] as List).cast<Map<String, dynamic>>();
-      return list.map(PaymentHistoryItem.fromJson).toList();
+      final res = await _dio.get(
+        ApiConstants.paymentHistory,
+        queryParameters: {
+          'limit': limit,
+          if (cursor != null && cursor.isNotEmpty) 'cursor': cursor,
+        },
+      );
+      return PaymentHistoryPage.fromResponse(res.data as Map<String, dynamic>);
     } on DioException catch (e) {
       throw VerifyApiException(parseDioError(e));
     }

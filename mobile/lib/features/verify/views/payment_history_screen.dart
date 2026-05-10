@@ -13,13 +13,49 @@ import 'widgets/verify_format.dart';
 /// Lịch sử thanh toán + gia hạn cho OWNER. Reach từ:
 /// - `/profile` → "Subscription" → "Lịch sử thanh toán"
 /// - `/verify/subscription-detail` → CTA "Xem lịch sử"
-class PaymentHistoryScreen extends ConsumerWidget {
+///
+/// Cursor-based pagination (xem `api-payments-frontend-spec.md` §7.3):
+/// - Trang đầu auto-fetch khi `paymentHistoryListProvider` mount
+/// - Scroll gần cuối list → auto-trigger `loadMore()` (200px threshold)
+/// - `state.hasMore == false` → ẩn footer "đang load"
+class PaymentHistoryScreen extends ConsumerStatefulWidget {
   const PaymentHistoryScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<PaymentHistoryScreen> createState() =>
+      _PaymentHistoryScreenState();
+}
+
+class _PaymentHistoryScreenState extends ConsumerState<PaymentHistoryScreen> {
+  final _scrollCtrl = ScrollController();
+
+  @override
+  void initState() {
+    super.initState();
+    _scrollCtrl.addListener(_onScroll);
+  }
+
+  @override
+  void dispose() {
+    _scrollCtrl
+      ..removeListener(_onScroll)
+      ..dispose();
+    super.dispose();
+  }
+
+  void _onScroll() {
+    final state = ref.read(paymentHistoryListProvider);
+    if (!state.hasMore || state.isLoadingMore) return;
+    final pos = _scrollCtrl.position;
+    if (pos.pixels >= pos.maxScrollExtent - 200) {
+      ref.read(paymentHistoryListProvider.notifier).loadMore();
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final colors = context.colors;
-    final historyAsync = ref.watch(paymentHistoryProvider);
+    final state = ref.watch(paymentHistoryListProvider);
 
     return Scaffold(
       backgroundColor: colors.bgCanvas,
@@ -29,56 +65,121 @@ class PaymentHistoryScreen extends ConsumerWidget {
           IconButton(
             tooltip: 'Làm mới',
             icon: const Icon(Icons.refresh),
-            onPressed: () => ref.invalidate(paymentHistoryProvider),
+            onPressed: state.isLoadingFirstPage
+                ? null
+                : () => ref.read(paymentHistoryListProvider.notifier).refresh(),
           ),
         ],
       ),
-      body: historyAsync.when(
-        loading: () => const Center(child: LoadingWidget()),
-        error: (e, _) => ErrorStateWidget(
-          message: e.toString().replaceAll('Exception: ', ''),
-          onRetry: () => ref.invalidate(paymentHistoryProvider),
+      body: _buildBody(state),
+    );
+  }
+
+  Widget _buildBody(PaymentHistoryListState state) {
+    if (state.isLoadingFirstPage && state.items.isEmpty) {
+      return const Center(child: LoadingWidget());
+    }
+    if (state.error != null && state.items.isEmpty) {
+      return ErrorStateWidget(
+        message: state.error!,
+        onRetry: () => ref.read(paymentHistoryListProvider.notifier).refresh(),
+      );
+    }
+    if (state.items.isEmpty) {
+      return const EmptyStateWidget(
+        icon: Icons.receipt_long_outlined,
+        message: 'Chưa có giao dịch nào',
+        subMessage:
+            'Sau khi thanh toán đăng ký lần đầu, các giao dịch sẽ xuất hiện ở đây.',
+      );
+    }
+
+    final paid = state.items.where((i) =>
+        i.status == PaymentStatus.paid && i.kind != PaymentHistoryKind.refund);
+    final totalPaid = paid.fold<int>(0, (sum, i) => sum + i.amount);
+
+    return RefreshIndicator(
+      onRefresh: () => ref.read(paymentHistoryListProvider.notifier).refresh(),
+      child: ListView.separated(
+        controller: _scrollCtrl,
+        padding: const EdgeInsets.fromLTRB(
+          AppSpacing.md,
+          AppSpacing.md,
+          AppSpacing.md,
+          AppSpacing.xxl,
         ),
-        data: (items) {
-          if (items.isEmpty) {
-            return const EmptyStateWidget(
-              icon: Icons.receipt_long_outlined,
-              message: 'Chưa có giao dịch nào',
-              subMessage:
-                  'Sau khi thanh toán đăng ký lần đầu, các giao dịch sẽ xuất hiện ở đây.',
+        // +1 header, +1 footer cho loadMore/error pill
+        itemCount: state.items.length + 2,
+        separatorBuilder: (_, __) => const SizedBox(height: 8),
+        itemBuilder: (_, index) {
+          if (index == 0) {
+            return _SummaryHeader(
+              totalPaid: totalPaid,
+              transactionCount: paid.length,
             );
           }
-
-          final paid = items.where((i) =>
-              i.status == PaymentStatus.paid &&
-              i.kind != PaymentHistoryKind.refund);
-          final totalPaid = paid.fold<int>(0, (sum, i) => sum + i.amount);
-
-          return RefreshIndicator(
-            onRefresh: () async => ref.invalidate(paymentHistoryProvider),
-            child: ListView.separated(
-              padding: const EdgeInsets.fromLTRB(
-                AppSpacing.md,
-                AppSpacing.md,
-                AppSpacing.md,
-                AppSpacing.xxl,
-              ),
-              itemCount: items.length + 1,
-              separatorBuilder: (_, __) => const SizedBox(height: 8),
-              itemBuilder: (_, index) {
-                if (index == 0) {
-                  return _SummaryHeader(
-                    totalPaid: totalPaid,
-                    transactionCount: paid.length,
-                  );
-                }
-                return _PaymentHistoryRow(item: items[index - 1]);
-              },
-            ),
-          );
+          if (index == state.items.length + 1) {
+            return _Footer(state: state);
+          }
+          return _PaymentHistoryRow(item: state.items[index - 1]);
         },
       ),
     );
+  }
+}
+
+class _Footer extends ConsumerWidget {
+  final PaymentHistoryListState state;
+  const _Footer({required this.state});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final colors = context.colors;
+    if (state.isLoadingMore) {
+      return const Padding(
+        padding: EdgeInsets.symmetric(vertical: 16),
+        child: Center(
+          child: SizedBox(
+            width: 22,
+            height: 22,
+            child: CircularProgressIndicator(strokeWidth: 2),
+          ),
+        ),
+      );
+    }
+    if (state.error != null && state.items.isNotEmpty) {
+      // Lỗi loadMore — show retry, không thay thế list cũ.
+      return Padding(
+        padding: const EdgeInsets.symmetric(vertical: 12),
+        child: Center(
+          child: TextButton.icon(
+            onPressed: () =>
+                ref.read(paymentHistoryListProvider.notifier).loadMore(),
+            icon: Icon(Icons.refresh, size: 16, color: colors.error),
+            label: Text(
+              'Tải thêm thất bại — thử lại',
+              style: TextStyle(color: colors.error),
+            ),
+          ),
+        ),
+      );
+    }
+    if (!state.hasMore && state.items.length > 5) {
+      return Padding(
+        padding: const EdgeInsets.symmetric(vertical: 12),
+        child: Center(
+          child: Text(
+            'Đã hiển thị tất cả ${state.items.length} giao dịch',
+            style: TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.w600,
+              color: colors.textTertiary,
+            ),
+          ),
+        ),
+      );
+    }
+    return const SizedBox.shrink();
   }
 }
 
@@ -190,6 +291,8 @@ class _PaymentHistoryRow extends StatelessWidget {
                         ),
                       ),
                       Text(
+                        // Backend §7.4: refund row có `amount` dương — FE tự
+                        // thêm dấu trừ + màu coral để user nhìn thấy chiều âm.
                         item.isRefund
                             ? '-${VerifyFormat.priceVND(item.amount)}'
                             : VerifyFormat.priceVND(item.amount),

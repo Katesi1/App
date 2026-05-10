@@ -16,12 +16,18 @@ class BankInfo extends Equatable {
   /// Nullable để backwards-compat nếu backend chưa wire.
   final String? vietQrPayload;
 
+  /// BIN (Bank Identification Number) chuẩn NAPAS, vd `970436` cho VCB.
+  /// Dùng để load logo NH từ vietqr.io (xem `bankLogoUrl`). Optional —
+  /// backend mới (post 2026-05-09) trả về, version cũ thì null.
+  final String? bankBin;
+
   const BankInfo({
     required this.bankName,
     required this.accountNumber,
     required this.accountName,
     required this.content,
     this.vietQrPayload,
+    this.bankBin,
   });
 
   factory BankInfo.fromJson(Map<String, dynamic> json) => BankInfo(
@@ -33,6 +39,7 @@ class BankInfo extends Equatable {
         content: (json['content'] ?? '') as String,
         vietQrPayload:
             (json['vietQrPayload'] ?? json['viet_qr_payload']) as String?,
+        bankBin: (json['bankBin'] ?? json['bank_bin']) as String?,
       );
 
   Map<String, dynamic> toJson() => {
@@ -41,6 +48,7 @@ class BankInfo extends Equatable {
         'accountName': accountName,
         'content': content,
         if (vietQrPayload != null) 'vietQrPayload': vietQrPayload,
+        if (bankBin != null) 'bankBin': bankBin,
       };
 
   /// Format hiển thị 4 dòng cho dialog "Chuyển khoản".
@@ -49,9 +57,20 @@ class BankInfo extends Equatable {
       'Tên: $accountName\n'
       'Nội dung: $content';
 
+  /// URL logo ngân hàng từ vietqr.io. Null nếu backend không trả `bankBin`.
+  String? get bankLogoUrl => bankBin == null || bankBin!.isEmpty
+      ? null
+      : 'https://api.vietqr.io/img/$bankBin.png';
+
   @override
-  List<Object?> get props =>
-      [bankName, accountNumber, accountName, content, vietQrPayload];
+  List<Object?> get props => [
+        bankName,
+        accountNumber,
+        accountName,
+        content,
+        vietQrPayload,
+        bankBin,
+      ];
 }
 
 /// Một phiên thanh toán đang mở (VNPay / bank transfer / card).

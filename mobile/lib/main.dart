@@ -1,20 +1,34 @@
 import 'dart:async';
 
+import 'package:firebase_core/firebase_core.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_native_splash/flutter_native_splash.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'core/monitoring/crash_reporter.dart';
+import 'core/services/app_version_service.dart';
+import 'core/services/push_notification_service.dart';
 import 'core/theme/app_theme.dart';
 import 'core/utils/app_router.dart';
 import 'features/auth/controllers/auth_controller.dart';
 import 'shared/providers/theme_provider.dart';
+import 'shared/widgets/soft_update_prompt.dart';
 
 void main() {
   final widgetsBinding = WidgetsFlutterBinding.ensureInitialized();
   FlutterNativeSplash.preserve(widgetsBinding: widgetsBinding);
-  CrashReporter.init();
   runZonedGuarded(
-    () {
+    () async {
+      // Init Firebase trước CrashReporter (Crashlytics phụ thuộc Firebase).
+      try {
+        await Firebase.initializeApp();
+        await CrashReporter.init();
+        await PushNotificationService.instance.initialize();
+      } catch (e) {
+        // Init fail (vd missing config file) → không block app launch.
+        if (kDebugMode) debugPrint('[Firebase] Init failed: $e');
+      }
+
       runApp(
         const ProviderScope(
           child: HomestayApp(),
@@ -38,6 +52,35 @@ class _HomestayAppState extends ConsumerState<HomestayApp>
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
+
+    // Wire FCM notification tap → router. Defer 1 frame để router init xong
+    // và auth state ready (nếu cold-start từ tap notification).
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      PushNotificationService.instance.onNotificationTap = (data) {
+        final deepLink = data['deepLink'];
+        if (deepLink is String && deepLink.isNotEmpty) {
+          ref.read(routerProvider).go(deepLink);
+        }
+      };
+
+      // Check app version với BE — nếu force-update thì block UI ngay,
+      // soft-update thì hiện dialog dismissible. Run sau frame đầu để
+      // splash xong + có context hợp lệ.
+      _checkAppVersion();
+    });
+  }
+
+  Future<void> _checkAppVersion() async {
+    final info = await AppVersionService.instance.check();
+    if (!mounted) return;
+    if (info.status == AppVersionStatus.upToDate ||
+        info.status == AppVersionStatus.unknown) {
+      return;
+    }
+    final ctx = ref.read(routerProvider).routerDelegate.navigatorKey
+        .currentContext;
+    if (ctx == null || !ctx.mounted) return;
+    await showAppUpdatePrompt(ctx, info: info);
   }
 
   @override
