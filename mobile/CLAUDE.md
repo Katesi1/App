@@ -11,8 +11,8 @@ Tài liệu này là **hệ điều hành dự án** — định nghĩa conventi
 - **Architecture**: MVC (Model - View - Controller) với Riverpod
 - **Platform**: Flutter (iOS + Android)
 - **Language**: Dart 3.5+
-- **Backend API**: `http://103.183.118.148:3000`
-- **Swagger docs**: `http://103.183.118.148/index.html`
+- **Backend API**: `http://160.30.169.42:3000`
+- **Swagger docs**: `http://160.30.169.42/index.html`
 
 ### Phạm vi
 

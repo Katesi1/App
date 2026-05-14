@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_native_splash/flutter_native_splash.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/date_symbol_data_local.dart';
+import 'core/constants/api_constants.dart';
 import 'core/monitoring/crash_reporter.dart';
 import 'core/services/app_version_service.dart';
 import 'core/services/push_notification_service.dart';
@@ -16,6 +17,7 @@ import 'shared/providers/theme_provider.dart';
 import 'shared/widgets/soft_update_prompt.dart';
 
 void main() {
+  ApiConstants.assertConfigured();
   final widgetsBinding = WidgetsFlutterBinding.ensureInitialized();
   FlutterNativeSplash.preserve(widgetsBinding: widgetsBinding);
   runZonedGuarded(

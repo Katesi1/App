@@ -106,3 +106,7 @@ service-account*.json
 *.keystore
 .env
 .env.*
+
+# Build-time env (dart-define-from-file). Commit chỉ env.example.json.
+env.*.json
+!env.example.json

@@ -1,12 +1,18 @@
 class ApiConstants {
-  // Ưu tiên inject qua --dart-define để tách môi trường release/staging/dev.
-  // Default = production (https://api.halong24h.com) — backend đã deploy
-  // ngày 2026-05-09 (xem `api-payments-frontend-spec.md` §2, có TLS).
-  // Dev/QA muốn hit VPS staging: truyền `--dart-define=API_BASE_URL=http://103.183.118.148:3000`.
-  static const String baseUrl = String.fromEnvironment(
-    'API_BASE_URL',
-    defaultValue: 'https://api.halong24h.com',
-  );
+  // Inject qua `--dart-define-from-file=env.<env>.json` để tách môi trường
+  // release/staging/dev và không commit URL backend vào git.
+  // Xem `env.example.json` cho template; tạo `env.prod.json` / `env.dev.json`
+  // local (đã gitignore). Build: `flutter build ipa --dart-define-from-file=env.prod.json`.
+  static const String baseUrl = String.fromEnvironment('API_BASE_URL');
+
+  static void assertConfigured() {
+    assert(
+      baseUrl.isNotEmpty,
+      'API_BASE_URL trống. Bạn cần build với '
+      '`--dart-define-from-file=env.prod.json` (hoặc env.dev.json). '
+      'Xem env.example.json cho template.',
+    );
+  }
 
   // Auth
   static const String login = '/auth/login';
