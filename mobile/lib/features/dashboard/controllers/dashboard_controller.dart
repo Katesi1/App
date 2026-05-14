@@ -51,6 +51,10 @@ final dashboardRepositoryProvider =
 /// Reset (invalidate) sau mỗi lần login mới để banner hiện lại 1 lần / phiên.
 final unassignedBannerDismissedProvider = StateProvider<bool>((ref) => false);
 
+/// Trạng thái dismiss của banner trial subscription. Chỉ áp dụng cho variant
+/// trial (positive). Past-due / cancelled không cho dismiss vì user phải action.
+final trialBannerDismissedProvider = StateProvider<bool>((ref) => false);
+
 /// Provider lấy KPI dashboard từ real API /dashboard/stats
 final dashboardStatsProvider =
     FutureProvider.autoDispose<DashboardStats>((ref) async {

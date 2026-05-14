@@ -127,13 +127,18 @@ class AuthRepository {
     }
   }
 
+  /// Login với email (+ phone khi BE deploy `identifier` field).
+  ///
+  /// ⚠️ Hiện tại BE DTO vẫn có `@IsEmail()` trên field `email` — login phone
+  /// trả 400 "Email không hợp lệ". Khi BE deploy field `identifier` xong,
+  /// đổi `'email'` → `'identifier'` ở body.
   Future<ApiResponse<UserModel>> login(
-      String email, String password) async {
+      String identifier, String password) async {
     try {
       final response = await _dio.post(
         ApiConstants.login,
         data: {
-          'email': email.trim(),
+          'email': identifier.trim(),
           'password': password,
         },
       );

@@ -151,15 +151,32 @@ class _CalendarGridWidgetState extends State<CalendarGridWidget> {
 
     final borderColor = isDark ? AppColors.darkBorder : AppColors.border;
 
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+
     Widget dateHeaders() {
       return Row(
         children: dates.map((date) {
+          final dateKey = DateTime(date.year, date.month, date.day);
+          final isToday = dateKey == today;
           final isWeekend = date.weekday == 6 || date.weekday == 7;
           final isSaturday = date.weekday == 6;
           final dowLabel = _dowLabel(date.weekday);
           final weekendBg = isDark
               ? AppColors.gold.withValues(alpha: 0.12)
               : AppColors.goldLight.withValues(alpha: 0.5);
+
+          // Color cho text — today luôn ocean đậm, weekend coral/oceanMid
+          final dayColor = isToday
+              ? AppColors.ocean
+              : isSaturday
+                  ? AppColors.oceanMid
+                  : isWeekend
+                      ? AppColors.coral
+                      : isDark
+                          ? AppColors.darkTextPrimary
+                          : AppColors.ink;
+
           return Container(
             width: cellWidth,
             height: headerHeight,
@@ -178,30 +195,53 @@ class _CalendarGridWidgetState extends State<CalendarGridWidget> {
                   style: GoogleFonts.beVietnamPro(
                     fontSize: 10,
                     fontWeight: FontWeight.w700,
-                    color: isSaturday
-                        ? AppColors.oceanMid
-                        : isWeekend
-                            ? AppColors.coral
-                            : isDark
-                                ? AppColors.darkTextSecondary
-                                : AppColors.muted,
+                    color: isToday
+                        ? AppColors.ocean
+                        : isSaturday
+                            ? AppColors.oceanMid
+                            : isWeekend
+                                ? AppColors.coral
+                                : isDark
+                                    ? AppColors.darkTextSecondary
+                                    : AppColors.muted,
                   ),
                 ),
                 const SizedBox(height: 1),
-                Text(
-                  '${date.day}',
-                  style: GoogleFonts.beVietnamPro(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w800,
-                    color: isSaturday
-                        ? AppColors.oceanMid
-                        : isWeekend
-                            ? AppColors.coral
-                            : isDark
-                                ? AppColors.darkTextPrimary
-                                : AppColors.ink,
-                  ),
-                ),
+                // Today: số bọc trong vòng tròn ocean để nổi bật
+                isToday
+                    ? Container(
+                        width: 22,
+                        height: 22,
+                        alignment: Alignment.center,
+                        decoration: BoxDecoration(
+                          color: AppColors.ocean,
+                          shape: BoxShape.circle,
+                          boxShadow: [
+                            BoxShadow(
+                              color: AppColors.ocean.withValues(alpha: 0.3),
+                              blurRadius: 6,
+                              offset: const Offset(0, 2),
+                            ),
+                          ],
+                        ),
+                        child: Text(
+                          '${date.day}',
+                          style: GoogleFonts.beVietnamPro(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w800,
+                            color: Colors.white,
+                            height: 1.0,
+                          ),
+                        ),
+                      )
+                    : Text(
+                        '${date.day}',
+                        style: GoogleFonts.beVietnamPro(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w800,
+                          color: dayColor,
+                        ),
+                      ),
               ],
             ),
           );
@@ -256,7 +296,7 @@ class _CalendarGridWidgetState extends State<CalendarGridWidget> {
               child: SingleChildScrollView(
                 controller: _headerHorizontalController,
                 scrollDirection: Axis.horizontal,
-                physics: const ClampingScrollPhysics(),
+                physics: const BouncingScrollPhysics(),
                 child: SizedBox(width: gridWidth, child: dateHeaders()),
               ),
             ),
@@ -277,6 +317,7 @@ class _CalendarGridWidgetState extends State<CalendarGridWidget> {
                   itemExtent: cellHeight,
                   itemBuilder: (_, i) => Container(
                     alignment: Alignment.center,
+                    padding: const EdgeInsets.symmetric(horizontal: 4),
                     decoration: BoxDecoration(
                       color: i.isEven
                           ? Colors.transparent
@@ -289,10 +330,18 @@ class _CalendarGridWidgetState extends State<CalendarGridWidget> {
                       ),
                     ),
                     child: Text(
-                      rooms[i].code,
+                      // Strip prefix "DEMO-" để tên ngắn gọn, vd
+                      // "DEMO-VILLA-01" → "VILLA-01".
+                      rooms[i].code.replaceFirst(
+                          RegExp(r'^(DEMO|PROD|TEST)-', caseSensitive: false),
+                          ''),
+                      textAlign: TextAlign.center,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
                       style: GoogleFonts.beVietnamPro(
-                        fontSize: 12,
+                        fontSize: 11,
                         fontWeight: FontWeight.w700,
+                        height: 1.15,
                         color: isDark ? AppColors.oceanBright : AppColors.ocean,
                       ),
                     ),
@@ -314,12 +363,14 @@ class _CalendarGridWidgetState extends State<CalendarGridWidget> {
                   child: SingleChildScrollView(
                     controller: _bodyHorizontalController,
                     scrollDirection: Axis.horizontal,
+                    physics: const BouncingScrollPhysics(),
                     child: SizedBox(
                       width: gridWidth,
                       child: ListView.builder(
                         padding: EdgeInsets.zero,
                         itemCount: rooms.length,
                         itemExtent: cellHeight,
+                        physics: const BouncingScrollPhysics(),
                         itemBuilder: (_, i) => roomRow(rooms[i]),
                       ),
                     ),

@@ -13,7 +13,14 @@ String parseDioError(DioException e) {
   if (e.response?.data != null) {
     final data = e.response!.data;
     if (data is Map && data['message'] != null) {
-      return data['message'].toString();
+      final raw = data['message'].toString();
+      // BE đôi khi concat nhiều validation errors thành 1 string:
+      // "Email không được để trống, Email không hợp lệ, Mật khẩu tối thiểu 6 ký tự"
+      // → chỉ hiện lỗi đầu tiên để UX rõ ràng (1 vấn đề / lần).
+      if (raw.contains(',')) {
+        return raw.split(',').first.trim();
+      }
+      return raw;
     }
   }
   switch (e.type) {

@@ -30,6 +30,10 @@ class _OwnerCalendarScreenState extends ConsumerState<OwnerCalendarScreen> {
   // Local override: key = "${roomId}_${yyyy-MM-dd}" → đã bán thủ công
   final Set<String> _manualSoldKeys = {};
 
+  // Cache grid cuối cùng render thành công — dùng để giữ UI khi navigate
+  // sang tuần/tháng mới đang fetch, tránh flash loading indicator.
+  List<CalendarRoom>? _lastRooms;
+
   static DateTime _mondayOf(DateTime date) {
     final diff = date.weekday - DateTime.monday;
     return DateTime(date.year, date.month, date.day - diff);
@@ -132,34 +136,159 @@ class _OwnerCalendarScreenState extends ConsumerState<OwnerCalendarScreen> {
             onNext: () => _navigate(1),
           ),
           Expanded(
-            child: gridAsync.when(
-              loading: () => const LoadingWidget(),
-              error: (e, _) => ErrorStateWidget(
-                message: e.toString().replaceAll('Exception: ', ''),
-                onRetry: () => ref.invalidate(calendarGridProvider(gridParams)),
-              ),
-              data: (grid) {
-                final rooms = _mapProperties(grid.properties);
-                if (rooms.isEmpty) {
-                  return const EmptyStateWidget(
-                    icon: Icons.calendar_today_outlined,
-                    message: 'Không có phòng nào',
-                  );
-                }
-                return CalendarGridWidget(
-                  rooms: rooms,
-                  viewMode: _viewMode,
-                  weekStart: _weekStart,
-                  monthStart: _monthStart,
-                  onCellTap: (room, date, cell) =>
-                      _showLockDialog(context, room, date, cell, gridParams),
-                  legendTapHint: 'Tap ô = lock/mở',
-                );
-              },
-            ),
+            child: _buildGridBody(gridAsync, gridParams, colors),
           ),
         ],
       ),
+    );
+  }
+
+  /// Render grid với UX smooth khi navigate tuần/tháng:
+  /// - **Có data**: cache `_lastRooms`, render grid với AnimatedSwitcher fade transition
+  /// - **Loading + có cache**: hiện grid cũ + spinner mờ overlay (không flash trắng)
+  /// - **Loading + chưa cache**: LoadingWidget full
+  /// - **Error**: ErrorStateWidget
+  Widget _buildGridBody(
+    AsyncValue<CalendarGrid> gridAsync,
+    CalendarGridParams gridParams,
+    AppColorScheme colors,
+  ) {
+    // Animation key — đổi khi navigate (date range) hoặc switch view mode.
+    final animKey = ValueKey(
+      '${_viewMode.name}_${gridParams.startDate}_${gridParams.endDate}',
+    );
+
+    return gridAsync.when(
+      // Cold start: chưa từng load → full loading
+      loading: () {
+        if (_lastRooms == null) return const LoadingWidget();
+        // Đã có data cũ → hiện grid cũ + overlay mờ
+        return _stackWithOverlay(
+          child: _buildGrid(_lastRooms!, gridParams, animKey),
+          colors: colors,
+        );
+      },
+      error: (e, _) {
+        if (_lastRooms != null) {
+          return _stackWithOverlay(
+            child: _buildGrid(_lastRooms!, gridParams, animKey),
+            colors: colors,
+            errorMessage: e.toString().replaceAll('Exception: ', ''),
+            onRetry: () => ref.invalidate(calendarGridProvider(gridParams)),
+          );
+        }
+        return ErrorStateWidget(
+          message: e.toString().replaceAll('Exception: ', ''),
+          onRetry: () => ref.invalidate(calendarGridProvider(gridParams)),
+        );
+      },
+      data: (grid) {
+        final rooms = _mapProperties(grid.properties);
+        if (rooms.isEmpty) {
+          return const EmptyStateWidget(
+            icon: Icons.calendar_today_outlined,
+            message: 'Không có phòng nào',
+          );
+        }
+        // Cache cho lần navigate sau.
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted) setState(() => _lastRooms = rooms);
+        });
+        return _buildGrid(rooms, gridParams, animKey);
+      },
+    );
+  }
+
+  Widget _buildGrid(
+    List<CalendarRoom> rooms,
+    CalendarGridParams gridParams,
+    Key animKey,
+  ) {
+    return AnimatedSwitcher(
+      duration: const Duration(milliseconds: 220),
+      switchInCurve: Curves.easeOutCubic,
+      switchOutCurve: Curves.easeInCubic,
+      transitionBuilder: (child, animation) {
+        // Slide nhẹ + fade — feel "carousel" giữa các tuần/tháng.
+        final offset = Tween<Offset>(
+          begin: const Offset(0.04, 0),
+          end: Offset.zero,
+        ).animate(animation);
+        return FadeTransition(
+          opacity: animation,
+          child: SlideTransition(position: offset, child: child),
+        );
+      },
+      child: CalendarGridWidget(
+        key: animKey,
+        rooms: rooms,
+        viewMode: _viewMode,
+        weekStart: _weekStart,
+        monthStart: _monthStart,
+        onCellTap: (room, date, cell) =>
+            _showLockDialog(context, room, date, cell, gridParams),
+        legendTapHint: 'Tap ô = lock/mở',
+      ),
+    );
+  }
+
+  /// Hiện grid cũ + spinner mờ overlay khi đang fetch data mới.
+  /// Tránh flash white trong lúc chờ network.
+  Widget _stackWithOverlay({
+    required Widget child,
+    required AppColorScheme colors,
+    String? errorMessage,
+    VoidCallback? onRetry,
+  }) {
+    return Stack(
+      children: [
+        Opacity(opacity: 0.55, child: IgnorePointer(child: child)),
+        const Positioned.fill(
+          child: Center(
+            child: SizedBox(
+              width: 26,
+              height: 26,
+              child: CircularProgressIndicator(strokeWidth: 2.5),
+            ),
+          ),
+        ),
+        if (errorMessage != null)
+          Positioned(
+            left: 0,
+            right: 0,
+            bottom: AppSpacing.md,
+            child: Center(
+              child: Material(
+                color: colors.error.withValues(alpha: 0.95),
+                borderRadius: BorderRadius.circular(20),
+                child: InkWell(
+                  onTap: onRetry,
+                  borderRadius: BorderRadius.circular(20),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 14, vertical: 8),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(Icons.refresh,
+                            color: Colors.white, size: 16),
+                        const SizedBox(width: 6),
+                        Text(
+                          'Tải lại',
+                          style: GoogleFonts.beVietnamPro(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                            color: Colors.white,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+      ],
     );
   }
 

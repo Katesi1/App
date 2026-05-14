@@ -5,6 +5,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_native_splash/flutter_native_splash.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:intl/date_symbol_data_local.dart';
 import 'core/monitoring/crash_reporter.dart';
 import 'core/services/app_version_service.dart';
 import 'core/services/push_notification_service.dart';
@@ -19,15 +20,28 @@ void main() {
   FlutterNativeSplash.preserve(widgetsBinding: widgetsBinding);
   runZonedGuarded(
     () async {
-      // Init Firebase trước CrashReporter (Crashlytics phụ thuộc Firebase).
+      // Init locale 'vi' + 'vi_VN' để DateFormat(..., 'vi') không throw
+      // LocaleDataException. Fast + sync — không cần timeout.
       try {
-        await Firebase.initializeApp();
-        await CrashReporter.init();
-        await PushNotificationService.instance.initialize();
+        await initializeDateFormatting('vi');
+        await initializeDateFormatting('vi_VN');
       } catch (e) {
-        // Init fail (vd missing config file) → không block app launch.
-        if (kDebugMode) debugPrint('[Firebase] Init failed: $e');
+        if (kDebugMode) debugPrint('[Intl] init locale failed: $e');
       }
+
+      // Critical init — Firebase + Crashlytics phải xong trước runApp để bắt
+      // crash sớm. Nhưng KHÔNG để stuck quá 5s (vd network init treo).
+      try {
+        await Firebase.initializeApp()
+            .timeout(const Duration(seconds: 5));
+        await CrashReporter.init().timeout(const Duration(seconds: 3));
+      } catch (e) {
+        if (kDebugMode) debugPrint('[Firebase] Init failed/timeout: $e');
+      }
+
+      // Push notification init chạy nền — KHÔNG block runApp. iOS APNs
+      // registration có thể mất 5-30s, nếu await sẽ stuck splash.
+      unawaited(_initPushInBackground());
 
       runApp(
         const ProviderScope(
@@ -37,6 +51,16 @@ void main() {
     },
     CrashReporter.record,
   );
+}
+
+Future<void> _initPushInBackground() async {
+  try {
+    await PushNotificationService.instance
+        .initialize()
+        .timeout(const Duration(seconds: 15));
+  } catch (e) {
+    if (kDebugMode) debugPrint('[Push] init failed/timeout: $e');
+  }
 }
 
 class HomestayApp extends ConsumerStatefulWidget {

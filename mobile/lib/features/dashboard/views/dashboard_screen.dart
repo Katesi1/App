@@ -266,46 +266,55 @@ class DashboardScreen extends ConsumerWidget {
                     children: [
                       _SectionLabel('THAO TÁC NHANH'),
                       const SizedBox(height: 12),
-                      Row(
-                        children: [
-                          _QuickAction(
-                            icon: Icons.add_rounded,
-                            label: 'Booking',
-                            color: colors.brand,
-                            onTap: () => context.push('/bookings'),
-                          ),
-                          const SizedBox(width: 10),
-                          _QuickAction(
-                            icon: Icons.login_rounded,
-                            label: 'Check-in',
-                            color: colors.brandLight,
-                            onTap: () {},
-                          ),
-                          const SizedBox(width: 10),
-                          _QuickAction(
-                            icon: Icons.logout_rounded,
-                            label: 'Check-out',
-                            color: colors.brandSecondary,
-                            onTap: () {},
-                          ),
-                          const SizedBox(width: 10),
-                          if (user?.canManageProperty ?? false)
+                      SizedBox(
+                        height: 96,
+                        child: ListView(
+                          scrollDirection: Axis.horizontal,
+                          // Padding bù lại horizontal: 16 của Column cha để
+                          // item đầu/cuối không chạm mép screen.
+                          padding: EdgeInsets.zero,
+                          physics: const BouncingScrollPhysics(),
+                          children: [
                             _QuickAction(
-                              icon: Icons.add_home_rounded,
-                              label: 'Thêm phòng',
-                              color: colors.success,
-                              onTap: () => context.push('/properties/new'),
+                              icon: Icons.add_rounded,
+                              label: 'Booking',
+                              color: colors.brand,
+                              onTap: () => context.push('/bookings'),
                             ),
-                          if (user?.isOwner ?? false) ...[
                             const SizedBox(width: 10),
                             _QuickAction(
-                              icon: Icons.group_add_rounded,
-                              label: 'Nhân viên',
-                              color: colors.brandSecondary,
-                              onTap: () => context.push('/staff/manage'),
+                              icon: Icons.login_rounded,
+                              label: 'Check-in',
+                              color: colors.brandLight,
+                              onTap: () {},
                             ),
+                            const SizedBox(width: 10),
+                            _QuickAction(
+                              icon: Icons.logout_rounded,
+                              label: 'Check-out',
+                              color: colors.brandSecondary,
+                              onTap: () {},
+                            ),
+                            if (user?.canManageProperty ?? false) ...[
+                              const SizedBox(width: 10),
+                              _QuickAction(
+                                icon: Icons.add_home_rounded,
+                                label: 'Thêm phòng',
+                                color: colors.success,
+                                onTap: () => context.push('/properties/new'),
+                              ),
+                            ],
+                            if (user?.isOwner ?? false) ...[
+                              const SizedBox(width: 10),
+                              _QuickAction(
+                                icon: Icons.group_add_rounded,
+                                label: 'Nhân viên',
+                                color: colors.brandSecondary,
+                                onTap: () => context.push('/staff/manage'),
+                              ),
+                            ],
                           ],
-                        ],
+                        ),
                       ),
                     ],
                   ),
@@ -908,7 +917,8 @@ class _QuickAction extends StatelessWidget {
     final colors = context.colors;
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
-    return Expanded(
+    return SizedBox(
+      width: 86,
       child: GestureDetector(
         onTap: onTap,
         child: Container(
@@ -943,6 +953,8 @@ class _QuickAction extends StatelessWidget {
               const SizedBox(height: 8),
               Text(
                 label,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
                 style: GoogleFonts.beVietnamPro(
                   fontSize: 11,
                   fontWeight: FontWeight.w600,
@@ -950,7 +962,6 @@ class _QuickAction extends StatelessWidget {
                   height: 1.2,
                 ),
                 textAlign: TextAlign.center,
-                maxLines: 2,
               ),
             ],
           ),
@@ -1212,19 +1223,27 @@ class _BookingItem extends StatelessWidget {
 /// Banner subscription cho OWNER đã verify approved.
 /// 3 variant: trial countdown / past_due (cần thanh toán) / cancelled.
 /// Active không hiện (caller đã guard).
-class _SubscriptionBanner extends StatelessWidget {
+class _SubscriptionBanner extends ConsumerWidget {
   final UserModel user;
   const _SubscriptionBanner({required this.user});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final colors = context.colors;
 
+    // Trial variant cho phép dismiss (positive). Past-due / cancelled không.
+    final isTrial = user.isInTrial;
+    final dismissed =
+        isTrial && ref.watch(trialBannerDismissedProvider);
+    if (dismissed) return const SizedBox.shrink();
+
     final (
-      Color bg,
+      Gradient gradient,
       Color borderColor,
       IconData icon,
       Color iconColor,
+      Color titleColor,
+      Color subtitleColor,
       String title,
       String subtitle,
     ) = _resolveVariant(colors);
@@ -1236,9 +1255,18 @@ class _SubscriptionBanner extends StatelessWidget {
         padding: const EdgeInsets.all(14),
         margin: const EdgeInsets.only(bottom: 12),
         decoration: BoxDecoration(
-          color: bg,
+          gradient: gradient,
           border: Border.all(color: borderColor),
           borderRadius: BorderRadius.circular(14),
+          boxShadow: isTrial
+              ? [
+                  BoxShadow(
+                    color: iconColor.withValues(alpha: 0.12),
+                    blurRadius: 12,
+                    offset: const Offset(0, 4),
+                  ),
+                ]
+              : null,
         ),
         child: Row(
           children: [
@@ -1246,10 +1274,10 @@ class _SubscriptionBanner extends StatelessWidget {
               width: 40,
               height: 40,
               decoration: BoxDecoration(
-                color: iconColor.withValues(alpha: 0.15),
+                color: Colors.white.withValues(alpha: 0.7),
                 borderRadius: BorderRadius.circular(10),
               ),
-              child: Icon(icon, size: 20, color: iconColor),
+              child: Icon(icon, size: 22, color: iconColor),
             ),
             const SizedBox(width: 12),
             Expanded(
@@ -1261,7 +1289,7 @@ class _SubscriptionBanner extends StatelessWidget {
                     style: GoogleFonts.beVietnamPro(
                       fontSize: 13,
                       fontWeight: FontWeight.w700,
-                      color: colors.textPrimary,
+                      color: titleColor,
                     ),
                   ),
                   const SizedBox(height: 2),
@@ -1270,18 +1298,35 @@ class _SubscriptionBanner extends StatelessWidget {
                     style: GoogleFonts.beVietnamPro(
                       fontSize: 11,
                       fontWeight: FontWeight.w500,
-                      color: colors.textSecondary,
+                      color: subtitleColor,
                       height: 1.4,
                     ),
                   ),
                 ],
               ),
             ),
-            Icon(
-              Icons.chevron_right_rounded,
-              size: 20,
-              color: colors.textTertiary,
-            ),
+            if (isTrial)
+              // X dismiss button — chỉ cho trial vì positive variant
+              GestureDetector(
+                onTap: () => ref
+                    .read(trialBannerDismissedProvider.notifier)
+                    .state = true,
+                behavior: HitTestBehavior.opaque,
+                child: Padding(
+                  padding: const EdgeInsets.all(4),
+                  child: Icon(
+                    Icons.close_rounded,
+                    size: 18,
+                    color: subtitleColor,
+                  ),
+                ),
+              )
+            else
+              Icon(
+                Icons.chevron_right_rounded,
+                size: 20,
+                color: subtitleColor,
+              ),
           ],
         ),
       ),
@@ -1417,31 +1462,45 @@ class _SubscriptionBanner extends StatelessWidget {
     );
   }
 
-  (Color, Color, IconData, Color, String, String) _resolveVariant(
-    AppColorScheme colors,
-  ) {
-    // Trial — gold info, đếm ngược ngày
+  /// Trả tuple: (gradient, borderColor, icon, iconColor, titleColor,
+  /// subtitleColor, title, subtitle).
+  (Gradient, Color, IconData, Color, Color, Color, String, String)
+      _resolveVariant(AppColorScheme colors) {
+    // Trial — emerald/teal gradient (positive, fresh, premium feel)
     if (user.isInTrial) {
       final days = user.trialDaysLeft ?? 0;
       final daysText = days > 0 ? 'còn $days ngày' : 'kết thúc hôm nay';
       return (
-        AppColors.goldBg,
-        AppColors.goldBorder,
+        const LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            Color(0xFFE0F7F4), // mint light
+            Color(0xFFCDE9FF), // sky pastel
+          ],
+        ),
+        const Color(0xFF7FCBC1), // emerald soft border
         Icons.workspace_premium_outlined,
-        AppColors.goldText,
+        const Color(0xFF0A6B5E), // deep teal icon
+        const Color(0xFF0A4F45), // dark teal title
+        const Color(0xFF1F6A60), // muted teal subtitle
         'Đang dùng thử miễn phí · $daysText',
         days > 0
             ? 'Sau khi trial kết thúc, hệ thống tự động trừ tiền theo gói đã chọn.'
             : 'Hệ thống sẽ tự động charge theo gói đã chọn vào ngày mai.',
       );
     }
-    // Past due — payment fail, cần update
+    // Past due — payment fail, cần update (giữ đỏ — phải action)
     if (user.isSubscriptionPastDue) {
       return (
-        AppColors.errorBgDark,
+        LinearGradient(
+          colors: [AppColors.errorBgDark, AppColors.errorBgDark],
+        ),
         AppColors.errorBorder,
         Icons.priority_high_rounded,
         colors.error,
+        colors.textPrimary,
+        colors.textSecondary,
         'Thanh toán quá hạn',
         'Tài khoản sẽ bị khoá nếu không cập nhật phương thức thanh toán.',
       );
@@ -1449,9 +1508,13 @@ class _SubscriptionBanner extends StatelessWidget {
     // Cancelled — subscription đã huỷ
     if (user.isSubscriptionCancelled) {
       return (
-        AppColors.darkContainer,
+        LinearGradient(
+          colors: [AppColors.darkContainer, AppColors.darkContainer],
+        ),
         AppColors.darkBorder,
         Icons.cancel_outlined,
+        colors.textSecondary,
+        colors.textPrimary,
         colors.textSecondary,
         'Subscription đã huỷ',
         'Liên hệ hỗ trợ nếu muốn tiếp tục sử dụng.',
@@ -1459,10 +1522,14 @@ class _SubscriptionBanner extends StatelessWidget {
     }
     // Fallback (subscription_status='none' nhưng KYC approved — edge case)
     return (
-      AppColors.infoBgDark,
+      LinearGradient(
+        colors: [AppColors.infoBgDark, AppColors.infoBgDark],
+      ),
       AppColors.darkBorder,
       Icons.info_outline,
       colors.brandLight,
+      colors.textPrimary,
+      colors.textSecondary,
       'Chưa kích hoạt subscription',
       'Vui lòng liên hệ hỗ trợ.',
     );

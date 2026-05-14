@@ -175,15 +175,24 @@ FE đã có helper tương đương: `user.effectiveOwnerId` ([user_model.dart:1
      - OWNER: dashboard hiện banner "Hoàn tất KYC"
 ```
 
-### 4.2 Email/Password Login
+### 4.2 Email/Password/Phone Login
 
 ```
 POST /auth/login
-  body: { email, password }   # Field tên 'email' (KHÔNG phải identifier)
+  body: { identifier, password }   # FE gửi 'identifier' (BE auto-detect format)
 → 200 { accessToken, refreshToken, user }
 ```
 
-→ FE flow giống Register.
+`identifier` accept 4 format (BE auto-detect):
+- Email: `user@example.com` → email lookup
+- Phone 10 số bắt đầu 0: `0327000001` → phone lookup
+- Phone +84 prefix: `+84327000001` → BE strip → `0327000001`
+- Phone 84 prefix (11 số): `84327000001` → BE strip → `0327000001`
+
+> Legacy `{ email, password }` field name vẫn được BE accept (backward-compat),
+> nhưng FE đã migrate sang `identifier` để consistent.
+
+FE flow giống Register.
 
 ### 4.3 Google Sign-In với role picker
 
@@ -384,7 +393,7 @@ Liệt kê tất cả endpoint FE đang gọi, ai gọi, khi nào.
 | Method | Path | Caller (FE) | Khi nào |
 |---|---|---|---|
 | POST | `/auth/register` | LoginScreen → AuthRepository | Email/password registration với X-Device-Id |
-| POST | `/auth/login` | LoginScreen | Email + password |
+| POST | `/auth/login` | LoginScreen | `identifier` (email or VN phone) + password |
 | POST | `/auth/google` | LoginScreen + RegisterScreen + RolePickerScreen | 2 lần: lần 1 không role, lần 2 với role |
 | POST | `/auth/apple` | LoginScreen (iOS) + RolePickerScreen | Tương tự Google, +1 field `platform` |
 | POST | `/auth/refresh` | ApiClient interceptor | Auto-call khi 401 |
@@ -1182,7 +1191,7 @@ OWNER → POST /staff/invites { email } → BE
 
 Tổng hợp các điểm BE phải implement/verify để FE chạy trơn tru:
 
-- [ ] `/auth/login` body field tên `email` (KHÔNG `identifier`)
+- [x] `/auth/login` body field tên `identifier` (accept email + VN phone, BE auto-detect format)
 - [ ] `/auth/google` + `/auth/apple` support 4 case (existing/new+role/new-no-role/error)
 - [ ] `/auth/google` `/auth/apple` reject role=0 (403), role=2 (403)
 - [ ] `/auth/google` audience verify = WEB_CLIENT_ID
