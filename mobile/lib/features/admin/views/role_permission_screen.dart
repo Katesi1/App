@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 
@@ -22,13 +23,13 @@ class _RolePermissionScreenState extends ConsumerState<RolePermissionScreen>
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
 
-  // Chỉ SALE và OWNER có thể cấu hình (ADMIN luôn full quyền)
   static const _roles = [UserRole.sale, UserRole.owner];
 
   @override
   void initState() {
     super.initState();
     _tabController = TabController(length: _roles.length, vsync: this);
+    _tabController.addListener(() => setState(() {}));
   }
 
   @override
@@ -59,34 +60,118 @@ class _RolePermissionScreenState extends ConsumerState<RolePermissionScreen>
             color: colors.textPrimary,
           ),
         ),
-        bottom: TabBar(
-          controller: _tabController,
-          labelColor: colors.brand,
-          unselectedLabelColor: colors.textSecondary,
-          indicatorColor: colors.brand,
-          indicatorWeight: 2.5,
-          labelStyle: GoogleFonts.beVietnamPro(
-            fontSize: 13,
-            fontWeight: FontWeight.w700,
+        bottom: PreferredSize(
+          preferredSize: const Size.fromHeight(58),
+          child: _RoleTabBar(
+            tabController: _tabController,
+            roles: _roles,
           ),
-          unselectedLabelStyle: GoogleFonts.beVietnamPro(
-            fontSize: 13,
-            fontWeight: FontWeight.w500,
-          ),
-          tabs: _roles
-              .map((r) => Tab(text: r == UserRole.sale ? 'Nhân viên' : 'Chủ nhà'))
-              .toList(),
         ),
       ),
       body: TabBarView(
         controller: _tabController,
-        children: _roles
-            .map((role) => _RoleTab(role: role))
-            .toList(),
+        children: _roles.map((role) => _RoleTab(role: role)).toList(),
       ),
     );
   }
 }
+
+// ── Custom TabBar ─────────────────────────────────────────────────────────────
+
+class _RoleTabBar extends ConsumerWidget {
+  final TabController tabController;
+  final List<UserRole> roles;
+
+  const _RoleTabBar({required this.tabController, required this.roles});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final colors = context.colors;
+
+    return Container(
+      decoration: BoxDecoration(
+        color: colors.bgSurface,
+        border: Border(bottom: BorderSide(color: colors.borderDefault)),
+      ),
+      child: TabBar(
+        controller: tabController,
+        labelPadding: EdgeInsets.zero,
+        indicatorColor: colors.brand,
+        indicatorWeight: 2.5,
+        dividerColor: Colors.transparent,
+        tabs: roles.map((role) {
+          final groups = ref.watch(rolePermissionsProvider(role));
+          final total = groups.fold<int>(
+            0,
+            (sum, g) =>
+                sum +
+                g.subGroups.fold(0, (s, sg) => s + sg.entries.length),
+          );
+          final enabled = groups.fold<int>(
+            0,
+            (sum, g) =>
+                sum +
+                g.subGroups.fold(
+                  0,
+                  (s, sg) => s + sg.entries.where((e) => e.enabled).length,
+                ),
+          );
+
+          final isSelected =
+              tabController.index == roles.indexOf(role);
+          final roleColor = _roleAccent(role);
+
+          return Tab(
+            height: 58,
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(
+                    _roleIcon(role),
+                    size: 16,
+                    color: isSelected ? roleColor : colors.textTertiary,
+                  ),
+                  const SizedBox(width: 8),
+                  Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        role == UserRole.sale ? 'Nhân viên' : 'Chủ nhà',
+                        style: GoogleFonts.beVietnamPro(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w700,
+                          color: isSelected
+                              ? roleColor
+                              : colors.textSecondary,
+                        ),
+                      ),
+                      if (total > 0)
+                        Text(
+                          '$enabled/$total quyền',
+                          style: GoogleFonts.beVietnamPro(
+                            fontSize: 10,
+                            fontWeight: FontWeight.w500,
+                            color: isSelected
+                                ? roleColor.withValues(alpha: 0.75)
+                                : colors.textTertiary,
+                          ),
+                        ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          );
+        }).toList(),
+      ),
+    );
+  }
+}
+
+// ── Role Tab ──────────────────────────────────────────────────────────────────
 
 class _RoleTab extends ConsumerWidget {
   final UserRole role;
@@ -104,12 +189,23 @@ class _RoleTab extends ConsumerWidget {
       children: [
         Expanded(
           child: ListView.builder(
-            padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
-            itemCount: groups.length,
-            itemBuilder: (context, i) => _GroupTile(
-              group: groups[i],
-              role: role,
-            ),
+            padding: const EdgeInsets.fromLTRB(16, 14, 16, 8),
+            itemCount: groups.length + 1,
+            itemBuilder: (context, i) {
+              if (i == 0) {
+                return _RoleHeaderCard(role: role, groups: groups);
+              }
+              final group = groups[i - 1];
+              return _GroupTile(group: group, role: role)
+                  .animate()
+                  .fadeIn(duration: 220.ms, delay: (i * 35).ms)
+                  .slideY(
+                    begin: 0.05,
+                    end: 0,
+                    duration: 220.ms,
+                    delay: (i * 35).ms,
+                  );
+            },
           ),
         ),
         _BottomBar(role: role),
@@ -117,6 +213,130 @@ class _RoleTab extends ConsumerWidget {
     );
   }
 }
+
+// ── Role Header Card ──────────────────────────────────────────────────────────
+
+class _RoleHeaderCard extends StatelessWidget {
+  final UserRole role;
+  final List<PermissionGroup> groups;
+
+  const _RoleHeaderCard({required this.role, required this.groups});
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.colors;
+    final accent = _roleAccent(role);
+
+    final total = groups.fold<int>(
+      0,
+      (sum, g) =>
+          sum + g.subGroups.fold(0, (s, sg) => s + sg.entries.length),
+    );
+    final enabled = groups.fold<int>(
+      0,
+      (sum, g) =>
+          sum +
+          g.subGroups.fold(
+            0,
+            (s, sg) => s + sg.entries.where((e) => e.enabled).length,
+          ),
+    );
+    final progress = total > 0 ? enabled / total : 0.0;
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 14),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: accent.withValues(alpha: 0.07),
+        borderRadius: BorderRadius.circular(AppRadius.lg),
+        border: Border.all(color: accent.withValues(alpha: 0.22)),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 52,
+            height: 52,
+            decoration: BoxDecoration(
+              color: accent.withValues(alpha: 0.14),
+              borderRadius: BorderRadius.circular(AppRadius.md),
+            ),
+            child: Icon(_roleIcon(role), color: accent, size: 26),
+          ),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Text(
+                      role == UserRole.sale ? 'Nhân viên Sale' : 'Chủ nhà',
+                      style: GoogleFonts.beVietnamPro(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w700,
+                        color: colors.textPrimary,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 7,
+                        vertical: 2,
+                      ),
+                      decoration: BoxDecoration(
+                        color: accent.withValues(alpha: 0.12),
+                        borderRadius:
+                            BorderRadius.circular(AppRadius.full),
+                      ),
+                      child: Text(
+                        '$enabled/$total',
+                        style: GoogleFonts.beVietnamPro(
+                          fontSize: 10,
+                          fontWeight: FontWeight.w700,
+                          color: accent,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 3),
+                Text(
+                  role == UserRole.sale
+                      ? 'Quản lý booking, phòng & lịch'
+                      : 'Toàn quyền quản lý cơ sở & nhân viên',
+                  style: GoogleFonts.beVietnamPro(
+                    fontSize: 11,
+                    color: colors.textSecondary,
+                  ),
+                ),
+                const SizedBox(height: 10),
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(4),
+                  child: TweenAnimationBuilder<double>(
+                    tween: Tween(begin: 0, end: progress),
+                    duration: const Duration(milliseconds: 600),
+                    curve: Curves.easeOut,
+                    builder: (_, value, __) => LinearProgressIndicator(
+                      value: value,
+                      minHeight: 5,
+                      backgroundColor: accent.withValues(alpha: 0.14),
+                      valueColor: AlwaysStoppedAnimation<Color>(accent),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    )
+        .animate()
+        .fadeIn(duration: 300.ms)
+        .slideY(begin: 0.04, end: 0, duration: 300.ms);
+  }
+}
+
+// ── Group Tile ────────────────────────────────────────────────────────────────
 
 class _GroupTile extends ConsumerStatefulWidget {
   final PermissionGroup group;
@@ -138,16 +358,29 @@ class _GroupTileState extends ConsumerState<_GroupTile> {
     final allEnabled = group.allEnabled;
     final anyEnabled = group.anyEnabled;
 
+    final totalEntries = group.subGroups
+        .fold<int>(0, (sum, sg) => sum + sg.entries.length);
+    final enabledEntries = group.subGroups.fold<int>(
+      0,
+      (sum, sg) => sum + sg.entries.where((e) => e.enabled).length,
+    );
+
     return Container(
       margin: const EdgeInsets.only(bottom: 10),
       decoration: BoxDecoration(
         color: colors.bgSurface,
         borderRadius: BorderRadius.circular(AppRadius.lg),
         border: Border.all(color: colors.borderDefault),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.03),
+            blurRadius: 6,
+            offset: const Offset(0, 2),
+          ),
+        ],
       ),
       child: Column(
         children: [
-          // ── Group header row ──────────────────────────────────────────
           InkWell(
             onTap: () => setState(() => _expanded = !_expanded),
             borderRadius: BorderRadius.vertical(
@@ -157,42 +390,59 @@ class _GroupTileState extends ConsumerState<_GroupTile> {
                   : const Radius.circular(AppRadius.lg),
             ),
             child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+              padding: const EdgeInsets.symmetric(
+                horizontal: 14,
+                vertical: 12,
+              ),
               child: Row(
                 children: [
+                  // Group icon
                   Container(
-                    width: 28,
-                    height: 28,
-                    alignment: Alignment.center,
+                    width: 36,
+                    height: 36,
                     decoration: BoxDecoration(
-                      color: colors.brand.withValues(alpha: 0.12),
-                      borderRadius: BorderRadius.circular(AppRadius.sm),
+                      color: colors.brand.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(AppRadius.md),
                     ),
-                    child: Text(
-                      group.number,
-                      style: GoogleFonts.beVietnamPro(
-                        fontSize: 11,
-                        fontWeight: FontWeight.w700,
-                        color: colors.brand,
-                      ),
+                    child: Icon(
+                      _groupIcon(group.id),
+                      size: 18,
+                      color: colors.brand,
                     ),
                   ),
-                  const SizedBox(width: 10),
+                  const SizedBox(width: 12),
                   Expanded(
-                    child: Text(
-                      group.label,
-                      style: GoogleFonts.beVietnamPro(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w600,
-                        color: colors.textPrimary,
-                      ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          group.label,
+                          style: GoogleFonts.beVietnamPro(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w600,
+                            color: colors.textPrimary,
+                          ),
+                        ),
+                        const SizedBox(height: 1),
+                        Text(
+                          '$enabledEntries/$totalEntries quyền đã bật',
+                          style: GoogleFonts.beVietnamPro(
+                            fontSize: 11,
+                            color: anyEnabled
+                                ? colors.textSecondary
+                                : colors.textTertiary,
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                   _GroupSwitch(
                     value: allEnabled,
                     indeterminate: !allEnabled && anyEnabled,
                     onChanged: (_) => ref
-                        .read(rolePermissionsProvider(widget.role).notifier)
+                        .read(
+                          rolePermissionsProvider(widget.role).notifier,
+                        )
                         .toggleGroup(group.id),
                   ),
                   const SizedBox(width: 6),
@@ -210,7 +460,6 @@ class _GroupTileState extends ConsumerState<_GroupTile> {
             ),
           ),
 
-          // ── SubGroups ────────────────────────────────────────────────
           if (_expanded) ...[
             Divider(height: 1, color: colors.borderDefault),
             for (final sub in group.subGroups)
@@ -226,6 +475,8 @@ class _GroupTileState extends ConsumerState<_GroupTile> {
     );
   }
 }
+
+// ── SubGroup Tile ─────────────────────────────────────────────────────────────
 
 class _SubGroupTile extends ConsumerStatefulWidget {
   final PermissionSubGroup sub;
@@ -253,15 +504,29 @@ class _SubGroupTileState extends ConsumerState<_SubGroupTile> {
     final sub = widget.sub;
     final allEnabled = sub.allEnabled;
     final anyEnabled = sub.anyEnabled;
+    final enabledCount = sub.entries.where((e) => e.enabled).length;
 
     return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         InkWell(
           onTap: () => setState(() => _expanded = !_expanded),
           child: Padding(
-            padding: const EdgeInsets.fromLTRB(20, 10, 14, 10),
+            padding: const EdgeInsets.fromLTRB(14, 10, 14, 10),
             child: Row(
               children: [
+                // Vertical line + indent
+                Container(
+                  width: 3,
+                  height: 28,
+                  margin: const EdgeInsets.only(left: 7, right: 14),
+                  decoration: BoxDecoration(
+                    color: anyEnabled
+                        ? colors.brand.withValues(alpha: 0.35)
+                        : colors.borderDefault,
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
                 Container(
                   width: 24,
                   height: 24,
@@ -273,21 +538,34 @@ class _SubGroupTileState extends ConsumerState<_SubGroupTile> {
                   child: Text(
                     sub.number,
                     style: GoogleFonts.beVietnamPro(
-                      fontSize: 10,
-                      fontWeight: FontWeight.w600,
-                      color: colors.textSecondary,
+                      fontSize: 9,
+                      fontWeight: FontWeight.w700,
+                      color: colors.textTertiary,
                     ),
                   ),
                 ),
                 const SizedBox(width: 10),
                 Expanded(
-                  child: Text(
-                    sub.label,
-                    style: GoogleFonts.beVietnamPro(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w500,
-                      color: colors.textPrimary,
-                    ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        sub.label,
+                        style: GoogleFonts.beVietnamPro(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w500,
+                          color: colors.textPrimary,
+                        ),
+                      ),
+                      if (!_expanded)
+                        Text(
+                          '$enabledCount/${sub.entries.length}',
+                          style: GoogleFonts.beVietnamPro(
+                            fontSize: 10,
+                            color: colors.textTertiary,
+                          ),
+                        ),
+                    ],
                   ),
                 ),
                 _GroupSwitch(
@@ -320,19 +598,20 @@ class _SubGroupTileState extends ConsumerState<_SubGroupTile> {
               subGroupId: sub.id,
               role: widget.role,
               isLastInSub: entry == sub.entries.last,
-              isLastSub: widget.isLast,
             ),
 
-        if (!widget.isLast || _expanded)
+        if (!widget.isLast)
           Divider(
             height: 1,
             color: colors.borderDefault,
-            indent: _expanded ? 0 : 20,
+            indent: 20,
           ),
       ],
     );
   }
 }
+
+// ── Entry Row ─────────────────────────────────────────────────────────────────
 
 class _EntryRow extends ConsumerWidget {
   final PermissionEntry entry;
@@ -340,7 +619,6 @@ class _EntryRow extends ConsumerWidget {
   final String subGroupId;
   final UserRole role;
   final bool isLastInSub;
-  final bool isLastSub;
 
   const _EntryRow({
     required this.entry,
@@ -348,26 +626,27 @@ class _EntryRow extends ConsumerWidget {
     required this.subGroupId,
     required this.role,
     required this.isLastInSub,
-    required this.isLastSub,
   });
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final colors = context.colors;
+    final opData = _operationData(entry.id);
 
     return Column(
       children: [
         Padding(
-          padding: const EdgeInsets.fromLTRB(54, 8, 14, 8),
+          padding: const EdgeInsets.fromLTRB(58, 9, 14, 9),
           child: Row(
             children: [
-              Text(
-                entry.number,
-                style: GoogleFonts.beVietnamPro(
-                  fontSize: 11,
-                  color: colors.textTertiary,
-                  fontWeight: FontWeight.w500,
+              Container(
+                width: 24,
+                height: 24,
+                decoration: BoxDecoration(
+                  color: opData.color.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(6),
                 ),
+                child: Icon(opData.icon, size: 13, color: opData.color),
               ),
               const SizedBox(width: 10),
               Expanded(
@@ -379,13 +658,16 @@ class _EntryRow extends ConsumerWidget {
                   ),
                 ),
               ),
-              Switch(
-                value: entry.enabled,
-                onChanged: (_) => ref
-                    .read(rolePermissionsProvider(role).notifier)
-                    .toggleEntry(groupId, subGroupId, entry.id),
-                activeThumbColor: colors.brand,
-                materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+              Transform.scale(
+                scale: 0.85,
+                child: Switch(
+                  value: entry.enabled,
+                  onChanged: (_) => ref
+                      .read(rolePermissionsProvider(role).notifier)
+                      .toggleEntry(groupId, subGroupId, entry.id),
+                  activeThumbColor: colors.brand,
+                  materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                ),
               ),
             ],
           ),
@@ -394,12 +676,14 @@ class _EntryRow extends ConsumerWidget {
           Divider(
             height: 1,
             color: colors.borderDefault,
-            indent: 54,
+            indent: 58,
           ),
       ],
     );
   }
 }
+
+// ── Custom Group Switch ───────────────────────────────────────────────────────
 
 class _GroupSwitch extends StatelessWidget {
   final bool value;
@@ -415,38 +699,48 @@ class _GroupSwitch extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = context.colors;
-    final effectiveColor = indeterminate ? AppColors.warning : colors.brand;
+    final effectiveColor =
+        indeterminate ? AppColors.warning : colors.brand;
 
     return GestureDetector(
       onTap: () => onChanged(!value),
       child: AnimatedContainer(
-        duration: const Duration(milliseconds: 180),
-        width: 40,
-        height: 22,
+        duration: const Duration(milliseconds: 200),
+        width: 42,
+        height: 24,
         decoration: BoxDecoration(
           color: (value || indeterminate)
               ? effectiveColor.withValues(alpha: 0.9)
               : colors.borderDefault,
-          borderRadius: BorderRadius.circular(11),
+          borderRadius: BorderRadius.circular(12),
         ),
         child: Stack(
           alignment: Alignment.center,
           children: [
             AnimatedAlign(
-              duration: const Duration(milliseconds: 180),
-              alignment: value ? Alignment.centerRight : Alignment.centerLeft,
+              duration: const Duration(milliseconds: 200),
+              curve: Curves.easeInOut,
+              alignment:
+                  value ? Alignment.centerRight : Alignment.centerLeft,
               child: Container(
-                width: 16,
-                height: 16,
+                width: 18,
+                height: 18,
                 margin: const EdgeInsets.symmetric(horizontal: 3),
                 decoration: const BoxDecoration(
                   color: Colors.white,
                   shape: BoxShape.circle,
+                  boxShadow: [
+                    BoxShadow(
+                      color: Color(0x20000000),
+                      blurRadius: 4,
+                      offset: Offset(0, 1),
+                    ),
+                  ],
                 ),
                 child: indeterminate && !value
                     ? Center(
                         child: Container(
-                          width: 6,
+                          width: 7,
                           height: 2,
                           decoration: BoxDecoration(
                             color: AppColors.warning,
@@ -463,6 +757,8 @@ class _GroupSwitch extends StatelessWidget {
     );
   }
 }
+
+// ── Bottom Bar ────────────────────────────────────────────────────────────────
 
 class _BottomBar extends ConsumerWidget {
   final UserRole role;
@@ -487,7 +783,7 @@ class _BottomBar extends ConsumerWidget {
       child: Row(
         children: [
           Expanded(
-            child: OutlinedButton(
+            child: OutlinedButton.icon(
               onPressed: () async {
                 final confirm = await _confirmReset(context);
                 if (confirm == true) {
@@ -499,19 +795,24 @@ class _BottomBar extends ConsumerWidget {
                   }
                 }
               },
-              style: OutlinedButton.styleFrom(
-                foregroundColor: colors.textSecondary,
-                side: BorderSide(color: colors.borderDefault),
-                padding: const EdgeInsets.symmetric(vertical: 12),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(AppRadius.md),
-                ),
+              icon: Icon(
+                Icons.restart_alt_rounded,
+                size: 16,
+                color: colors.textSecondary,
               ),
-              child: Text(
+              label: Text(
                 'Mặc định',
                 style: GoogleFonts.beVietnamPro(
                   fontSize: 13,
                   fontWeight: FontWeight.w600,
+                  color: colors.textSecondary,
+                ),
+              ),
+              style: OutlinedButton.styleFrom(
+                side: BorderSide(color: colors.borderDefault),
+                padding: const EdgeInsets.symmetric(vertical: 12),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(AppRadius.md),
                 ),
               ),
             ),
@@ -519,7 +820,7 @@ class _BottomBar extends ConsumerWidget {
           const SizedBox(width: 12),
           Expanded(
             flex: 2,
-            child: FilledButton(
+            child: FilledButton.icon(
               onPressed: () async {
                 await ref
                     .read(rolePermissionsProvider(role).notifier)
@@ -528,18 +829,20 @@ class _BottomBar extends ConsumerWidget {
                   AppSnackBar.success(context, 'Đã lưu phân quyền');
                 }
               },
-              style: FilledButton.styleFrom(
-                backgroundColor: colors.brand,
-                padding: const EdgeInsets.symmetric(vertical: 12),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(AppRadius.md),
-                ),
-              ),
-              child: Text(
+              icon: const Icon(Icons.save_rounded, size: 16),
+              label: Text(
                 'Lưu thay đổi',
                 style: GoogleFonts.beVietnamPro(
                   fontSize: 13,
                   fontWeight: FontWeight.w600,
+                ),
+              ),
+              style: FilledButton.styleFrom(
+                backgroundColor: colors.brand,
+                foregroundColor: colors.textOnPrimary,
+                padding: const EdgeInsets.symmetric(vertical: 12),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(AppRadius.md),
                 ),
               ),
             ),
@@ -566,4 +869,52 @@ class _BottomBar extends ConsumerWidget {
           ],
         ),
       );
+}
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
+
+Color _roleAccent(UserRole role) => switch (role) {
+      UserRole.sale => AppColors.jade500,
+      UserRole.owner => AppColors.warning,
+      _ => AppColors.jade500,
+    };
+
+IconData _roleIcon(UserRole role) => switch (role) {
+      UserRole.sale => Icons.badge_rounded,
+      UserRole.owner => Icons.home_work_rounded,
+      _ => Icons.person_rounded,
+    };
+
+IconData _groupIcon(String groupId) => switch (groupId) {
+      '01' => Icons.bed_rounded,
+      '02' => Icons.event_note_rounded,
+      '03' => Icons.calendar_month_rounded,
+      '04' => Icons.analytics_rounded,
+      '05' => Icons.apartment_rounded,
+      '06' => Icons.people_rounded,
+      _ => Icons.settings_rounded,
+    };
+
+({IconData icon, Color color}) _operationData(String entryId) {
+  final op = entryId.split('.').last;
+  return switch (op) {
+    'view' => (icon: Icons.visibility_rounded, color: AppColors.jade500),
+    'create' => (
+      icon: Icons.add_circle_outline_rounded,
+      color: AppColors.success
+    ),
+    'update' => (icon: Icons.edit_rounded, color: AppColors.warning),
+    'delete' => (
+      icon: Icons.remove_circle_outline_rounded,
+      color: AppColors.error
+    ),
+    'hold' => (icon: Icons.lock_clock_rounded, color: AppColors.jade300),
+    'confirm' => (
+      icon: Icons.check_circle_outline_rounded,
+      color: AppColors.success
+    ),
+    'cancel' => (icon: Icons.cancel_outlined, color: AppColors.error),
+    'lock' => (icon: Icons.lock_outline_rounded, color: AppColors.warning),
+    _ => (icon: Icons.circle_outlined, color: AppColors.slate400),
+  };
 }
