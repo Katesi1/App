@@ -66,7 +66,7 @@ final calendarGridProvider =
             propertyId: params.propertyId,
             type: params.type,
           );
-    if (result.success) return result.data!;
+    if (result.success) return result.data ?? (throw Exception('Dữ liệu trả về trống'));
     throw Exception(result.message);
   },
 );
@@ -75,7 +75,7 @@ final calendarGridProvider =
 final adminContactProvider = FutureProvider<AdminContact>((ref) async {
   final repo = ref.read(calendarRepositoryProvider);
   final result = await repo.getAdminContact();
-  if (result.success) return result.data!;
+  if (result.success) return result.data ?? (throw Exception('Dữ liệu trả về trống'));
   throw Exception(result.message);
 });
 

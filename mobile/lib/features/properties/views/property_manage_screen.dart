@@ -426,6 +426,7 @@ class _GradientHeader extends StatelessWidget {
                   memCacheWidth: 800,
                   color: Colors.black.withValues(alpha: 0.3),
                   colorBlendMode: BlendMode.darken,
+                  errorWidget: (_, __, ___) => const SizedBox.shrink(),
                 )
               : null,
         ),

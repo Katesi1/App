@@ -157,5 +157,6 @@ class AppThemeExtension extends ThemeExtension<AppThemeExtension> {
 /// Extension trên `BuildContext`: dùng `context.colors.bgSurface`.
 extension AppThemeContext on BuildContext {
   AppColorScheme get colors =>
-      Theme.of(this).extension<AppThemeExtension>()!.colors;
+      Theme.of(this).extension<AppThemeExtension>()?.colors ??
+      const AppColorScheme.light();
 }

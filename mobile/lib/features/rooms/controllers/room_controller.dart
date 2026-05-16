@@ -12,7 +12,7 @@ final roomListProvider =
     FutureProvider.family<List<RoomModel>, String?>((ref, homestayId) async {
   final repo = ref.read(roomRepositoryProvider);
   final result = await repo.getRooms(homestayId: homestayId);
-  if (result.success) return result.data!;
+  if (result.success) return result.data ?? (throw Exception('Dữ liệu trả về trống'));
   throw Exception(result.message);
 });
 
@@ -23,7 +23,7 @@ final allRoomsProvider =
   Future.delayed(const Duration(minutes: 2), link.close);
   final repo = ref.read(roomRepositoryProvider);
   final result = await repo.getAllPublicRooms();
-  if (result.success) return result.data!;
+  if (result.success) return result.data ?? (throw Exception('Dữ liệu trả về trống'));
   throw Exception(result.message);
 });
 
@@ -32,7 +32,7 @@ final roomDetailProvider =
     FutureProvider.family<RoomModel, String>((ref, id) async {
   final repo = ref.read(roomRepositoryProvider);
   final result = await repo.getRoomDetail(id);
-  if (result.success) return result.data!;
+  if (result.success) return result.data ?? (throw Exception('Dữ liệu trả về trống'));
   throw Exception(result.message);
 });
 

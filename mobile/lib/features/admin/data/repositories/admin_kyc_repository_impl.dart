@@ -11,9 +11,6 @@ import '../../../verify/data/models/verify_enums.dart';
 import '../models/kyc_submission.dart';
 import 'admin_kyc_repository.dart';
 
-/// Real impl gọi backend `/admin/kyc/*` (xem `BACKEND_CHANGES_REPORT.md` mục 7).
-///
-/// Dio singleton có sẵn auth interceptor → request tự đính bearer token ADMIN.
 class AdminKycRepositoryImpl implements AdminKycRepository {
   final Dio _dio;
 
@@ -22,8 +19,6 @@ class AdminKycRepositoryImpl implements AdminKycRepository {
   @override
   Future<List<KYCSubmission>> fetchAll() async {
     try {
-      // Lấy 3 status cùng lúc cho UI 4-tab. Backend `?status=` filter từng loại;
-      // gọi parallel rồi merge để 1 lần fetchAll cover hết các tab.
       final results = await Future.wait([
         _fetchPage('awaiting_approval'),
         _fetchPage('approved'),
@@ -52,7 +47,6 @@ class AdminKycRepositoryImpl implements AdminKycRepository {
   @override
   Future<KYCSubmission?> fetchById(String id) async {
     try {
-      // Detail dùng endpoint chung `/kyc/submissions/:id` (admin được phép).
       final res = await _dio.get(ApiConstants.kycSubmissionDetail(id));
       final data = res.data['data'] as Map<String, dynamic>;
       return _detailToSubmission(id, data);
@@ -84,6 +78,7 @@ class AdminKycRepositoryImpl implements AdminKycRepository {
     }
   }
 
+
   @override
   Future<KYCSubmission> reject(
     String id, {
@@ -112,11 +107,6 @@ class AdminKycRepositoryImpl implements AdminKycRepository {
     }
   }
 
-  /// Build minimal "ack" KYCSubmission để return từ approve/reject.
-  ///
-  /// Caller (kycApprovalActionsProvider) discard return value và
-  /// `invalidate(kycSubmissionsProvider)` ngay sau → UI sẽ refetch full data.
-  /// Mục đích duy nhất là thoả mãn signature của abstract.
   KYCSubmission _ackSubmission({
     required String id,
     required VerifyStatus status,
@@ -145,9 +135,6 @@ class AdminKycRepositoryImpl implements AdminKycRepository {
     );
   }
 
-  // ─── Mappers ────────────────────────────────────────────────────────────────
-
-  /// Map item từ `/admin/kyc/queue` (có ít field hơn detail).
   KYCSubmission _listItemToSubmission(Map<String, dynamic> json) {
     final user = json['user'] as Map<String, dynamic>;
     final uploads = (json['uploads'] as Map<String, dynamic>?) ?? const {};
@@ -180,14 +167,11 @@ class AdminKycRepositoryImpl implements AdminKycRepository {
     );
   }
 
-  /// Map detail từ `/kyc/submissions/:id` (đầy đủ uploads + payment).
   KYCSubmission _detailToSubmission(String id, Map<String, dynamic> data) {
     final uploads = (data['uploads'] as Map<String, dynamic>?) ?? const {};
     final payment = data['payment'] as Map<String, dynamic>?;
     final rejectedRaw =
         (data['rejectedItems'] as List?)?.cast<String>() ?? const [];
-
-    // Detail không có `user` — fallback rỗng. Caller list view đã có owner data.
     return KYCSubmission(
       id: (data['id'] as String?) ?? id,
       ownerId: (data['userId'] as String?) ?? '',
@@ -214,8 +198,6 @@ class AdminKycRepositoryImpl implements AdminKycRepository {
           _parseDate(data['approvedAt']) ?? _parseDate(data['handledAt']),
     );
   }
-
-  // ─── Upload parsers ─────────────────────────────────────────────────────────
 
   CCCDUpload? _parseCccd(dynamic raw) {
     if (raw is! Map<String, dynamic>) return null;

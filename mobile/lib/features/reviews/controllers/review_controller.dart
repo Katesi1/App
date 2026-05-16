@@ -14,7 +14,7 @@ final propertyReviewsProvider = FutureProvider.autoDispose
     .family<PropertyReviewsPage, ReviewListParams>((ref, params) async {
   final repo = ref.read(reviewRepositoryProvider);
   final result = await repo.getReviews(params);
-  if (result.success) return result.data!;
+  if (result.success) return result.data ?? (throw Exception('Dữ liệu trả về trống'));
   throw Exception(result.message);
 });
 

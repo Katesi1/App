@@ -840,7 +840,9 @@ class CalendarCategoryTabs extends StatelessWidget {
         AppSpacing.md,
         0,
       ),
-      child: Row(
+      child: SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        child: Row(
         children: PropertyCategory.values.map((cat) {
           final isSelected = selected == cat;
           final label = switch (cat) {
@@ -891,6 +893,7 @@ class CalendarCategoryTabs extends StatelessWidget {
             ),
           );
         }).toList(),
+      ),
       ),
     );
   }

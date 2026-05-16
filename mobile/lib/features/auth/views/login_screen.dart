@@ -446,8 +446,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
                                             fontSize: 15, color: AppColors.ink),
                                         decoration: _inputDecor(
                                           label: 'Email / Số điện thoại',
-                                          hint:
-                                              'admin@halong24h.vn hoặc 0xxxxxxxxx',
+                                          hint: '',
                                           icon: Icons.email_outlined,
                                         ),
                                         validator: (v) => v?.trim().isEmpty ==
@@ -471,7 +470,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
                                             fontSize: 15, color: AppColors.ink),
                                         decoration: _inputDecor(
                                           label: 'Mật khẩu',
-                                          hint: '••••••••',
+                                          hint: '',
                                           icon: Icons.lock_outline_rounded,
                                           suffixIcon: IconButton(
                                             icon: Icon(

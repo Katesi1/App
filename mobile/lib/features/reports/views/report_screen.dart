@@ -582,16 +582,23 @@ class _TopRoomRow extends StatelessWidget {
                   fontSize: 11,
                   color: colors.textTertiary,
                 ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
               ),
             ],
           ),
         ),
-        Text(
-          ReportFormat.vndShort(room.revenue),
-          style: GoogleFonts.beVietnamPro(
-            fontSize: 13,
-            fontWeight: FontWeight.w800,
-            color: colors.textBrand,
+        Flexible(
+          flex: 0,
+          child: Text(
+            ReportFormat.vndShort(room.revenue),
+            style: GoogleFonts.beVietnamPro(
+              fontSize: 13,
+              fontWeight: FontWeight.w800,
+              color: colors.textBrand,
+            ),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
           ),
         ),
       ],
@@ -734,22 +741,29 @@ class _BookingRow extends StatelessWidget {
                     fontSize: 11,
                     color: colors.textSecondary,
                   ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                 ),
               ],
             ),
           ),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-            decoration: BoxDecoration(
-              color: statusColor.withValues(alpha: 0.12),
-              borderRadius: BorderRadius.circular(20),
-            ),
-            child: Text(
-              booking.status.label,
-              style: GoogleFonts.beVietnamPro(
-                fontSize: 10,
-                fontWeight: FontWeight.w700,
-                color: statusColor,
+          Flexible(
+            flex: 0,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+              decoration: BoxDecoration(
+                color: statusColor.withValues(alpha: 0.12),
+                borderRadius: BorderRadius.circular(20),
+              ),
+              child: Text(
+                booking.status.label,
+                style: GoogleFonts.beVietnamPro(
+                  fontSize: 10,
+                  fontWeight: FontWeight.w700,
+                  color: statusColor,
+                ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
               ),
             ),
           ),

@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Backup rules cho Android 11 trở xuống (fullBackupContent).
+  Loại trừ SharedPreferences nhạy cảm; flutter_secure_storage đã tự exclude qua EncryptedSharedPreferences.
+-->
+<full-backup-content>
+    <exclude domain="sharedpref" path="FlutterSecureStorage" />
+    <exclude domain="sharedpref" path="verify_flow_draft_v1" />
+</full-backup-content>

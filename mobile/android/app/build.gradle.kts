@@ -56,11 +56,19 @@ android {
 
     buildTypes {
         release {
-            signingConfig = if (keyPropertiesFile.exists()) {
-                signingConfigs.getByName("release")
-            } else {
-                signingConfigs.getByName("debug")
+            if (!keyPropertiesFile.exists()) {
+                throw GradleException(
+                    "key.properties không tồn tại — không thể build release APK/AAB có chữ ký hợp lệ. " +
+                    "Tạo file key.properties với storeFile, storePassword, keyAlias, keyPassword."
+                )
             }
+            signingConfig = signingConfigs.getByName("release")
+            isMinifyEnabled = true
+            isShrinkResources = true
+            proguardFiles(
+                getDefaultProguardFile("proguard-android-optimize.txt"),
+                "proguard-rules.pro"
+            )
         }
     }
 }

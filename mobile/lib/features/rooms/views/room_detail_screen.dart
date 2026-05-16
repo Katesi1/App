@@ -1066,6 +1066,14 @@ class _GalleryScreenState extends State<_GalleryScreen> {
                                   imageUrl: widget.images[i].imageUrl,
                                   fit: BoxFit.cover,
                                   memCacheWidth: 120,
+                                  errorWidget: (_, __, ___) => Container(
+                                    color: AppColors.jade900,
+                                    child: const Icon(
+                                      Icons.broken_image_outlined,
+                                      size: 16,
+                                      color: AppColors.jade300,
+                                    ),
+                                  ),
                                 ),
                               ),
                             ),

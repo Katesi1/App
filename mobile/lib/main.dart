@@ -6,7 +6,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_native_splash/flutter_native_splash.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/date_symbol_data_local.dart';
-import 'core/constants/api_constants.dart';
 import 'core/monitoring/crash_reporter.dart';
 import 'core/services/app_version_service.dart';
 import 'core/services/push_notification_service.dart';
@@ -17,7 +16,6 @@ import 'shared/providers/theme_provider.dart';
 import 'shared/widgets/soft_update_prompt.dart';
 
 void main() {
-  ApiConstants.assertConfigured();
   final widgetsBinding = WidgetsFlutterBinding.ensureInitialized();
   FlutterNativeSplash.preserve(widgetsBinding: widgetsBinding);
   runZonedGuarded(
@@ -84,9 +82,13 @@ class _HomestayAppState extends ConsumerState<HomestayApp>
     WidgetsBinding.instance.addPostFrameCallback((_) {
       PushNotificationService.instance.onNotificationTap = (data) {
         final deepLink = data['deepLink'];
-        if (deepLink is String && deepLink.isNotEmpty) {
-          ref.read(routerProvider).go(deepLink);
-        }
+        if (deepLink is! String || deepLink.isEmpty) return;
+        final uri = Uri.tryParse(deepLink);
+        if (uri == null) return;
+        // Chỉ cho phép relative path (không có scheme/host) để tránh
+        // open redirect từ notification bị giả mạo.
+        if (uri.hasScheme || uri.hasAuthority) return;
+        ref.read(routerProvider).go(deepLink);
       };
 
       // Check app version với BE — nếu force-update thì block UI ngay,
@@ -134,7 +136,7 @@ class _HomestayAppState extends ConsumerState<HomestayApp>
     final themeMode = ref.watch(themeProvider);
 
     return MaterialApp.router(
-      title: 'Homestay Manager',
+      title: 'Halong24h',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.light,
       darkTheme: AppTheme.dark,

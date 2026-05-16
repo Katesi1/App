@@ -75,30 +75,12 @@ class KycStatusSnapshot {
   });
 }
 
-/// Abstract data source cho verify + subscription flow.
-///
-/// Implementation:
-/// - [MockVerifyRepository]: dev/QA, không cần backend.
-/// - `VerifyRepositoryImpl`: gọi real backend (xem
-///   `verify_repository_impl.dart`).
 abstract class VerifyRepository {
-  // ── KYC ──
-  /// Upload mặt trước CCCD. `ocrResult` là dữ liệu đã extract trên device
-  /// (ML Kit OCR) — gửi kèm ảnh để backend lưu thẳng vào DB, không cần chạy
-  /// OCR engine của riêng nó. `null` nếu user chọn ảnh từ gallery hoặc
-  /// scanner không nhận diện được.
   Future<CCCDUpload> uploadCCCDFront(File image, {OCRResult? ocrResult});
-
-  /// Upload mặt sau CCCD. `ocrResult` từ QR mặt sau (machine-readable, chính
-  /// xác 100%). `null` nếu CCCD cũ không có QR.
   Future<CCCDUpload> uploadCCCDBack(File image, {OCRResult? ocrResult});
-
   Future<SelfieUpload> uploadSelfie(File image, {required String cccdFrontId});
-
-  /// Lấy trạng thái KYC hiện tại của user (resume sau khi mở app lại).
   Future<KycStatusSnapshot> getKycStatus();
 
-  // ── Plans + Payment ──
   Future<List<Plan>> fetchPlans();
   Future<PaymentSession> initiatePayment({
     required String planId,
@@ -109,23 +91,16 @@ abstract class VerifyRepository {
   });
   Future<PaymentStatus> checkPaymentStatus(String sessionId);
 
-  // ── Approval + Refund ──
   Future<SubmissionResult> submitForApproval();
   Future<ApprovalResult> checkApprovalStatus(String submissionId);
   Future<void> resubmit({required List<RejectableItem> items});
   Future<RefundResult> requestRefund(String submissionId);
 
-  // ── Subscription history + renew ──
-  /// Lịch sử thanh toán + hoàn tiền (mới nhất trước). Có thể empty nếu user
-  /// chưa thanh toán bao giờ. Cursor-based pagination — gọi lần đầu với
-  /// `cursor = null`, lần sau truyền `meta.nextCursor` từ response trước đó.
   Future<PaymentHistoryPage> fetchPaymentHistory({
     int limit = 50,
     String? cursor,
   });
 
-  /// Gia hạn subscription hiện tại — backend tạo phiên thanh toán mới với
-  /// `kind = 'renew'`, dùng cùng plan + cycle hiện tại của user.
   Future<PaymentSession> renewSubscription({
     required PaymentMethod method,
   });

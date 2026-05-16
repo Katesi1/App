@@ -261,6 +261,17 @@ class AdminScreen extends ConsumerWidget {
                     onTap: () => context.push('/admin/owner-calendar'),
                   ),
 
+                  const SizedBox(height: 10),
+
+                  _MenuCard(
+                    icon: Icons.tune_rounded,
+                    iconBg: AppColors.jade50,
+                    iconColor: AppColors.jade700,
+                    title: 'Phân quyền vai trò',
+                    subtitle: 'Cấu hình quyền truy cập cho từng vai trò',
+                    onTap: () => context.push('/admin/role-permissions'),
+                  ),
+
                   if (isAdmin) ...[
                     const SizedBox(height: 10),
                     _MenuCard(

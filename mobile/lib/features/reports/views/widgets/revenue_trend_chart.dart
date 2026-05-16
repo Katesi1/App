@@ -51,15 +51,19 @@ class _RevenueTrendChartState extends State<RevenueTrendChart> {
         children: [
           Row(
             children: [
-              Text(
-                'Xu hướng ${_metric.label.toLowerCase()}',
-                style: GoogleFonts.beVietnamPro(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w700,
-                  color: colors.textPrimary,
+              Expanded(
+                child: Text(
+                  'Xu hướng ${_metric.label.toLowerCase()}',
+                  style: GoogleFonts.beVietnamPro(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w700,
+                    color: colors.textPrimary,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                 ),
               ),
-              const Spacer(),
+              const SizedBox(width: 8),
               _MetricToggle(
                 current: _metric,
                 onChanged: (m) => setState(() => _metric = m),

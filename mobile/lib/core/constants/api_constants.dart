@@ -1,25 +1,11 @@
 class ApiConstants {
-  // Inject qua `--dart-define-from-file=env.<env>.json` để tách môi trường
-  // release/staging/dev và không commit URL backend vào git.
-  // Xem `env.example.json` cho template; tạo `env.prod.json` / `env.dev.json`
-  // local (đã gitignore). Build: `flutter build ipa --dart-define-from-file=env.prod.json`.
-  static const String baseUrl = String.fromEnvironment('API_BASE_URL');
-
-  static void assertConfigured() {
-    assert(
-      baseUrl.isNotEmpty,
-      'API_BASE_URL trống. Bạn cần build với '
-      '`--dart-define-from-file=env.prod.json` (hoặc env.dev.json). '
-      'Xem env.example.json cho template.',
-    );
-  }
+  static const String baseUrl = 'https://api.halong24h.com';
 
   // Auth
   static const String login = '/auth/login';
   static const String register = '/auth/register';
   static const String refresh = '/auth/refresh';
   static const String googleLogin = '/auth/google';
-  // Apple Sign-In — BE cần verify token với Apple (TODO confirm endpoint).
   static const String appleLogin = '/auth/apple';
   static const String logout = '/auth/logout';
   static const String profile = '/auth/profile';

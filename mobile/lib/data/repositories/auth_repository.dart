@@ -540,6 +540,8 @@ class AuthRepository {
   Future<void> logout() async {
     try {
       await _googleSignIn.signOut();
+    } catch (_) {}
+    try {
       await _dio.post(ApiConstants.logout);
     } catch (_) {}
     await SecureStorage.clear();

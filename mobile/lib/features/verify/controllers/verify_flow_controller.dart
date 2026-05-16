@@ -15,37 +15,18 @@ import '../data/models/verify_state.dart';
 import '../data/repositories/verify_repository.dart';
 import '../data/repositories/verify_repository_impl.dart';
 
-/// Provider trả về [VerifyRepository]. Backend đã sẵn sàng (xem
-/// `BACKEND_CHANGES_REPORT.md`) — wire vào real impl.
-///
-/// Test/QA muốn dùng mock thì override provider này:
-/// `verifyRepositoryProvider.overrideWithValue(MockVerifyRepository(...))`.
 final verifyRepositoryProvider = Provider<VerifyRepository>(
   (ref) => VerifyRepositoryImpl(),
 );
 
-/// Catalog 6 plan. Tạm dùng `kDefaultPlans` local — backend hiện vẫn trả 3
-/// plan cũ (`starter|professional|enterprise`). Khi backend re-seed bảng
-/// `billing_plans` theo spec mới (xem `api-kyc-self-host-update.md`),
-/// swap về `ref.read(verifyRepositoryProvider).fetchPlans()`.
 final verifyPlansProvider = FutureProvider<List<Plan>>((ref) async {
-  try {
-    return await ref.read(verifyRepositoryProvider).fetchPlans();
-  } catch (_) {
-    return kDefaultPlans;
-  }
+  return ref.read(verifyRepositoryProvider).fetchPlans();
 });
 
-/// Trang đầu lịch sử thanh toán (50 item mới nhất). Dùng cho dashboard /
-/// summary card. Cho full pagination dùng [PaymentHistoryNotifier].
 final paymentHistoryProvider =
     FutureProvider<PaymentHistoryPage>((ref) async {
   return ref.read(verifyRepositoryProvider).fetchPaymentHistory();
 });
-
-/// State đầy đủ cho `PaymentHistoryScreen` — tích luỹ items qua nhiều page,
-/// expose loadMore + refresh. Backend trả `meta.nextCursor` để FE biết khi
-/// nào hết data (xem `api-payments-frontend-spec.md` §7.3).
 class PaymentHistoryListState {
   final List<PaymentHistoryItem> items;
   final String? nextCursor;
