@@ -1,7 +1,9 @@
 import 'dart:async';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../../core/monitoring/crash_reporter.dart';
 import '../../../core/network/api_client.dart';
+import '../../../core/services/push_notification_service.dart';
 import '../../../core/storage/secure_storage.dart';
 import '../../../data/models/user_model.dart';
 import '../../../data/repositories/auth_repository.dart';
@@ -11,6 +13,15 @@ import '../../calendar/controllers/calendar_controller.dart';
 import '../../dashboard/controllers/dashboard_controller.dart';
 import '../../properties/controllers/property_controller.dart';
 import '../../rooms/controllers/room_controller.dart';
+
+export '../../../data/repositories/auth_repository.dart'
+    show
+        GoogleSignInOutcome,
+        GoogleSignInSuccess,
+        GoogleSignInNeedsRole,
+        GoogleSignInCancelled,
+        GoogleSignInFailure,
+        GoogleProfile;
 
 final authRepositoryProvider =
     Provider<AuthRepository>((ref) => AuthRepository());
@@ -82,6 +93,17 @@ class AuthNotifier extends StateNotifier<AuthState> {
     }
   }
 
+  /// Gọi sau khi user đã authenticated (login/register/google/accept invite/
+  /// app restart với token còn valid). Register FCM token với BE + set
+  /// Crashlytics user ID — fire & forget, không block UI.
+  void _onAuthenticated() {
+    unawaited(PushNotificationService.instance.registerForUser());
+    final userId = state.user?.id;
+    if (userId != null) {
+      unawaited(CrashReporter.setUserId(userId));
+    }
+  }
+
   /// Invalidate tất cả data providers sau login/register
   /// Để screen watch lại → tự re-fetch với token mới
   void _invalidateDataProviders() {
@@ -115,6 +137,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
     if (fresh.success && fresh.data != null) {
       // Token hợp lệ (hoặc đã refresh thành công)
       state = AuthState(user: fresh.data, isLoggedIn: true, isLoading: false);
+      _onAuthenticated();
     } else {
       // Token hết hạn hoàn toàn, refresh thất bại → buộc đăng nhập lại
       await SecureStorage.clear();
@@ -122,11 +145,12 @@ class AuthNotifier extends StateNotifier<AuthState> {
     }
   }
 
-  Future<String?> login(String email, String password) async {
-    final result = await _repo.login(email, password);
+  Future<String?> login(String identifier, String password) async {
+    final result = await _repo.login(identifier, password);
     if (result.success) {
       state = AuthState(user: result.data, isLoggedIn: true);
       _invalidateDataProviders();
+      _onAuthenticated();
       return null;
     } else {
       state = state.copyWith(error: result.message);
@@ -151,6 +175,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
     if (result.success) {
       state = AuthState(user: result.data, isLoggedIn: true);
       _invalidateDataProviders();
+      _onAuthenticated();
       return null;
     } else {
       state = state.copyWith(error: result.message);
@@ -158,17 +183,68 @@ class AuthNotifier extends StateNotifier<AuthState> {
     }
   }
 
-  /// [role] chỉ cần khi đăng ký qua Google lần đầu
-  Future<String?> signInWithGoogle({int? role}) async {
-    final result = await _repo.loginWithGoogle(role: role);
-    if (result.success) {
-      state = AuthState(user: result.data, isLoggedIn: true);
-      _invalidateDataProviders();
-      return null;
-    } else {
-      state = state.copyWith(error: result.message);
-      return result.message;
+  /// Bắt đầu Google Sign-In. Trả `GoogleSignInOutcome` để UI điều hướng:
+  /// - [GoogleSignInSuccess] → đã login, vào dashboard
+  /// - [GoogleSignInNeedsRole] → push RolePickerScreen
+  /// - [GoogleSignInCancelled] → user đóng pop-up
+  /// - [GoogleSignInFailure] → show snackbar lỗi
+  ///
+  /// [role] chỉ cần khi user đã chủ động chọn từ Register screen (OWNER).
+  Future<GoogleSignInOutcome> signInWithGoogle({int? role}) async {
+    final outcome = await _repo.loginWithGoogle(role: role);
+    return _handleGoogleOutcome(outcome);
+  }
+
+  /// Gọi sau khi user chọn role trên RolePickerScreen.
+  Future<GoogleSignInOutcome> completeGoogleSignInWithRole({
+    required String idToken,
+    required int role,
+  }) async {
+    final outcome = await _repo.completeGoogleSignInWithRole(
+      idToken: idToken,
+      role: role,
+    );
+    return _handleGoogleOutcome(outcome);
+  }
+
+  /// Sign In with Apple — bắt buộc theo App Store Guideline 4.8.
+  Future<GoogleSignInOutcome> signInWithApple({int? role}) async {
+    final outcome = await _repo.loginWithApple(role: role);
+    return _handleGoogleOutcome(outcome);
+  }
+
+  Future<GoogleSignInOutcome> completeAppleSignInWithRole({
+    required String idToken,
+    required int role,
+    String? email,
+    String? name,
+  }) async {
+    final outcome = await _repo.completeAppleSignInWithRole(
+      idToken: idToken,
+      role: role,
+      email: email,
+      name: name,
+    );
+    return _handleGoogleOutcome(outcome);
+  }
+
+  /// Mở popup Google chỉ để lấy idToken (cho accept invite flow).
+  Future<(String?, String?)> getGoogleIdToken() => _repo.getGoogleIdToken();
+
+  GoogleSignInOutcome _handleGoogleOutcome(GoogleSignInOutcome outcome) {
+    switch (outcome) {
+      case GoogleSignInSuccess(:final user):
+        state = AuthState(user: user, isLoggedIn: true);
+        _invalidateDataProviders();
+        _onAuthenticated();
+      case GoogleSignInFailure(:final message):
+        state = state.copyWith(error: message);
+      case GoogleSignInNeedsRole():
+      case GoogleSignInCancelled():
+        // Không update state — UI tự xử lý navigation/snackbar.
+        break;
     }
+    return outcome;
   }
 
   Future<(bool, String)> forgotPassword(String identifier) async {
@@ -198,7 +274,11 @@ class AuthNotifier extends StateNotifier<AuthState> {
   }
 
   Future<void> logout() async {
+    // Unregister FCM trước khi clear tokens — endpoint /devices cần Bearer
+    // token. Best-effort: nếu fail vẫn tiếp tục logout.
+    await PushNotificationService.instance.unregisterForUser();
     await _repo.logout();
+    await CrashReporter.setUserId(null);
     state = AuthState();
   }
 
@@ -215,6 +295,14 @@ class AuthNotifier extends StateNotifier<AuthState> {
   /// Cập nhật user trong state (đã lưu [SecureStorage] ở repo nếu cần).
   void replaceUser(UserModel user) {
     state = state.copyWith(user: user);
+  }
+
+  /// Set authenticated state khi flow ngoài auth_controller đã tự lưu tokens
+  /// (vd accept invite). Gọi xong router sẽ redirect tự động.
+  void applyExternalLogin(UserModel user) {
+    state = AuthState(user: user, isLoggedIn: true);
+    _invalidateDataProviders();
+    _onAuthenticated();
   }
 
   UserModel? get currentUser => state.user;

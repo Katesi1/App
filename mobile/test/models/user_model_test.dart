@@ -166,6 +166,62 @@ void main() {
         expect(_makeUser(role: 3).canEdit, false);
       });
     });
+
+    group('sale membership helpers', () {
+      test('falls back to unassigned when sale has no owner and no status', () {
+        final user = _makeUser(role: 2);
+        expect(user.saleMembershipState, 'unassigned');
+        expect(user.isSaleMembershipUnassigned, true);
+        expect(user.isSaleMembershipActive, false);
+      });
+
+      test('falls back to active when sale has owner and no status', () {
+        final user = UserModel(
+          id: 'sale-1',
+          name: 'Sale',
+          phone: '0900000000',
+          role: 2,
+          ownerId: 'owner-1',
+        );
+        expect(user.saleMembershipState, 'active');
+        expect(user.isSaleMembershipActive, true);
+      });
+
+      test('uses explicit saleMembershipStatus from backend', () {
+        final user = UserModel.fromJson({
+          'id': 'sale-1',
+          'role': 2,
+          'saleMembershipStatus': 'suspended',
+        });
+        expect(user.saleMembershipState, 'suspended');
+        expect(user.isSaleMembershipSuspended, true);
+        expect(user.isSaleMembershipActive, false);
+      });
+
+      test('canMutateManagementData requires active membership for sale', () {
+        final saleInvited = UserModel(
+          id: 'sale-1',
+          name: 'Sale',
+          phone: '0900000000',
+          role: 2,
+          saleMembershipStatus: 'invited',
+        );
+        final saleActive = UserModel(
+          id: 'sale-2',
+          name: 'Sale',
+          phone: '0900000001',
+          role: 2,
+          saleMembershipStatus: 'active',
+        );
+        final owner = _makeUser(role: 1);
+        final admin = _makeUser(role: 0);
+
+        expect(saleInvited.canMutateManagementData, false);
+        expect(saleActive.canMutateManagementData, true);
+        expect(owner.canMutateManagementData, true);
+        expect(admin.canMutateManagementData, true);
+      });
+    });
   });
 }
 

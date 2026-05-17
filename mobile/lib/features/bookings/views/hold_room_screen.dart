@@ -101,7 +101,8 @@ class _HoldRoomScreenState extends ConsumerState<HoldRoomScreen> {
           CalendarDayStatus.locked => 'Đã khoá',
           _ => '',
         };
-        final dt = DateTime.parse(day.date);
+        final dt = DateTime.tryParse(day.date);
+        if (dt == null) continue;
         conflicts.add('${dt.day}/${dt.month}: $label');
       }
     }

@@ -155,6 +155,46 @@ class ProfileScreen extends ConsumerWidget {
                         iconColor: colors.warning,
                         onTap: () => context.push('/profile/help'),
                       ),
+                      _MenuItemData(
+                        icon: Icons.notifications_active_outlined,
+                        label: 'Tùy chọn thông báo',
+                        subtitle: 'Booking, thanh toán, hệ thống',
+                        iconColor: colors.brand,
+                        onTap: () => context.push('/profile/notifications'),
+                      ),
+                      _MenuItemData(
+                        icon: Icons.feedback_outlined,
+                        label: 'Gửi phản hồi / Báo lỗi',
+                        subtitle: 'Tạo ticket hỗ trợ',
+                        iconColor: colors.success,
+                        onTap: () => context.push('/profile/feedback'),
+                      ),
+                      _MenuItemData(
+                        icon: Icons.confirmation_number_outlined,
+                        label: 'Yêu cầu hỗ trợ của tôi',
+                        subtitle: 'Theo dõi tiến độ xử lý',
+                        iconColor: colors.brandSecondary,
+                        onTap: () => context.push('/profile/tickets'),
+                      ),
+                      _MenuItemData(
+                        icon: Icons.privacy_tip_outlined,
+                        label: 'Quyền riêng tư',
+                        subtitle: 'Chính sách bảo vệ dữ liệu',
+                        iconColor: colors.textSecondary,
+                        onTap: () => context.push('/profile/privacy'),
+                      ),
+                      _MenuItemData(
+                        icon: Icons.gavel_outlined,
+                        label: 'Điều khoản sử dụng',
+                        subtitle: 'Điều khoản dịch vụ',
+                        iconColor: colors.textSecondary,
+                        onTap: () => context.push('/profile/terms'),
+                      ),
+                      // ⚠️ APP STORE BLOCKER — Trước khi submit App Store,
+                      // bắt buộc add lại entry "Xoá tài khoản" ở đây hoặc
+                      // somewhere accessible (Apple Guideline 5.1.1(v)).
+                      // Route '/profile/delete-account' vẫn còn — có thể
+                      // link từ Privacy Policy page hoặc add back menu.
                     ],
                   ),
                 ],

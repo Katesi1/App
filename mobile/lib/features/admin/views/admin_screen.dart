@@ -261,6 +261,17 @@ class AdminScreen extends ConsumerWidget {
                     onTap: () => context.push('/admin/owner-calendar'),
                   ),
 
+                  const SizedBox(height: 10),
+
+                  _MenuCard(
+                    icon: Icons.tune_rounded,
+                    iconBg: AppColors.jade50,
+                    iconColor: AppColors.jade700,
+                    title: 'Phân quyền vai trò',
+                    subtitle: 'Cấu hình quyền truy cập cho từng vai trò',
+                    onTap: () => context.push('/admin/role-permissions'),
+                  ),
+
                   if (isAdmin) ...[
                     const SizedBox(height: 10),
                     _MenuCard(
@@ -273,6 +284,24 @@ class AdminScreen extends ConsumerWidget {
                           ? '$pendingKycCount chờ'
                           : 'Trống',
                       onTap: () => context.push('/admin/kyc'),
+                    ),
+                    const SizedBox(height: 10),
+                    _MenuCard(
+                      icon: Icons.report_gmailerrorred_rounded,
+                      iconBg: colors.error.withValues(alpha: 0.1),
+                      iconColor: colors.error,
+                      title: 'Báo cáo vi phạm',
+                      subtitle: 'Danh sách tố cáo và xử lý abuse',
+                      onTap: () => context.push('/admin/abuse-reports'),
+                    ),
+                    const SizedBox(height: 10),
+                    _MenuCard(
+                      icon: Icons.history_rounded,
+                      iconBg: colors.bgSurfaceContainer,
+                      iconColor: colors.textSecondary,
+                      title: 'Lịch sử moderation',
+                      subtitle: 'Audit các hành động kiểm duyệt',
+                      onTap: () => context.push('/admin/moderation-audit'),
                     ),
                   ],
 

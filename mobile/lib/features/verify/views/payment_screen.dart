@@ -8,15 +8,29 @@ import 'package:go_router/go_router.dart';
 import '../../../core/theme/app_color_scheme.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
+import '../../../core/monitoring/analytics_service.dart';
 import '../../../shared/widgets/status_strip.dart';
 import '../controllers/verify_flow_controller.dart';
-import '../data/models/payment_session.dart';
 import '../data/models/plan.dart';
 import '../data/models/verify_enums.dart';
 import 'widgets/order_summary_card.dart';
+import 'widgets/payment_dialogs.dart';
 import 'widgets/payment_method_tile.dart';
 import 'widgets/verify_app_bar.dart';
 import 'widgets/verify_format.dart';
+
+/// 3 phương thức thanh toán FE expose:
+/// - VNPay QR: Quét QR bằng app ngân hàng (tức thời)
+/// - Bank transfer: STK + nội dung CK (5-30 phút, Casso/Sepay reconcile)
+/// - Card: Visa/Mastercard/JCB qua VNPay (tức thời)
+///
+/// BE phải accept cả 3 method ở `POST /payments/initiate`. Nếu BE chưa active
+/// `card`, FE sẽ catch error + hiện message graceful.
+const _kAvailableMethods = <PaymentMethod>[
+  PaymentMethod.vnpayQR,
+  PaymentMethod.bankTransfer,
+  PaymentMethod.card,
+];
 
 /// Screen 5 — Thanh toán.
 ///
@@ -46,24 +60,39 @@ class _PaymentScreenState extends ConsumerState<PaymentScreen> {
   }
 
   Future<void> _handlePay() async {
+    AnalyticsService.logEvent('verify_payment_submit', params: {
+      'method': _selected.name,
+    });
     setState(() => _processing = true);
     try {
       final session = await ref
           .read(verifyFlowControllerProvider.notifier)
           .initiatePayment(_selected);
+      AnalyticsService.logEvent('verify_payment_session_created', params: {
+        'method': _selected.name,
+        'amount': session.totalAmount,
+      });
 
       if (!mounted) return;
 
-      // Mở dialog tương ứng method, không await để poll vẫn chạy.
+      // Mở dialog tương ứng method. Card đã lock ở UI nên không xử lý.
       switch (_selected) {
         case PaymentMethod.vnpayQR:
-          _showVNPayDialog(session);
+          showDialog<void>(
+            context: context,
+            barrierDismissible: false,
+            builder: (_) => VNPayQRDialog(session: session),
+          );
           break;
         case PaymentMethod.bankTransfer:
-          _showBankTransferDialog(session);
+          showDialog<void>(
+            context: context,
+            barrierDismissible: true,
+            builder: (_) => BankTransferDialog(session: session),
+          );
           break;
         case PaymentMethod.card:
-          _showCardFormDialog(session);
+          // Không reach: card đã disable trên UI.
           break;
       }
       _startPolling();
@@ -71,20 +100,48 @@ class _PaymentScreenState extends ConsumerState<PaymentScreen> {
       if (!mounted) return;
       final msg = e.toString().replaceAll('Exception: ', '');
       _showError('Khởi tạo thanh toán thất bại: $msg');
+      AnalyticsService.logEvent('verify_payment_session_failed', params: {
+        'method': _selected.name,
+      });
       setState(() => _processing = false);
     }
   }
+
+  /// Số poll tối đa theo method:
+  /// - VNPay QR: 20 polls × 3s = 60s. IPN từ VNPay về thường ~3-5s sau pay
+  ///   (spec §7.5). Quá 60s mà chưa thấy paid → có sự cố backend/IPN config
+  ///   → fallback "Liên hệ hỗ trợ" thay vì để user chờ vô vọng.
+  /// - Bank transfer: 600 polls × 3s = 30 phút. Đối soát Casso/Sepay 5-30
+  ///   phút (spec §5.2). Quá 30 phút → user có thể đóng app, webhook tự xử.
+  int get _maxPollCount => switch (_selected) {
+        PaymentMethod.vnpayQR => 20, // 60s
+        PaymentMethod.bankTransfer => 600, // 30 phút
+        PaymentMethod.card => 20,
+      };
 
   void _startPolling() {
     _pollTimer?.cancel();
     _pollCount = 0;
     _pollTimer = Timer.periodic(const Duration(seconds: 3), (timer) async {
       _pollCount++;
-      if (_pollCount > 100) {
+      if (_pollCount > _maxPollCount) {
         timer.cancel();
         if (mounted) {
           setState(() => _processing = false);
-          _showError('Hết thời gian chờ thanh toán (5 phút)');
+          if (_selected == PaymentMethod.bankTransfer) {
+            // Bank transfer: không phải fail — user có thể đóng app, hệ thống
+            // sẽ tự xác nhận khi webhook ngân hàng chạy. Báo info.
+            _showInfo(
+              'Vẫn đang đối soát chuyển khoản. Bạn có thể đóng app — '
+              'hệ thống sẽ tự xác nhận khi nhận được tiền.',
+            );
+          } else {
+            // VNPay: bất thường nếu quá 60s. Hướng user đến hỗ trợ.
+            _showError(
+              'Chưa nhận được xác nhận từ VNPay sau 60 giây. '
+              'Nếu bạn đã thanh toán, vui lòng liên hệ hỗ trợ.',
+            );
+          }
         }
         return;
       }
@@ -114,112 +171,12 @@ class _PaymentScreenState extends ConsumerState<PaymentScreen> {
     });
   }
 
-  void _showVNPayDialog(PaymentSession s) {
-    showDialog<void>(
-      context: context,
-      barrierDismissible: false,
-      builder: (_) => Dialog(
-        backgroundColor: context.colors.bgSurfaceElevated,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        child: Padding(
-          padding: const EdgeInsets.all(20),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                'Quét QR bằng app ngân hàng',
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w700,
-                  color: context.colors.textPrimary,
-                ),
-              ),
-              const SizedBox(height: 12),
-              Container(
-                width: 200,
-                height: 200,
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Icon(Icons.qr_code, size: 160, color: AppColors.darkBg),
-              ),
-              const SizedBox(height: 12),
-              Text(
-                VerifyFormat.priceVND(s.totalAmount),
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.w800,
-                  color: context.colors.textBrand,
-                ),
-              ),
-              const SizedBox(height: 4),
-              Text(
-                'QR hết hạn lúc ${VerifyFormat.time(s.expiresAt)}',
-                style: TextStyle(
-                  fontSize: 11,
-                  fontWeight: FontWeight.w500,
-                  color: context.colors.textTertiary,
-                ),
-              ),
-              const SizedBox(height: 16),
-              SizedBox(
-                width: double.infinity,
-                height: 44,
-                child: OutlinedButton(
-                  onPressed: () => Navigator.of(context).maybePop(),
-                  child: const Text('Đóng'),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  void _showBankTransferDialog(PaymentSession s) {
-    showDialog<void>(
-      context: context,
-      builder: (_) => AlertDialog(
-        backgroundColor: context.colors.bgSurfaceElevated,
-        title: const Text('Chuyển khoản ngân hàng'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(s.bankInfo?.displayText ?? '—'),
-            const SizedBox(height: 8),
-            Text(
-              'Tổng: ${VerifyFormat.priceVND(s.totalAmount)}',
-              style: const TextStyle(fontWeight: FontWeight.w700),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).maybePop(),
-            child: const Text('Đóng'),
-          ),
-        ],
-      ),
-    );
-  }
-
-  void _showCardFormDialog(PaymentSession s) {
-    showDialog<void>(
-      context: context,
-      builder: (_) => AlertDialog(
-        backgroundColor: context.colors.bgSurfaceElevated,
-        title: const Text('Nhập thông tin thẻ'),
-        content: const Text(
-            '(Stub) Form thẻ tín dụng sẽ ghép sau khi VNPay sandbox sẵn sàng.'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).maybePop(),
-            child: const Text('Đóng'),
-          ),
-        ],
+  void _showInfo(String msg) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(msg),
+        duration: const Duration(seconds: 4),
+        backgroundColor: context.colors.brand,
       ),
     );
   }
@@ -283,19 +240,25 @@ class _PaymentScreenState extends ConsumerState<PaymentScreen> {
                 ),
               ),
               const SizedBox(height: 10),
-              ...PaymentMethod.values.asMap().entries.map(
-                    (e) => Padding(
-                      padding: const EdgeInsets.only(bottom: 8),
-                      child: PaymentMethodTile(
-                        method: e.value,
-                        isSelected: _selected == e.value,
-                        onTap: () => setState(() => _selected = e.value),
-                      )
-                          .animate(delay: (60 * e.key).ms)
-                          .fadeIn(duration: 240.ms)
-                          .slideY(begin: 0.05, end: 0),
-                    ),
-                  ),
+              ...PaymentMethod.values.asMap().entries.map((e) {
+                final method = e.value;
+                final isAvailable = _kAvailableMethods.contains(method);
+                return Padding(
+                  padding: const EdgeInsets.only(bottom: 8),
+                  child: PaymentMethodTile(
+                    method: method,
+                    isSelected: _selected == method,
+                    isComingSoon: !isAvailable,
+                    onTap: () {
+                      if (!isAvailable) return;
+                      setState(() => _selected = method);
+                    },
+                  )
+                      .animate(delay: (60 * e.key).ms)
+                      .fadeIn(duration: 240.ms)
+                      .slideY(begin: 0.05, end: 0),
+                );
+              }),
               const SizedBox(height: AppSpacing.md),
               const StatusStrip(
                 icon: Icons.lock_outline,

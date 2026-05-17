@@ -15,6 +15,7 @@ import '../../verify/data/models/verify_enums.dart';
 import '../../verify/views/paywall_modal.dart';
 import '../../../shared/widgets/app_scaffold.dart';
 import '../../../shared/widgets/loading_widget.dart';
+import '../../../shared/widgets/pagination_bar.dart';
 
 // gradient.brandHero stop "jade-mid" theo spec section 3.7
 const _jadeMidLight = Color(0xFF1B7E94);
@@ -43,7 +44,6 @@ class DashboardScreen extends ConsumerWidget {
     final colors = context.colors;
     final user = ref.watch(currentUserProvider);
     final statsAsync = ref.watch(dashboardStatsProvider);
-    final bookingsAsync = ref.watch(bookingListProvider(null));
     final now = DateTime.now();
     final dayOfWeek = AppHelpers.vietnameseDayOfWeek(now.weekday);
     final formattedDate = '$dayOfWeek, ${now.day} tháng ${now.month}';
@@ -64,6 +64,7 @@ class DashboardScreen extends ConsumerWidget {
             // Refresh stats + user profile cùng lúc để bắt KYC/subscription
             // status thay đổi từ backend (vd: admin vừa approve KYC).
             ref.invalidate(dashboardStatsProvider);
+            ref.invalidate(bookingListProvider(null));
             await ref.read(authProvider.notifier).refreshProfile();
           },
           child: SingleChildScrollView(
@@ -106,7 +107,9 @@ class DashboardScreen extends ConsumerWidget {
                   ),
 
                 // ── Cảnh báo SALE chưa gán owner ─────────────────────
-                if (user != null && user.isSale && !user.hasOwner)
+                if (user != null &&
+                    user.isSale &&
+                    !user.isSaleMembershipActive)
                   Consumer(
                     builder: (context, ref, _) {
                       final dismissed =
@@ -137,7 +140,14 @@ class DashboardScreen extends ConsumerWidget {
                                   child: Padding(
                                     padding: const EdgeInsets.only(top: 1),
                                     child: Text(
-                                      'Bạn chưa được gán cho chủ nhà nào. Hãy liên hệ chủ nhà để được thêm vào đội.',
+                                      switch (user.saleMembershipState) {
+                                        'invited' =>
+                                          'Tài khoản của bạn đang chờ chủ nhà kích hoạt phân quyền.',
+                                        'suspended' =>
+                                          'Phân quyền của bạn đang tạm khóa. Liên hệ chủ nhà để mở lại.',
+                                        _ =>
+                                          'Bạn chưa được gán cho chủ nhà nào. Hãy liên hệ chủ nhà để được thêm vào đội.',
+                                      },
                                       style: GoogleFonts.beVietnamPro(
                                         fontSize: 12,
                                         color: colors.warning,
@@ -256,37 +266,55 @@ class DashboardScreen extends ConsumerWidget {
                     children: [
                       _SectionLabel('THAO TÁC NHANH'),
                       const SizedBox(height: 12),
-                      Row(
-                        children: [
-                          _QuickAction(
-                            icon: Icons.add_rounded,
-                            label: 'Booking',
-                            color: colors.brand,
-                            onTap: () => context.push('/bookings'),
-                          ),
-                          const SizedBox(width: 10),
-                          _QuickAction(
-                            icon: Icons.login_rounded,
-                            label: 'Check-in',
-                            color: colors.brandLight,
-                            onTap: () {},
-                          ),
-                          const SizedBox(width: 10),
-                          _QuickAction(
-                            icon: Icons.logout_rounded,
-                            label: 'Check-out',
-                            color: colors.brandSecondary,
-                            onTap: () {},
-                          ),
-                          const SizedBox(width: 10),
-                          if (user?.canManageProperty ?? false)
+                      SizedBox(
+                        height: 96,
+                        child: ListView(
+                          scrollDirection: Axis.horizontal,
+                          // Padding bù lại horizontal: 16 của Column cha để
+                          // item đầu/cuối không chạm mép screen.
+                          padding: EdgeInsets.zero,
+                          physics: const BouncingScrollPhysics(),
+                          children: [
                             _QuickAction(
-                              icon: Icons.add_home_rounded,
-                              label: 'Thêm phòng',
-                              color: colors.success,
-                              onTap: () => context.push('/properties/new'),
+                              icon: Icons.add_rounded,
+                              label: 'Booking',
+                              color: colors.brand,
+                              onTap: () => context.push('/bookings'),
                             ),
-                        ],
+                            const SizedBox(width: 10),
+                            _QuickAction(
+                              icon: Icons.login_rounded,
+                              label: 'Check-in',
+                              color: colors.brandLight,
+                              onTap: () {},
+                            ),
+                            const SizedBox(width: 10),
+                            _QuickAction(
+                              icon: Icons.logout_rounded,
+                              label: 'Check-out',
+                              color: colors.brandSecondary,
+                              onTap: () {},
+                            ),
+                            if (user?.canManageProperty ?? false) ...[
+                              const SizedBox(width: 10),
+                              _QuickAction(
+                                icon: Icons.add_home_rounded,
+                                label: 'Thêm phòng',
+                                color: colors.success,
+                                onTap: () => context.push('/properties/new'),
+                              ),
+                            ],
+                            if (user?.isOwner ?? false) ...[
+                              const SizedBox(width: 10),
+                              _QuickAction(
+                                icon: Icons.group_add_rounded,
+                                label: 'Nhân viên',
+                                color: colors.brandSecondary,
+                                onTap: () => context.push('/staff/manage'),
+                              ),
+                            ],
+                          ],
+                        ),
                       ),
                     ],
                   ),
@@ -311,7 +339,7 @@ class DashboardScreen extends ConsumerWidget {
                           title: 'Quản lý phòng',
                           subtitle:
                               'Xem & cập nhật phòng của chủ nhà bạn phụ trách',
-                          locked: !user.hasOwner,
+                          locked: !user.isSaleMembershipActive,
                           onTap: () => context.go('/rooms'),
                         ),
                         const SizedBox(height: 10),
@@ -320,7 +348,7 @@ class DashboardScreen extends ConsumerWidget {
                           iconColor: colors.brandLight,
                           title: 'Lịch booking',
                           subtitle: 'Xem lịch booking các phòng của chủ nhà',
-                          locked: !user.hasOwner,
+                          locked: !user.isSaleMembershipActive,
                           onTap: () => context.go('/calendar'),
                         ),
                       ],
@@ -353,46 +381,7 @@ class DashboardScreen extends ConsumerWidget {
                         ],
                       ),
                       const SizedBox(height: 12),
-                      bookingsAsync.when(
-                        loading: () => const SizedBox(
-                          height: 60,
-                          child: Center(child: LoadingWidget()),
-                        ),
-                        error: (_, __) => const SizedBox.shrink(),
-                        data: (bookings) {
-                          if (bookings.isEmpty) {
-                            return const EmptyStateWidget(
-                              icon: Icons.book_outlined,
-                              message: 'Chưa có booking nào',
-                            );
-                          }
-                          final recent = bookings.take(5).toList();
-                          return Column(
-                            children: recent.map((b) {
-                              final statusColor =
-                                  AppHelpers.bookingStatusColor(b.status.value);
-                              return Padding(
-                                padding: const EdgeInsets.only(bottom: 10),
-                                child: _BookingItem(
-                                  initials: (b.customerName ?? 'K')
-                                      .substring(0, 1)
-                                      .toUpperCase(),
-                                  name: b.customerName ?? 'Không tên',
-                                  meta: '${b.propertyName} · ${b.nights} đêm',
-                                  status: b.status.label,
-                                  statusColor: statusColor,
-                                  statusBg: statusColor.withValues(alpha: 0.12),
-                                  price: (b.depositAmount != null &&
-                                          b.depositAmount! > 0)
-                                      ? '${AppHelpers.formatPrice(b.depositAmount!)}đ'
-                                      : '--',
-                                  onTap: () => context.push('/bookings'),
-                                ),
-                              );
-                            }).toList(),
-                          );
-                        },
-                      ),
+                      const _DashboardRecentBookingsSection(),
                     ],
                   ),
                 ),
@@ -403,6 +392,94 @@ class DashboardScreen extends ConsumerWidget {
           ),
         ),
       ),
+    );
+  }
+}
+
+// ─── Booking gần đây (phân trang) ────────────────────────────────────────────
+class _DashboardRecentBookingsSection extends ConsumerStatefulWidget {
+  const _DashboardRecentBookingsSection();
+
+  @override
+  ConsumerState<_DashboardRecentBookingsSection> createState() =>
+      _DashboardRecentBookingsSectionState();
+}
+
+class _DashboardRecentBookingsSectionState
+    extends ConsumerState<_DashboardRecentBookingsSection> {
+  static const int _pageSize = 5;
+  int _page = 0;
+
+  @override
+  Widget build(BuildContext context) {
+    final async = ref.watch(bookingListProvider(null));
+
+    return async.when(
+      loading: () => const SizedBox(
+        height: 60,
+        child: Center(child: LoadingWidget()),
+      ),
+      error: (_, __) => const SizedBox.shrink(),
+      data: (bookings) {
+        if (bookings.isEmpty) {
+          return const EmptyStateWidget(
+            icon: Icons.book_outlined,
+            message: 'Chưa có booking nào',
+          );
+        }
+
+        final totalPages = (bookings.length + _pageSize - 1) ~/ _pageSize;
+        final safePage = totalPages == 0 ? 0 : _page.clamp(0, totalPages - 1);
+        if (safePage != _page) {
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (mounted) setState(() => _page = safePage);
+          });
+        }
+
+        final start = safePage * _pageSize;
+        final end = start + _pageSize > bookings.length
+            ? bookings.length
+            : start + _pageSize;
+        final pageItems = bookings.sublist(start, end);
+
+        return Column(
+          children: [
+            ...pageItems.map((b) {
+              final statusColor = AppHelpers.bookingStatusColor(b.status.value);
+              final rawName = (b.customerName ?? '').trim();
+              final initials = rawName.isNotEmpty
+                  ? rawName.substring(0, 1).toUpperCase()
+                  : 'K';
+              return Padding(
+                padding: const EdgeInsets.only(bottom: 10),
+                child: _BookingItem(
+                  initials: initials,
+                  name: b.customerName ?? 'Không tên',
+                  meta: '${b.propertyName} · ${b.nights} đêm',
+                  status: b.status.label,
+                  statusColor: statusColor,
+                  statusBg: statusColor.withValues(alpha: 0.12),
+                  price: (b.depositAmount != null && b.depositAmount! > 0)
+                      ? '${AppHelpers.formatPrice(b.depositAmount!)}đ'
+                      : '--',
+                  onTap: () => context.push('/bookings'),
+                ),
+              );
+            }),
+            if (totalPages > 1)
+              AppPaginationBar(
+                currentPage: safePage,
+                totalPages: totalPages,
+                onPrevious: safePage > 0
+                    ? () => setState(() => _page = safePage - 1)
+                    : null,
+                onNext: safePage < totalPages - 1
+                    ? () => setState(() => _page = safePage + 1)
+                    : null,
+              ),
+          ],
+        );
+      },
     );
   }
 }
@@ -840,7 +917,8 @@ class _QuickAction extends StatelessWidget {
     final colors = context.colors;
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
-    return Expanded(
+    return SizedBox(
+      width: 86,
       child: GestureDetector(
         onTap: onTap,
         child: Container(
@@ -875,6 +953,8 @@ class _QuickAction extends StatelessWidget {
               const SizedBox(height: 8),
               Text(
                 label,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
                 style: GoogleFonts.beVietnamPro(
                   fontSize: 11,
                   fontWeight: FontWeight.w600,
@@ -882,7 +962,6 @@ class _QuickAction extends StatelessWidget {
                   height: 1.2,
                 ),
                 textAlign: TextAlign.center,
-                maxLines: 2,
               ),
             ],
           ),
@@ -1144,19 +1223,27 @@ class _BookingItem extends StatelessWidget {
 /// Banner subscription cho OWNER đã verify approved.
 /// 3 variant: trial countdown / past_due (cần thanh toán) / cancelled.
 /// Active không hiện (caller đã guard).
-class _SubscriptionBanner extends StatelessWidget {
+class _SubscriptionBanner extends ConsumerWidget {
   final UserModel user;
   const _SubscriptionBanner({required this.user});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final colors = context.colors;
 
+    // Trial variant cho phép dismiss (positive). Past-due / cancelled không.
+    final isTrial = user.isInTrial;
+    final dismissed =
+        isTrial && ref.watch(trialBannerDismissedProvider);
+    if (dismissed) return const SizedBox.shrink();
+
     final (
-      Color bg,
+      Gradient gradient,
       Color borderColor,
       IconData icon,
       Color iconColor,
+      Color titleColor,
+      Color subtitleColor,
       String title,
       String subtitle,
     ) = _resolveVariant(colors);
@@ -1168,9 +1255,18 @@ class _SubscriptionBanner extends StatelessWidget {
         padding: const EdgeInsets.all(14),
         margin: const EdgeInsets.only(bottom: 12),
         decoration: BoxDecoration(
-          color: bg,
+          gradient: gradient,
           border: Border.all(color: borderColor),
           borderRadius: BorderRadius.circular(14),
+          boxShadow: isTrial
+              ? [
+                  BoxShadow(
+                    color: iconColor.withValues(alpha: 0.12),
+                    blurRadius: 12,
+                    offset: const Offset(0, 4),
+                  ),
+                ]
+              : null,
         ),
         child: Row(
           children: [
@@ -1178,10 +1274,10 @@ class _SubscriptionBanner extends StatelessWidget {
               width: 40,
               height: 40,
               decoration: BoxDecoration(
-                color: iconColor.withValues(alpha: 0.15),
+                color: Colors.white.withValues(alpha: 0.7),
                 borderRadius: BorderRadius.circular(10),
               ),
-              child: Icon(icon, size: 20, color: iconColor),
+              child: Icon(icon, size: 22, color: iconColor),
             ),
             const SizedBox(width: 12),
             Expanded(
@@ -1193,7 +1289,7 @@ class _SubscriptionBanner extends StatelessWidget {
                     style: GoogleFonts.beVietnamPro(
                       fontSize: 13,
                       fontWeight: FontWeight.w700,
-                      color: colors.textPrimary,
+                      color: titleColor,
                     ),
                   ),
                   const SizedBox(height: 2),
@@ -1202,18 +1298,35 @@ class _SubscriptionBanner extends StatelessWidget {
                     style: GoogleFonts.beVietnamPro(
                       fontSize: 11,
                       fontWeight: FontWeight.w500,
-                      color: colors.textSecondary,
+                      color: subtitleColor,
                       height: 1.4,
                     ),
                   ),
                 ],
               ),
             ),
-            Icon(
-              Icons.chevron_right_rounded,
-              size: 20,
-              color: colors.textTertiary,
-            ),
+            if (isTrial)
+              // X dismiss button — chỉ cho trial vì positive variant
+              GestureDetector(
+                onTap: () => ref
+                    .read(trialBannerDismissedProvider.notifier)
+                    .state = true,
+                behavior: HitTestBehavior.opaque,
+                child: Padding(
+                  padding: const EdgeInsets.all(4),
+                  child: Icon(
+                    Icons.close_rounded,
+                    size: 18,
+                    color: subtitleColor,
+                  ),
+                ),
+              )
+            else
+              Icon(
+                Icons.chevron_right_rounded,
+                size: 20,
+                color: subtitleColor,
+              ),
           ],
         ),
       ),
@@ -1349,31 +1462,45 @@ class _SubscriptionBanner extends StatelessWidget {
     );
   }
 
-  (Color, Color, IconData, Color, String, String) _resolveVariant(
-    AppColorScheme colors,
-  ) {
-    // Trial — gold info, đếm ngược ngày
+  /// Trả tuple: (gradient, borderColor, icon, iconColor, titleColor,
+  /// subtitleColor, title, subtitle).
+  (Gradient, Color, IconData, Color, Color, Color, String, String)
+      _resolveVariant(AppColorScheme colors) {
+    // Trial — emerald/teal gradient (positive, fresh, premium feel)
     if (user.isInTrial) {
       final days = user.trialDaysLeft ?? 0;
       final daysText = days > 0 ? 'còn $days ngày' : 'kết thúc hôm nay';
       return (
-        AppColors.goldBg,
-        AppColors.goldBorder,
+        const LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            Color(0xFFE0F7F4), // mint light
+            Color(0xFFCDE9FF), // sky pastel
+          ],
+        ),
+        const Color(0xFF7FCBC1), // emerald soft border
         Icons.workspace_premium_outlined,
-        AppColors.goldText,
+        const Color(0xFF0A6B5E), // deep teal icon
+        const Color(0xFF0A4F45), // dark teal title
+        const Color(0xFF1F6A60), // muted teal subtitle
         'Đang dùng thử miễn phí · $daysText',
         days > 0
             ? 'Sau khi trial kết thúc, hệ thống tự động trừ tiền theo gói đã chọn.'
             : 'Hệ thống sẽ tự động charge theo gói đã chọn vào ngày mai.',
       );
     }
-    // Past due — payment fail, cần update
+    // Past due — payment fail, cần update (giữ đỏ — phải action)
     if (user.isSubscriptionPastDue) {
       return (
-        AppColors.errorBgDark,
+        LinearGradient(
+          colors: [AppColors.errorBgDark, AppColors.errorBgDark],
+        ),
         AppColors.errorBorder,
         Icons.priority_high_rounded,
         colors.error,
+        colors.textPrimary,
+        colors.textSecondary,
         'Thanh toán quá hạn',
         'Tài khoản sẽ bị khoá nếu không cập nhật phương thức thanh toán.',
       );
@@ -1381,9 +1508,13 @@ class _SubscriptionBanner extends StatelessWidget {
     // Cancelled — subscription đã huỷ
     if (user.isSubscriptionCancelled) {
       return (
-        AppColors.darkContainer,
+        LinearGradient(
+          colors: [AppColors.darkContainer, AppColors.darkContainer],
+        ),
         AppColors.darkBorder,
         Icons.cancel_outlined,
+        colors.textSecondary,
+        colors.textPrimary,
         colors.textSecondary,
         'Subscription đã huỷ',
         'Liên hệ hỗ trợ nếu muốn tiếp tục sử dụng.',
@@ -1391,10 +1522,14 @@ class _SubscriptionBanner extends StatelessWidget {
     }
     // Fallback (subscription_status='none' nhưng KYC approved — edge case)
     return (
-      AppColors.infoBgDark,
+      LinearGradient(
+        colors: [AppColors.infoBgDark, AppColors.infoBgDark],
+      ),
       AppColors.darkBorder,
       Icons.info_outline,
       colors.brandLight,
+      colors.textPrimary,
+      colors.textSecondary,
       'Chưa kích hoạt subscription',
       'Vui lòng liên hệ hỗ trợ.',
     );

@@ -174,14 +174,32 @@ class _BookingCalendarScreenState extends ConsumerState<BookingCalendarScreen> {
                 }
                 return Screenshot(
                   controller: _screenshotController,
-                  child: CalendarGridWidget(
-                    rooms: rooms,
-                    viewMode: _viewMode,
-                    weekStart: _weekStart,
-                    monthStart: _monthStart,
-                    onCellTap: (room, date, cell) => _showContactModal(
-                        context, room, date, cell, adminContact),
-                    legendTapHint: 'Tap ô = liên hệ',
+                  child: AnimatedSwitcher(
+                    duration: const Duration(milliseconds: 220),
+                    switchInCurve: Curves.easeOutCubic,
+                    switchOutCurve: Curves.easeInCubic,
+                    transitionBuilder: (child, animation) {
+                      final offset = Tween<Offset>(
+                        begin: const Offset(0.04, 0),
+                        end: Offset.zero,
+                      ).animate(animation);
+                      return FadeTransition(
+                        opacity: animation,
+                        child: SlideTransition(
+                            position: offset, child: child),
+                      );
+                    },
+                    child: CalendarGridWidget(
+                      key: ValueKey(
+                          '${_viewMode.name}_${gridParams.startDate}_${gridParams.endDate}'),
+                      rooms: rooms,
+                      viewMode: _viewMode,
+                      weekStart: _weekStart,
+                      monthStart: _monthStart,
+                      onCellTap: (room, date, cell) => _showContactModal(
+                          context, room, date, cell, adminContact),
+                      legendTapHint: 'Tap ô = liên hệ',
+                    ),
                   ),
                 );
               },

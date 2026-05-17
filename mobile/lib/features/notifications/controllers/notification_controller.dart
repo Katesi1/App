@@ -9,14 +9,14 @@ final notificationListProvider =
     FutureProvider<List<NotificationModel>>((ref) async {
   final repo = ref.read(notificationRepositoryProvider);
   final result = await repo.getNotifications();
-  if (result.success) return result.data!;
+  if (result.success) return result.data ?? (throw Exception('Dữ liệu trả về trống'));
   throw Exception(result.message);
 });
 
 final unreadCountProvider = FutureProvider<int>((ref) async {
   final repo = ref.read(notificationRepositoryProvider);
   final result = await repo.getUnreadCount();
-  if (result.success) return result.data!;
+  if (result.success) return result.data ?? (throw Exception('Dữ liệu trả về trống'));
   return 0;
 });
 

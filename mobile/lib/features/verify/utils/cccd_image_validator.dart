@@ -57,6 +57,20 @@ class CccdImageValidator {
     'NATIONALITY',
   ];
 
+  /// Keywords mặt sau CCCD VN. Dùng làm fallback khi không có QR (chip cũ).
+  static const _backKeywords = [
+    'ĐẶC ĐIỂM NHÂN DẠNG',
+    'PERSONAL IDENTIFICATION',
+    'NGÀY, THÁNG, NĂM',
+    'DATE, MONTH, YEAR',
+    'CỤC TRƯỞNG',
+    'DIRECTOR GENERAL',
+    'BỘ CÔNG AN',
+    'MINISTRY OF PUBLIC SECURITY',
+    'NƠI THƯỜNG TRÚ',
+    'PLACE OF RESIDENCE',
+  ];
+
   /// Validate ảnh từ gallery. Trả về kết quả + extracted OCR.
   ///
   /// **Quan trọng**: caller responsible cho việc xử lý kết quả:
@@ -103,6 +117,8 @@ class CccdImageValidator {
     }
   }
 
+  /// Mặt sau: thử QR trước (chính xác 100% nếu chip mới); fallback sang OCR
+  /// keyword text (cho CCCD chip cũ không QR — admin sẽ duyệt + nhập tay).
   static Future<CccdValidationResult> _validateBack(InputImage input) async {
     final scanner = BarcodeScanner(formats: const [BarcodeFormat.qrCode]);
     try {
@@ -117,12 +133,8 @@ class CccdImageValidator {
           return CccdValidationResult(isCccd: true, ocrResult: ocr);
         }
       }
-      return const CccdValidationResult(
-        isCccd: false,
-        reason: 'Không tìm thấy QR code CCCD trong ảnh. '
-            'CCCD chip mới (sau 2021) có QR ở mặt sau — vui lòng chụp '
-            'sao cho thấy rõ QR.',
-      );
+      // Không có QR → thử OCR keyword text (chip cũ + chip mới chụp mờ)
+      return _validateBackByText(input);
     } catch (e) {
       return CccdValidationResult(
         isCccd: false,
@@ -133,10 +145,40 @@ class CccdImageValidator {
     }
   }
 
-  static int _countKeywordHits(String text) {
+  /// Fallback: OCR keyword text mặt sau (≥2 hit). Trả pass khi nhận diện được
+  /// đặc trưng "BỘ CÔNG AN", "CỤC TRƯỞNG", "ĐẶC ĐIỂM NHÂN DẠNG"...
+  static Future<CccdValidationResult> _validateBackByText(
+    InputImage input,
+  ) async {
+    final recognizer = TextRecognizer(script: TextRecognitionScript.latin);
+    try {
+      final recognized = await recognizer.processImage(input);
+      final hits = _countHits(recognized.text, _backKeywords);
+      if (hits >= 2) {
+        return const CccdValidationResult(isCccd: true);
+      }
+      return const CccdValidationResult(
+        isCccd: false,
+        reason: 'Ảnh không phải mặt sau CCCD. '
+            'Vui lòng chụp đủ vùng có chữ "BỘ CÔNG AN" + "ĐẶC ĐIỂM NHÂN DẠNG" '
+            '(và QR code nếu là CCCD chip mới).',
+      );
+    } catch (e) {
+      return CccdValidationResult(
+        isCccd: false,
+        reason: 'Không đọc được ảnh: $e',
+      );
+    } finally {
+      await recognizer.close();
+    }
+  }
+
+  static int _countKeywordHits(String text) => _countHits(text, _frontKeywords);
+
+  static int _countHits(String text, List<String> keywords) {
     final upper = text.toUpperCase();
     var hits = 0;
-    for (final k in _frontKeywords) {
+    for (final k in keywords) {
       if (upper.contains(k)) hits++;
     }
     return hits;

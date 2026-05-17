@@ -63,7 +63,10 @@ class _UserListScreenState extends ConsumerState<UserListScreen> {
               ),
               data: (allUsers) {
                 // Loại Admin ra khỏi danh sách quản lý
-                final users = allUsers.where((u) => !u.isAdmin).toList();
+                final users = allUsers
+                    .where((u) => !u.isAdmin)
+                    .where((u) => _roleFilter == null || u.role == _roleFilter)
+                    .toList();
 
                 if (users.isEmpty) {
                   return EmptyStateWidget(
@@ -659,6 +662,17 @@ class _UserCard extends StatelessWidget {
   Color get _roleColor => AppHelpers.roleColor(user.role);
   String get _roleLabel => AppHelpers.roleLabel(user.role);
 
+  (String, Color, Color) _saleMembershipTag(BuildContext context) {
+    final colors = context.colors;
+    return switch (user.saleMembershipState) {
+      'invited' => ('Chờ kích hoạt', colors.warning, colors.warningBg),
+      'suspended' => ('Tạm khoá', colors.error, colors.errorBg),
+      'unassigned' => ('Chưa gán owner', colors.textSecondary,
+          colors.bgSurfaceContainer),
+      _ => ('Đang hoạt động', colors.success, colors.successBg),
+    };
+  }
+
   @override
   Widget build(BuildContext context) {
     final colors = context.colors;
@@ -724,6 +738,30 @@ class _UserCard extends StatelessWidget {
                             ),
                           ),
                         ),
+                        if (user.isSale) ...[
+                          const SizedBox(width: 6),
+                          Builder(builder: (context) {
+                            final (label, textColor, bgColor) =
+                                _saleMembershipTag(context);
+                            return Container(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 8, vertical: 2),
+                              decoration: BoxDecoration(
+                                color: bgColor,
+                                borderRadius:
+                                    BorderRadius.circular(AppRadius.full),
+                              ),
+                              child: Text(
+                                label,
+                                style: GoogleFonts.beVietnamPro(
+                                  color: textColor,
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                            );
+                          }),
+                        ],
                       ],
                     ),
                     const SizedBox(height: 4),
