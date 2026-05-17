@@ -91,5 +91,11 @@
 		<string>Halong24h cần truy cập thư viện ảnh để bạn chọn ảnh CCCD/selfie có sẵn cho bước xác minh.</string>
 		<key>NSPhotoLibraryAddUsageDescription</key>
 		<string>Halong24h cần quyền lưu ảnh (vd: ảnh QR thanh toán) vào thư viện ảnh của bạn.</string>
+		<!-- App KHÔNG thu âm — camera scanner (CCCD/selfie) khởi tạo với
+		     `enableAudio: false`. Tuy nhiên plugin `camera` ở một số iOS
+		     version vẫn query AVAudioSession khi mở camera → thiếu key này
+		     sẽ bị iOS crash app với privacy violation. -->
+		<key>NSMicrophoneUsageDescription</key>
+		<string>Halong24h không thu âm — chỉ dùng camera để quét CCCD và xác minh khuôn mặt.</string>
 	</dict>
 </plist>
