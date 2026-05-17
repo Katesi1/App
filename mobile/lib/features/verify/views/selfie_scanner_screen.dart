@@ -169,7 +169,9 @@ class _SelfieScannerScreenState extends State<SelfieScannerScreen>
 
       final controller = CameraController(
         front,
-        ResolutionPreset.high,
+        // Medium (~640×480) đủ cho ML Kit face detect, giảm ~75% RAM/GPU so với
+        // high → tránh thermal throttle trên iPhone đời cũ khi stream liên tục.
+        ResolutionPreset.medium,
         enableAudio: false,
         imageFormatGroup: Platform.isAndroid
             ? ImageFormatGroup.nv21

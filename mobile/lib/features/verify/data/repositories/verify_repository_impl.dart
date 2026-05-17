@@ -72,6 +72,12 @@ class VerifyRepositoryImpl implements VerifyRepository {
       return upload.copyWith(localPath: image.path);
     } on DioException catch (e) {
       throw VerifyApiException(parseDioError(e));
+    } on TypeError catch (_) {
+      // BE trả 200 nhưng body sai schema (null field, sai kiểu) → cast fail.
+      // Chuyển thành lỗi nghiệp vụ để UI hiển thị friendly thay vì crash.
+      throw const VerifyApiException(
+        'Phản hồi máy chủ không hợp lệ. Vui lòng thử lại sau.',
+      );
     }
   }
 
@@ -98,6 +104,12 @@ class VerifyRepositoryImpl implements VerifyRepository {
       return SelfieUpload.fromJson(res.data['data'] as Map<String, dynamic>);
     } on DioException catch (e) {
       throw VerifyApiException(parseDioError(e));
+    } on TypeError catch (_) {
+      // BE trả 200 nhưng body sai schema (null field, sai kiểu) → cast fail.
+      // Chuyển thành lỗi nghiệp vụ để UI hiển thị friendly thay vì crash.
+      throw const VerifyApiException(
+        'Phản hồi máy chủ không hợp lệ. Vui lòng thử lại sau.',
+      );
     }
   }
 
@@ -127,6 +139,12 @@ class VerifyRepositoryImpl implements VerifyRepository {
       );
     } on DioException catch (e) {
       throw VerifyApiException(parseDioError(e));
+    } on TypeError catch (_) {
+      // BE trả 200 nhưng body sai schema (null field, sai kiểu) → cast fail.
+      // Chuyển thành lỗi nghiệp vụ để UI hiển thị friendly thay vì crash.
+      throw const VerifyApiException(
+        'Phản hồi máy chủ không hợp lệ. Vui lòng thử lại sau.',
+      );
     }
   }
 
@@ -140,6 +158,12 @@ class VerifyRepositoryImpl implements VerifyRepository {
       return list.map(Plan.fromJson).toList();
     } on DioException catch (e) {
       throw VerifyApiException(parseDioError(e));
+    } on TypeError catch (_) {
+      // BE trả 200 nhưng body sai schema (null field, sai kiểu) → cast fail.
+      // Chuyển thành lỗi nghiệp vụ để UI hiển thị friendly thay vì crash.
+      throw const VerifyApiException(
+        'Phản hồi máy chủ không hợp lệ. Vui lòng thử lại sau.',
+      );
     }
   }
 
@@ -167,6 +191,12 @@ class VerifyRepositoryImpl implements VerifyRepository {
       return PaymentSession.fromJson(res.data['data'] as Map<String, dynamic>);
     } on DioException catch (e) {
       throw VerifyApiException(parseDioError(e));
+    } on TypeError catch (_) {
+      // BE trả 200 nhưng body sai schema (null field, sai kiểu) → cast fail.
+      // Chuyển thành lỗi nghiệp vụ để UI hiển thị friendly thay vì crash.
+      throw const VerifyApiException(
+        'Phản hồi máy chủ không hợp lệ. Vui lòng thử lại sau.',
+      );
     }
   }
 
@@ -178,6 +208,12 @@ class VerifyRepositoryImpl implements VerifyRepository {
       return paymentStatusFromApi(data['status'] as String);
     } on DioException catch (e) {
       throw VerifyApiException(parseDioError(e));
+    } on TypeError catch (_) {
+      // BE trả 200 nhưng body sai schema (null field, sai kiểu) → cast fail.
+      // Chuyển thành lỗi nghiệp vụ để UI hiển thị friendly thay vì crash.
+      throw const VerifyApiException(
+        'Phản hồi máy chủ không hợp lệ. Vui lòng thử lại sau.',
+      );
     }
   }
 
@@ -195,6 +231,12 @@ class VerifyRepositoryImpl implements VerifyRepository {
       );
     } on DioException catch (e) {
       throw VerifyApiException(parseDioError(e));
+    } on TypeError catch (_) {
+      // BE trả 200 nhưng body sai schema (null field, sai kiểu) → cast fail.
+      // Chuyển thành lỗi nghiệp vụ để UI hiển thị friendly thay vì crash.
+      throw const VerifyApiException(
+        'Phản hồi máy chủ không hợp lệ. Vui lòng thử lại sau.',
+      );
     }
   }
 
@@ -219,6 +261,12 @@ class VerifyRepositoryImpl implements VerifyRepository {
       );
     } on DioException catch (e) {
       throw VerifyApiException(parseDioError(e));
+    } on TypeError catch (_) {
+      // BE trả 200 nhưng body sai schema (null field, sai kiểu) → cast fail.
+      // Chuyển thành lỗi nghiệp vụ để UI hiển thị friendly thay vì crash.
+      throw const VerifyApiException(
+        'Phản hồi máy chủ không hợp lệ. Vui lòng thử lại sau.',
+      );
     }
   }
 
@@ -232,6 +280,12 @@ class VerifyRepositoryImpl implements VerifyRepository {
       );
     } on DioException catch (e) {
       throw VerifyApiException(parseDioError(e));
+    } on TypeError catch (_) {
+      // BE trả 200 nhưng body sai schema (null field, sai kiểu) → cast fail.
+      // Chuyển thành lỗi nghiệp vụ để UI hiển thị friendly thay vì crash.
+      throw const VerifyApiException(
+        'Phản hồi máy chủ không hợp lệ. Vui lòng thử lại sau.',
+      );
     }
   }
 
@@ -256,6 +310,12 @@ class VerifyRepositoryImpl implements VerifyRepository {
       );
     } on DioException catch (e) {
       throw VerifyApiException(parseDioError(e));
+    } on TypeError catch (_) {
+      // BE trả 200 nhưng body sai schema (null field, sai kiểu) → cast fail.
+      // Chuyển thành lỗi nghiệp vụ để UI hiển thị friendly thay vì crash.
+      throw const VerifyApiException(
+        'Phản hồi máy chủ không hợp lệ. Vui lòng thử lại sau.',
+      );
     }
   }
 
@@ -277,6 +337,12 @@ class VerifyRepositoryImpl implements VerifyRepository {
       return PaymentHistoryPage.fromResponse(res.data as Map<String, dynamic>);
     } on DioException catch (e) {
       throw VerifyApiException(parseDioError(e));
+    } on TypeError catch (_) {
+      // BE trả 200 nhưng body sai schema (null field, sai kiểu) → cast fail.
+      // Chuyển thành lỗi nghiệp vụ để UI hiển thị friendly thay vì crash.
+      throw const VerifyApiException(
+        'Phản hồi máy chủ không hợp lệ. Vui lòng thử lại sau.',
+      );
     }
   }
 
@@ -292,6 +358,12 @@ class VerifyRepositoryImpl implements VerifyRepository {
       return PaymentSession.fromJson(res.data['data'] as Map<String, dynamic>);
     } on DioException catch (e) {
       throw VerifyApiException(parseDioError(e));
+    } on TypeError catch (_) {
+      // BE trả 200 nhưng body sai schema (null field, sai kiểu) → cast fail.
+      // Chuyển thành lỗi nghiệp vụ để UI hiển thị friendly thay vì crash.
+      throw const VerifyApiException(
+        'Phản hồi máy chủ không hợp lệ. Vui lòng thử lại sau.',
+      );
     }
   }
 

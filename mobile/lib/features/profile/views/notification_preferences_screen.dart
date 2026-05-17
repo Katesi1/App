@@ -30,6 +30,7 @@ class _NotificationPreferencesScreenState
 
   Future<void> _load() async {
     final prefs = await SharedPreferences.getInstance();
+    if (!mounted) return;
     setState(() {
       _booking = prefs.getBool(_bookingKey) ?? true;
       _payment = prefs.getBool(_paymentKey) ?? true;

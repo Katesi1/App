@@ -19,7 +19,7 @@ class SplashScreen extends ConsumerStatefulWidget {
 }
 
 class _SplashScreenState extends ConsumerState<SplashScreen>
-    with TickerProviderStateMixin {
+    with TickerProviderStateMixin, WidgetsBindingObserver {
   late final AnimationController _floatCtrl;
   late final AnimationController _pulseCtrl;
   late final AnimationController _waveCtrl;
@@ -30,6 +30,7 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
 
     _floatCtrl = AnimationController(
       vsync: this,
@@ -57,7 +58,23 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
   }
 
   @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.paused ||
+        state == AppLifecycleState.inactive ||
+        state == AppLifecycleState.hidden) {
+      _floatCtrl.stop(canceled: false);
+      _pulseCtrl.stop(canceled: false);
+      _waveCtrl.stop(canceled: false);
+    } else if (state == AppLifecycleState.resumed) {
+      if (!_floatCtrl.isAnimating) _floatCtrl.repeat(reverse: true);
+      if (!_pulseCtrl.isAnimating) _pulseCtrl.repeat(reverse: true);
+      if (!_waveCtrl.isAnimating) _waveCtrl.repeat();
+    }
+  }
+
+  @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _floatCtrl.dispose();
     _pulseCtrl.dispose();
     _waveCtrl.dispose();

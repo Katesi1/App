@@ -29,7 +29,12 @@ class _RolePermissionScreenState extends ConsumerState<RolePermissionScreen>
   void initState() {
     super.initState();
     _tabController = TabController(length: _roles.length, vsync: this);
-    _tabController.addListener(() => setState(() {}));
+    _tabController.addListener(() {
+      // Animation callback fire ~60 lần/s khi swipe. Chỉ rebuild khi index
+      // thực sự đổi → tránh re-run ref.watch + fold cho cả 2 tab mỗi tick.
+      if (!_tabController.indexIsChanging) return;
+      if (mounted) setState(() {});
+    });
   }
 
   @override
@@ -173,13 +178,24 @@ class _RoleTabBar extends ConsumerWidget {
 
 // ── Role Tab ──────────────────────────────────────────────────────────────────
 
-class _RoleTab extends ConsumerWidget {
+class _RoleTab extends ConsumerStatefulWidget {
   final UserRole role;
 
   const _RoleTab({required this.role});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<_RoleTab> createState() => _RoleTabState();
+}
+
+class _RoleTabState extends ConsumerState<_RoleTab>
+    with AutomaticKeepAliveClientMixin {
+  @override
+  bool get wantKeepAlive => true;
+
+  @override
+  Widget build(BuildContext context) {
+    super.build(context); // required by AutomaticKeepAliveClientMixin
+    final role = widget.role;
     final groups = ref.watch(rolePermissionsProvider(role));
     if (groups.isEmpty) {
       return const Center(child: LoadingWidget());

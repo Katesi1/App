@@ -6,6 +6,7 @@ import 'package:google_fonts/google_fonts.dart';
 import '../../../core/theme/app_color_scheme.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../data/models/homestay_model.dart';
+import '../../../shared/widgets/keep_alive_tab.dart';
 import '../../../shared/widgets/loading_widget.dart';
 import '../../auth/controllers/auth_controller.dart';
 import '../../properties/controllers/property_controller.dart';
@@ -287,26 +288,33 @@ class _PropertyManagementScreenState
               controller: _tabController,
               children: _tabs.map((tab) {
                 final filtered = _filterByTab(homestays, tab.typeValues);
-                if (filtered.isEmpty) {
-                  return Center(
-                    child: EmptyStateWidget(
-                      icon: tab.icon,
-                      message: 'Chưa có ${tab.label} nào',
-                      subMessage: canEdit ? 'Nhấn + để thêm mới' : null,
-                    ),
-                  );
-                }
-                return ListView.separated(
-                  padding: const EdgeInsets.fromLTRB(16, 16, 16, 100),
-                  itemCount: filtered.length,
-                  separatorBuilder: (_, __) => const SizedBox(height: 10),
-                  itemBuilder: (_, i) => PropertyManagementCard(
-                    homestay: filtered[i],
-                    onTap: () => context.push('/properties/${filtered[i].id}'),
-                    onEdit: canEdit
-                        ? () => context.push('/properties/${filtered[i].id}')
-                        : null,
-                  ),
+                return KeepAliveTab(
+                  key: ValueKey('property-tab-${tab.label}'),
+                  child: filtered.isEmpty
+                      ? Center(
+                          child: EmptyStateWidget(
+                            icon: tab.icon,
+                            message: 'Chưa có ${tab.label} nào',
+                            subMessage:
+                                canEdit ? 'Nhấn + để thêm mới' : null,
+                          ),
+                        )
+                      : ListView.separated(
+                          padding:
+                              const EdgeInsets.fromLTRB(16, 16, 16, 100),
+                          itemCount: filtered.length,
+                          separatorBuilder: (_, __) =>
+                              const SizedBox(height: 10),
+                          itemBuilder: (_, i) => PropertyManagementCard(
+                            homestay: filtered[i],
+                            onTap: () => context
+                                .push('/properties/${filtered[i].id}'),
+                            onEdit: canEdit
+                                ? () => context
+                                    .push('/properties/${filtered[i].id}')
+                                : null,
+                          ),
+                        ),
                 );
               }).toList(),
             ),

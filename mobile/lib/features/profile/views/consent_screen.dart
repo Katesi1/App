@@ -24,6 +24,7 @@ class _ConsentScreenState extends State<ConsentScreen> {
 
   Future<void> _load() async {
     final prefs = await SharedPreferences.getInstance();
+    if (!mounted) return;
     setState(() {
       _kycConsent = prefs.getBool(_kycConsentKey) ?? true;
       _marketingConsent = prefs.getBool(_marketingConsentKey) ?? false;

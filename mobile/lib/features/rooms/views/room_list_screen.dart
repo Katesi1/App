@@ -9,6 +9,7 @@ import '../../../data/models/room_model.dart';
 import '../../../shared/widgets/app_scaffold.dart';
 import '../../../shared/widgets/date_picker_tile.dart';
 import '../../../shared/widgets/filter_chip_tile.dart';
+import '../../../shared/widgets/keep_alive_tab.dart';
 import '../../../shared/widgets/loading_widget.dart';
 import '../../../shared/widgets/section_label.dart';
 import '../../auth/controllers/auth_controller.dart';
@@ -790,24 +791,28 @@ class _RoomListScreenState extends ConsumerState<RoomListScreen>
               controller: _tabController,
               children: _tabs.map((tab) {
                 final filtered = _filterByTab(rooms, tab.typeValues);
-                if (filtered.isEmpty) {
-                  return Center(
-                    child: EmptyStateWidget(
-                      icon: tab.icon,
-                      message: 'Chưa có ${tab.label} nào',
-                      subMessage: 'Chưa có phòng trong danh mục này',
-                    ),
-                  );
-                }
-                return ListView.separated(
-                  padding: const EdgeInsets.fromLTRB(16, 16, 16, 100),
-                  itemCount: filtered.length,
-                  separatorBuilder: (_, __) => const SizedBox(height: 12),
-                  itemBuilder: (_, i) => RoomCard(
-                    room: filtered[i],
-                    animationIndex: i,
-                    onTap: () => context.push('/rooms/${filtered[i].id}'),
-                  ),
+                return KeepAliveTab(
+                  key: ValueKey('room-tab-${tab.label}'),
+                  child: filtered.isEmpty
+                      ? Center(
+                          child: EmptyStateWidget(
+                            icon: tab.icon,
+                            message: 'Chưa có ${tab.label} nào',
+                            subMessage: 'Chưa có phòng trong danh mục này',
+                          ),
+                        )
+                      : ListView.separated(
+                          padding: const EdgeInsets.fromLTRB(16, 16, 16, 100),
+                          itemCount: filtered.length,
+                          separatorBuilder: (_, __) =>
+                              const SizedBox(height: 12),
+                          itemBuilder: (_, i) => RoomCard(
+                            room: filtered[i],
+                            animationIndex: i,
+                            onTap: () =>
+                                context.push('/rooms/${filtered[i].id}'),
+                          ),
+                        ),
                 );
               }).toList(),
             ),

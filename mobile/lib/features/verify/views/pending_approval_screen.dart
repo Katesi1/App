@@ -27,19 +27,41 @@ class PendingApprovalScreen extends ConsumerStatefulWidget {
       _PendingApprovalScreenState();
 }
 
-class _PendingApprovalScreenState extends ConsumerState<PendingApprovalScreen> {
+class _PendingApprovalScreenState extends ConsumerState<PendingApprovalScreen>
+    with WidgetsBindingObserver {
   Timer? _poll;
 
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     // Kick first poll sớm hơn 30s để mock cảm thấy responsive
     Future.microtask(_check);
+    _startPolling();
+  }
+
+  void _startPolling() {
+    _poll?.cancel();
     _poll = Timer.periodic(const Duration(seconds: 8), (_) => _check());
   }
 
   @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    // App background → stop polling để tránh drain pin (user mở app, đặt
+    // máy xuống đêm = 10800 request thừa). Resume + 1 check ngay khi quay lại.
+    if (state == AppLifecycleState.paused ||
+        state == AppLifecycleState.hidden) {
+      _poll?.cancel();
+      _poll = null;
+    } else if (state == AppLifecycleState.resumed && _poll == null) {
+      _check();
+      _startPolling();
+    }
+  }
+
+  @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _poll?.cancel();
     super.dispose();
   }

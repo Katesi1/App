@@ -90,11 +90,21 @@ class _StaffManagementScreenState extends ConsumerState<StaffManagementScreen>
 
 // ── Tab: Nhân viên đang active ────────────────────────────────────────────────
 
-class _StaffListTab extends ConsumerWidget {
+class _StaffListTab extends ConsumerStatefulWidget {
   const _StaffListTab();
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<_StaffListTab> createState() => _StaffListTabState();
+}
+
+class _StaffListTabState extends ConsumerState<_StaffListTab>
+    with AutomaticKeepAliveClientMixin {
+  @override
+  bool get wantKeepAlive => true;
+
+  @override
+  Widget build(BuildContext context) {
+    super.build(context);
     final staffAsync = ref.watch(staffListProvider);
 
     return RefreshIndicator(
@@ -246,11 +256,21 @@ class _StaffTile extends StatelessWidget {
 
 // ── Tab: Lời mời ──────────────────────────────────────────────────────────────
 
-class _InvitesListTab extends ConsumerWidget {
+class _InvitesListTab extends ConsumerStatefulWidget {
   const _InvitesListTab();
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<_InvitesListTab> createState() => _InvitesListTabState();
+}
+
+class _InvitesListTabState extends ConsumerState<_InvitesListTab>
+    with AutomaticKeepAliveClientMixin {
+  @override
+  bool get wantKeepAlive => true;
+
+  @override
+  Widget build(BuildContext context) {
+    super.build(context);
     final invitesAsync = ref.watch(staffInvitesProvider);
 
     return RefreshIndicator(

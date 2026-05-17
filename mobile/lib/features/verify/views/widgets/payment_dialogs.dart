@@ -20,14 +20,21 @@ class VNPayQRDialog extends StatefulWidget {
   State<VNPayQRDialog> createState() => _VNPayQRDialogState();
 }
 
-class _VNPayQRDialogState extends State<VNPayQRDialog> {
+class _VNPayQRDialogState extends State<VNPayQRDialog>
+    with WidgetsBindingObserver {
   Timer? _ticker;
   Duration _remaining = Duration.zero;
 
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _recalc();
+    _startTicker();
+  }
+
+  void _startTicker() {
+    _ticker?.cancel();
     _ticker = Timer.periodic(const Duration(seconds: 1), (_) {
       if (!mounted) return;
       setState(_recalc);
@@ -40,7 +47,23 @@ class _VNPayQRDialogState extends State<VNPayQRDialog> {
   }
 
   @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    // Khi user mở app banking (VNPay flow) → app sang background. Timer 1s
+    // vẫn cháy = lãng phí CPU/pin. Pause timer, resume khi quay lại app.
+    if (state == AppLifecycleState.paused ||
+        state == AppLifecycleState.hidden) {
+      _ticker?.cancel();
+      _ticker = null;
+    } else if (state == AppLifecycleState.resumed && _ticker == null) {
+      // Sync ngay countdown khi user quay lại để không bị hiển thị thời gian cũ.
+      if (mounted) setState(_recalc);
+      _startTicker();
+    }
+  }
+
+  @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _ticker?.cancel();
     super.dispose();
   }
@@ -226,14 +249,21 @@ class BankTransferDialog extends StatefulWidget {
   State<BankTransferDialog> createState() => _BankTransferDialogState();
 }
 
-class _BankTransferDialogState extends State<BankTransferDialog> {
+class _BankTransferDialogState extends State<BankTransferDialog>
+    with WidgetsBindingObserver {
   Timer? _ticker;
   Duration _remaining = Duration.zero;
 
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _recalc();
+    _startTicker();
+  }
+
+  void _startTicker() {
+    _ticker?.cancel();
     _ticker = Timer.periodic(const Duration(seconds: 1), (_) {
       if (!mounted) return;
       setState(_recalc);
@@ -246,7 +276,20 @@ class _BankTransferDialogState extends State<BankTransferDialog> {
   }
 
   @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.paused ||
+        state == AppLifecycleState.hidden) {
+      _ticker?.cancel();
+      _ticker = null;
+    } else if (state == AppLifecycleState.resumed && _ticker == null) {
+      if (mounted) setState(_recalc);
+      _startTicker();
+    }
+  }
+
+  @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _ticker?.cancel();
     super.dispose();
   }

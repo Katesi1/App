@@ -22,7 +22,7 @@ class LoginScreen extends ConsumerStatefulWidget {
 }
 
 class _LoginScreenState extends ConsumerState<LoginScreen>
-    with TickerProviderStateMixin {
+    with TickerProviderStateMixin, WidgetsBindingObserver {
   final _formKey = GlobalKey<FormState>();
   final _emailCtrl = TextEditingController();
   final _passwordCtrl = TextEditingController();
@@ -38,6 +38,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _shakeCtrl = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 500),
@@ -53,6 +54,21 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
     _loadSavedCredentials();
   }
 
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    // Pause repeating animations khi app background — Google Sign-In bottom sheet
+    // hoặc user minimise sẽ khiến app inactive/paused, animation churn = nóng máy + drain pin.
+    if (state == AppLifecycleState.paused ||
+        state == AppLifecycleState.inactive ||
+        state == AppLifecycleState.hidden) {
+      _floatCtrl.stop(canceled: false);
+      _waveCtrl.stop(canceled: false);
+    } else if (state == AppLifecycleState.resumed) {
+      if (!_floatCtrl.isAnimating) _floatCtrl.repeat(reverse: true);
+      if (!_waveCtrl.isAnimating) _waveCtrl.repeat();
+    }
+  }
+
   Future<void> _loadSavedCredentials() async {
     final saved = await SecureStorage.getSavedCredentials();
     if (saved == null || !mounted) return;
@@ -65,6 +81,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _emailCtrl.dispose();
     _passwordCtrl.dispose();
     _shakeCtrl.dispose();

@@ -501,75 +501,108 @@ class _ProfileHeader extends StatelessWidget {
 
 // ─── Gradient Avatar with pulsing ring ──────────────────────────────────────
 
-class _GradientAvatar extends StatelessWidget {
+class _GradientAvatar extends StatefulWidget {
   final String initial;
   const _GradientAvatar({required this.initial});
 
   @override
+  State<_GradientAvatar> createState() => _GradientAvatarState();
+}
+
+class _GradientAvatarState extends State<_GradientAvatar>
+    with WidgetsBindingObserver {
+  bool _tickersEnabled = true;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    // Pause shimmer khi app background → tránh ticker churn vô tận khi user
+    // khoá máy/chuyển app mà widget chưa dispose.
+    final enabled = state == AppLifecycleState.resumed;
+    if (enabled != _tickersEnabled && mounted) {
+      setState(() => _tickersEnabled = enabled);
+    }
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     final colors = context.colors;
-    return Stack(
-      alignment: Alignment.center,
-      children: [
-        // Pulsing outer ring
-        Container(
-          width: 100,
-          height: 100,
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            gradient: LinearGradient(
-              colors: [colors.brand, AppColors.gold500],
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
+    return TickerMode(
+      enabled: _tickersEnabled,
+      child: Stack(
+        alignment: Alignment.center,
+        children: [
+          // Pulsing outer ring
+          Container(
+            width: 100,
+            height: 100,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              gradient: LinearGradient(
+                colors: [colors.brand, AppColors.gold500],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
             ),
-          ),
-        )
-            .animate(onPlay: (c) => c.repeat())
-            .shimmer(
-              duration: 2000.ms,
-              color: Colors.white.withValues(alpha: 0.4),
-              angle: 0.5,
-            )
-            .then()
-            .shimmer(
-              duration: 2000.ms,
-              delay: 500.ms,
-              color: Colors.white.withValues(alpha: 0.2),
-            ),
+          )
+              .animate(onPlay: (c) => c.repeat())
+              .shimmer(
+                duration: 2000.ms,
+                color: Colors.white.withValues(alpha: 0.4),
+                angle: 0.5,
+              )
+              .then()
+              .shimmer(
+                duration: 2000.ms,
+                delay: 500.ms,
+                color: Colors.white.withValues(alpha: 0.2),
+              ),
 
-        // White spacing ring
-        Container(
-          width: 94,
-          height: 94,
-          decoration: const BoxDecoration(
-            shape: BoxShape.circle,
-            color: Colors.white,
-          ),
-        ),
-
-        // Avatar inner circle
-        Container(
-          width: 88,
-          height: 88,
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            gradient: LinearGradient(
-              colors: [AppColors.jade500, _jadeMidLight],
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-            ),
-          ),
-          alignment: Alignment.center,
-          child: Text(
-            initial,
-            style: GoogleFonts.beVietnamPro(
+          // White spacing ring
+          Container(
+            width: 94,
+            height: 94,
+            decoration: const BoxDecoration(
+              shape: BoxShape.circle,
               color: Colors.white,
-              fontWeight: FontWeight.w700,
-              fontSize: 34,
             ),
           ),
-        ),
-      ],
+
+          // Avatar inner circle
+          Container(
+            width: 88,
+            height: 88,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              gradient: LinearGradient(
+                colors: [AppColors.jade500, _jadeMidLight],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+            ),
+            alignment: Alignment.center,
+            child: Text(
+              widget.initial,
+              style: GoogleFonts.beVietnamPro(
+                color: Colors.white,
+                fontWeight: FontWeight.w700,
+                fontSize: 34,
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

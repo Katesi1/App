@@ -139,7 +139,9 @@ class _CCCDScannerScreenState extends State<CCCDScannerScreen>
 
       final controller = CameraController(
         rear,
-        ResolutionPreset.high,
+        // Medium (~640×480) đủ cho OCR/QR detect, giảm ~75% RAM/GPU so với high
+        // → tránh thermal throttle trên iPhone đời cũ khi stream image liên tục.
+        ResolutionPreset.medium,
         enableAudio: false,
         imageFormatGroup: Platform.isAndroid
             ? ImageFormatGroup.nv21

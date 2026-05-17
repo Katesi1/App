@@ -27,6 +27,9 @@ class AdminKycRepositoryImpl implements AdminKycRepository {
       return [...results[0], ...results[1], ...results[2]];
     } on DioException catch (e) {
       throw Exception(parseDioError(e));
+    } on TypeError catch (_) {
+      // BE trả 200 nhưng body sai schema → tránh crash UI.
+      throw Exception('Phản hồi máy chủ không hợp lệ. Vui lòng thử lại sau.');
     }
   }
 
@@ -75,6 +78,9 @@ class AdminKycRepositoryImpl implements AdminKycRepository {
       );
     } on DioException catch (e) {
       throw Exception(parseDioError(e));
+    } on TypeError catch (_) {
+      // BE trả 200 nhưng body sai schema → tránh crash UI.
+      throw Exception('Phản hồi máy chủ không hợp lệ. Vui lòng thử lại sau.');
     }
   }
 
@@ -104,6 +110,9 @@ class AdminKycRepositoryImpl implements AdminKycRepository {
       );
     } on DioException catch (e) {
       throw Exception(parseDioError(e));
+    } on TypeError catch (_) {
+      // BE trả 200 nhưng body sai schema → tránh crash UI.
+      throw Exception('Phản hồi máy chủ không hợp lệ. Vui lòng thử lại sau.');
     }
   }
 
