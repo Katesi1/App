@@ -114,20 +114,34 @@ class _RoomListScreenState extends ConsumerState<RoomListScreen>
   /// [typeValues] có thể chứa nhiều type (vd: Homestay = [1]).
   List<RoomModel> _filterByTab(List<RoomModel> rooms, List<int>? typeValues) {
     // Ẩn phòng tạm nghỉ
-    var list = rooms.where((r) => r.isActive).toList();
-    list = typeValues == null
-        ? List<RoomModel>.from(list)
-        : list.where((r) => typeValues.contains(r.type)).toList();
+    Iterable<RoomModel> result = rooms.where((r) => r.isActive);
+
+    // Filter theo type tab
+    if (typeValues != null) {
+      result = result.where((r) => typeValues.contains(r.type));
+    }
 
     // Search
     if (_searchQuery.isNotEmpty) {
       final query = _searchQuery.toLowerCase();
-      list = list
-          .where((r) =>
-              r.name.toLowerCase().contains(query) ||
-              r.code.toLowerCase().contains(query))
-          .toList();
+      result = result.where((r) =>
+          r.name.toLowerCase().contains(query) ||
+          r.code.toLowerCase().contains(query));
     }
+
+    // Filter theo view
+    if (_selectedViews.isNotEmpty) {
+      result = result.where((r) => _selectedViews.contains(r.view));
+    }
+
+    // Filter theo số khách: standardGuests >= tổng (người lớn + trẻ em)
+    final totalGuests = _adults + _children;
+    if (totalGuests > 0) {
+      result = result.where((r) => r.standardGuests >= totalGuests);
+    }
+
+    // Chỉ materialize một lần duy nhất
+    final list = result.toList();
 
     // Sort theo giá (weekdayPrice). Phòng chưa có giá → đẩy xuống cuối.
     if (_priceAscending != null) {
@@ -139,17 +153,6 @@ class _RoomListScreenState extends ConsumerState<RoomListScreen>
         if (pb == null) return -1;
         return _priceAscending! ? pa.compareTo(pb) : pb.compareTo(pa);
       });
-    }
-
-    // Filter theo view
-    if (_selectedViews.isNotEmpty) {
-      list = list.where((r) => _selectedViews.contains(r.view)).toList();
-    }
-
-    // Filter theo số khách: standardGuests >= tổng (người lớn + trẻ em)
-    final totalGuests = _adults + _children;
-    if (totalGuests > 0) {
-      list = list.where((r) => r.standardGuests >= totalGuests).toList();
     }
 
     return list;
@@ -790,29 +793,62 @@ class _RoomListScreenState extends ConsumerState<RoomListScreen>
               controller: _tabController,
               children: _tabs.map((tab) {
                 final filtered = _filterByTab(rooms, tab.typeValues);
-                if (filtered.isEmpty) {
-                  return Center(
-                    child: EmptyStateWidget(
-                      icon: tab.icon,
-                      message: 'Chưa có ${tab.label} nào',
-                      subMessage: 'Chưa có phòng trong danh mục này',
-                    ),
-                  );
-                }
-                return ListView.separated(
-                  padding: const EdgeInsets.fromLTRB(16, 16, 16, 100),
-                  itemCount: filtered.length,
-                  separatorBuilder: (_, __) => const SizedBox(height: 12),
-                  itemBuilder: (_, i) => RoomCard(
-                    room: filtered[i],
-                    animationIndex: i,
-                    onTap: () => context.push('/rooms/${filtered[i].id}'),
-                  ),
+                return _RoomTabContent(
+                  rooms: filtered,
+                  tabLabel: tab.label,
+                  tabIcon: tab.icon,
                 );
               }).toList(),
             ),
           ),
         ),
+      ),
+    );
+  }
+}
+
+// ─── Room Tab Content (keepAlive để ListView không bị rebuild khi đổi tab) ────
+
+class _RoomTabContent extends StatefulWidget {
+  final List<RoomModel> rooms;
+  final String tabLabel;
+  final IconData tabIcon;
+
+  const _RoomTabContent({
+    required this.rooms,
+    required this.tabLabel,
+    required this.tabIcon,
+  });
+
+  @override
+  State<_RoomTabContent> createState() => _RoomTabContentState();
+}
+
+class _RoomTabContentState extends State<_RoomTabContent>
+    with AutomaticKeepAliveClientMixin {
+  @override
+  bool get wantKeepAlive => true;
+
+  @override
+  Widget build(BuildContext context) {
+    super.build(context); // bắt buộc khi dùng AutomaticKeepAliveClientMixin
+    if (widget.rooms.isEmpty) {
+      return Center(
+        child: EmptyStateWidget(
+          icon: widget.tabIcon,
+          message: 'Chưa có ${widget.tabLabel} nào',
+          subMessage: 'Chưa có phòng trong danh mục này',
+        ),
+      );
+    }
+    return ListView.separated(
+      padding: const EdgeInsets.fromLTRB(16, 16, 16, 100),
+      itemCount: widget.rooms.length,
+      separatorBuilder: (_, __) => const SizedBox(height: 12),
+      itemBuilder: (_, i) => RoomCard(
+        room: widget.rooms[i],
+        animationIndex: i,
+        onTap: () => context.push('/rooms/${widget.rooms[i].id}'),
       ),
     );
   }

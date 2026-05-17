@@ -110,6 +110,12 @@ class _UserListScreenState extends ConsumerState<UserListScreen> {
                       onRemoveStaff: !isAdmin
                           ? () => _removeStaff(context, users[i])
                           : null,
+                      onManageTrial: isAdmin && users[i].isOwner
+                          ? () => context.push(
+                                '/admin/users/${users[i].id}/trial'
+                                '?name=${Uri.encodeComponent(users[i].name)}',
+                              )
+                          : null,
                     ),
                   ),
                 );
@@ -649,6 +655,7 @@ class _UserCard extends StatelessWidget {
   final VoidCallback? onTap;
   final VoidCallback? onToggleActive;
   final VoidCallback? onRemoveStaff;
+  final VoidCallback? onManageTrial;
 
   const _UserCard({
     required this.user,
@@ -657,6 +664,7 @@ class _UserCard extends StatelessWidget {
     this.onTap,
     this.onToggleActive,
     this.onRemoveStaff,
+    this.onManageTrial,
   });
 
   Color get _roleColor => AppHelpers.roleColor(user.role);
@@ -810,6 +818,25 @@ class _UserCard extends StatelessWidget {
               if (isAdmin) ...[
                 Column(
                   children: [
+                    if (onManageTrial != null)
+                      GestureDetector(
+                        onTap: onManageTrial,
+                        child: Container(
+                          width: 34,
+                          height: 34,
+                          decoration: BoxDecoration(
+                            color: colors.brand.withValues(alpha: 0.1),
+                            borderRadius: BorderRadius.circular(AppRadius.md),
+                          ),
+                          child: Icon(
+                            Icons.card_giftcard_rounded,
+                            size: 18,
+                            color: colors.brand,
+                          ),
+                        ),
+                      ),
+                    if (onManageTrial != null && onToggleActive != null)
+                      const SizedBox(height: 6),
                     if (onToggleActive != null)
                       GestureDetector(
                         onTap: onToggleActive,

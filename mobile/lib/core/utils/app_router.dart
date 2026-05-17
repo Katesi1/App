@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../features/admin/views/admin_screen.dart';
+import '../../features/admin/views/admin_trial_screen.dart';
 import '../../features/admin/views/abuse_reports_screen.dart';
 import '../../features/admin/views/kyc_approval_detail_screen.dart';
 import '../../features/admin/views/kyc_approval_list_screen.dart';
@@ -187,12 +188,15 @@ String? resolveRedirectPath({
   if (user != null && !user.isAdmin) {
     final isUserFormRoute = path == '/admin/users/new' ||
         RegExp(r'^/admin/users/[^/]+/edit$').hasMatch(path);
+    final isTrialRoute =
+        RegExp(r'^/admin/users/[^/]+/trial$').hasMatch(path);
     const adminOnlyPrefixes = [
       '/admin/abuse-reports',
       '/admin/moderation-audit',
       '/admin/kyc',
     ];
     final isAdminOnly = isUserFormRoute ||
+        isTrialRoute ||
         adminOnlyPrefixes.any((p) => path == p || path.startsWith(p));
     if (isAdminOnly) return '/admin';
   }
@@ -768,6 +772,16 @@ final routerProvider = Provider<GoRouter>((ref) {
             pageBuilder: (_, state) => fadeScalePage(
               key: state.pageKey,
               child: UserFormScreen(userId: state.pathParameters['id']),
+            ),
+          ),
+          GoRoute(
+            path: ':id/trial',
+            pageBuilder: (_, state) => slideUpPage(
+              key: state.pageKey,
+              child: AdminTrialScreen(
+                userId: state.pathParameters['id']!,
+                userName: state.uri.queryParameters['name'],
+              ),
             ),
           ),
         ],

@@ -71,6 +71,11 @@ class ApiConstants {
   static String paymentRefund(String sessionId) =>
       '/payments/$sessionId/refund';
 
+  // Admin Trial (chỉ ADMIN)
+  static String adminUserSubscription(String id) =>
+      '/admin/users/$id/subscription';
+  static String adminUserTrial(String id) => '/admin/users/$id/trial';
+
   // Admin KYC (chỉ ADMIN)
   static const String adminKycQueue = '/admin/kyc/queue';
   static String adminKycApprove(String id) =>

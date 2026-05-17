@@ -37,7 +37,11 @@ class AppScaffold extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final user = ref.watch(currentUserProvider);
+    // Chỉ cần tên để render avatar chữ đầu — dùng select() để tránh rebuild
+    // toàn bộ AppScaffold khi field khác của user thay đổi (role, KYC...).
+    final userName = ref.watch(
+      currentUserProvider.select((u) => u?.name ?? ''),
+    );
     final themeMode = ref.watch(themeProvider);
     final isDark = themeMode == ThemeMode.dark;
 
@@ -84,8 +88,8 @@ class AppScaffold extends ConsumerWidget {
                           ),
                           child: Center(
                             child: Text(
-                              user != null && user.name.isNotEmpty
-                                  ? user.name[0].toUpperCase()
+                              userName.isNotEmpty
+                                  ? userName[0].toUpperCase()
                                   : 'U',
                               style: GoogleFonts.beVietnamPro(
                                 color: Colors.white,

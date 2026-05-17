@@ -431,7 +431,9 @@ class _DashboardRecentBookingsSectionState
         final totalPages = (bookings.length + _pageSize - 1) ~/ _pageSize;
         final safePage = totalPages == 0 ? 0 : _page.clamp(0, totalPages - 1);
         if (safePage != _page) {
-          WidgetsBinding.instance.addPostFrameCallback((_) {
+          // Dùng microtask thay vì addPostFrameCallback để tránh setState
+          // lồng trong build() của frame hiện tại.
+          Future.microtask(() {
             if (mounted) setState(() => _page = safePage);
           });
         }

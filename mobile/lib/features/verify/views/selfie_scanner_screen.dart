@@ -99,8 +99,14 @@ class _SelfieScannerScreenState extends State<SelfieScannerScreen>
       if (mounted) setState(() => _minDurationMet = true);
     });
     // Tick mỗi giây để re-render countdown text (chỉ khi sắp xong).
+    // Dừng timer ngay khi _minDurationMet = true để không setState vô ích.
     _tickTimer = Timer.periodic(const Duration(seconds: 1), (_) {
-      if (mounted && !_minDurationMet) setState(() {});
+      if (!mounted) return;
+      if (_minDurationMet) {
+        _tickTimer?.cancel();
+        return;
+      }
+      setState(() {});
     });
 
     _detector = FaceDetector(
@@ -288,15 +294,17 @@ class _SelfieScannerScreenState extends State<SelfieScannerScreen>
       final current = _challenges[_currentIdx];
       if (current.matches(yaw, pitch)) {
         _holdFrames++;
-        if (mounted) setState(() {}); // re-render progress
         if (_holdFrames >= _challengeHoldThreshold) {
           // Challenge done — advance hoặc move to neutral phase.
           _holdFrames = 0;
           if (_currentIdx + 1 >= _challenges.length) {
-            _setPhase(_Phase.neutral);
+            _setPhase(_Phase.neutral); // setState bên trong _setPhase
           } else {
-            setState(() => _currentIdx++);
+            if (mounted) setState(() => _currentIdx++); // một setState duy nhất
           }
+        } else {
+          // Chỉ setState để re-render progress bar, không setState thêm lần nào
+          if (mounted && !_processing) setState(() {});
         }
       } else {
         if (_holdFrames != 0) {
@@ -315,9 +323,10 @@ class _SelfieScannerScreenState extends State<SelfieScannerScreen>
           rightEye >= _minEyeOpenProb;
       if (isNeutral) {
         _holdFrames++;
-        if (mounted) setState(() {});
         if (_holdFrames >= _neutralHoldThreshold && _minDurationMet) {
           _capture();
+        } else {
+          if (mounted && !_processing) setState(() {});
         }
       } else {
         if (_holdFrames != 0) {
