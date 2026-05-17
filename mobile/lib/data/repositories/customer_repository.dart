@@ -31,8 +31,8 @@ class CustomerRepository {
           if (view != null) 'view': view,
         },
       );
-      final list = (response.data['data'] as List)
-          .map((e) => RoomModel.fromJson(e))
+      final list = (response.data['data'] as List? ?? [])
+          .map((e) => RoomModel.fromJson(e as Map<String, dynamic>))
           .where((r) => r.isActive)
           .toList();
       return ApiResponse(success: true, data: list, message: '');
@@ -67,8 +67,8 @@ class CustomerRepository {
           if (status != null) 'status': status,
         },
       );
-      final list = (response.data['data'] as List)
-          .map((e) => BookingModel.fromJson(e))
+      final list = (response.data['data'] as List? ?? [])
+          .map((e) => BookingModel.fromJson(e as Map<String, dynamic>))
           .toList();
       return ApiResponse(success: true, data: list, message: '');
     } on DioException catch (e) {

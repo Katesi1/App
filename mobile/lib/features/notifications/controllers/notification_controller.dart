@@ -28,15 +28,23 @@ class NotificationActionsNotifier extends StateNotifier<AsyncValue<void>> {
       : super(const AsyncValue.data(null));
 
   Future<void> markAsRead(String id) async {
-    await _repo.markAsRead(id);
-    _ref.invalidate(notificationListProvider);
-    _ref.invalidate(unreadCountProvider);
+    try {
+      await _repo.markAsRead(id);
+      _ref.invalidate(notificationListProvider);
+      _ref.invalidate(unreadCountProvider);
+    } catch (_) {
+      // Lỗi mark-read không critical — bỏ qua, không crash UI
+    }
   }
 
   Future<void> markAllAsRead() async {
-    await _repo.markAllAsRead();
-    _ref.invalidate(notificationListProvider);
-    _ref.invalidate(unreadCountProvider);
+    try {
+      await _repo.markAllAsRead();
+      _ref.invalidate(notificationListProvider);
+      _ref.invalidate(unreadCountProvider);
+    } catch (_) {
+      // Lỗi mark-all-read không critical — bỏ qua, không crash UI
+    }
   }
 }
 

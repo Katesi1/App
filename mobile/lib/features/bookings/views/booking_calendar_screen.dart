@@ -80,7 +80,8 @@ class _BookingCalendarScreenState extends ConsumerState<BookingCalendarScreen> {
     return rows.map((row) {
       final cells = <DateTime, DayCell>{};
       for (final day in row.days) {
-        final dt = DateTime.parse(day.date);
+        final dt = DateTime.tryParse(day.date);
+        if (dt == null) continue;
         final key = DateTime(dt.year, dt.month, dt.day);
         cells[key] = DayCell(
           price: day.price,
@@ -417,7 +418,12 @@ class _BookingCalendarScreenState extends ConsumerState<BookingCalendarScreen> {
   }
 
   Future<void> _openZalo(AdminContact? contact) async {
-    final url = contact?.zaloUrl ?? 'https://zalo.me/${contact?.phone ?? ''}';
+    if (contact == null) return;
+    final zaloUrl = contact.zaloUrl;
+    final url = (zaloUrl != null && zaloUrl.isNotEmpty)
+        ? zaloUrl
+        : 'https://zalo.me/${contact.phone}';
+    if (contact.phone.isEmpty && (zaloUrl == null || zaloUrl.isEmpty)) return;
     final uri = Uri.parse(url);
     if (await canLaunchUrl(uri)) {
       await launchUrl(uri, mode: LaunchMode.externalApplication);

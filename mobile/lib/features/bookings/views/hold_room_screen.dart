@@ -68,7 +68,7 @@ class _HoldRoomScreenState extends ConsumerState<HoldRoomScreen> {
       }
       _updateAutoDeposit();
     });
-    _checkDateConflicts();
+    await _checkDateConflicts();
   }
 
   /// Check xung đột ngày với calendar (đã bán, giữ, khoá)
@@ -134,6 +134,18 @@ class _HoldRoomScreenState extends ConsumerState<HoldRoomScreen> {
       AppSnackBar.error(context, 'Vui lòng chọn ngày check-in và check-out');
       return;
     }
+    if (_nights <= 0) {
+      AppSnackBar.error(context, 'Ngày check-out phải sau ngày check-in');
+      return;
+    }
+
+    final depositText = _depositCtrl.text.replaceAll('.', '').trim();
+    final depositAmount =
+        depositText.isNotEmpty ? double.tryParse(depositText) : null;
+    if (depositText.isNotEmpty && depositAmount == null) {
+      AppSnackBar.error(context, 'Tiền cọc không hợp lệ, vui lòng nhập số');
+      return;
+    }
 
     final success = await ref.read(bookingActionsProvider.notifier).hold({
       'propertyId': widget.propertyId,
@@ -143,9 +155,7 @@ class _HoldRoomScreenState extends ConsumerState<HoldRoomScreen> {
         'customerName': _customerNameCtrl.text.trim(),
       if (_customerPhoneCtrl.text.trim().isNotEmpty)
         'customerPhone': _customerPhoneCtrl.text.trim(),
-      if (_depositCtrl.text.trim().isNotEmpty)
-        'depositAmount':
-            double.tryParse(_depositCtrl.text.replaceAll('.', '').trim()),
+      if (depositAmount != null) 'depositAmount': depositAmount,
       if (_notesCtrl.text.trim().isNotEmpty) 'notes': _notesCtrl.text.trim(),
     });
 

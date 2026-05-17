@@ -41,7 +41,7 @@ class HomestayModel {
         name: json['name'] ?? '',
         code: json['code'] ?? '',
         address: json['address'] ?? '',
-        type: json['type'] as int?,
+        type: (json['type'] as num?)?.toInt(),
         latitude: (json['latitude'] as num?)?.toDouble(),
         longitude: (json['longitude'] as num?)?.toDouble(),
         mapLink: json['mapLink'],

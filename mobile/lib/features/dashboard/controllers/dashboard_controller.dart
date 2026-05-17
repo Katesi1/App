@@ -62,6 +62,8 @@ final dashboardStatsProvider =
   Future.delayed(const Duration(minutes: 2), link.close);
   final repo = ref.read(dashboardRepositoryProvider);
   final result = await repo.getStats();
-  if (result.success) return DashboardStats.fromJson(result.data!);
+  if (result.success && result.data != null) {
+    return DashboardStats.fromJson(result.data!);
+  }
   throw Exception(result.message);
 });

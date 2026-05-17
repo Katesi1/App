@@ -68,7 +68,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
   StreamSubscription<void>? _forceLogoutSub;
 
   AuthNotifier(this._repo, this._ref) : super(AuthState()) {
-    _init();
+    unawaited(_init());
     // Lắng nghe force-logout từ ApiClient (refresh token fail).
     // SecureStorage đã được clear bởi interceptor trước khi event fire — chỉ
     // cần reset state để router redirect /login + flag để login screen
@@ -120,27 +120,31 @@ class AuthNotifier extends StateNotifier<AuthState> {
   }
 
   Future<void> _init() async {
-    // Giữ isLoading = true cho đến khi verify xong — GoRouter không redirect sớm
-    final user = await _repo.getStoredUser();
-    final isLoggedIn = await _repo.isLoggedIn();
+    try {
+      // Giữ isLoading = true cho đến khi verify xong — GoRouter không redirect sớm
+      final user = await _repo.getStoredUser();
+      final isLoggedIn = await _repo.isLoggedIn();
 
-    if (!isLoggedIn) {
-      state = AuthState(isLoading: false);
-      return;
-    }
+      if (!isLoggedIn) {
+        state = AuthState(isLoading: false);
+        return;
+      }
 
-    // Hiển thị user đã lưu ngay lập tức (UX tốt hơn), nhưng giữ isLoading
-    state = AuthState(user: user, isLoggedIn: true, isLoading: true);
+      // Hiển thị user đã lưu ngay lập tức (UX tốt hơn), nhưng giữ isLoading
+      state = AuthState(user: user, isLoggedIn: true, isLoading: true);
 
-    // Verify token bằng cách gọi profile — interceptor tự refresh nếu cần
-    final fresh = await _repo.getProfile();
-    if (fresh.success && fresh.data != null) {
-      // Token hợp lệ (hoặc đã refresh thành công)
-      state = AuthState(user: fresh.data, isLoggedIn: true, isLoading: false);
-      _onAuthenticated();
-    } else {
-      // Token hết hạn hoàn toàn, refresh thất bại → buộc đăng nhập lại
-      await SecureStorage.clear();
+      // Verify token bằng cách gọi profile — interceptor tự refresh nếu cần
+      final fresh = await _repo.getProfile();
+      if (fresh.success && fresh.data != null) {
+        // Token hợp lệ (hoặc đã refresh thành công)
+        state = AuthState(user: fresh.data, isLoggedIn: true, isLoading: false);
+        _onAuthenticated();
+      } else {
+        // Token hết hạn hoàn toàn, refresh thất bại → buộc đăng nhập lại
+        await SecureStorage.clear();
+        state = AuthState(isLoading: false);
+      }
+    } catch (_) {
       state = AuthState(isLoading: false);
     }
   }

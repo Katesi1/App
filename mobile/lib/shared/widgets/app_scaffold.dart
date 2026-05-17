@@ -84,8 +84,8 @@ class AppScaffold extends ConsumerWidget {
                           ),
                           child: Center(
                             child: Text(
-                              user?.name.isNotEmpty == true
-                                  ? user!.name[0].toUpperCase()
+                              user != null && user.name.isNotEmpty
+                                  ? user.name[0].toUpperCase()
                                   : 'U',
                               style: GoogleFonts.beVietnamPro(
                                 color: Colors.white,

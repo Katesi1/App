@@ -541,9 +541,10 @@ class _ImageGalleryHeaderState extends State<_ImageGalleryHeader> {
     // Chính sách huỷ
     if (room.cancellationPolicy != null) {
       const policyLabels = ['Linh hoạt', 'Vừa phải', 'Nghiêm ngặt'];
-      final label = (room.cancellationPolicy! < policyLabels.length)
-          ? policyLabels[room.cancellationPolicy!]
-          : '${room.cancellationPolicy}';
+      final policy = room.cancellationPolicy!;
+      final label = (policy >= 0 && policy < policyLabels.length)
+          ? policyLabels[policy]
+          : '$policy';
       buf.writeln();
       buf.writeln('📋 Chính sách huỷ:');
       buf.writeln(label);
@@ -620,7 +621,8 @@ class _ThumbnailStripState extends State<_ThumbnailStrip> {
   void didUpdateWidget(_ThumbnailStrip oldWidget) {
     super.didUpdateWidget(oldWidget);
     // Tự động scroll thumbnail đến item đang chọn
-    if (oldWidget.selectedIndex != widget.selectedIndex) {
+    if (oldWidget.selectedIndex != widget.selectedIndex &&
+        _scrollCtrl.hasClients) {
       final targetOffset = (widget.selectedIndex * 72.0) - 100;
       _scrollCtrl.animateTo(
         targetOffset.clamp(0.0, _scrollCtrl.position.maxScrollExtent),
@@ -1011,6 +1013,13 @@ class _GalleryScreenState extends State<_GalleryScreen> {
                   tag: i == 0
                       ? 'room-cover-${widget.images[i].roomId}'
                       : 'room-img-${widget.images[i].roomId}-$i',
+                ),
+                errorBuilder: (_, __, ___) => const Center(
+                  child: Icon(
+                    Icons.broken_image_outlined,
+                    color: Colors.white54,
+                    size: 48,
+                  ),
                 ),
               ),
               backgroundDecoration: const BoxDecoration(color: Colors.black),

@@ -66,6 +66,7 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
 
   void _tryNavigate() {
     if (_navigated || !_minDelayDone) return;
+    if (!mounted) return;
     final authState = ref.read(authProvider);
     if (authState.isLoading) return;
 

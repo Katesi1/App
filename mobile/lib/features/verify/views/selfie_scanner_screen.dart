@@ -148,6 +148,16 @@ class _SelfieScannerScreenState extends State<SelfieScannerScreen>
         state == AppLifecycleState.paused) {
       _shutdown();
     } else if (state == AppLifecycleState.resumed) {
+      _detector = FaceDetector(
+        options: FaceDetectorOptions(
+          enableClassification: true,
+          enableLandmarks: false,
+          enableContours: false,
+          enableTracking: false,
+          performanceMode: FaceDetectorMode.fast,
+          minFaceSize: 0.2,
+        ),
+      );
       _initCamera();
     }
   }

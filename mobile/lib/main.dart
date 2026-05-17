@@ -11,8 +11,11 @@ import 'core/services/app_version_service.dart';
 import 'core/services/push_notification_service.dart';
 import 'core/theme/app_theme.dart';
 import 'core/utils/app_router.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+
 import 'features/auth/controllers/auth_controller.dart';
 import 'shared/providers/theme_provider.dart';
+import 'shared/providers/view_mode_provider.dart';
 import 'shared/widgets/soft_update_prompt.dart';
 
 void main() {
@@ -39,13 +42,20 @@ void main() {
         if (kDebugMode) debugPrint('[Firebase] Init failed/timeout: $e');
       }
 
+      // SharedPreferences phải load xong trước runApp để ViewModeNotifier
+      // đọc synchronously, tránh redirect flash do async load gây ra.
+      final prefs = await SharedPreferences.getInstance();
+
       // Push notification init chạy nền — KHÔNG block runApp. iOS APNs
       // registration có thể mất 5-30s, nếu await sẽ stuck splash.
       unawaited(_initPushInBackground());
 
       runApp(
-        const ProviderScope(
-          child: HomestayApp(),
+        ProviderScope(
+          overrides: [
+            sharedPreferencesProvider.overrideWithValue(prefs),
+          ],
+          child: const HomestayApp(),
         ),
       );
     },
@@ -72,6 +82,7 @@ class HomestayApp extends ConsumerStatefulWidget {
 
 class _HomestayAppState extends ConsumerState<HomestayApp>
     with WidgetsBindingObserver {
+  DateTime? _lastProfileRefresh;
   @override
   void initState() {
     super.initState();
@@ -125,7 +136,12 @@ class _HomestayAppState extends ConsumerState<HomestayApp>
     if (state == AppLifecycleState.resumed) {
       final auth = ref.read(authProvider);
       if (auth.isLoggedIn) {
-        ref.read(authProvider.notifier).refreshProfile();
+        final now = DateTime.now();
+        final last = _lastProfileRefresh;
+        if (last == null || now.difference(last).inSeconds >= 30) {
+          _lastProfileRefresh = now;
+          ref.read(authProvider.notifier).refreshProfile();
+        }
       }
     }
   }

@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../data/models/user_model.dart';
 import '../../../data/repositories/user_repository.dart';
@@ -12,8 +14,9 @@ final userRepositoryProvider = Provider<UserRepository>(
 final userListProvider =
     FutureProvider.autoDispose.family<List<UserModel>, int?>((ref, role) async {
   final link = ref.keepAlive();
-  Future.delayed(const Duration(minutes: 2), link.close);
-  final repo = ref.read(userRepositoryProvider);
+  final timer = Timer(const Duration(minutes: 2), link.close);
+  ref.onDispose(timer.cancel);
+  final repo = ref.watch(userRepositoryProvider);
   final result = await repo.getUsers(role: role);
   if (result.success) return result.data ?? (throw Exception('Dữ liệu trả về trống'));
   throw Exception(result.message);
@@ -23,8 +26,9 @@ final userListProvider =
 final myStaffProvider =
     FutureProvider.autoDispose<List<UserModel>>((ref) async {
   final link = ref.keepAlive();
-  Future.delayed(const Duration(minutes: 2), link.close);
-  final repo = ref.read(userRepositoryProvider);
+  final timer = Timer(const Duration(minutes: 2), link.close);
+  ref.onDispose(timer.cancel);
+  final repo = ref.watch(userRepositoryProvider);
   final result = await repo.getMyStaff();
   if (result.success) return result.data ?? (throw Exception('Dữ liệu trả về trống'));
   throw Exception(result.message);
@@ -35,9 +39,10 @@ final myStaffProvider =
 final staffListProvider =
     FutureProvider.autoDispose<List<UserModel>>((ref) async {
   final link = ref.keepAlive();
-  Future.delayed(const Duration(minutes: 2), link.close);
+  final timer = Timer(const Duration(minutes: 2), link.close);
+  ref.onDispose(timer.cancel);
   final user = ref.watch(currentUserProvider);
-  final repo = ref.read(userRepositoryProvider);
+  final repo = ref.watch(userRepositoryProvider);
   if (user != null && user.isAdmin) {
     final result = await repo.getUsers();
     if (result.success) return result.data ?? (throw Exception('Dữ liệu trả về trống'));
@@ -52,7 +57,7 @@ final staffListProvider =
 // ─── Detail provider ──────────────────────────────────────────────────────────
 final userDetailProvider =
     FutureProvider.family<UserModel, String>((ref, id) async {
-  final repo = ref.read(userRepositoryProvider);
+  final repo = ref.watch(userRepositoryProvider);
   final result = await repo.getUser(id);
   if (result.success) return result.data ?? (throw Exception('Dữ liệu trả về trống'));
   throw Exception(result.message);

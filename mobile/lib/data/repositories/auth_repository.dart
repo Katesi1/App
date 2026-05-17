@@ -525,7 +525,14 @@ class AuthRepository {
     try {
       final response =
           await _dio.put(ApiConstants.userDetail(userId), data: data);
-      final user = UserModel.fromJson(response.data['data']);
+      final rawData = response.data['data'];
+      if (rawData == null) {
+        return ApiResponse(
+          success: false,
+          message: 'Không nhận được dữ liệu từ server',
+        );
+      }
+      final user = UserModel.fromJson(rawData as Map<String, dynamic>);
       await SecureStorage.saveUserData(user.toJsonString());
       return ApiResponse(
         success: true,
@@ -550,7 +557,12 @@ class AuthRepository {
   Future<UserModel?> getStoredUser() async {
     final json = await SecureStorage.getUserData();
     if (json == null) return null;
-    return UserModel.fromJsonString(json);
+    try {
+      return UserModel.fromJsonString(json);
+    } catch (_) {
+      // JSON bị corrupt → bỏ qua, buộc login lại
+      return null;
+    }
   }
 
   Future<bool> isLoggedIn() async {

@@ -179,7 +179,7 @@ class PlanPriceCalculator {
     return includeVat ? subtotal + vat(subtotal) : subtotal;
   }
 
-  /// Lookup plan theo tier trong catalog.
-  static Plan planFor(Tier tier, List<Plan> catalog) =>
-      catalog.firstWhere((p) => p.tier == tier);
+  /// Lookup plan theo tier trong catalog. Trả `null` nếu tier không có trong catalog.
+  static Plan? planFor(Tier tier, List<Plan> catalog) =>
+      catalog.where((p) => p.tier == tier).firstOrNull;
 }

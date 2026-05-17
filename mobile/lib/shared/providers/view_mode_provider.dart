@@ -6,27 +6,26 @@ const _kViewModeKey = 'view_mode';
 /// Chế độ xem app: quản lý (ADMIN/STAFF) hoặc khách hàng
 enum ViewMode { management, customer }
 
-class ViewModeNotifier extends StateNotifier<ViewMode> {
-  ViewModeNotifier() : super(ViewMode.management) {
-    _load();
-  }
+/// Pre-initialized SharedPreferences — overridden in main() trước runApp
+/// để ViewModeNotifier đọc synchronously, tránh redirect flash khi cold start.
+final sharedPreferencesProvider = Provider<SharedPreferences>(
+  (_) => throw UnimplementedError('sharedPreferencesProvider not overridden'),
+);
 
-  Future<void> _load() async {
-    final prefs = await SharedPreferences.getInstance();
-    final value = prefs.getString(_kViewModeKey);
-    if (value == 'customer') {
-      state = ViewMode.customer;
-    } else {
-      state = ViewMode.management;
-    }
-  }
+class ViewModeNotifier extends StateNotifier<ViewMode> {
+  ViewModeNotifier(SharedPreferences prefs)
+      : _prefs = prefs,
+        super(prefs.getString(_kViewModeKey) == 'customer'
+            ? ViewMode.customer
+            : ViewMode.management);
+
+  final SharedPreferences _prefs;
 
   Future<void> toggle() async {
     final next =
         state == ViewMode.management ? ViewMode.customer : ViewMode.management;
     state = next;
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(
+    await _prefs.setString(
       _kViewModeKey,
       next == ViewMode.customer ? 'customer' : 'management',
     );
@@ -34,8 +33,7 @@ class ViewModeNotifier extends StateNotifier<ViewMode> {
 
   Future<void> setMode(ViewMode mode) async {
     state = mode;
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(
+    await _prefs.setString(
       _kViewModeKey,
       mode == ViewMode.customer ? 'customer' : 'management',
     );
@@ -43,5 +41,5 @@ class ViewModeNotifier extends StateNotifier<ViewMode> {
 }
 
 final viewModeProvider = StateNotifierProvider<ViewModeNotifier, ViewMode>(
-  (ref) => ViewModeNotifier(),
+  (ref) => ViewModeNotifier(ref.watch(sharedPreferencesProvider)),
 );

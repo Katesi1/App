@@ -201,8 +201,9 @@ class PushNotificationService {
   }
 
   void _handleTapData(Map<String, dynamic> data) {
-    if (onNotificationTap == null) return;
-    onNotificationTap!(data);
+    final callback = onNotificationTap;
+    if (callback == null) return;
+    callback(data);
   }
 
   String _encodePayload(Map<String, dynamic> data) {

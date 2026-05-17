@@ -1,5 +1,14 @@
 import '../../core/constants/app_constants.dart';
 
+DateTime _parseDate(dynamic value) {
+  if (value == null) return DateTime.now();
+  try {
+    return DateTime.parse(value.toString());
+  } catch (_) {
+    return DateTime.now();
+  }
+}
+
 class BookingModel {
   final String id;
   final String propertyId;
@@ -42,12 +51,12 @@ class BookingModel {
         propertyId: json['propertyId'] ?? '',
         saleId: json['saleId'],
         customerId: json['customerId'],
-        checkinDate: DateTime.parse(json['checkinDate']),
-        checkoutDate: DateTime.parse(json['checkoutDate']),
-        status: BookingStatusExtension.fromInt(json['status'] ?? 0),
-        holdExpireAt: json['holdExpireAt'] != null
-            ? DateTime.parse(json['holdExpireAt'])
-            : null,
+        checkinDate: _parseDate(json['checkinDate']),
+        checkoutDate: _parseDate(json['checkoutDate']),
+        status: BookingStatusExtension.fromInt(
+            (json['status'] as num?)?.toInt() ?? 0),
+        holdExpireAt:
+            json['holdExpireAt'] != null ? _parseDate(json['holdExpireAt']) : null,
         customerName: json['customerName'],
         customerPhone: json['customerPhone'],
         depositAmount: (json['depositAmount'] as num?)?.toDouble(),
@@ -87,9 +96,10 @@ class CalendarBooking {
   factory CalendarBooking.fromJson(Map<String, dynamic> json) =>
       CalendarBooking(
         id: json['id'] ?? '',
-        checkinDate: DateTime.parse(json['checkinDate']),
-        checkoutDate: DateTime.parse(json['checkoutDate']),
-        status: BookingStatusExtension.fromInt(json['status'] ?? 0),
+        checkinDate: _parseDate(json['checkinDate']),
+        checkoutDate: _parseDate(json['checkoutDate']),
+        status: BookingStatusExtension.fromInt(
+            (json['status'] as num?)?.toInt() ?? 0),
         customerName: json['customerName'],
         holdRemainingSeconds: json['holdRemainingSeconds'] ?? 0,
         sale: json['sale'],

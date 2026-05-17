@@ -3,13 +3,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:mobile/shared/providers/view_mode_provider.dart';
 
 void main() {
-  // SharedPreferences cần binding
   TestWidgetsFlutterBinding.ensureInitialized();
-
-  setUp(() {
-    // Mock SharedPreferences trống
-    SharedPreferences.setMockInitialValues({});
-  });
 
   group('ViewMode enum', () {
     test('has management and customer values', () {
@@ -20,25 +14,43 @@ void main() {
   });
 
   group('ViewModeNotifier', () {
-    test('initial state is management', () {
-      final notifier = ViewModeNotifier();
+    test('initial state is management when no persisted value', () async {
+      SharedPreferences.setMockInitialValues({});
+      final prefs = await SharedPreferences.getInstance();
+      final notifier = ViewModeNotifier(prefs);
+      expect(notifier.state, ViewMode.management);
+    });
+
+    test('loads customer when persisted value is customer', () async {
+      SharedPreferences.setMockInitialValues({'view_mode': 'customer'});
+      final prefs = await SharedPreferences.getInstance();
+      final notifier = ViewModeNotifier(prefs);
+      expect(notifier.state, ViewMode.customer);
+    });
+
+    test('loads management when no persisted value', () async {
+      SharedPreferences.setMockInitialValues({});
+      final prefs = await SharedPreferences.getInstance();
+      final notifier = ViewModeNotifier(prefs);
       expect(notifier.state, ViewMode.management);
     });
 
     test('toggle switches between modes', () async {
-      final notifier = ViewModeNotifier();
+      SharedPreferences.setMockInitialValues({});
+      final prefs = await SharedPreferences.getInstance();
+      final notifier = ViewModeNotifier(prefs);
 
-      // management → customer
       await notifier.toggle();
       expect(notifier.state, ViewMode.customer);
 
-      // customer → management
       await notifier.toggle();
       expect(notifier.state, ViewMode.management);
     });
 
     test('setMode sets exact mode', () async {
-      final notifier = ViewModeNotifier();
+      SharedPreferences.setMockInitialValues({});
+      final prefs = await SharedPreferences.getInstance();
+      final notifier = ViewModeNotifier(prefs);
 
       await notifier.setMode(ViewMode.customer);
       expect(notifier.state, ViewMode.customer);
@@ -48,31 +60,12 @@ void main() {
     });
 
     test('persists to SharedPreferences', () async {
-      final notifier = ViewModeNotifier();
+      SharedPreferences.setMockInitialValues({});
+      final prefs = await SharedPreferences.getInstance();
+      final notifier = ViewModeNotifier(prefs);
 
       await notifier.setMode(ViewMode.customer);
-
-      final prefs = await SharedPreferences.getInstance();
       expect(prefs.getString('view_mode'), 'customer');
-    });
-
-    test('loads persisted value', () async {
-      SharedPreferences.setMockInitialValues({'view_mode': 'customer'});
-
-      final notifier = ViewModeNotifier();
-      // Đợi _load() async hoàn tất
-      await Future.delayed(Duration.zero);
-
-      expect(notifier.state, ViewMode.customer);
-    });
-
-    test('loads management when no persisted value', () async {
-      SharedPreferences.setMockInitialValues({});
-
-      final notifier = ViewModeNotifier();
-      await Future.delayed(Duration.zero);
-
-      expect(notifier.state, ViewMode.management);
     });
   });
 }

@@ -178,12 +178,9 @@ String? resolveRedirectPath({
     if (!isAllowed) return '/dashboard';
   }
 
-  // /properties mutate là owner/admin only; SALE không được mở trực tiếp
-  // bằng URL kể cả khi backend sẽ chặn.
+  // SALE không tạo property mới; edit sub-paths (images/info/...) backend 403.
   if (user != null && user.isSale) {
-    final isPropertyMutatePath = path == '/properties/new' ||
-        path.startsWith('/properties/') && path != '/properties';
-    if (isPropertyMutatePath) return '/dashboard';
+    if (path == '/properties/new') return '/dashboard';
   }
 
   // Các route quản trị người dùng/moderation là admin-only.

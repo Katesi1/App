@@ -144,7 +144,7 @@ class RoomModel {
         homestayId: json['propertyId'] ?? json['homestayId'] ?? '',
         name: json['name'] ?? '',
         code: json['code'] ?? '',
-        type: json['type'],
+        type: (json['type'] as num?)?.toInt(),
         bedrooms: json['bedrooms'] ?? 1,
         bathrooms: json['bathrooms'] ?? 1,
         standardGuests: json['standardGuests'] ?? 2,

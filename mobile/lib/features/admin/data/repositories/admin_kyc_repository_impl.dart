@@ -39,8 +39,9 @@ class AdminKycRepositoryImpl implements AdminKycRepository {
         'status': status,
       },
     );
-    final items =
-        (res.data['data']['items'] as List).cast<Map<String, dynamic>>();
+    final dataBlock = res.data['data'] as Map<String, dynamic>?;
+    final items = ((dataBlock?['items'] as List?) ?? [])
+        .cast<Map<String, dynamic>>();
     return items.map(_listItemToSubmission).toList();
   }
 
@@ -48,7 +49,8 @@ class AdminKycRepositoryImpl implements AdminKycRepository {
   Future<KYCSubmission?> fetchById(String id) async {
     try {
       final res = await _dio.get(ApiConstants.kycSubmissionDetail(id));
-      final data = res.data['data'] as Map<String, dynamic>;
+      final data = res.data['data'] as Map<String, dynamic>?;
+      if (data == null) return null;
       return _detailToSubmission(id, data);
     } on DioException catch (e) {
       if (e.response?.statusCode == 404) return null;
@@ -66,7 +68,7 @@ class AdminKycRepositoryImpl implements AdminKycRepository {
       // Backend trả `{submissionId, status, approvedAt, trialEndsAt}` —
       // build minimal KYCSubmission từ response, controller sẽ invalidate
       // `kycSubmissionsProvider` ngay sau đó nên UI sẽ refetch full data.
-      final data = res.data['data'] as Map<String, dynamic>;
+      final data = (res.data['data'] as Map<String, dynamic>?) ?? {};
       return _ackSubmission(
         id: id,
         status: VerifyStatus.approved,

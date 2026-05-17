@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../data/models/room_model.dart';
 import '../../../data/repositories/room_repository.dart';
@@ -10,7 +12,7 @@ final roomRepositoryProvider =
 // Provider lấy danh sách phòng (scoped theo owner — dùng cho quản lý)
 final roomListProvider =
     FutureProvider.family<List<RoomModel>, String?>((ref, homestayId) async {
-  final repo = ref.read(roomRepositoryProvider);
+  final repo = ref.watch(roomRepositoryProvider);
   final result = await repo.getRooms(homestayId: homestayId);
   if (result.success) return result.data ?? (throw Exception('Dữ liệu trả về trống'));
   throw Exception(result.message);
@@ -20,8 +22,9 @@ final roomListProvider =
 final allRoomsProvider =
     FutureProvider.autoDispose<List<RoomModel>>((ref) async {
   final link = ref.keepAlive();
-  Future.delayed(const Duration(minutes: 2), link.close);
-  final repo = ref.read(roomRepositoryProvider);
+  final timer = Timer(const Duration(minutes: 2), link.close);
+  ref.onDispose(timer.cancel);
+  final repo = ref.watch(roomRepositoryProvider);
   final result = await repo.getAllPublicRooms();
   if (result.success) return result.data ?? (throw Exception('Dữ liệu trả về trống'));
   throw Exception(result.message);
@@ -30,7 +33,7 @@ final allRoomsProvider =
 // Provider lấy chi tiết phòng
 final roomDetailProvider =
     FutureProvider.family<RoomModel, String>((ref, id) async {
-  final repo = ref.read(roomRepositoryProvider);
+  final repo = ref.watch(roomRepositoryProvider);
   final result = await repo.getRoomDetail(id);
   if (result.success) return result.data ?? (throw Exception('Dữ liệu trả về trống'));
   throw Exception(result.message);

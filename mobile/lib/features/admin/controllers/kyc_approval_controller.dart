@@ -13,7 +13,7 @@ final kycQueueFilterProvider =
 
 /// Toàn bộ submissions (pre-filter).
 final kycSubmissionsProvider = FutureProvider<List<KYCSubmission>>(
-  (ref) => ref.read(adminKYCRepositoryProvider).fetchAll(),
+  (ref) => ref.watch(adminKYCRepositoryProvider).fetchAll(),
 );
 
 /// Submissions sau khi áp filter — sort overdue/oldest pending lên đầu.
@@ -61,7 +61,7 @@ final pendingKycCountProvider = Provider<AsyncValue<int>>((ref) {
 /// Detail của 1 submission.
 final kycSubmissionProvider =
     FutureProvider.family<KYCSubmission?, String>((ref, id) {
-  return ref.read(adminKYCRepositoryProvider).fetchById(id);
+  return ref.watch(adminKYCRepositoryProvider).fetchById(id);
 });
 
 /// Actions notifier — approve / reject mutations.

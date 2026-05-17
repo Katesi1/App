@@ -62,7 +62,11 @@ class VerifyRepositoryImpl implements VerifyRepository {
           receiveTimeout: const Duration(seconds: 60),
         ),
       );
-      final data = res.data['data'] as Map<String, dynamic>;
+      final raw = res.data['data'];
+      if (raw is! Map<String, dynamic>) {
+        throw const VerifyApiException('Invalid response format');
+      }
+      final data = raw;
       // Backend có thể chưa lưu `ocrResult` (early integration) → fallback
       // dùng ocr client đã gửi để frontend vẫn có data hiển thị ngay.
       var upload = CCCDUpload.fromJson(data);
@@ -136,7 +140,9 @@ class VerifyRepositoryImpl implements VerifyRepository {
   Future<List<Plan>> fetchPlans() async {
     try {
       final res = await _dio.get(ApiConstants.billingPlans);
-      final list = (res.data['data'] as List).cast<Map<String, dynamic>>();
+      final rawList = res.data['data'];
+      if (rawList is! List) throw const VerifyApiException('Invalid response format');
+      final list = rawList.cast<Map<String, dynamic>>();
       return list.map(Plan.fromJson).toList();
     } on DioException catch (e) {
       throw VerifyApiException(parseDioError(e));
@@ -247,7 +253,7 @@ class VerifyRepositoryImpl implements VerifyRepository {
       if (payment == null) {
         throw const VerifyApiException('Không tìm thấy phiên thanh toán');
       }
-      final sessionId = payment['id'] as String;
+      final sessionId = (payment['id'] as String?) ?? '';
       final res = await _dio.post(ApiConstants.paymentRefund(sessionId));
       final data = res.data['data'] as Map<String, dynamic>;
       return RefundResult(

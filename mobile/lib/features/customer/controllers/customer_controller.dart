@@ -1,3 +1,4 @@
+import 'package:equatable/equatable.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../data/models/booking_model.dart';
 import '../../../data/models/room_model.dart';
@@ -14,7 +15,7 @@ final customerRepositoryProvider =
 final publicRoomsProvider =
     FutureProvider.family<List<RoomModel>, PublicRoomFilter?>(
         (ref, filter) async {
-  final repo = ref.read(customerRepositoryProvider);
+  final repo = ref.watch(customerRepositoryProvider);
   final result = await repo.getPublicRooms(
     checkinDate: filter?.checkinDate,
     checkoutDate: filter?.checkoutDate,
@@ -31,7 +32,7 @@ final publicRoomsProvider =
 
 final myBookingsProvider =
     FutureProvider.family<List<BookingModel>, int?>((ref, status) async {
-  final repo = ref.read(customerRepositoryProvider);
+  final repo = ref.watch(customerRepositoryProvider);
   final result = await repo.getMyBookings(status: status);
   if (result.success) return result.data ?? (throw Exception('Dữ liệu trả về trống'));
   throw Exception(result.message);
@@ -87,7 +88,7 @@ final customerBookingProvider =
 
 // ── Filter model ───────────────────────────────────────────────────────────
 
-class PublicRoomFilter {
+class PublicRoomFilter extends Equatable {
   final DateTime? checkinDate;
   final DateTime? checkoutDate;
   final int? guests;
@@ -103,4 +104,8 @@ class PublicRoomFilter {
     this.maxPrice,
     this.view,
   });
+
+  @override
+  List<Object?> get props =>
+      [checkinDate, checkoutDate, guests, minPrice, maxPrice, view];
 }

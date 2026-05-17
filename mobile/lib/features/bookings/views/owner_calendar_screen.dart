@@ -77,7 +77,8 @@ class _OwnerCalendarScreenState extends ConsumerState<OwnerCalendarScreen> {
     return rows.map((row) {
       final cells = <DateTime, DayCell>{};
       for (final day in row.days) {
-        final dt = DateTime.parse(day.date);
+        final dt = DateTime.tryParse(day.date);
+        if (dt == null) continue;
         final key = DateTime(dt.year, dt.month, dt.day);
         final soldKey = '${row.id}_${day.date}';
         final apiStatus = _mapStatus(day.status);
@@ -649,7 +650,7 @@ class _OwnerCalendarScreenState extends ConsumerState<OwnerCalendarScreen> {
               ? 'Đã đánh dấu đã bán phòng ${room.code} ngày ${date.day}/${date.month}'
               : 'Có lỗi xảy ra, vui lòng thử lại',
         ),
-        backgroundColor: success ? colors.error : colors.textSecondary,
+        backgroundColor: success ? colors.success : colors.error,
         behavior: SnackBarBehavior.floating,
         duration: const Duration(seconds: 2),
       ),

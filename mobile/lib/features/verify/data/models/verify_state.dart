@@ -169,8 +169,10 @@ class VerifyFlowState extends Equatable {
                 json['paymentSession'] as Map<String, dynamic>),
         paymentStatus: json['paymentStatus'] == null
             ? null
-            : PaymentStatus.values
-                .firstWhere((s) => s.name == json['paymentStatus']),
+            : PaymentStatus.values.firstWhere(
+                (s) => s.name == json['paymentStatus'],
+                orElse: () => PaymentStatus.pending,
+              ),
         submissionId: json['submissionId'] as String?,
         status: VerifyStatus.values.firstWhere(
           (s) => s.name == (json['status'] as String? ?? 'draft'),

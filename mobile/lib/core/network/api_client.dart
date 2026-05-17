@@ -6,8 +6,7 @@ import '../constants/api_constants.dart';
 import '../storage/secure_storage.dart';
 
 class ApiClient {
-  static late final Dio _dio;
-  static bool _initialized = false;
+  static final Dio _dio = _createDio();
 
   /// Broadcast event khi token refresh fail → app phải đẩy user về login.
   ///
@@ -20,21 +19,17 @@ class ApiClient {
 
   static Stream<void> get onForceLogout => _forceLogoutController.stream;
 
-  static Dio get instance {
-    if (!_initialized) _init();
-    return _dio;
-  }
+  static Dio get instance => _dio;
 
-  static void _init() {
-    _dio = Dio(BaseOptions(
+  static Dio _createDio() {
+    final dio = Dio(BaseOptions(
       baseUrl: ApiConstants.baseUrl,
       connectTimeout: const Duration(seconds: 30),
       receiveTimeout: const Duration(seconds: 30),
       headers: {'Content-Type': 'application/json'},
     ));
-
-    _dio.interceptors.add(_AuthInterceptor(_dio));
-    _initialized = true;
+    dio.interceptors.add(_AuthInterceptor(dio));
+    return dio;
   }
 }
 
@@ -45,6 +40,7 @@ class _AuthInterceptor extends Interceptor {
     ApiConstants.login,
     ApiConstants.register,
     ApiConstants.googleLogin,
+    ApiConstants.appleLogin,
     ApiConstants.forgotPassword,
     ApiConstants.resetPassword,
     ApiConstants.refresh,
@@ -88,8 +84,10 @@ class _AuthInterceptor extends Interceptor {
     if (shouldRetry && retries < 2) {
       final waitMs = _retryDelayMs(err, retries);
       await Future<void>.delayed(Duration(milliseconds: waitMs));
-      final retryOptions = err.requestOptions
-        ..extra['retry_count'] = retries + 1;
+      final retryOptions = err.requestOptions.copyWith(
+        extra: Map<String, dynamic>.from(err.requestOptions.extra)
+          ..['retry_count'] = retries + 1,
+      );
       try {
         final response = await _dio.fetch(retryOptions);
         handler.resolve(response);
@@ -167,7 +165,10 @@ class _AuthInterceptor extends Interceptor {
         final r = await _dio.fetch(item.options);
         item.handler.resolve(r);
       } catch (e) {
-        item.handler.next(originalErr);
+        final dioErr = e is DioException
+            ? e
+            : DioException(requestOptions: item.options, error: e);
+        item.handler.next(dioErr);
       }
     }
   }

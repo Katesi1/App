@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../data/models/booking_model.dart';
 import '../../../data/repositories/booking_repository.dart';
@@ -36,7 +38,7 @@ class CalendarParams {
 // ─── Detail provider ─────────────────────────────────────────────────────────
 final bookingDetailProvider =
     FutureProvider.family<BookingModel, String>((ref, id) async {
-  final repo = ref.read(bookingRepositoryProvider);
+  final repo = ref.watch(bookingRepositoryProvider);
   final result = await repo.getBookingDetail(id);
   if (result.success) return result.data ?? (throw Exception('Dữ liệu trả về trống'));
   throw Exception(result.message);
@@ -46,8 +48,9 @@ final bookingDetailProvider =
 final bookingListProvider = FutureProvider.autoDispose
     .family<List<BookingModel>, String?>((ref, propertyId) async {
   final link = ref.keepAlive();
-  Future.delayed(const Duration(minutes: 2), link.close);
-  final repo = ref.read(bookingRepositoryProvider);
+  final timer = Timer(const Duration(minutes: 2), link.close);
+  ref.onDispose(timer.cancel);
+  final repo = ref.watch(bookingRepositoryProvider);
   final result = await repo.getBookings(propertyId: propertyId);
   if (result.success) return result.data ?? (throw Exception('Dữ liệu trả về trống'));
   throw Exception(result.message);
@@ -57,7 +60,7 @@ final bookingListProvider = FutureProvider.autoDispose
 final calendarProvider =
     FutureProvider.family<List<CalendarBooking>, CalendarParams>(
         (ref, params) async {
-  final repo = ref.read(bookingRepositoryProvider);
+  final repo = ref.watch(bookingRepositoryProvider);
   final result =
       await repo.getCalendar(params.propertyId, params.year, params.month);
   if (result.success) return result.data ?? (throw Exception('Dữ liệu trả về trống'));

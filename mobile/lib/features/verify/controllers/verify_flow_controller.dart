@@ -395,7 +395,7 @@ class VerifyFlowController extends StateNotifier<VerifyFlowState> {
     SharedPreferences.getInstance().then((prefs) {
       final payload = jsonEncode(state.toJson());
       prefs.setString(_draftKey, payload);
-    });
+    }).catchError((_) {});
   }
 }
 

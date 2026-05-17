@@ -119,7 +119,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
 
     // Normalize VN phone formats to match DB (usually stored as 0xxxxxxxxx)
     if (!v.contains('@')) {
-      if (v.startsWith('+84')) {
+      if (v.startsWith('+84') && v.length > 3) {
         v = '0${v.substring(3)}';
       } else if (v.startsWith('84') && v.length >= 11) {
         v = '0${v.substring(2)}';

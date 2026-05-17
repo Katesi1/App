@@ -55,7 +55,11 @@ class _SelectPlanScreenState extends ConsumerState<SelectPlanScreen> {
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (e, _) => Center(child: Text('Lỗi: $e')),
         data: (plans) {
-          final selectedPlan = PlanPriceCalculator.planFor(_selected!, plans);
+          final selectedPlan =
+              PlanPriceCalculator.planFor(_selected!, plans);
+          if (selectedPlan == null) {
+            return const Center(child: CircularProgressIndicator());
+          }
           final total = PlanPriceCalculator.total(selectedPlan, _cycle);
 
           return Stack(

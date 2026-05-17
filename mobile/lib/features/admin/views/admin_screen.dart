@@ -8,6 +8,7 @@ import '../../../core/theme/app_spacing.dart';
 import '../../../core/utils/helpers.dart';
 import '../../../shared/widgets/app_scaffold.dart';
 import '../../../shared/widgets/loading_widget.dart';
+import '../../../data/models/user_model.dart';
 import '../../auth/controllers/auth_controller.dart';
 import '../../bookings/controllers/booking_controller.dart';
 import '../../properties/controllers/property_controller.dart';
@@ -708,7 +709,7 @@ class _QuickAction extends StatelessWidget {
 
 // ─── User Row ────────────────────────────────────────────────────────────────
 class _UserRow extends StatelessWidget {
-  final dynamic user;
+  final UserModel user;
   final VoidCallback onTap;
 
   const _UserRow({required this.user, required this.onTap});
