@@ -11,11 +11,23 @@ class BankInfo extends Equatable {
   /// Nội dung chuyển khoản (vd "KYC ABC123DE").
   final String content;
 
+  /// VietQR payload (chuẩn EMVCo, FE render bằng `QrImageView`).
+  /// Backend sinh từ VietQR.io API hoặc tự build EMV string từ STK + amount + content.
+  /// Nullable để backwards-compat nếu backend chưa wire.
+  final String? vietQrPayload;
+
+  /// BIN (Bank Identification Number) chuẩn NAPAS, vd `970436` cho VCB.
+  /// Dùng để load logo NH từ vietqr.io (xem `bankLogoUrl`). Optional —
+  /// backend mới (post 2026-05-09) trả về, version cũ thì null.
+  final String? bankBin;
+
   const BankInfo({
     required this.bankName,
     required this.accountNumber,
     required this.accountName,
     required this.content,
+    this.vietQrPayload,
+    this.bankBin,
   });
 
   factory BankInfo.fromJson(Map<String, dynamic> json) => BankInfo(
@@ -25,6 +37,9 @@ class BankInfo extends Equatable {
         accountName:
             (json['accountName'] ?? json['account_name'] ?? '') as String,
         content: (json['content'] ?? '') as String,
+        vietQrPayload:
+            (json['vietQrPayload'] ?? json['viet_qr_payload']) as String?,
+        bankBin: (json['bankBin'] ?? json['bank_bin']) as String?,
       );
 
   Map<String, dynamic> toJson() => {
@@ -32,6 +47,8 @@ class BankInfo extends Equatable {
         'accountNumber': accountNumber,
         'accountName': accountName,
         'content': content,
+        if (vietQrPayload != null) 'vietQrPayload': vietQrPayload,
+        if (bankBin != null) 'bankBin': bankBin,
       };
 
   /// Format hiển thị 4 dòng cho dialog "Chuyển khoản".
@@ -40,8 +57,20 @@ class BankInfo extends Equatable {
       'Tên: $accountName\n'
       'Nội dung: $content';
 
+  /// URL logo ngân hàng từ vietqr.io. Null nếu backend không trả `bankBin`.
+  String? get bankLogoUrl => bankBin == null || bankBin!.isEmpty
+      ? null
+      : 'https://api.vietqr.io/img/$bankBin.png';
+
   @override
-  List<Object?> get props => [bankName, accountNumber, accountName, content];
+  List<Object?> get props => [
+        bankName,
+        accountNumber,
+        accountName,
+        content,
+        vietQrPayload,
+        bankBin,
+      ];
 }
 
 /// Một phiên thanh toán đang mở (VNPay / bank transfer / card).
@@ -52,14 +81,25 @@ class PaymentSession extends Equatable {
   /// Tổng tiền (đã bao gồm VAT) — VND.
   final int totalAmount;
 
-  /// QR code base64 string (chỉ áp dụng VNPay QR).
+  /// QR payload cho VNPay QR — định dạng EMVCo string raw (FE tự render bằng
+  /// `QrImageView`). Backend trả về sau khi gọi VNPay createQR API.
+  ///
+  /// Nếu backend trả base64 PNG thay vì EMV string, dùng [qrImageBase64].
   final String? qrCode;
+
+  /// Fallback: ảnh QR base64 PNG (`data:image/png;base64,...` hoặc raw base64).
+  /// Dùng khi backend không tiện sinh EMV string mà render QR rồi gửi ảnh.
+  final String? qrImageBase64;
 
   /// Thông tin chuyển khoản (chỉ áp dụng bank transfer).
   final BankInfo? bankInfo;
 
-  /// Redirect URL (card form).
+  /// Redirect URL — VNPay Gateway flow (mở WebView/browser để nhập thẻ ATM/quốc tế).
   final String? redirectUrl;
+
+  /// Deeplink để mở app banking trên cùng device (vd `vnpay://...`).
+  /// Sau khi user thanh toán xong, app banking sẽ callback về app qua deeplink.
+  final String? payUrl;
 
   final DateTime expiresAt;
 
@@ -68,8 +108,10 @@ class PaymentSession extends Equatable {
     required this.method,
     required this.totalAmount,
     this.qrCode,
+    this.qrImageBase64,
     this.bankInfo,
     this.redirectUrl,
+    this.payUrl,
     required this.expiresAt,
   });
 
@@ -82,9 +124,12 @@ class PaymentSession extends Equatable {
       method: method,
       totalAmount: (json['totalAmount'] ?? json['total_amount']) as int,
       qrCode: (json['qrCode'] ?? json['qr_code']) as String?,
+      qrImageBase64:
+          (json['qrImageBase64'] ?? json['qr_image_base64']) as String?,
       bankInfo:
           bankRaw is Map<String, dynamic> ? BankInfo.fromJson(bankRaw) : null,
       redirectUrl: (json['redirectUrl'] ?? json['redirect_url']) as String?,
+      payUrl: (json['payUrl'] ?? json['pay_url']) as String?,
       expiresAt: DateTime.parse(
         (json['expiresAt'] ?? json['expires_at']) as String,
       ),
@@ -96,8 +141,10 @@ class PaymentSession extends Equatable {
         'method': method.toApiString(),
         'totalAmount': totalAmount,
         'qrCode': qrCode,
+        'qrImageBase64': qrImageBase64,
         'bankInfo': bankInfo?.toJson(),
         'redirectUrl': redirectUrl,
+        'payUrl': payUrl,
         'expiresAt': expiresAt.toIso8601String(),
       };
 
@@ -107,9 +154,11 @@ class PaymentSession extends Equatable {
         method,
         totalAmount,
         qrCode,
+        qrImageBase64,
         bankInfo,
         redirectUrl,
-        expiresAt
+        payUrl,
+        expiresAt,
       ];
 }
 

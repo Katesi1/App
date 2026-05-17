@@ -6,6 +6,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../data/models/cccd_upload.dart';
 import '../data/models/ocr_result.dart';
+import '../data/models/payment_history_item.dart';
 import '../data/models/payment_session.dart';
 import '../data/models/plan.dart';
 import '../data/models/selfie_upload.dart';
@@ -14,25 +15,109 @@ import '../data/models/verify_state.dart';
 import '../data/repositories/verify_repository.dart';
 import '../data/repositories/verify_repository_impl.dart';
 
-/// Provider trả về [VerifyRepository]. Backend đã sẵn sàng (xem
-/// `BACKEND_CHANGES_REPORT.md`) — wire vào real impl.
-///
-/// Test/QA muốn dùng mock thì override provider này:
-/// `verifyRepositoryProvider.overrideWithValue(MockVerifyRepository(...))`.
 final verifyRepositoryProvider = Provider<VerifyRepository>(
   (ref) => VerifyRepositoryImpl(),
 );
 
-/// Catalog 6 plan. Tạm dùng `kDefaultPlans` local — backend hiện vẫn trả 3
-/// plan cũ (`starter|professional|enterprise`). Khi backend re-seed bảng
-/// `billing_plans` theo spec mới (xem `api-kyc-self-host-update.md`),
-/// swap về `ref.read(verifyRepositoryProvider).fetchPlans()`.
 final verifyPlansProvider = FutureProvider<List<Plan>>((ref) async {
-  try {
-    return await ref.read(verifyRepositoryProvider).fetchPlans();
-  } catch (_) {
-    return kDefaultPlans;
+  return ref.read(verifyRepositoryProvider).fetchPlans();
+});
+
+final paymentHistoryProvider =
+    FutureProvider<PaymentHistoryPage>((ref) async {
+  return ref.read(verifyRepositoryProvider).fetchPaymentHistory();
+});
+class PaymentHistoryListState {
+  final List<PaymentHistoryItem> items;
+  final String? nextCursor;
+  final bool isLoadingFirstPage;
+  final bool isLoadingMore;
+  final String? error;
+
+  const PaymentHistoryListState({
+    this.items = const [],
+    this.nextCursor,
+    this.isLoadingFirstPage = false,
+    this.isLoadingMore = false,
+    this.error,
+  });
+
+  bool get hasMore => nextCursor != null && nextCursor!.isNotEmpty;
+
+  PaymentHistoryListState copyWith({
+    List<PaymentHistoryItem>? items,
+    String? nextCursor,
+    bool? isLoadingFirstPage,
+    bool? isLoadingMore,
+    String? error,
+    bool clearError = false,
+    bool clearNextCursor = false,
+  }) =>
+      PaymentHistoryListState(
+        items: items ?? this.items,
+        nextCursor: clearNextCursor ? null : (nextCursor ?? this.nextCursor),
+        isLoadingFirstPage: isLoadingFirstPage ?? this.isLoadingFirstPage,
+        isLoadingMore: isLoadingMore ?? this.isLoadingMore,
+        error: clearError ? null : (error ?? this.error),
+      );
+}
+
+class PaymentHistoryNotifier extends StateNotifier<PaymentHistoryListState> {
+  PaymentHistoryNotifier(this._repo) : super(const PaymentHistoryListState()) {
+    refresh();
   }
+
+  final VerifyRepository _repo;
+  static const _pageSize = 20;
+
+  Future<void> refresh() async {
+    state = state.copyWith(
+      isLoadingFirstPage: true,
+      clearError: true,
+      items: const [],
+      clearNextCursor: true,
+    );
+    try {
+      final page = await _repo.fetchPaymentHistory(limit: _pageSize);
+      state = state.copyWith(
+        items: page.items,
+        nextCursor: page.nextCursor,
+        isLoadingFirstPage: false,
+      );
+    } catch (e) {
+      state = state.copyWith(
+        isLoadingFirstPage: false,
+        error: e.toString().replaceAll('Exception: ', ''),
+      );
+    }
+  }
+
+  Future<void> loadMore() async {
+    if (state.isLoadingMore || !state.hasMore) return;
+    state = state.copyWith(isLoadingMore: true, clearError: true);
+    try {
+      final page = await _repo.fetchPaymentHistory(
+        limit: _pageSize,
+        cursor: state.nextCursor,
+      );
+      state = state.copyWith(
+        items: [...state.items, ...page.items],
+        nextCursor: page.nextCursor,
+        isLoadingMore: false,
+        clearNextCursor: page.nextCursor == null,
+      );
+    } catch (e) {
+      state = state.copyWith(
+        isLoadingMore: false,
+        error: e.toString().replaceAll('Exception: ', ''),
+      );
+    }
+  }
+}
+
+final paymentHistoryListProvider = StateNotifierProvider.autoDispose<
+    PaymentHistoryNotifier, PaymentHistoryListState>((ref) {
+  return PaymentHistoryNotifier(ref.read(verifyRepositoryProvider));
 });
 
 /// Controller cho toàn flow verify + subscription.
@@ -201,6 +286,18 @@ class VerifyFlowController extends StateNotifier<VerifyFlowState> {
       paymentSession: session,
       paymentStatus: PaymentStatus.pending,
       status: VerifyStatus.paymentPending,
+    );
+    _persistDraft();
+    return session;
+  }
+
+  /// Tạo phiên gia hạn subscription (renew). Backend dùng plan + cycle
+  /// hiện tại của user, app chỉ cần gửi method.
+  Future<PaymentSession> initiateRenewal(PaymentMethod method) async {
+    final session = await _repo.renewSubscription(method: method);
+    state = state.copyWith(
+      paymentSession: session,
+      paymentStatus: PaymentStatus.pending,
     );
     _persistDraft();
     return session;

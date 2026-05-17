@@ -23,7 +23,7 @@ final publicRoomsProvider =
     maxPrice: filter?.maxPrice,
     view: filter?.view,
   );
-  if (result.success) return result.data!;
+  if (result.success) return result.data ?? (throw Exception('Dữ liệu trả về trống'));
   throw Exception(result.message);
 });
 
@@ -33,7 +33,7 @@ final myBookingsProvider =
     FutureProvider.family<List<BookingModel>, int?>((ref, status) async {
   final repo = ref.read(customerRepositoryProvider);
   final result = await repo.getMyBookings(status: status);
-  if (result.success) return result.data!;
+  if (result.success) return result.data ?? (throw Exception('Dữ liệu trả về trống'));
   throw Exception(result.message);
 });
 

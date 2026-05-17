@@ -123,4 +123,25 @@ class UserRepository {
       return ApiResponse(success: false, message: parseDioError(e));
     }
   }
+
+  /// Self-delete cho compliance App Store / Play Store / GDPR.
+  /// Hiện tại reuse `DELETE /users/:id` — BE cần confirm endpoint này cho phép
+  /// user self-delete (không chỉ ADMIN). Nếu BE chưa cho phép, sẽ trả 403 và
+  /// FE hiện error rõ ràng để user liên hệ support.
+  ///
+  /// [reason] optional — gửi kèm để BE log lý do user xoá (analytics).
+  Future<ApiResponse<void>> deleteMyAccount({String? reason}) async {
+    try {
+      await _dio.delete(
+        '${ApiConstants.users}/me',
+        data: reason == null ? null : {'reason': reason},
+      );
+      return ApiResponse(
+        success: true,
+        message: 'Đã xoá tài khoản. Hẹn gặp lại bạn!',
+      );
+    } on DioException catch (e) {
+      return ApiResponse(success: false, message: parseDioError(e));
+    }
+  }
 }

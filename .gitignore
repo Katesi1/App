@@ -17,3 +17,7 @@ Desktop.ini
 *.log
 npm-debug.log*
 yarn-debug.log*
+
+# Large archive files — never commit
+mobile.zip
+*.zip

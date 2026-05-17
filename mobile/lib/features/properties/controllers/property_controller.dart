@@ -19,7 +19,7 @@ final homestayListProvider = FutureProvider.family<List<HomestayModel>, bool>(
     (ref, includeInactive) async {
   final repo = ref.read(homestayRepositoryProvider);
   final result = await repo.getHomestays(includeInactive: includeInactive);
-  if (result.success) return result.data!;
+  if (result.success) return result.data ?? (throw Exception('Dữ liệu trả về trống'));
   throw Exception(result.message);
 });
 
@@ -28,7 +28,7 @@ final homestayDetailProvider =
     FutureProvider.family<HomestayModel, String>((ref, id) async {
   final repo = ref.read(homestayRepositoryProvider);
   final result = await repo.getHomestay(id);
-  if (result.success) return result.data!;
+  if (result.success) return result.data ?? (throw Exception('Dữ liệu trả về trống'));
   throw Exception(result.message);
 });
 
@@ -60,7 +60,7 @@ class HomestayActionsNotifier extends StateNotifier<AsyncValue<void>> {
     if (result.success) {
       _refreshAll();
       state = const AsyncValue.data(null);
-      return result.data!.id;
+      return result.data?.id ?? (throw Exception('Dữ liệu trả về trống'));
     }
     state = AsyncValue.error(result.message, StackTrace.current);
     return null;

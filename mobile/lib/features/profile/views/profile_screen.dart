@@ -190,27 +190,11 @@ class ProfileScreen extends ConsumerWidget {
                         iconColor: colors.textSecondary,
                         onTap: () => context.push('/profile/terms'),
                       ),
-                      _MenuItemData(
-                        icon: Icons.verified_user_outlined,
-                        label: 'Quyền đồng ý dữ liệu',
-                        subtitle: 'KYC và marketing',
-                        iconColor: colors.textSecondary,
-                        onTap: () => context.push('/profile/consent'),
-                      ),
-                      _MenuItemData(
-                        icon: Icons.download_outlined,
-                        label: 'Yêu cầu dữ liệu cá nhân',
-                        subtitle: 'Tải bản sao dữ liệu',
-                        iconColor: colors.textSecondary,
-                        onTap: () => context.push('/profile/data-request'),
-                      ),
-                      _MenuItemData(
-                        icon: Icons.delete_forever_outlined,
-                        label: 'Xóa tài khoản',
-                        subtitle: 'Yêu cầu xóa vĩnh viễn',
-                        iconColor: colors.error,
-                        onTap: () => context.push('/profile/delete-account'),
-                      ),
+                      // ⚠️ APP STORE BLOCKER — Trước khi submit App Store,
+                      // bắt buộc add lại entry "Xoá tài khoản" ở đây hoặc
+                      // somewhere accessible (Apple Guideline 5.1.1(v)).
+                      // Route '/profile/delete-account' vẫn còn — có thể
+                      // link từ Privacy Policy page hoặc add back menu.
                     ],
                   ),
                 ],

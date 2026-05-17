@@ -322,6 +322,12 @@ class _PropertyImagesScreenState extends ConsumerState<PropertyImagesScreen> {
               height: double.infinity,
               fit: BoxFit.cover,
               memCacheWidth: 400,
+              placeholder: (_, __) => const Center(
+                child: CircularProgressIndicator(strokeWidth: 2),
+              ),
+              errorWidget: (_, __, ___) => const Center(
+                child: Icon(Icons.broken_image_outlined),
+              ),
             ),
           ),
         ),

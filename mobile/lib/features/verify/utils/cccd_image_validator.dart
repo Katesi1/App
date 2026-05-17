@@ -173,8 +173,7 @@ class CccdImageValidator {
     }
   }
 
-  static int _countKeywordHits(String text) =>
-      _countHits(text, _frontKeywords);
+  static int _countKeywordHits(String text) => _countHits(text, _frontKeywords);
 
   static int _countHits(String text, List<String> keywords) {
     final upper = text.toUpperCase();

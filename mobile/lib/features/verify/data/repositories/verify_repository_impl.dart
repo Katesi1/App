@@ -8,6 +8,7 @@ import '../../../../core/network/api_client.dart';
 import '../../../../core/network/api_response.dart';
 import '../models/cccd_upload.dart';
 import '../models/ocr_result.dart';
+import '../models/payment_history_item.dart';
 import '../models/payment_session.dart';
 import '../models/plan.dart';
 import '../models/selfie_upload.dart';
@@ -253,6 +254,42 @@ class VerifyRepositoryImpl implements VerifyRepository {
         refundedAt: _parseDate(data['refundedAt']) ?? DateTime.now(),
         refundAmount: (data['amount'] as num?)?.toInt() ?? 0,
       );
+    } on DioException catch (e) {
+      throw VerifyApiException(parseDioError(e));
+    }
+  }
+
+  // ── Subscription history + renew ───────────────────────────────────────────
+
+  @override
+  Future<PaymentHistoryPage> fetchPaymentHistory({
+    int limit = 50,
+    String? cursor,
+  }) async {
+    try {
+      final res = await _dio.get(
+        ApiConstants.paymentHistory,
+        queryParameters: {
+          'limit': limit,
+          if (cursor != null && cursor.isNotEmpty) 'cursor': cursor,
+        },
+      );
+      return PaymentHistoryPage.fromResponse(res.data as Map<String, dynamic>);
+    } on DioException catch (e) {
+      throw VerifyApiException(parseDioError(e));
+    }
+  }
+
+  @override
+  Future<PaymentSession> renewSubscription({
+    required PaymentMethod method,
+  }) async {
+    try {
+      final res = await _dio.post(
+        ApiConstants.paymentRenew,
+        data: {'method': method.toApiString()},
+      );
+      return PaymentSession.fromJson(res.data['data'] as Map<String, dynamic>);
     } on DioException catch (e) {
       throw VerifyApiException(parseDioError(e));
     }

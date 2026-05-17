@@ -8,10 +8,6 @@ class AppConstants {
   static const String refreshTokenKey = 'refresh_token';
   static const String userKey = 'user_data';
 
-  // TODO: Cập nhật các link bên dưới khi app được publish lên store.
-  // playStoreUrl: lấy từ Google Play Console → trang app → "Xem trên Google Play"
-  // appStoreUrl: lấy từ App Store Connect → trang app → "App URL"
-  // appDownloadPage: trang web riêng (nếu có) để redirect theo platform
   static const String playStoreUrl =
       'https://play.google.com/store/apps/details?id=com.halongtravel.halong24h';
   static const String appStoreUrl =
@@ -19,7 +15,6 @@ class AppConstants {
   static const String appDownloadPage = 'https://halong24h.vn/download';
 }
 
-// 0=ADMIN, 1=OWNER, 2=SALE, 3=CUSTOMER
 enum UserRole { admin, owner, sale, customer }
 
 extension UserRoleExtension on UserRole {

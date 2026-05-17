@@ -11,8 +11,8 @@ Tài liệu này là **hệ điều hành dự án** — định nghĩa conventi
 - **Architecture**: MVC (Model - View - Controller) với Riverpod
 - **Platform**: Flutter (iOS + Android)
 - **Language**: Dart 3.5+
-- **Backend API**: `http://103.183.118.148:3000`
-- **Swagger docs**: `http://103.183.118.148/index.html`
+- **Backend API**: `http://160.30.169.42:3000`
+- **Swagger docs**: `http://160.30.169.42/index.html`
 
 ### Phạm vi
 
@@ -866,8 +866,7 @@ OWNER mới đăng ký → bị block tạo phòng cho tới khi qua flow verify
 upload CCCD trước/sau + selfie liveness → chọn plan → thanh toán → admin duyệt
 → trial 7 ngày → auto-charge subscription.
 
-→ Spec backend đầy đủ: [`api-kyc-implementation-spec.md`](api-kyc-implementation-spec.md)
-→ Trạng thái backend: [`BACKEND_CHANGES_REPORT.md`](BACKEND_CHANGES_REPORT.md)
+→ Spec backend đầy đủ: [`API.md`](API.md) — section 14 (KYC User) + 15 (KYC Admin) + 16 (Billing & Payment)
 
 ### State machine — 7 status (camelCase, khớp giữa backend & frontend)
 

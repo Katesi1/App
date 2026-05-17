@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../../core/constants/app_constants.dart';
 import '../../../core/theme/app_color_scheme.dart';
@@ -490,7 +491,7 @@ class _MyBookingCard extends StatelessWidget {
             ),
           ),
 
-          // Cancel button (chỉ hiện khi HOLD)
+          // Cancel button (HOLD) hoặc Write review (COMPLETED)
           if (booking.status == BookingStatus.hold)
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
@@ -511,6 +512,37 @@ class _MyBookingCard extends StatelessWidget {
                     style: GoogleFonts.beVietnamPro(
                       fontSize: 13,
                       fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+              ),
+            )
+          else if (booking.status == BookingStatus.completed)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+              child: SizedBox(
+                width: double.infinity,
+                height: 38,
+                child: FilledButton.icon(
+                  onPressed: () {
+                    final name = Uri.encodeQueryComponent(booking.propertyName);
+                    context.push(
+                      '/reviews/${booking.propertyId}/write?bookingId=${booking.id}&name=$name',
+                    );
+                  },
+                  icon: const Icon(Icons.rate_review_rounded, size: 16),
+                  label: Text(
+                    'Viết đánh giá',
+                    style: GoogleFonts.beVietnamPro(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  style: FilledButton.styleFrom(
+                    backgroundColor: colors.brand,
+                    foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(AppRadius.md),
                     ),
                   ),
                 ),

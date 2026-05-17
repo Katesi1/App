@@ -11,6 +11,7 @@ import '../../../core/constants/app_constants.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../controllers/auth_controller.dart';
+import 'role_picker_screen.dart';
 
 class RegisterScreen extends ConsumerStatefulWidget {
   const RegisterScreen({super.key});
@@ -33,8 +34,9 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen>
   bool _obscureConfirm = true;
   bool _isLoading = false;
 
-  // Chọn role: Chủ nhà hoặc Nhân viên
-  UserRole _role = UserRole.owner;
+  // Chỉ OWNER tự đăng ký được. SALE đi qua flow invite (POST /staff/invites);
+  // CUSTOMER vào Login screen → Google → role picker.
+  static const UserRole _role = UserRole.owner;
 
   @override
   void initState() {
@@ -91,22 +93,38 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen>
 
   Future<void> _registerWithGoogle() async {
     setState(() => _isLoading = true);
-    final error = await ref
+    final outcome = await ref
         .read(authProvider.notifier)
         .signInWithGoogle(role: _role.value);
     if (!mounted) return;
     setState(() => _isLoading = false);
-    if (error != null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(error),
-          backgroundColor: AppColors.coral,
-          behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(AppRadius.sm)),
-          margin: const EdgeInsets.all(AppSpacing.md),
-        ),
-      );
+
+    switch (outcome) {
+      case GoogleSignInSuccess():
+        return;
+      case GoogleSignInNeedsRole():
+        // Edge case: BE bỏ qua role được gửi (không nên xảy ra với role hợp lệ).
+        // Vẫn cho fallback push role picker để user tiếp tục được.
+        context.push(
+          '/auth/role-picker',
+          extra: RolePickerArgs(
+            idToken: outcome.idToken,
+            profile: outcome.profile,
+          ),
+        );
+      case GoogleSignInCancelled():
+        return;
+      case GoogleSignInFailure(:final message):
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(message),
+            backgroundColor: AppColors.coral,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(AppRadius.sm)),
+            margin: const EdgeInsets.all(AppSpacing.md),
+          ),
+        );
     }
   }
 
@@ -300,11 +318,65 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen>
                                 ),
                               ),
 
-                              // Role selector
-                              _RoleSelector(
-                                selected: _role,
-                                onChanged: (role) =>
-                                    setState(() => _role = role),
+                              // Đăng ký này chỉ dành cho chủ homestay.
+                              // Khách hàng đăng nhập qua Google ở màn Login.
+                              // Nhân viên đợi chủ homestay gửi email mời.
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 14, vertical: 14),
+                                decoration: BoxDecoration(
+                                  color:
+                                      AppColors.ocean.withValues(alpha: 0.06),
+                                  borderRadius: BorderRadius.circular(14),
+                                  border: Border.all(
+                                    color:
+                                        AppColors.ocean.withValues(alpha: 0.3),
+                                  ),
+                                ),
+                                child: Row(
+                                  children: [
+                                    Container(
+                                      width: 40,
+                                      height: 40,
+                                      decoration: BoxDecoration(
+                                        color: AppColors.ocean
+                                            .withValues(alpha: 0.12),
+                                        borderRadius:
+                                            BorderRadius.circular(10),
+                                      ),
+                                      child: const Icon(
+                                        Icons.home_work_rounded,
+                                        color: AppColors.ocean,
+                                        size: 22,
+                                      ),
+                                    ),
+                                    const SizedBox(width: 12),
+                                    Expanded(
+                                      child: Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: [
+                                          Text(
+                                            'Đăng ký chủ homestay',
+                                            style: GoogleFonts.beVietnamPro(
+                                              fontSize: 14,
+                                              fontWeight: FontWeight.w700,
+                                              color: AppColors.ocean,
+                                            ),
+                                          ),
+                                          const SizedBox(height: 2),
+                                          Text(
+                                            'Đăng phòng & quản lý booking',
+                                            style: GoogleFonts.beVietnamPro(
+                                              fontSize: 12,
+                                              color: AppColors.muted,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ],
+                                ),
                               )
                                   .animate(delay: 350.ms)
                                   .fadeIn(duration: 400.ms)
@@ -589,121 +661,6 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen>
       focusedErrorBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(14),
         borderSide: const BorderSide(color: AppColors.coral, width: 1.5),
-      ),
-    );
-  }
-}
-
-// ── Role selector ────────────────────────────────────────────────────────────
-
-class _RoleSelector extends StatelessWidget {
-  final UserRole selected;
-  final ValueChanged<UserRole> onChanged;
-
-  const _RoleSelector({required this.selected, required this.onChanged});
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      children: [
-        Expanded(
-          child: _RoleCard(
-            icon: Icons.home_work_rounded,
-            label: 'Chủ nhà',
-            sub: 'Đăng phòng & quản lý',
-            isSelected: selected == UserRole.owner,
-            onTap: () => onChanged(UserRole.owner),
-          ),
-        ),
-        const SizedBox(width: 12),
-        Expanded(
-          child: _RoleCard(
-            icon: Icons.badge_rounded,
-            label: 'Nhân viên',
-            sub: 'Hỗ trợ chủ nhà',
-            isSelected: selected == UserRole.sale,
-            onTap: () => onChanged(UserRole.sale),
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-class _RoleCard extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  final String sub;
-  final bool isSelected;
-  final VoidCallback onTap;
-
-  const _RoleCard({
-    required this.icon,
-    required this.label,
-    required this.sub,
-    required this.isSelected,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final color = isSelected ? AppColors.ocean : AppColors.slate;
-    return GestureDetector(
-      onTap: onTap,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
-        decoration: BoxDecoration(
-          color: isSelected
-              ? AppColors.ocean.withValues(alpha: 0.06)
-              : AppColors.background,
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(
-            color: isSelected
-                ? AppColors.ocean.withValues(alpha: 0.4)
-                : AppColors.border,
-            width: isSelected ? 1.5 : 1,
-          ),
-        ),
-        child: Column(
-          children: [
-            Container(
-              width: 40,
-              height: 40,
-              decoration: BoxDecoration(
-                color: color.withValues(alpha: 0.12),
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: Icon(icon, color: color, size: 20),
-            ),
-            const SizedBox(height: 10),
-            Text(
-              label,
-              style: GoogleFonts.beVietnamPro(
-                fontSize: 13,
-                fontWeight: FontWeight.w700,
-                color: isSelected ? AppColors.ocean : AppColors.navy,
-              ),
-            ),
-            const SizedBox(height: 2),
-            Text(
-              sub,
-              style: GoogleFonts.beVietnamPro(
-                fontSize: 11,
-                color: AppColors.muted,
-              ),
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: 8),
-            Icon(
-              isSelected
-                  ? Icons.check_circle_rounded
-                  : Icons.radio_button_unchecked_rounded,
-              color: isSelected ? AppColors.ocean : AppColors.border,
-              size: 20,
-            ),
-          ],
-        ),
       ),
     );
   }

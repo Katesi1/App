@@ -38,7 +38,7 @@ final bookingDetailProvider =
     FutureProvider.family<BookingModel, String>((ref, id) async {
   final repo = ref.read(bookingRepositoryProvider);
   final result = await repo.getBookingDetail(id);
-  if (result.success) return result.data!;
+  if (result.success) return result.data ?? (throw Exception('Dữ liệu trả về trống'));
   throw Exception(result.message);
 });
 
@@ -49,7 +49,7 @@ final bookingListProvider = FutureProvider.autoDispose
   Future.delayed(const Duration(minutes: 2), link.close);
   final repo = ref.read(bookingRepositoryProvider);
   final result = await repo.getBookings(propertyId: propertyId);
-  if (result.success) return result.data!;
+  if (result.success) return result.data ?? (throw Exception('Dữ liệu trả về trống'));
   throw Exception(result.message);
 });
 
@@ -60,7 +60,7 @@ final calendarProvider =
   final repo = ref.read(bookingRepositoryProvider);
   final result =
       await repo.getCalendar(params.propertyId, params.year, params.month);
-  if (result.success) return result.data!;
+  if (result.success) return result.data ?? (throw Exception('Dữ liệu trả về trống'));
   throw Exception(result.message);
 });
 

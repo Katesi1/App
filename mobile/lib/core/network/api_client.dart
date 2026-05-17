@@ -123,8 +123,15 @@ class _AuthInterceptor extends Interceptor {
         options: Options(headers: {'Authorization': null}),
       );
 
-      final newAccessToken = response.data['data']['accessToken'];
-      final newRefreshToken = response.data['data']['refreshToken'];
+      final responseData = response.data['data'];
+      if (responseData is! Map) {
+        throw StateError('Refresh response data không hợp lệ');
+      }
+      final newAccessToken = responseData['accessToken'] as String?;
+      if (newAccessToken == null || newAccessToken.isEmpty) {
+        throw StateError('accessToken trống trong refresh response');
+      }
+      final newRefreshToken = responseData['refreshToken'] as String?;
 
       await SecureStorage.saveAccessToken(newAccessToken);
       if (newRefreshToken != null) {

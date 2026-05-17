@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Data extraction rules cho Android 12+ (dataExtractionRules).
+  Loại trừ SharedPreferences nhạy cảm khỏi cloud backup và device-to-device transfer.
+-->
+<data-extraction-rules>
+    <cloud-backup>
+        <exclude domain="sharedpref" path="FlutterSecureStorage" />
+        <exclude domain="sharedpref" path="verify_flow_draft_v1" />
+    </cloud-backup>
+    <device-transfer>
+        <exclude domain="sharedpref" path="FlutterSecureStorage" />
+        <exclude domain="sharedpref" path="verify_flow_draft_v1" />
+    </device-transfer>
+</data-extraction-rules>

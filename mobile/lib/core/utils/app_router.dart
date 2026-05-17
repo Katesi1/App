@@ -6,6 +6,7 @@ import '../../features/admin/views/abuse_reports_screen.dart';
 import '../../features/admin/views/kyc_approval_detail_screen.dart';
 import '../../features/admin/views/kyc_approval_list_screen.dart';
 import '../../features/admin/views/moderation_audit_screen.dart';
+import '../../features/admin/views/role_permission_screen.dart';
 import '../../features/properties/views/property_management_screen.dart';
 import '../../features/admin/views/user_form_screen.dart';
 import '../../features/admin/views/user_list_screen.dart';
@@ -13,7 +14,10 @@ import '../../features/auth/controllers/auth_controller.dart';
 import '../../features/auth/views/forgot_password_screen.dart';
 import '../../features/auth/views/login_screen.dart';
 import '../../features/auth/views/register_screen.dart';
+import '../../features/auth/views/role_picker_screen.dart';
 import '../../features/auth/views/splash_screen.dart';
+import '../../features/staff/views/invite_accept_screen.dart';
+import '../../features/staff/views/staff_management_screen.dart';
 import '../../features/bookings/views/booking_calendar_screen.dart';
 import '../../features/bookings/views/owner_calendar_screen.dart';
 import '../../features/customer/views/customer_home_screen.dart';
@@ -51,8 +55,11 @@ import '../../features/profile/views/terms_of_service_screen.dart';
 import '../../features/rooms/views/room_detail_screen.dart';
 import '../../features/rooms/views/room_list_screen.dart';
 import '../../features/reports/views/report_screen.dart';
+import '../../features/reviews/views/property_reviews_screen.dart';
+import '../../features/reviews/views/write_review_screen.dart';
 import '../../features/verify/data/models/verify_enums.dart';
 import '../../features/verify/views/cccd_capture_screen.dart';
+import '../../features/verify/views/payment_history_screen.dart';
 import '../../features/verify/views/payment_screen.dart';
 import '../../features/verify/views/pending_approval_screen.dart';
 import '../../features/verify/views/rejected_screen.dart';
@@ -82,7 +89,14 @@ String? resolveRedirectPath({
   if (isLoading) return null;
 
   // Các trang public (không cần login)
-  const publicPaths = ['/splash', '/login', '/register', '/forgot-password'];
+  const publicPaths = [
+    '/splash',
+    '/login',
+    '/register',
+    '/forgot-password',
+    '/auth/role-picker',
+    '/staff/accept',
+  ];
   final isPublic = publicPaths.contains(path);
 
   // Chưa login -> redirect về login
@@ -121,6 +135,7 @@ String? resolveRedirectPath({
     '/admin',
     '/bookings',
     '/reports',
+    '/staff',
   ];
 
   // Đang ở mode khách -> chặn route quản lý
@@ -142,6 +157,13 @@ String? resolveRedirectPath({
     if (path.startsWith('/admin')) return '/dashboard';
   }
 
+  // Chỉ OWNER quản lý nhân viên (SALE/CUSTOMER/ADMIN không vào /staff/manage)
+  if (user != null && !user.isOwner) {
+    if (path == '/staff/manage' || path.startsWith('/staff/manage/')) {
+      return '/dashboard';
+    }
+  }
+
   // SALE chỉ được vào luồng quản lý khi membership active.
   // invited/suspended/unassigned: chỉ cho ở dashboard + profile/help.
   if (user != null && user.isSale && !user.isSaleMembershipActive) {
@@ -151,16 +173,15 @@ String? resolveRedirectPath({
       '/profile/help',
       '/notifications',
     ];
-    final isAllowed = allowedWhenInactiveSale
-        .any((p) => path == p || path.startsWith('$p/'));
+    final isAllowed =
+        allowedWhenInactiveSale.any((p) => path == p || path.startsWith('$p/'));
     if (!isAllowed) return '/dashboard';
   }
 
   // /properties mutate là owner/admin only; SALE không được mở trực tiếp
   // bằng URL kể cả khi backend sẽ chặn.
   if (user != null && user.isSale) {
-    final isPropertyMutatePath =
-        path == '/properties/new' ||
+    final isPropertyMutatePath = path == '/properties/new' ||
         path.startsWith('/properties/') && path != '/properties';
     if (isPropertyMutatePath) return '/dashboard';
   }
@@ -212,6 +233,32 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
           path: '/forgot-password',
           builder: (_, __) => const ForgotPasswordScreen()),
+      GoRoute(
+        path: '/auth/role-picker',
+        builder: (_, state) {
+          final args = state.extra as RolePickerArgs?;
+          if (args == null) {
+            // Defensive: nếu navigate sai (vd cold deeplink) → quay về login.
+            return const LoginScreen();
+          }
+          return RolePickerScreen(args: args);
+        },
+      ),
+
+      // Staff invite — public, dùng cho deep link email + entry "Tôi có mã mời"
+      GoRoute(
+        path: '/staff/accept',
+        builder: (_, state) {
+          final token = state.uri.queryParameters['token'];
+          return InviteAcceptScreen(initialToken: token);
+        },
+      ),
+
+      // OWNER quản lý nhân viên (mời + danh sách)
+      GoRoute(
+        path: '/staff/manage',
+        builder: (_, __) => const StaffManagementScreen(),
+      ),
 
       // ── Customer routes ────────────────────────────────────────────
       GoRoute(
@@ -511,6 +558,45 @@ final routerProvider = Provider<GoRouter>((ref) {
         ],
       ),
 
+      // ── Reviews ─────────────────────────────────────────────────────
+      // `/reviews/:id` = public list. `/reviews/:id/write?bookingId=xxx` =
+      // customer viết review sau khi booking completed. Đặt ngoài
+      // `/properties/...` để không bị guard mode/role block (xem
+      // `resolveRedirectPath` — paths không trong customer/management
+      // list sẽ pass through cho cả 2 mode).
+      GoRoute(
+        path: '/reviews/:id',
+        pageBuilder: (_, state) => slideUpPage(
+          key: state.pageKey,
+          child: PropertyReviewsScreen(
+            propertyId: state.pathParameters['id']!,
+            propertyName: state.uri.queryParameters['name'],
+          ),
+        ),
+        routes: [
+          GoRoute(
+            path: 'write',
+            pageBuilder: (_, state) {
+              final bookingId = state.uri.queryParameters['bookingId'];
+              if (bookingId == null || bookingId.isEmpty) {
+                return slideUpPage(
+                  key: state.pageKey,
+                  child: const _MissingBookingScreen(),
+                );
+              }
+              return slideUpPage(
+                key: state.pageKey,
+                child: WriteReviewScreen(
+                  propertyId: state.pathParameters['id']!,
+                  bookingId: bookingId,
+                  propertyName: state.uri.queryParameters['name'],
+                ),
+              );
+            },
+          ),
+        ],
+      ),
+
       // ── Verify + Subscription Flow ──────────────────────────────────
       // 8 screens — paywall (modal, không nằm trong router) + 7 screens dưới đây.
       // Trigger paywall: gọi `showPaywallModal(context)` từ bất kỳ feature
@@ -578,6 +664,13 @@ final routerProvider = Provider<GoRouter>((ref) {
         pageBuilder: (_, state) => slideUpPage(
           key: state.pageKey,
           child: const SubscriptionDetailScreen(),
+        ),
+      ),
+      GoRoute(
+        path: '/verify/payment-history',
+        pageBuilder: (_, state) => slideUpPage(
+          key: state.pageKey,
+          child: const PaymentHistoryScreen(),
         ),
       ),
       GoRoute(
@@ -649,6 +742,15 @@ final routerProvider = Provider<GoRouter>((ref) {
         ],
       ),
 
+      // ── Admin – Role Permissions ──────────────────────────────────
+      GoRoute(
+        path: '/admin/role-permissions',
+        pageBuilder: (_, state) => slideUpPage(
+          key: state.pageKey,
+          child: const RolePermissionScreen(),
+        ),
+      ),
+
       // ── Admin – Users ──────────────────────────────────────────────
       GoRoute(
         path: '/admin/users',
@@ -679,3 +781,25 @@ final routerProvider = Provider<GoRouter>((ref) {
     ),
   );
 });
+
+/// Fallback khi mở `/reviews/:id/write` mà thiếu `bookingId` query param —
+/// route hợp lệ nhưng thiếu data, không nên crash.
+class _MissingBookingScreen extends StatelessWidget {
+  const _MissingBookingScreen();
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Viết đánh giá')),
+      body: const Center(
+        child: Padding(
+          padding: EdgeInsets.all(24),
+          child: Text(
+            'Thiếu thông tin booking. Mở từ "Booking của tôi" → booking đã hoàn tất.',
+            textAlign: TextAlign.center,
+          ),
+        ),
+      ),
+    );
+  }
+}
