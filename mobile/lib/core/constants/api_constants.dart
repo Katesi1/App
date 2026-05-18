@@ -38,15 +38,7 @@ class ApiConstants {
   static String bookingCalendar(String propertyId) =>
       '/bookings/calendar/$propertyId';
 
-  // Customer bookings
-  static const String customerHold = '/bookings/customer-hold';
-  static const String myBookings = '/bookings/my-bookings';
-  static String customerCancel(String id) => '/bookings/$id/customer-cancel';
-
-  // Public properties (cho customer)
-  static const String propertiesPublic = '/properties/public';
-
-  // Property share (public, không trả giá)
+  // Property share (public link, no pricing data).
   static String propertyShare(String id) => '/properties/share/$id';
 
   // KYC (verify identity cho OWNER)

@@ -34,8 +34,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen>
   bool _obscureConfirm = true;
   bool _isLoading = false;
 
-  // Chỉ OWNER tự đăng ký được. SALE đi qua flow invite (POST /staff/invites);
-  // CUSTOMER vào Login screen → Google → role picker.
+  // Only OWNERs self-register; SALE users join via invite (POST /staff/invites).
   static const UserRole _role = UserRole.owner;
 
   @override

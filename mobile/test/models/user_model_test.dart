@@ -113,7 +113,6 @@ void main() {
         expect(user.isAdmin, true);
         expect(user.isOwner, false);
         expect(user.isSale, false);
-        expect(user.isCustomer, false);
       });
 
       test('isOwner returns true for role=1', () {
@@ -121,7 +120,6 @@ void main() {
         expect(user.isAdmin, false);
         expect(user.isOwner, true);
         expect(user.isSale, false);
-        expect(user.isCustomer, false);
       });
 
       test('isSale returns true for role=2', () {
@@ -129,41 +127,18 @@ void main() {
         expect(user.isAdmin, false);
         expect(user.isOwner, false);
         expect(user.isSale, true);
-        expect(user.isCustomer, false);
       });
 
-      test('isCustomer returns true for role=3', () {
-        final user = _makeUser(role: 3);
-        expect(user.isAdmin, false);
-        expect(user.isOwner, false);
-        expect(user.isSale, false);
-        expect(user.isCustomer, true);
-      });
-
-      test('isManagement true for ADMIN (0)', () {
+      test('isManagement true for ADMIN/OWNER/SALE', () {
         expect(_makeUser(role: 0).isManagement, true);
-      });
-
-      test('isManagement true for OWNER (1)', () {
         expect(_makeUser(role: 1).isManagement, true);
-      });
-
-      test('isManagement true for SALE (2)', () {
         expect(_makeUser(role: 2).isManagement, true);
-      });
-
-      test('isManagement false for CUSTOMER (3)', () {
-        expect(_makeUser(role: 3).isManagement, false);
       });
 
       test('canEdit true for ADMIN, OWNER, SALE', () {
         expect(_makeUser(role: 0).canEdit, true);
         expect(_makeUser(role: 1).canEdit, true);
         expect(_makeUser(role: 2).canEdit, true);
-      });
-
-      test('canEdit false for CUSTOMER', () {
-        expect(_makeUser(role: 3).canEdit, false);
       });
     });
 

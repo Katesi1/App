@@ -15,7 +15,9 @@ class AppConstants {
   static const String appDownloadPage = 'https://halong24h.vn/download';
 }
 
-enum UserRole { admin, owner, sale, customer }
+// B2B app for homestay OWNER + SALE only. ADMIN exists on backend but cannot
+// self-register through the app.
+enum UserRole { admin, owner, sale }
 
 extension UserRoleExtension on UserRole {
   int get value {
@@ -26,8 +28,6 @@ extension UserRoleExtension on UserRole {
         return 1;
       case UserRole.sale:
         return 2;
-      case UserRole.customer:
-        return 3;
     }
   }
 
@@ -39,20 +39,13 @@ extension UserRoleExtension on UserRole {
         return 'Chủ nhà';
       case UserRole.sale:
         return 'Sale';
-      case UserRole.customer:
-        return 'Khách hàng';
     }
   }
 
-  /// Role cho phép đăng ký (không cho ADMIN)
-  static const registrableRoles = [
-    UserRole.owner,
-    UserRole.sale,
-    UserRole.customer,
-  ];
+  /// Roles users can self-register as (ADMIN is provisioned server-side only).
+  static const registrableRoles = [UserRole.owner, UserRole.sale];
 
-  /// Có phải role quản lý không (ADMIN + OWNER + SALE)
-  bool get isManagement => this != UserRole.customer;
+  bool get isManagement => true;
 
   static UserRole fromInt(int role) {
     switch (role) {
@@ -62,10 +55,8 @@ extension UserRoleExtension on UserRole {
         return UserRole.owner;
       case 2:
         return UserRole.sale;
-      case 3:
-        return UserRole.customer;
       default:
-        return UserRole.customer;
+        return UserRole.owner;
     }
   }
 }

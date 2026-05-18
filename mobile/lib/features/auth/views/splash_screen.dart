@@ -8,7 +8,6 @@ import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 import '../../../core/theme/app_colors.dart';
-import '../../../shared/providers/view_mode_provider.dart';
 import '../controllers/auth_controller.dart';
 
 class SplashScreen extends ConsumerStatefulWidget {
@@ -47,7 +46,7 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
       duration: const Duration(milliseconds: 6000),
     )..repeat();
 
-    // Dismiss native splash và bắt đầu đếm thời gian tối thiểu
+    // Dismiss native splash and start the minimum display timer.
     FlutterNativeSplash.remove();
     Future.delayed(const Duration(milliseconds: 1800), () {
       if (mounted) {
@@ -94,22 +93,12 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
       context.go('/login');
       return;
     }
-
-    final bool isCustomerMode;
-    if (user.isCustomer) {
-      isCustomerMode = true;
-    } else if (user.isManagement) {
-      isCustomerMode = ref.read(viewModeProvider) == ViewMode.customer;
-    } else {
-      isCustomerMode = false;
-    }
-
-    context.go(isCustomerMode ? '/home' : '/dashboard');
+    context.go('/dashboard');
   }
 
   @override
   Widget build(BuildContext context) {
-    // Lắng nghe authProvider xong thì navigate
+    // Navigate once auth has resolved.
     ref.listen<AuthState>(authProvider, (_, next) {
       if (!next.isLoading) _tryNavigate();
     });

@@ -549,8 +549,7 @@ class _BookingCalendarScreenState extends ConsumerState<BookingCalendarScreen> {
   Future<void> _doShareAppLink() async {
     final message = '📅 Halong24h — Quản lý phòng & lịch booking\n\n'
         'Tải ứng dụng để xem lịch đặt phòng, nhận thông báo và quản lý homestay:\n\n'
-        '🤖 Android: ${AppConstants.playStoreUrl}\n'
-        '🍎 iOS: ${AppConstants.appStoreUrl}';
+        '${AppConstants.appStoreUrl}';
 
     await Share.share(
       message,

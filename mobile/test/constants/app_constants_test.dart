@@ -8,7 +8,6 @@ void main() {
         expect(UserRole.admin.value, 0);
         expect(UserRole.owner.value, 1);
         expect(UserRole.sale.value, 2);
-        expect(UserRole.customer.value, 3);
       });
     });
 
@@ -17,25 +16,14 @@ void main() {
         expect(UserRole.admin.label, 'Admin');
         expect(UserRole.owner.label, 'Chủ nhà');
         expect(UserRole.sale.label, 'Sale');
-        expect(UserRole.customer.label, 'Khách hàng');
       });
     });
 
     group('isManagement', () {
-      test('admin is management', () {
+      test('all roles are management', () {
         expect(UserRole.admin.isManagement, true);
-      });
-
-      test('owner is management', () {
         expect(UserRole.owner.isManagement, true);
-      });
-
-      test('sale is management', () {
         expect(UserRole.sale.isManagement, true);
-      });
-
-      test('customer is NOT management', () {
-        expect(UserRole.customer.isManagement, false);
       });
     });
 
@@ -44,19 +32,18 @@ void main() {
         expect(UserRoleExtension.fromInt(0), UserRole.admin);
         expect(UserRoleExtension.fromInt(1), UserRole.owner);
         expect(UserRoleExtension.fromInt(2), UserRole.sale);
-        expect(UserRoleExtension.fromInt(3), UserRole.customer);
       });
 
-      test('defaults to customer for unknown', () {
-        expect(UserRoleExtension.fromInt(99), UserRole.customer);
-        expect(UserRoleExtension.fromInt(-1), UserRole.customer);
+      test('defaults to owner for unknown values', () {
+        expect(UserRoleExtension.fromInt(99), UserRole.owner);
+        expect(UserRoleExtension.fromInt(-1), UserRole.owner);
       });
     });
 
     group('registrableRoles', () {
-      test('contains owner, sale, and customer', () {
+      test('contains owner and sale', () {
         expect(UserRoleExtension.registrableRoles,
-            containsAll([UserRole.owner, UserRole.sale, UserRole.customer]));
+            containsAll([UserRole.owner, UserRole.sale]));
       });
 
       test('does NOT contain admin', () {

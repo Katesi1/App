@@ -4,10 +4,8 @@ import 'package:json_annotation/json_annotation.dart';
 
 part 'user_model.g.dart';
 
-/// Model chính cho user. Tất cả 3 endpoint auth (login/register/google) +
-/// /auth/profile + /staff/* đều dùng cùng shape — xem API.md Section 5.3.
-///
-/// Generate `.g.dart`:
+/// Shared user shape used by all auth endpoints (login/register/google),
+/// /auth/profile and /staff/*. Regenerate with:
 ///   dart run build_runner build --delete-conflicting-outputs
 @JsonSerializable(explicitToJson: true)
 class UserModel {
@@ -27,7 +25,7 @@ class UserModel {
   final String? ownerId;
   final String? saleMembershipStatus;
 
-  // ── KYC + Subscription (BE trả từ /auth/profile) ──
+  // KYC + Subscription state mirrored from GET /auth/profile.
   @JsonKey(defaultValue: 'none')
   final String kycStatus; // none | pending | approved | rejected
   final String? kycSubmissionId;
@@ -61,9 +59,8 @@ class UserModel {
     this.nextChargeAt,
   });
 
-  /// Defensive fromJson — bao quanh `_$UserModelFromJson` để xử lý các field
-  /// required-but-null từ BE cũ (id/name/phone đôi khi missing trong response
-  /// fallback). KHÔNG sửa generated file.
+  /// Defensive wrapper around `_$UserModelFromJson` — older backends may omit
+  /// id/name/phone on some responses. The generated file stays untouched.
   factory UserModel.fromJson(Map<String, dynamic> json) =>
       _$UserModelFromJson({
         ...json,
@@ -79,27 +76,28 @@ class UserModel {
   factory UserModel.fromJsonString(String str) =>
       UserModel.fromJson(jsonDecode(str) as Map<String, dynamic>);
 
-  // ── Role helpers (0=ADMIN, 1=OWNER, 2=SALE, 3=CUSTOMER) ──
+  // Role helpers (0=ADMIN, 1=OWNER, 2=SALE).
   bool get isAdmin => role == 0;
   bool get isOwner => role == 1;
   bool get isSale => role == 2;
-  bool get isCustomer => role == 3;
 
-  /// ADMIN + OWNER + SALE = quản lý (xem dashboard, CRUD phòng/booking)
+  /// All recognised roles can manage data — kept as a helper for call sites
+  /// that still ask the question, even though the app no longer has a
+  /// non-management role.
   bool get isManagement => isAdmin || isOwner || isSale;
 
-  /// Có quyền chỉnh sửa (sửa phòng, booking, lịch)
+  /// Can edit rooms, bookings, calendar.
   bool get canEdit => isAdmin || isOwner || isSale;
 
-  /// Có quyền tạo/xóa property (SALE không được)
+  /// Can create/delete a property (SALE cannot).
   bool get canManageProperty => isAdmin || isOwner;
 
-  /// SALE đã được gán cho owner chưa
+  /// SALE is assigned to an OWNER.
   bool get hasOwner => ownerId != null;
 
-  /// Trạng thái membership của SALE dưới owner:
+  /// SALE membership lifecycle under their OWNER:
   /// invited | active | suspended | unassigned.
-  /// Fallback từ ownerId để tương thích backend cũ chưa trả field này.
+  /// Falls back to ownerId for backends that don't yet return this field.
   String get saleMembershipState {
     if (!isSale) return 'active';
     final status = saleMembershipStatus?.trim();
@@ -115,32 +113,31 @@ class UserModel {
   bool get isSaleMembershipSuspended => saleMembershipState == 'suspended';
   bool get isSaleMembershipUnassigned => saleMembershipState == 'unassigned';
 
-  /// ID owner hiệu lực: OWNER → mình, SALE → ownerId
+  /// Effective owner id: OWNER → self, SALE → their ownerId, otherwise null.
   String? get effectiveOwnerId => isOwner ? id : (isSale ? ownerId : null);
 
-  // ── KYC helpers ──
+  // KYC helpers.
   bool get isKycApproved => kycStatus == 'approved';
   bool get isKycPending => kycStatus == 'pending';
   bool get isKycRejected => kycStatus == 'rejected';
   bool get isKycNone => kycStatus == 'none';
 
-  /// OWNER chưa hoàn thành KYC → bị chặn tạo/sửa property.
-  /// ADMIN, SALE không yêu cầu KYC. CUSTOMER không quan tâm.
+  /// OWNERs without an approved KYC are blocked from creating/editing
+  /// properties. ADMIN and SALE don't go through KYC.
   bool get needsKyc => isOwner && !isKycApproved;
 
-  /// Quyền mutate trong management:
-  /// - ADMIN/OWNER luôn được
-  /// - SALE chỉ khi membership active
+  /// Mutate permission for management data: ADMIN/OWNER always, SALE only
+  /// when their membership is active.
   bool get canMutateManagementData =>
       isAdmin || isOwner || (isSale && isSaleMembershipActive);
 
-  // ── Subscription helpers ──
+  // Subscription helpers.
   bool get isInTrial => subscriptionStatus == 'trial';
   bool get isSubscriptionActive => subscriptionStatus == 'active';
   bool get isSubscriptionPastDue => subscriptionStatus == 'past_due';
   bool get isSubscriptionCancelled => subscriptionStatus == 'cancelled';
 
-  /// Số ngày còn lại của trial (null nếu không trong trial). Làm tròn xuống.
+  /// Whole days left in the trial, or null when the user isn't in trial.
   int? get trialDaysLeft {
     if (!isInTrial || trialEndsAt == null) return null;
     final diff = trialEndsAt!.difference(DateTime.now()).inDays;

@@ -29,10 +29,11 @@ class RoomRepository {
     }
   }
 
-  /// Lấy TẤT CẢ phòng active (dùng cho danh sách phòng — mọi role đều thấy)
-  Future<ApiResponse<List<RoomModel>>> getAllPublicRooms() async {
+  /// Fetch all active rooms the current user is authorised to see (the
+  /// backend scopes the result by role/ownership).
+  Future<ApiResponse<List<RoomModel>>> getAllRooms() async {
     try {
-      final response = await _dio.get(ApiConstants.propertiesPublic);
+      final response = await _dio.get(ApiConstants.properties);
       final list = (response.data['data'] as List)
           .map((e) => RoomModel.fromJson(e))
           .where((r) => r.isActive)

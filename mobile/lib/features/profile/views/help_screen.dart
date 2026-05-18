@@ -730,12 +730,6 @@ const _faqCategories = <_FaqCategory>[
             'thêm phòng, quản lý booking và xem báo cáo.',
       ),
       _FaqItem(
-        question: 'Làm sao để chuyển đổi giữa chế độ quản lý và khách?',
-        answer: 'Tại trang tài khoản, nhấn "Chuyển sang quản lý" hoặc '
-            '"Xem như khách" để chuyển đổi. Chế độ khách giúp bạn trải '
-            'nghiệm ứng dụng như một khách hàng thông thường.',
-      ),
-      _FaqItem(
         question: 'Làm sao để xác nhận booking?',
         answer: 'Vào phần "Lịch" hoặc "Tổng quan" → chọn booking đang ở '
             'trạng thái "Đang giữ" → nhấn "Xác nhận". Booking sẽ '
@@ -757,10 +751,6 @@ const _faqCategories = <_FaqCategory>[
         answer: 'Có. Chúng tôi sử dụng mã hoá bảo mật để lưu trữ token '
             'đăng nhập và thông tin cá nhân. Dữ liệu được truyền tải '
             'an toàn qua HTTPS.',
-      ),
-      _FaqItem(
-        question: 'Ứng dụng hỗ trợ những nền tảng nào?',
-        answer: 'Ứng dụng Halong24h hỗ trợ cả iOS và Android.',
       ),
     ],
   ),

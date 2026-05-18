@@ -190,11 +190,14 @@ class ProfileScreen extends ConsumerWidget {
                         iconColor: colors.textSecondary,
                         onTap: () => context.push('/profile/terms'),
                       ),
-                      // ⚠️ APP STORE BLOCKER — Trước khi submit App Store,
-                      // bắt buộc add lại entry "Xoá tài khoản" ở đây hoặc
-                      // somewhere accessible (Apple Guideline 5.1.1(v)).
-                      // Route '/profile/delete-account' vẫn còn — có thể
-                      // link từ Privacy Policy page hoặc add back menu.
+                      _MenuItemData(
+                        icon: Icons.delete_forever_outlined,
+                        label: 'Xoá tài khoản',
+                        subtitle: 'Xoá vĩnh viễn dữ liệu của bạn',
+                        iconColor: colors.error,
+                        onTap: () =>
+                            context.push('/profile/delete-account'),
+                      ),
                     ],
                   ),
                 ],
@@ -521,8 +524,8 @@ class _GradientAvatarState extends State<_GradientAvatar>
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    // Pause shimmer khi app background → tránh ticker churn vô tận khi user
-    // khoá máy/chuyển app mà widget chưa dispose.
+    // Pause shimmer while the app is in the background so the ticker doesn't
+    // churn forever when the device is locked or the user switches apps.
     final enabled = state == AppLifecycleState.resumed;
     if (enabled != _tickersEnabled && mounted) {
       setState(() => _tickersEnabled = enabled);

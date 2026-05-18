@@ -56,8 +56,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    // Pause repeating animations khi app background — Google Sign-In bottom sheet
-    // hoặc user minimise sẽ khiến app inactive/paused, animation churn = nóng máy + drain pin.
+    // Pause repeating animations while the app is in the background — when
+    // Google Sign-In opens or the user minimises, ticker churn drains battery.
     if (state == AppLifecycleState.paused ||
         state == AppLifecycleState.inactive ||
         state == AppLifecycleState.hidden) {

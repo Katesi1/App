@@ -48,8 +48,8 @@ class _VNPayQRDialogState extends State<VNPayQRDialog>
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    // Khi user mở app banking (VNPay flow) → app sang background. Timer 1s
-    // vẫn cháy = lãng phí CPU/pin. Pause timer, resume khi quay lại app.
+    // When the user opens a banking app (VNPay flow), this screen goes to the
+    // background. Cancel the 1s ticker to save CPU/battery and resume on return.
     if (state == AppLifecycleState.paused ||
         state == AppLifecycleState.hidden) {
       _ticker?.cancel();

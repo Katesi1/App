@@ -67,8 +67,8 @@ class _RolePickerScreenState extends ConsumerState<RolePickerScreen> {
 
     switch (outcome) {
       case GoogleSignInSuccess():
-        // Auth state đã update → router tự redirect /home (CUSTOMER)
-        // hoặc /dashboard (OWNER → tiếp đó vào KYC nếu chưa làm).
+        // Auth state is updated; router redirects to /dashboard (and into KYC
+        // for OWNERs who haven't completed it yet).
         return;
       case GoogleSignInFailure(:final message):
         setState(() {
@@ -77,7 +77,7 @@ class _RolePickerScreenState extends ConsumerState<RolePickerScreen> {
         });
         _showError(message);
       case GoogleSignInNeedsRole():
-        // Không nên xảy ra ở bước này (đã gửi role), nhưng safe.
+        // Should not happen at this point since we just sent a role.
         setState(() {
           _isLoading = false;
           _submittingRole = null;
@@ -147,17 +147,6 @@ class _RolePickerScreenState extends ConsumerState<RolePickerScreen> {
               const SizedBox(height: AppSpacing.md),
               _GoogleAvatar(profile: profile),
               const SizedBox(height: AppSpacing.xl),
-              _RoleOption(
-                icon: Icons.travel_explore_rounded,
-                title: 'Tôi là khách đặt phòng',
-                subtitle:
-                    'Tìm và đặt homestay tại Hạ Long & các điểm du lịch.',
-                color: AppColors.teal,
-                isLoading: _submittingRole == UserRole.customer,
-                disabled: _isLoading && _submittingRole != UserRole.customer,
-                onTap: () => _onPickRole(UserRole.customer),
-              ).animate(delay: 100.ms).fadeIn().slideY(begin: 0.1),
-              const SizedBox(height: AppSpacing.md),
               _RoleOption(
                 icon: Icons.home_work_rounded,
                 title: 'Tôi là chủ homestay',
