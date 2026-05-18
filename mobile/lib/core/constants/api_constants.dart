@@ -95,7 +95,7 @@ class ApiConstants {
   static String staffDetail(String userId) => '/staff/$userId';
 
   // App version metadata for force-update flow.
-  // BE returns: { latestVersion, minSupportedVersion, releaseNotes, storeUrl{ ios, android } }
+  // BE returns: { latestVersion, minSupportedVersion, releaseNotes, storeUrl{ ios } }
   static const String appVersion = '/app/version';
 
   // Devices (FCM token registration for push notifications).

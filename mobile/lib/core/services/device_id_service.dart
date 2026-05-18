@@ -1,12 +1,10 @@
-import 'dart:io' show Platform;
-
 import 'package:device_info_plus/device_info_plus.dart';
 
 /// Returns a stable device ID for the `X-Device-Id` header (BE anti-spam on
 /// `/auth/register` and `/auth/google`).
 ///
-/// - iOS: `identifierForVendor` — UUID, reset when user uninstalls every app from the same vendor
-/// - Android: `id` (SSAID) — UUID per app+device, reset on factory reset
+/// Uses `identifierForVendor` (UUID that resets only when the user uninstalls
+/// every app from the same vendor).
 class DeviceIdService {
   DeviceIdService._();
   static final DeviceIdService instance = DeviceIdService._();
@@ -21,13 +19,8 @@ class DeviceIdService {
 
     try {
       final plugin = DeviceInfoPlugin();
-      if (Platform.isIOS) {
-        final info = await plugin.iosInfo;
-        _cachedId = info.identifierForVendor;
-      } else if (Platform.isAndroid) {
-        final info = await plugin.androidInfo;
-        _cachedId = info.id;
-      }
+      final info = await plugin.iosInfo;
+      _cachedId = info.identifierForVendor;
       return _cachedId;
     } catch (_) {
       return null;

@@ -124,7 +124,7 @@ class UserRepository {
     }
   }
 
-  /// Self-delete for App Store / Play Store / GDPR compliance.
+  /// Self-delete for App Store + GDPR compliance.
   /// Currently reuses `DELETE /users/:id` — BE needs to confirm this endpoint
   /// allows user self-delete (not just ADMIN). If BE doesn't allow it yet,
   /// it returns 403 and FE shows a clear error so the user can contact support.

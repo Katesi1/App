@@ -1,5 +1,3 @@
-import 'dart:io' show Platform;
-
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:image_picker/image_picker.dart';
@@ -122,16 +120,10 @@ class CameraPicker {
     );
   }
 
-  /// Open the system Settings app — iOS uses `app-settings:`, Android uses an
-  /// intent into the app via `package:` URI.
-  ///
-  /// Note: Apple allows the `app-settings:` deeplink to target only this app's
-  /// own Settings; it's not a review rejection risk. Android needs the package
-  /// id; here we fall back to `app-settings:` and let Android handle it.
+  /// Open the system Settings app — iOS uses the `app-settings:` deeplink
+  /// which Apple allows to target this app's own Settings page.
   static Future<void> _openAppSettings() async {
-    final uri = Platform.isIOS
-        ? Uri.parse('app-settings:')
-        : Uri.parse('package:'); // Android resolves to app settings itself
+    final uri = Uri.parse('app-settings:');
     if (await canLaunchUrl(uri)) {
       await launchUrl(uri, mode: LaunchMode.externalApplication);
     }

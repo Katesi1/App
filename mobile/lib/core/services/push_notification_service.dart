@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:io' show Platform;
 
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart';
@@ -7,11 +6,10 @@ import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 
 import '../../data/repositories/device_repository.dart';
 
-/// Android channel ID — must match `default_notification_channel_id` in
-/// AndroidManifest.xml.
-const String _androidChannelId = 'halong24h_default';
-const String _androidChannelName = 'Halong24h';
-const String _androidChannelDesc =
+/// Local channel ID for foreground banners.
+const String _channelId = 'halong24h_default';
+const String _channelName = 'Halong24h';
+const String _channelDesc =
     'Thông báo booking, thanh toán, KYC và cập nhật từ Halong24h';
 
 /// Background message handler — must be a top-level function (FCM requirement).
@@ -19,7 +17,6 @@ const String _androidChannelDesc =
 @pragma('vm:entry-point')
 Future<void> firebaseMessagingBackgroundHandler(RemoteMessage message) async {
   // Background: just log. iOS auto-shows banner from `notification.*` payload.
-  // Android also auto-shows because of default channel + `notification.*`.
   if (kDebugMode) {
     debugPrint('[FCM] Background message: ${message.messageId}');
   }
@@ -69,15 +66,15 @@ class PushNotificationService {
       },
     );
 
-    // Create Android channel (Android 8+).
+    // Plugin requires a channel registration (no-op on iOS at runtime).
     final androidPlugin = _localNotifications
         .resolvePlatformSpecificImplementation<
             AndroidFlutterLocalNotificationsPlugin>();
     await androidPlugin?.createNotificationChannel(
       const AndroidNotificationChannel(
-        _androidChannelId,
-        _androidChannelName,
-        description: _androidChannelDesc,
+        _channelId,
+        _channelName,
+        description: _channelDesc,
         importance: Importance.high,
       ),
     );
@@ -160,10 +157,9 @@ class PushNotificationService {
   // ── Internal ──────────────────────────────────────────────────────────────
 
   Future<void> _registerTokenWithBackend(String token) async {
-    final platform = Platform.isIOS ? 'ios' : 'android';
     await _deviceRepo.register(
       fcmToken: token,
-      platform: platform,
+      platform: 'ios',
       locale: 'vi',
     );
   }
@@ -180,9 +176,9 @@ class PushNotificationService {
       notification.body,
       NotificationDetails(
         android: AndroidNotificationDetails(
-          _androidChannelId,
-          _androidChannelName,
-          channelDescription: _androidChannelDesc,
+          _channelId,
+          _channelName,
+          channelDescription: _channelDesc,
           importance: Importance.high,
           priority: Priority.high,
           icon: '@mipmap/ic_launcher',

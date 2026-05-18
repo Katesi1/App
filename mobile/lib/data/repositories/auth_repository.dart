@@ -1,5 +1,3 @@
-import 'dart:io' show Platform;
-
 import 'package:dio/dio.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:sign_in_with_apple/sign_in_with_apple.dart';
@@ -237,9 +235,7 @@ class AuthRepository {
   /// supports Google login. Returns `GoogleSignInOutcome` to share router/UI
   /// logic with the Google flow.
   ///
-  /// iOS native: uses `SignInWithApple.getAppleIDCredential` (system popup).
-  /// Android/Web: the package's fallback web flow — not supported in this
-  /// app, so the caller only enables the button when `Platform.isIOS`.
+  /// Uses `SignInWithApple.getAppleIDCredential` (iOS system popup).
   Future<GoogleSignInOutcome> loginWithApple({int? role}) async {
     try {
       final available = await SignInWithApple.isAvailable();
@@ -324,7 +320,7 @@ class AuthRepository {
         if (email != null && email.isNotEmpty) 'email': email,
         if (name != null && name.isNotEmpty) 'name': name,
         if (authorizationCode != null) 'authorizationCode': authorizationCode,
-        'platform': Platform.isIOS ? 'ios' : 'android',
+        'platform': 'ios',
       },
       options: Options(headers: await _antiSpamHeaders()),
     );

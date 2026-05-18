@@ -1,5 +1,3 @@
-import 'dart:io' show Platform;
-
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 import 'package:package_info_plus/package_info_plus.dart';
@@ -21,7 +19,7 @@ class AppVersionInfo {
   final String? latestVersion;     // latest version BE knows about
   final String? minSupportedVersion;
   final String? releaseNotes;
-  final String? storeUrl;          // App Store / Play Store URL per platform
+  final String? storeUrl;          // App Store URL
 
   const AppVersionInfo({
     required this.status,
@@ -53,12 +51,11 @@ class AppVersionService {
     try {
       final info = await PackageInfo.fromPlatform();
       final currentVersion = info.version;
-      final platform = Platform.isIOS ? 'ios' : 'android';
 
       final response = await _dio.get(
         ApiConstants.appVersion,
         queryParameters: {
-          'platform': platform,
+          'platform': 'ios',
           'currentVersion': currentVersion,
         },
         options: Options(
@@ -83,7 +80,7 @@ class AppVersionService {
       final storeUrls = data['storeUrl'];
       String? storeUrl;
       if (storeUrls is Map) {
-        storeUrl = storeUrls[platform] as String?;
+        storeUrl = storeUrls['ios'] as String?;
       }
 
       AppVersionStatus status = AppVersionStatus.upToDate;

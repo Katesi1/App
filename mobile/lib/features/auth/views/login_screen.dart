@@ -634,8 +634,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
                                         .fadeIn(duration: 400.ms)
                                         .slideY(begin: 0.1, end: 0),
 
-                                    // Apple button — iOS-only per Apple
-                                    // Guideline 4.8 (not required on Android).
+                                    // Apple Sign-In — required on iOS per
+                                    // Apple Guideline 4.8.
                                     if (Platform.isIOS) ...[
                                       const SizedBox(height: 12),
                                       _AppleButton(

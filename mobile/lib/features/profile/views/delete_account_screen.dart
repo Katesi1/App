@@ -8,8 +8,8 @@ import '../../../data/repositories/user_repository.dart';
 import '../../../shared/widgets/loading_widget.dart';
 import '../../auth/controllers/auth_controller.dart';
 
-/// Self-delete account flow — required for Apple Guideline 5.1.1(v),
-/// Google Play User Data policy, and GDPR Article 17 (right to erasure).
+/// Self-delete account flow — required for Apple Guideline 5.1.1(v) and
+/// GDPR Article 17 (right to erasure).
 class DeleteAccountScreen extends ConsumerStatefulWidget {
   const DeleteAccountScreen({super.key});
 

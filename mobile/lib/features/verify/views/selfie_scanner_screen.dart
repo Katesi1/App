@@ -1,11 +1,10 @@
 import 'dart:async';
-import 'dart:io';
+import 'dart:io' show File;
 import 'dart:math' as math;
 
 import 'package:camera/camera.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:google_mlkit_face_detection/google_mlkit_face_detection.dart';
 
 import '../../../core/theme/app_colors.dart';
@@ -75,13 +74,6 @@ class _SelfieScannerScreenState extends State<SelfieScannerScreen>
   static const double _maxOffsetX = 0.25;
   static const double _maxOffsetY = 0.28;
   static const double _minEyeOpenProb = 0.4;
-
-  static const _orientationDegrees = <DeviceOrientation, int>{
-    DeviceOrientation.portraitUp: 0,
-    DeviceOrientation.landscapeLeft: 90,
-    DeviceOrientation.portraitDown: 180,
-    DeviceOrientation.landscapeRight: 270,
-  };
 
   _Phase _phase = _Phase.searching;
   _PositionHint _positionHint = _PositionHint.searching;
@@ -175,9 +167,7 @@ class _SelfieScannerScreenState extends State<SelfieScannerScreen>
         // iPhones during continuous streaming.
         ResolutionPreset.medium,
         enableAudio: false,
-        imageFormatGroup: Platform.isAndroid
-            ? ImageFormatGroup.nv21
-            : ImageFormatGroup.bgra8888,
+        imageFormatGroup: ImageFormatGroup.bgra8888,
       );
 
       await controller.initialize();
@@ -337,24 +327,13 @@ class _SelfieScannerScreenState extends State<SelfieScannerScreen>
     if (controller == null) return null;
     final cam = controller.description;
 
-    InputImageRotation? rotation;
-    if (Platform.isIOS) {
-      rotation = InputImageRotationValue.fromRawValue(cam.sensorOrientation);
-    } else {
-      final deviceRotation =
-          _orientationDegrees[controller.value.deviceOrientation];
-      if (deviceRotation == null) return null;
-      var rot = cam.lensDirection == CameraLensDirection.front
-          ? (cam.sensorOrientation + deviceRotation) % 360
-          : (cam.sensorOrientation - deviceRotation + 360) % 360;
-      rotation = InputImageRotationValue.fromRawValue(rot);
-    }
+    final rotation =
+        InputImageRotationValue.fromRawValue(cam.sensorOrientation);
     if (rotation == null) return null;
 
     final format = InputImageFormatValue.fromRawValue(image.format.raw);
     if (format == null) return null;
-    if (Platform.isAndroid && format != InputImageFormat.nv21) return null;
-    if (Platform.isIOS && format != InputImageFormat.bgra8888) return null;
+    if (format != InputImageFormat.bgra8888) return null;
     if (image.planes.isEmpty) return null;
 
     final plane = image.planes.first;
