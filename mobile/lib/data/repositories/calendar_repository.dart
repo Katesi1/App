@@ -7,7 +7,7 @@ import '../models/calendar_model.dart';
 class CalendarRepository {
   final _dio = ApiClient.instance;
 
-  /// GET /calendar/public-grid — lịch tổng (public, không cần auth)
+  /// GET /calendar/public-grid — public overview grid (no auth required).
   Future<ApiResponse<CalendarGrid>> getPublicGrid({
     required String startDate,
     required String endDate,
@@ -34,8 +34,8 @@ class CalendarRepository {
     }
   }
 
-  /// GET /calendar/grid — lịch quản lý (Bearer token)
-  /// OWNER/SALE chỉ thấy property của mình, ADMIN thấy tất cả
+  /// GET /calendar/grid — management grid (Bearer token).
+  /// OWNER/SALE see only their own properties; ADMIN sees everything.
   Future<ApiResponse<CalendarGrid>> getGrid({
     required String startDate,
     required String endDate,
@@ -62,7 +62,7 @@ class CalendarRepository {
     }
   }
 
-  /// POST /calendar/lock — khoá phòng theo ngày
+  /// POST /calendar/lock — lock a room for a given date.
   /// status: 0=LOCKED, 1=HOLD, 2=BOOKED
   Future<ApiResponse<Map<String, dynamic>>> lockRoom({
     required String propertyId,
@@ -84,7 +84,7 @@ class CalendarRepository {
     }
   }
 
-  /// PATCH /calendar/sold — đánh dấu đã bán (status = BOOKED)
+  /// PATCH /calendar/sold — mark as sold (status = BOOKED).
   Future<ApiResponse<Map<String, dynamic>>> markAsSold({
     required String propertyId,
     required String date,
@@ -104,7 +104,7 @@ class CalendarRepository {
     }
   }
 
-  /// DELETE /calendar/lock — mở khoá phòng (body: propertyId + date)
+  /// DELETE /calendar/lock — unlock a room (body: propertyId + date).
   Future<ApiResponse<void>> unlockRoom({
     required String propertyId,
     required String date,
@@ -120,7 +120,7 @@ class CalendarRepository {
     }
   }
 
-  /// GET /calendar/admin-contact — thông tin liên hệ admin (Public)
+  /// GET /calendar/admin-contact — admin contact info (public).
   Future<ApiResponse<AdminContact>> getAdminContact() async {
     try {
       final response = await _dio.get(ApiConstants.calendarAdminContact);

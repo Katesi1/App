@@ -21,7 +21,7 @@ class _PropertyInfoScreenState extends ConsumerState<PropertyInfoScreen> {
   late final TextEditingController _descriptionCtrl;
   bool _isLoading = false;
 
-  // Tất cả giá trị load từ API, nullable cho đến khi có data
+  // All values are loaded from API, nullable until data arrives.
   int? _bedrooms;
   int? _bathrooms;
   int? _standardGuests;
@@ -108,7 +108,6 @@ class _PropertyInfoScreenState extends ConsumerState<PropertyInfoScreen> {
               child: ListView(
                 padding: const EdgeInsets.all(AppSpacing.md),
                 children: [
-                  // ── Mã căn (chỉ hiển thị) ──
                   Container(
                     padding: const EdgeInsets.all(14),
                     decoration: BoxDecoration(
@@ -136,7 +135,6 @@ class _PropertyInfoScreenState extends ConsumerState<PropertyInfoScreen> {
 
                   const SizedBox(height: AppSpacing.lg),
 
-                  // ── Mô tả ──
                   _label(context, 'Mô tả'),
                   const SizedBox(height: AppSpacing.xs),
                   TextFormField(
@@ -149,7 +147,6 @@ class _PropertyInfoScreenState extends ConsumerState<PropertyInfoScreen> {
 
                   const SizedBox(height: AppSpacing.lg),
 
-                  // ── Số phòng ngủ ──
                   _label(context, 'Số phòng ngủ'),
                   const SizedBox(height: AppSpacing.xs),
                   Wrap(
@@ -168,7 +165,6 @@ class _PropertyInfoScreenState extends ConsumerState<PropertyInfoScreen> {
 
                   const SizedBox(height: AppSpacing.lg),
 
-                  // ── Số nhà tắm / WC ──
                   _label(context, 'Số nhà tắm / WC'),
                   const SizedBox(height: AppSpacing.xs),
                   Wrap(
@@ -185,7 +181,6 @@ class _PropertyInfoScreenState extends ConsumerState<PropertyInfoScreen> {
 
                   const SizedBox(height: AppSpacing.lg),
 
-                  // ── View ──
                   _label(context, 'View'),
                   const SizedBox(height: AppSpacing.xs),
                   Wrap(
@@ -203,7 +198,6 @@ class _PropertyInfoScreenState extends ConsumerState<PropertyInfoScreen> {
 
                   const SizedBox(height: AppSpacing.lg),
 
-                  // ── Sức chứa tiêu chuẩn ──
                   _label(context, 'Sức chứa tiêu chuẩn (người)'),
                   const SizedBox(height: AppSpacing.xs),
                   Wrap(
@@ -218,7 +212,6 @@ class _PropertyInfoScreenState extends ConsumerState<PropertyInfoScreen> {
 
                   const SizedBox(height: AppSpacing.lg),
 
-                  // ── Sức chứa tối đa ──
                   _label(context, 'Sức chứa tối đa (người)'),
                   const SizedBox(height: AppSpacing.xs),
                   Wrap(

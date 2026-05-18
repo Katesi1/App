@@ -1,30 +1,30 @@
 import 'package:flutter/services.dart';
 
-/// Số điện thoại Việt Nam: 10 chữ số, bắt đầu bằng `0`.
+/// Vietnamese phone: 10 digits, starts with `0`.
 ///
-/// Dùng làm bộ formatter + validator chung cho mọi input nhập SĐT
-/// (booking, profile, register, forgot password, admin form...).
+/// Shared formatter + validator for all phone inputs (booking, profile,
+/// register, forgot password, admin form...).
 class PhoneInput {
   PhoneInput._();
 
-  /// Số ký tự tối đa cho input field SĐT.
+  /// Max length for the phone input field.
   static const int maxLength = 10;
 
-  /// Regex hợp lệ — đúng 10 chữ số, ký tự đầu là `0`.
+  /// Valid regex — exactly 10 digits, first char is `0`.
   static final RegExp _validRegex = RegExp(r'^0\d{9}$');
 
-  /// Bộ formatter dùng cho `TextField.inputFormatters`:
-  /// - Chỉ cho nhập digit
-  /// - Ký tự đầu phải là `0` (chặn ngay khi user gõ ký tự khác làm digit đầu)
-  /// - Tổng tối đa 10 ký tự
+  /// Formatters for `TextField.inputFormatters`:
+  /// - Digits only
+  /// - First char must be `0` (rejects any other char as leading digit)
+  /// - Max 10 chars total
   static List<TextInputFormatter> get formatters => <TextInputFormatter>[
         FilteringTextInputFormatter.digitsOnly,
         LengthLimitingTextInputFormatter(maxLength),
         _LeadingZeroFormatter(),
       ];
 
-  /// Validator dùng cho `TextFormField.validator` hoặc check thủ công.
-  /// Trả `null` nếu hợp lệ; trả message tiếng Việt nếu sai.
+  /// Validator for `TextFormField.validator` or manual checks.
+  /// Returns `null` if valid; returns a Vietnamese message if invalid.
   static String? validate(String? value) {
     final v = (value ?? '').trim();
     if (v.isEmpty) return 'Vui lòng nhập số điện thoại';
@@ -36,19 +36,19 @@ class PhoneInput {
     return null;
   }
 
-  /// Tương tự [validate] nhưng cho phép rỗng (vd field optional).
+  /// Like [validate] but allows empty (e.g. optional fields).
   static String? validateOptional(String? value) {
     final v = (value ?? '').trim();
     if (v.isEmpty) return null;
     return validate(v);
   }
 
-  /// Check nhanh `isValid` — dùng khi không cần message.
+  /// Quick `isValid` check — use when a message isn't needed.
   static bool isValid(String? value) => validate(value) == null;
 }
 
-/// Đảm bảo ký tự đầu tiên (nếu có) phải là `0`. Nếu user gõ digit khác làm
-/// ký tự đầu → từ chối edit và giữ giá trị cũ.
+/// Ensures the first char (if any) is `0`. If the user types another digit
+/// as the first char → reject the edit and keep the old value.
 class _LeadingZeroFormatter extends TextInputFormatter {
   @override
   TextEditingValue formatEditUpdate(

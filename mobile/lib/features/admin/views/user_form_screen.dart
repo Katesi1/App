@@ -13,9 +13,9 @@ import '../../../shared/widgets/loading_widget.dart';
 import '../../auth/controllers/auth_controller.dart';
 import '../controllers/user_controller.dart';
 
-// ─── Màn hình xem + quản lý nhân viên ────────────────────────────────────────
-// - userId != null → xem thông tin, gán vai trò, kích hoạt/vô hiệu hoá
-// - userId == null → tạo nhân viên mới (chỉ cần tên, SĐT, vai trò)
+// Staff view + management screen.
+// - userId != null → view info, assign role, activate/deactivate
+// - userId == null → create new staff (name, phone, role only)
 class UserFormScreen extends ConsumerStatefulWidget {
   final String? userId;
   const UserFormScreen({super.key, this.userId});
@@ -161,7 +161,6 @@ class _UserFormScreenState extends ConsumerState<UserFormScreen> {
     return _isEdit ? _buildDetailView() : _buildCreateView();
   }
 
-  // ── Detail view (xem thông tin + gán vai trò) ──────────────────────────────
   Widget _buildDetailView() {
     final colors = context.colors;
     final roleColor = AppHelpers.roleColor(_role);
@@ -169,7 +168,6 @@ class _UserFormScreenState extends ConsumerState<UserFormScreen> {
       backgroundColor: colors.bgCanvas,
       body: CustomScrollView(
         slivers: [
-          // ── Gradient header với avatar ──────────────────
           SliverToBoxAdapter(
             child: _buildProfileHeader(roleColor),
           ),
@@ -180,7 +178,6 @@ class _UserFormScreenState extends ConsumerState<UserFormScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // ── Thông tin cá nhân (read-only) ────────
                   _SectionTitle('Thông tin tài khoản'),
                   const SizedBox(height: AppSpacing.sm),
                   _InfoCard(
@@ -212,7 +209,6 @@ class _UserFormScreenState extends ConsumerState<UserFormScreen> {
 
                   const SizedBox(height: AppSpacing.xl),
 
-                  // ── Gán vai trò ──────────────────────────
                   _SectionTitle('Vai trò'),
                   const SizedBox(height: 4),
                   Text(
@@ -247,7 +243,6 @@ class _UserFormScreenState extends ConsumerState<UserFormScreen> {
 
                   const SizedBox(height: AppSpacing.xl),
 
-                  // ── Trạng thái tài khoản ─────────────────
                   _SectionTitle('Trạng thái tài khoản'),
                   const SizedBox(height: AppSpacing.sm),
                   _InfoCard(
@@ -307,7 +302,6 @@ class _UserFormScreenState extends ConsumerState<UserFormScreen> {
 
                   const SizedBox(height: AppSpacing.xl),
 
-                  // ── Save button ──────────────────────────
                   _SaveButton(
                     isLoading: _isLoading,
                     label: 'Lưu thay đổi',
@@ -423,7 +417,6 @@ class _UserFormScreenState extends ConsumerState<UserFormScreen> {
     );
   }
 
-  // ── Create view (tạo nhân viên mới) ───────────────────────────────────────
   Widget _buildCreateView() {
     final colors = context.colors;
     return Scaffold(
@@ -441,7 +434,6 @@ class _UserFormScreenState extends ConsumerState<UserFormScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // ── Form fields ──────────────────────────────
               _InfoCard(
                 children: [
                   _FormField(
@@ -490,7 +482,6 @@ class _UserFormScreenState extends ConsumerState<UserFormScreen> {
 
               const SizedBox(height: AppSpacing.xl),
 
-              // ── Role selector ────────────────────────────
               _SectionTitle('Vai trò *'),
               const SizedBox(height: AppSpacing.md),
               Row(

@@ -196,7 +196,7 @@ class AdminScreen extends ConsumerWidget {
 
                   const SizedBox(height: 28),
 
-                  // ── Quản lý Section ─────────────────────────
+                  // Management section.
                   Text(
                     isAdmin ? 'QUẢN LÝ HỆ THỐNG' : 'QUẢN LÝ',
                     style: GoogleFonts.beVietnamPro(
@@ -345,7 +345,7 @@ class AdminScreen extends ConsumerWidget {
 
                   const SizedBox(height: 28),
 
-                  // ── Nhân viên gần đây ───────────────────────
+                  // Recent staff.
                   Text(
                     'NHÂN VIÊN GẦN ĐÂY',
                     style: GoogleFonts.beVietnamPro(

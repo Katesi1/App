@@ -1,13 +1,13 @@
 import '../data/models/ocr_result.dart';
 
-/// Parser best-effort cho text ML Kit OCR đọc từ mặt trước CCCD chip mới.
+/// Best-effort parser for ML Kit OCR text from the front of a new chipped CCCD.
 ///
-/// CCCD VN có template song ngữ (Việt + English) nên parser dùng regex theo
-/// keyword cố định. Khác QR (machine-readable, chính xác 100%), OCR text có
-/// thể sai 1-2 ký tự — kết quả này là **best-effort** để pre-fill, admin sẽ
-/// duyệt lại trong queue.
+/// VN CCCDs use a bilingual template (Vietnamese + English), so the parser
+/// uses regex matched against fixed keywords. Unlike the back QR (machine-
+/// readable, 100% accurate), OCR text may be off by 1-2 characters — this
+/// result is **best-effort** to pre-fill, admin still reviews in the queue.
 ///
-/// CCCD chip mới layout:
+/// New chipped CCCD layout:
 /// ```
 /// CỘNG HÒA XÃ HỘI CHỦ NGHĨA VIỆT NAM
 /// CĂN CƯỚC CÔNG DÂN / CITIZEN IDENTITY CARD
@@ -23,8 +23,8 @@ import '../data/models/ocr_result.dart';
 class CccdFrontOcrParser {
   CccdFrontOcrParser._();
 
-  /// Parse raw text. Trả `OCRResult` với các field nullable — field nào
-  /// không match được sẽ là `null`.
+  /// Parse raw text. Returns `OCRResult` with nullable fields — anything that
+  /// fails to match stays `null`.
   static OCRResult parse(String rawText) {
     final lines = rawText
         .split(RegExp(r'\r?\n'))
@@ -51,20 +51,21 @@ class CccdFrontOcrParser {
 
   // ── Field extractors ──────────────────────────────────────────────────────
 
-  /// 12 chữ số liên tiếp — đặc trưng CCCD chip mới. Tránh nhầm với DOB
-  /// (8 số có dấu /), số phone (10 số bắt đầu 0).
+  /// 12 consecutive digits — signature of the new chipped CCCD. Avoid
+  /// collisions with DOB (8 digits with /) or phone (10 digits starting with 0).
   static String? _extractCccdNumber(String text) {
     final match = RegExp(r'\b(\d{12})\b').firstMatch(text);
     return match?.group(1);
   }
 
-  /// Họ tên = dòng sau "Họ và tên" hoặc "Full name". Tên CCCD luôn UPPERCASE.
+  /// Full name = line after "Họ và tên" or "Full name". CCCD names are
+  /// always UPPERCASE.
   static String? _extractFullName(List<String> lines) {
     for (var i = 0; i < lines.length; i++) {
       final line = lines[i];
       final lower = line.toLowerCase();
       if (lower.contains('họ và tên') || lower.contains('full name')) {
-        // Có thể "Họ và tên: NGUYỄN VĂN A" hoặc "Họ và tên\nNGUYỄN VĂN A"
+        // Could be "Họ và tên: NGUYỄN VĂN A" or "Họ và tên\nNGUYỄN VĂN A"
         final inline = _afterColon(line);
         if (inline != null && _looksLikeName(inline)) return inline;
         if (i + 1 < lines.length && _looksLikeName(lines[i + 1])) {
@@ -72,14 +73,14 @@ class CccdFrontOcrParser {
         }
       }
     }
-    // Fallback — tìm dòng UPPERCASE thuần (không có chữ thường, không số)
+    // Fallback — find a pure-UPPERCASE line (no lowercase, no digits).
     for (final line in lines) {
       if (_looksLikeName(line) && line.length >= 5) return line;
     }
     return null;
   }
 
-  /// Tên CCCD: toàn UPPERCASE, có khoảng trắng giữa các từ, không số.
+  /// CCCD name: all UPPERCASE, spaces between words, no digits.
   static bool _looksLikeName(String s) {
     if (s.isEmpty) return false;
     if (s.contains(RegExp(r'\d'))) return false;
@@ -90,8 +91,8 @@ class CccdFrontOcrParser {
         letters.toUpperCase() != letters.toLowerCase();
   }
 
-  /// Date dd/MM/yyyy sau keyword. Match mọi định dạng phổ biến (có hoặc
-  /// không có "/" giữa các phần).
+  /// Date dd/MM/yyyy after the keyword. Matches common formats (with or
+  /// without "/" between segments).
   static String? _extractDate(String text, {required List<String> keywords}) {
     for (final kw in keywords) {
       final pattern = RegExp(
@@ -115,7 +116,7 @@ class CccdFrontOcrParser {
     return '$d/$m/$y';
   }
 
-  /// "Nam" hoặc "Nữ" sau "Giới tính" / "Sex".
+  /// "Nam" or "Nữ" after "Giới tính" / "Sex".
   static String? _extractGender(String text) {
     final pattern = RegExp(
       r'(?:Giới tính|Sex)[^A-Za-zÀ-ỹ]*(Nam|Nữ|Male|Female)',
@@ -129,8 +130,8 @@ class CccdFrontOcrParser {
     return null;
   }
 
-  /// Nơi thường trú — multi-line, kéo dài cho tới dòng có "Có giá trị đến"
-  /// hoặc "Date of expiry" hoặc hết dòng. Best-effort.
+  /// Permanent address — multi-line, runs until we hit "Có giá trị đến"
+  /// or "Date of expiry" or end of lines. Best-effort.
   static String? _extractAddress(List<String> lines) {
     for (var i = 0; i < lines.length; i++) {
       final lower = lines[i].toLowerCase();
@@ -139,7 +140,7 @@ class CccdFrontOcrParser {
       if (!isMarker) continue;
 
       final buffer = <String>[];
-      // Inline portion sau dấu ":"
+      // Inline portion after ":"
       final inline = _afterColon(lines[i]);
       if (inline != null && inline.isNotEmpty) buffer.add(inline);
 
@@ -149,10 +150,10 @@ class CccdFrontOcrParser {
             next.contains('date of expiry')) {
           break;
         }
-        // Bỏ dòng UPPERCASE thuần (có thể là tiêu đề khác)
+        // Skip blank lines (could be another header).
         if (lines[j].trim().isEmpty) continue;
         buffer.add(lines[j].trim());
-        // Address tối đa 3 dòng — dừng để tránh nuốt thêm
+        // Address is at most 3 lines — stop to avoid swallowing more.
         if (buffer.length >= 3) break;
       }
       if (buffer.isEmpty) return null;
@@ -161,7 +162,7 @@ class CccdFrontOcrParser {
     return null;
   }
 
-  /// Trả phần sau dấu `:` (trim). `null` nếu không có hoặc rỗng.
+  /// Return the portion after `:` (trimmed). `null` if missing or empty.
   static String? _afterColon(String line) {
     final idx = line.indexOf(':');
     if (idx < 0 || idx == line.length - 1) return null;

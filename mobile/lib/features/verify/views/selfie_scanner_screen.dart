@@ -11,25 +11,26 @@ import 'package:google_mlkit_face_detection/google_mlkit_face_detection.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
 
-// ─── Pose thresholds (degrees) — top-level để `_Challenge.matches()` truy cập ───
+// Pose thresholds (degrees) — top-level so `_Challenge.matches()` can use them.
 // ML Kit: yaw > 0 = face turned to image's right (= user turn head LEFT do
 // front-cam mirrored display). pitch > 0 = looking up.
 const double _yawThreshold = 18.0;
 const double _pitchThreshold = 12.0;
 const double _neutralTolerance = 8.0;
 
-/// Full-screen selfie scanner với **liveness challenge** + min 5s gate.
+/// Full-screen selfie scanner with **liveness challenge** + min-5s gate.
 ///
-/// Anti-bot/anti-replay flow:
-/// 1. User vào → tìm khuôn mặt + đảm bảo quality (centered, large, eyes open).
-/// 2. 4 thao tác liveness được **shuffle ngẫu nhiên** mỗi lần (trái/phải/lên/xuống)
-///    để bot pre-record không thể vượt.
-/// 3. Mỗi thao tác phải giữ pose ≥ 1.2s (6 frames) mới count → tránh false positive.
-/// 4. Sau 4 thao tác → user về neutral pose → hệ thống chụp.
-/// 5. **Hard floor 5s**: nếu user qua nhanh hơn → wait countdown đến 5s mới
-///    cho phép capture.
+/// Anti-bot / anti-replay flow:
+/// 1. User enters → find face + ensure quality (centered, large, eyes open).
+/// 2. 4 liveness actions are **shuffled randomly** each session
+///    (left/right/up/down) so pre-recorded bots can't pass.
+/// 3. Each action must hold the pose ≥ 1.2s (6 frames) → reduces false positives.
+/// 4. After 4 actions → user returns to neutral → system captures.
+/// 5. **Hard floor 5s**: if the user finishes faster → wait the countdown to
+///    5s before allowing capture.
 ///
-/// Pop về parent với `File?` (raw selfie, không crop — face match cần vùng quanh).
+/// Pops the parent with `File?` (raw selfie, not cropped — face match needs
+/// the surrounding context).
 class SelfieScannerScreen extends StatefulWidget {
   const SelfieScannerScreen({super.key});
 
@@ -53,23 +54,23 @@ class _SelfieScannerScreenState extends State<SelfieScannerScreen>
   int _currentIdx = 0;
   int _holdFrames = 0;
 
-  // Min duration hard floor — start ngay khi screen open, không phụ thuộc
-  // vào tốc độ thao tác. Nếu user xong sớm → countdown overlay.
+  // Hard floor min duration — starts the moment the screen opens, regardless
+  // of how fast the user completes actions. If they finish early → countdown overlay.
   static const Duration _minDuration = Duration(seconds: 5);
   late final DateTime _startedAt;
   Timer? _minDurationTimer;
   bool _minDurationMet = false;
-  Timer? _tickTimer; // 1 Hz tick để re-render countdown
+  Timer? _tickTimer; // 1 Hz tick to re-render countdown
 
   // ── Detection thresholds ────────────────────────────────────────────
   static const Duration _processInterval = Duration(milliseconds: 200);
-  static const int _challengeHoldThreshold = 6; // ~1.2s giữ pose
+  static const int _challengeHoldThreshold = 6; // ~1.2s pose hold
   static const int _neutralHoldThreshold = 5; // ~1s neutral final
 
-  // Pose thresholds — declared top-level (xem `_yawThreshold` etc. đầu file)
-  // để `_Challenge.matches()` enum cũng dùng được cùng giá trị.
+  // Pose thresholds — declared top-level (see `_yawThreshold` etc. at the top
+  // of the file) so the `_Challenge.matches()` enum can share the same values.
 
-  // Face quality (initial gate trước khi vào challenge).
+  // Face quality (initial gate before entering the challenge).
   static const double _minFaceFraction = 0.22;
   static const double _maxOffsetX = 0.25;
   static const double _maxOffsetY = 0.28;
@@ -90,15 +91,15 @@ class _SelfieScannerScreenState extends State<SelfieScannerScreen>
     super.initState();
     WidgetsBinding.instance.addObserver(this);
 
-    // Shuffle 4 challenges — mỗi lần mở scanner thứ tự khác nhau.
+    // Shuffle 4 challenges — different order each time the scanner opens.
     _challenges = [..._Challenge.values]..shuffle(math.Random.secure());
     _startedAt = DateTime.now();
 
-    // Hard floor 30s: timer chạy độc lập với thao tác.
+    // Hard floor: timer runs independently of user actions.
     _minDurationTimer = Timer(_minDuration, () {
       if (mounted) setState(() => _minDurationMet = true);
     });
-    // Tick mỗi giây để re-render countdown text (chỉ khi sắp xong).
+    // Tick once per second to re-render countdown text (only near the end).
     _tickTimer = Timer.periodic(const Duration(seconds: 1), (_) {
       if (mounted && !_minDurationMet) setState(() {});
     });
@@ -169,8 +170,9 @@ class _SelfieScannerScreenState extends State<SelfieScannerScreen>
 
       final controller = CameraController(
         front,
-        // Medium (~640×480) đủ cho ML Kit face detect, giảm ~75% RAM/GPU so với
-        // high → tránh thermal throttle trên iPhone đời cũ khi stream liên tục.
+        // Medium (~640×480) is enough for ML Kit face detection and uses
+        // ~75% less RAM/GPU than high → avoids thermal throttling on older
+        // iPhones during continuous streaming.
         ResolutionPreset.medium,
         enableAudio: false,
         imageFormatGroup: Platform.isAndroid
@@ -224,9 +226,9 @@ class _SelfieScannerScreenState extends State<SelfieScannerScreen>
     }
   }
 
-  /// Phase machine driver — gọi mỗi frame (~200ms).
+  /// Phase machine driver — called every frame (~200ms).
   void _processFrame(List<Face> faces, int imgW, int imgH) {
-    // ── Guard: phải có đúng 1 mặt ──
+    // Guard: must have exactly 1 face.
     if (faces.isEmpty) {
       _setPhase(_Phase.searching, hint: _PositionHint.searching);
       _holdFrames = 0;
@@ -245,7 +247,7 @@ class _SelfieScannerScreenState extends State<SelfieScannerScreen>
     final leftEye = face.leftEyeOpenProbability ?? 1.0;
     final rightEye = face.rightEyeOpenProbability ?? 1.0;
 
-    // ── Phase 1: positioning — đảm bảo face quality OK trước khi vào challenge ──
+    // Phase 1: positioning — ensure face quality is OK before entering challenge.
     if (_phase == _Phase.searching) {
       final faceFraction = box.width / imgW;
       if (faceFraction < _minFaceFraction) {
@@ -262,8 +264,8 @@ class _SelfieScannerScreenState extends State<SelfieScannerScreen>
         _setPhase(_Phase.searching, hint: _PositionHint.eyesClosed);
         return;
       }
-      // Yêu cầu ban đầu nhìn thẳng → tránh user "cheat" bằng cách giữ nguyên
-      // pose trùng với challenge đầu.
+      // Require looking straight initially → prevents users from "cheating"
+      // by holding a pose that already matches the first challenge.
       if (yaw.abs() > _neutralTolerance || pitch.abs() > _neutralTolerance) {
         _setPhase(_Phase.searching, hint: _PositionHint.notStraight);
         return;
@@ -274,15 +276,15 @@ class _SelfieScannerScreenState extends State<SelfieScannerScreen>
       return;
     }
 
-    // ── Phase 2: challenge sequencing ──
+    // Phase 2: challenge sequencing.
     if (_phase == _Phase.challenge) {
-      // Vẫn cần thấy mặt — không cần strict quality.
+      // Still need to see the face — strict quality not required.
       final current = _challenges[_currentIdx];
       if (current.matches(yaw, pitch)) {
         _holdFrames++;
         if (mounted) setState(() {}); // re-render progress
         if (_holdFrames >= _challengeHoldThreshold) {
-          // Challenge done — advance hoặc move to neutral phase.
+          // Challenge done — advance or move to neutral phase.
           _holdFrames = 0;
           if (_currentIdx + 1 >= _challenges.length) {
             _setPhase(_Phase.neutral);
@@ -299,7 +301,7 @@ class _SelfieScannerScreenState extends State<SelfieScannerScreen>
       return;
     }
 
-    // ── Phase 3: final neutral pose ──
+    // Phase 3: final neutral pose.
     if (_phase == _Phase.neutral) {
       final isNeutral = yaw.abs() <= _neutralTolerance &&
           pitch.abs() <= _neutralTolerance &&
@@ -399,14 +401,14 @@ class _SelfieScannerScreenState extends State<SelfieScannerScreen>
   int get _completedCount =>
       _phase == _Phase.neutral ? _challenges.length : _currentIdx;
 
-  /// Số giây còn lại của hard floor 30s (chỉ relevant khi sắp/đã xong challenges).
+  /// Remaining seconds of the hard floor (only relevant near the end of challenges).
   int get _remainingSeconds {
     if (_minDurationMet) return 0;
     final elapsed = DateTime.now().difference(_startedAt).inSeconds;
     return math.max(0, _minDuration.inSeconds - elapsed);
   }
 
-  /// Status pill text + color theo phase hiện tại.
+  /// Status pill text + color based on the current phase.
   (String, Color) get _statusPillInfo {
     if (_capturing) return ('Đang chụp…', AppColors.emerald);
     if (_phase == _Phase.searching) {
@@ -439,7 +441,7 @@ class _SelfieScannerScreenState extends State<SelfieScannerScreen>
     return ('Nhìn thẳng để chụp', AppColors.emerald);
   }
 
-  /// 0..1 progress của challenge/neutral hold hiện tại.
+  /// 0..1 progress of the current challenge/neutral hold.
   double get _holdProgress {
     if (_phase == _Phase.challenge) {
       return _holdFrames / _challengeHoldThreshold;
@@ -498,8 +500,8 @@ class _SelfieScannerScreenState extends State<SelfieScannerScreen>
                       totalCount: _challenges.length,
                     ),
 
-                    // Bottom area: progress dots + hint, không có shutter button
-                    // (anti-bypass — phải đi qua liveness).
+                    // Bottom area: progress dots + hint, no shutter button
+                    // (anti-bypass — must pass liveness).
                     Positioned(
                       left: 0,
                       right: 0,
@@ -554,19 +556,19 @@ class _SelfieScannerScreenState extends State<SelfieScannerScreen>
 
 // ═══════════════════════════════════════════════════════════════════════
 
-/// Phase machine của liveness flow.
+/// Phase machine for the liveness flow.
 enum _Phase {
-  /// Đang tìm/canh khuôn mặt (positioning).
+  /// Finding/aligning the face (positioning).
   searching,
 
-  /// Đang yêu cầu user thực hiện thao tác (look up/down/left/right).
+  /// Asking the user to perform an action (look up/down/left/right).
   challenge,
 
-  /// 4 thao tác xong, chờ neutral pose + min 30s elapsed → capture.
+  /// 4 actions done, wait for neutral pose + min duration elapsed → capture.
   neutral,
 }
 
-/// Hint cụ thể trong phase positioning.
+/// Specific hint shown during the positioning phase.
 enum _PositionHint {
   searching,
   tooFar,
@@ -576,7 +578,7 @@ enum _PositionHint {
   multipleFaces,
 }
 
-/// 4 head pose challenges, shuffle ngẫu nhiên mỗi lần mở scanner.
+/// 4 head pose challenges, shuffled randomly each time the scanner opens.
 enum _Challenge {
   lookLeft,
   lookRight,
@@ -597,16 +599,17 @@ enum _Challenge {
         _Challenge.lookDown => Icons.arrow_downward_rounded,
       };
 
-  /// Check nếu pose hiện tại match challenge này.
+  /// Check if the current pose matches this challenge.
   ///
   /// **Front camera + Flutter `camera` plugin convention** (verified empirically):
-  /// - User quay đầu sang **phải** (perspective của user) → headEulerAngleY > 0
-  /// - User quay đầu sang **trái** → headEulerAngleY < 0
-  /// - User ngẩng lên → headEulerAngleX > 0
-  /// - User cúi xuống → headEulerAngleX < 0
+  /// - User turns head **right** (user's perspective) → headEulerAngleY > 0
+  /// - User turns head **left** → headEulerAngleY < 0
+  /// - User looks up → headEulerAngleX > 0
+  /// - User looks down → headEulerAngleX < 0
   ///
-  /// (Trước đây dựa vào docs ML Kit "viewer's right" → wrong vì display tự
-  /// mirror; user kêu ngược → flip thực nghiệm.)
+  /// (Previously relied on ML Kit's "viewer's right" docs → wrong because the
+  /// display auto-mirrors; users reported reversed behaviour → flipped after
+  /// empirical testing.)
   bool matches(double yaw, double pitch) => switch (this) {
         _Challenge.lookLeft => yaw < -_yawThreshold,
         _Challenge.lookRight => yaw > _yawThreshold,
@@ -617,11 +620,11 @@ enum _Challenge {
 
 /// Front camera preview — natural aspect ratio, centered.
 ///
-/// Trước đây dùng BoxFit.cover + OverflowBox để fill toàn screen → trên màn
-/// 9:19.5 với sensor 4:3 thì camera bị scale up ~33%, crop edges → user
-/// thấy "quá sát mặt / bị zoom". Chuyển sang Center + CameraPreview để giữ
-/// natural FOV — có letterbox đen trên/dưới nhưng đó là behavior chuẩn của
-/// app camera native.
+/// Previously used BoxFit.cover + OverflowBox to fill the screen → on a
+/// 9:19.5 display with a 4:3 sensor, the camera was scaled up ~33% and edges
+/// cropped → users said "face is too close / zoomed in". Switched to Center +
+/// CameraPreview to preserve natural FOV — letterboxes at top/bottom but
+/// that's the standard behaviour of the native camera app.
 class _FillFrontPreview extends StatelessWidget {
   final CameraController controller;
   const _FillFrontPreview({required this.controller});
@@ -632,7 +635,7 @@ class _FillFrontPreview extends StatelessWidget {
   }
 }
 
-/// Scrim đen 70% với cutout oval ở center cho khuôn mặt.
+/// 70% black scrim with a centered oval cutout for the face.
 class _OvalScrimPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
@@ -726,8 +729,8 @@ class _OvalFrameOverlayState extends State<_OvalFrameOverlay>
                 ),
               ),
 
-              // Big arrow icon ở center oval — direction hint cho current
-              // challenge. Pulse để thu hút sự chú ý.
+              // Big arrow icon centered in the oval — direction hint for the
+              // current challenge. Pulses to grab attention.
               if (widget.challengeIcon != null)
                 Positioned(
                   left: left,
@@ -758,7 +761,7 @@ class _OvalFrameOverlayState extends State<_OvalFrameOverlay>
                   ),
                 ),
 
-              // Status pill phía trên oval
+              // Status pill above the oval.
               Positioned(
                 left: 0,
                 right: 0,
@@ -810,7 +813,7 @@ class _OvalBorderPainter extends CustomPainter {
       }
     }
 
-    // Progress arc — chạy theo hold progress của challenge/neutral hiện tại.
+    // Progress arc — tracks the current challenge/neutral hold progress.
     if (progress > 0) {
       final progressPaint = Paint()
         ..color = color
@@ -870,7 +873,7 @@ class _StatusPill extends StatelessWidget {
   }
 }
 
-/// 4 progress dots ở bottom — show số challenge đã xong.
+/// 4 progress dots at the bottom — shows how many challenges are complete.
 class _ProgressDots extends StatelessWidget {
   final int total;
   final int completed;

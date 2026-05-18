@@ -20,8 +20,8 @@ void main() {
   FlutterNativeSplash.preserve(widgetsBinding: widgetsBinding);
   runZonedGuarded(
     () async {
-      // Init locale 'vi' + 'vi_VN' để DateFormat(..., 'vi') không throw
-      // LocaleDataException. Fast + sync — không cần timeout.
+      // Init locale 'vi' + 'vi_VN' so DateFormat(..., 'vi') doesn't throw
+      // LocaleDataException. Fast + sync — no timeout needed.
       try {
         await initializeDateFormatting('vi');
         await initializeDateFormatting('vi_VN');
@@ -29,8 +29,9 @@ void main() {
         if (kDebugMode) debugPrint('[Intl] init locale failed: $e');
       }
 
-      // Critical init — Firebase + Crashlytics phải xong trước runApp để bắt
-      // crash sớm. Nhưng KHÔNG để stuck quá 5s (vd network init treo).
+      // Critical init — Firebase + Crashlytics must complete before runApp to
+      // catch early crashes. But DO NOT block longer than 5s (e.g. if network
+      // init hangs).
       try {
         await Firebase.initializeApp()
             .timeout(const Duration(seconds: 5));
@@ -39,8 +40,8 @@ void main() {
         if (kDebugMode) debugPrint('[Firebase] Init failed/timeout: $e');
       }
 
-      // Push notification init chạy nền — KHÔNG block runApp. iOS APNs
-      // registration có thể mất 5-30s, nếu await sẽ stuck splash.
+      // Push notification init runs in background — DO NOT block runApp. iOS
+      // APNs registration can take 5-30s; awaiting it would stall splash.
       unawaited(_initPushInBackground());
 
       runApp(
@@ -77,23 +78,24 @@ class _HomestayAppState extends ConsumerState<HomestayApp>
     super.initState();
     WidgetsBinding.instance.addObserver(this);
 
-    // Wire FCM notification tap → router. Defer 1 frame để router init xong
-    // và auth state ready (nếu cold-start từ tap notification).
+    // Wire FCM notification tap → router. Defer 1 frame so router is
+    // initialized and auth state is ready (in case of cold-start from a
+    // notification tap).
     WidgetsBinding.instance.addPostFrameCallback((_) {
       PushNotificationService.instance.onNotificationTap = (data) {
         final deepLink = data['deepLink'];
         if (deepLink is! String || deepLink.isEmpty) return;
         final uri = Uri.tryParse(deepLink);
         if (uri == null) return;
-        // Chỉ cho phép relative path (không có scheme/host) để tránh
-        // open redirect từ notification bị giả mạo.
+        // Only allow relative paths (no scheme/host) to prevent open
+        // redirects from spoofed notifications.
         if (uri.hasScheme || uri.hasAuthority) return;
         ref.read(routerProvider).go(deepLink);
       };
 
-      // Check app version với BE — nếu force-update thì block UI ngay,
-      // soft-update thì hiện dialog dismissible. Run sau frame đầu để
-      // splash xong + có context hợp lệ.
+      // Check app version against BE — if force-update, block UI immediately;
+      // if soft-update, show a dismissible dialog. Run after the first frame
+      // so splash is finished and we have a valid context.
       _checkAppVersion();
     });
   }
@@ -119,9 +121,9 @@ class _HomestayAppState extends ConsumerState<HomestayApp>
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    // Khi app foreground lại → refresh user profile để bắt KYC/subscription
-    // status mới (vd admin vừa approve trong khi app đang ở background).
-    // No-op nếu chưa login (notifier check).
+    // When the app returns to foreground → refresh user profile to pick up
+    // new KYC/subscription status (e.g. admin just approved while the app was
+    // in background). No-op if not logged in (notifier checks).
     if (state == AppLifecycleState.resumed) {
       final auth = ref.read(authProvider);
       if (auth.isLoggedIn) {

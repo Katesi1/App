@@ -13,7 +13,7 @@ import '../../verify/controllers/verify_flow_controller.dart';
 import '../../verify/data/models/verify_enums.dart';
 import '../../verify/views/paywall_modal.dart';
 
-// gradient.brandHero stop "jade-mid" theo spec section 3.7 — chưa có token sẵn
+// gradient.brandHero stop "jade-mid" per spec section 3.7 — no token available yet
 const _jadeMidLight = Color(0xFF1B7E94);
 
 class ProfileScreen extends ConsumerWidget {
@@ -34,7 +34,6 @@ class ProfileScreen extends ConsumerWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            // ── Immersive gradient header ──────────────────────────
             _ProfileHeader(user: user, topPad: topPad, isDark: isDark)
                 .animate()
                 .fadeIn(duration: 400.ms)
@@ -42,7 +41,6 @@ class ProfileScreen extends ConsumerWidget {
 
             const SizedBox(height: 24),
 
-            // ── Section: TÀI KHOẢN ────────────────────────────────
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 20),
               child: Column(
@@ -78,7 +76,7 @@ class ProfileScreen extends ConsumerWidget {
 
             const SizedBox(height: 16),
 
-            // ── Section: KYC + SUBSCRIPTION (chỉ cho Owner) ───────
+            // KYC + Subscription section (Owner only)
             if (showVerifySection)
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 20),
@@ -103,7 +101,6 @@ class ProfileScreen extends ConsumerWidget {
 
             if (showVerifySection) const SizedBox(height: 16),
 
-            // ── Section: CÀI ĐẶT ──────────────────────────────────
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 20),
               child: Column(
@@ -137,7 +134,6 @@ class ProfileScreen extends ConsumerWidget {
 
             const SizedBox(height: 16),
 
-            // ── Section: HỖ TRỢ ───────────────────────────────────
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 20),
               child: Column(
@@ -209,7 +205,6 @@ class ProfileScreen extends ConsumerWidget {
 
             const SizedBox(height: 24),
 
-            // ── Logout button ──────────────────────────────────────
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 20),
               child: OutlinedButton.icon(
@@ -245,7 +240,6 @@ class ProfileScreen extends ConsumerWidget {
 
             const SizedBox(height: 16),
 
-            // ── App version ────────────────────────────────────────
             Center(
               child: Text(
                 'Halong24h v1.0.0',
@@ -308,13 +302,13 @@ class ProfileScreen extends ConsumerWidget {
     }
   }
 
-  /// Build KYC menu item theo verify status hiện tại của owner.
+  /// Build the KYC menu item based on the owner's current verify status.
   ///
-  /// 4 trạng thái khác nhau → label + icon + route khác nhau:
-  /// - `approved`: "Gói + Trial" (xanh) → /verify/approved
-  /// - `awaitingApproval`: "Đang chờ duyệt" (vàng) → /verify/pending
-  /// - `rejected`: "Cần bổ sung" (đỏ) → /verify/rejected
-  /// - draft / chưa start: "Verify CCCD" (gold) → showPaywallModal
+  /// Four states → different label + icon + route:
+  /// - `approved`: "Plan + Trial" (green) → /verify/approved
+  /// - `awaitingApproval`: "Pending review" (amber) → /verify/pending
+  /// - `rejected`: "Resubmit required" (red) → /verify/rejected
+  /// - draft / not started: "Verify CCCD" (gold) → showPaywallModal
   _MenuItemData _verifyMenuItem(
     BuildContext context,
     WidgetRef ref,

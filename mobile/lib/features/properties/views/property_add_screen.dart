@@ -24,43 +24,36 @@ class PropertyAddScreen extends ConsumerStatefulWidget {
 class _PropertyAddScreenState extends ConsumerState<PropertyAddScreen> {
   final _formKey = GlobalKey<FormState>();
 
-  // Loại hình (0=VILLA, 1=HOMESTAY, 2=HOTEL)
+  // Property type (0=VILLA, 1=HOMESTAY, 2=HOTEL)
   int _selectedType = 0;
 
-  // Ảnh
   final List<File> _pickedImages = [];
 
-  // View (null = không, "sea" = view biển, "city" = view thành phố)
+  // View (null = none, "sea" = sea view, "city" = city view)
   String? _selectedView;
 
-  // Thông tin cơ bản
   final _codeCtrl = TextEditingController();
   final _nameCtrl = TextEditingController();
   final _descriptionCtrl = TextEditingController();
   final _addressCtrl = TextEditingController();
   final _mapLinkCtrl = TextEditingController();
 
-  // Thông số phòng
   int _bedrooms = 5;
   int _bathrooms = 2;
 
-  // Sức chứa
   final _standardGuestsCtrl = TextEditingController();
   final _maxGuestsCtrl = TextEditingController();
 
-  // Bảng giá
   final _weekdayPriceCtrl = TextEditingController();
   final _weekendPriceCtrl = TextEditingController();
   final _holidayPriceCtrl = TextEditingController();
 
-  // Phụ thu
   final _adultSurchargeCtrl = TextEditingController();
   final _childSurchargeCtrl = TextEditingController();
 
-  // Tiện nghi
   final Set<String> _selectedAmenities = {};
 
-  // Quy định (String, mặc định có sẵn text)
+  // Pre-filled default rules text.
   final _rulesCtrl = TextEditingController(
     text: 'Check-in sau 14:00, check-out trước 12:00.\n'
         'Không hút thuốc trong phòng.\n'
@@ -72,7 +65,7 @@ class _PropertyAddScreenState extends ConsumerState<PropertyAddScreen> {
         'Ngày lễ áp dụng giá lễ, tối thiểu 2 đêm.',
   );
 
-  // Chính sách huỷ (0=FLEXIBLE, 1=MODERATE, 2=STRICT)
+  // Cancellation policy (0=FLEXIBLE, 1=MODERATE, 2=STRICT).
   int _cancellationPolicy = 0;
 
   bool _isLoading = false;
@@ -218,7 +211,7 @@ class _PropertyAddScreenState extends ConsumerState<PropertyAddScreen> {
     if (!mounted) return;
 
     if (propertyId != null) {
-      // Upload ảnh nếu có
+      // Upload images if any.
       if (_pickedImages.isNotEmpty) {
         final paths = _pickedImages.map((f) => f.path).toList();
         final (imgOk, imgErr) = await ref
@@ -276,7 +269,6 @@ class _PropertyAddScreenState extends ConsumerState<PropertyAddScreen> {
           child: ListView(
             padding: const EdgeInsets.only(bottom: 100),
             children: [
-              // ── LOẠI HÌNH * ──
               _Section(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -334,7 +326,6 @@ class _PropertyAddScreenState extends ConsumerState<PropertyAddScreen> {
                 ),
               ).animate().fadeIn(duration: 300.ms),
 
-              // ── ẢNH PHÒNG ──
               _Section(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -444,7 +435,6 @@ class _PropertyAddScreenState extends ConsumerState<PropertyAddScreen> {
                 ),
               ).animate(delay: 50.ms).fadeIn(duration: 300.ms),
 
-              // ── THÔNG TIN CƠ BẢN ──
               _Section(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -507,7 +497,6 @@ class _PropertyAddScreenState extends ConsumerState<PropertyAddScreen> {
                 ),
               ).animate(delay: 100.ms).fadeIn(duration: 300.ms),
 
-              // ── THÔNG SỐ PHÒNG ──
               _Section(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -561,7 +550,6 @@ class _PropertyAddScreenState extends ConsumerState<PropertyAddScreen> {
                 ),
               ).animate(delay: 150.ms).fadeIn(duration: 300.ms),
 
-              // ── SỨC CHỨA ──
               _Section(
                 highlighted: true,
                 child: Column(
@@ -596,7 +584,6 @@ class _PropertyAddScreenState extends ConsumerState<PropertyAddScreen> {
                 ),
               ).animate(delay: 200.ms).fadeIn(duration: 300.ms),
 
-              // ── BẢNG GIÁ ──
               _Section(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -630,7 +617,6 @@ class _PropertyAddScreenState extends ConsumerState<PropertyAddScreen> {
                 ),
               ).animate(delay: 250.ms).fadeIn(duration: 300.ms),
 
-              // ── PHỤ THU ──
               _Section(
                 highlighted: true,
                 child: Column(
@@ -663,7 +649,6 @@ class _PropertyAddScreenState extends ConsumerState<PropertyAddScreen> {
                 ),
               ).animate(delay: 300.ms).fadeIn(duration: 300.ms),
 
-              // ── TIỆN NGHI ──
               _Section(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -793,7 +778,6 @@ class _PropertyAddScreenState extends ConsumerState<PropertyAddScreen> {
                 ),
               ).animate(delay: 350.ms).fadeIn(duration: 300.ms),
 
-              // ── CHÍNH SÁCH HUỶ ──
               _Section(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -855,7 +839,6 @@ class _PropertyAddScreenState extends ConsumerState<PropertyAddScreen> {
                 ),
               ).animate(delay: 400.ms).fadeIn(duration: 300.ms),
 
-              // ── QUY ĐỊNH ──
               _Section(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -879,7 +862,6 @@ class _PropertyAddScreenState extends ConsumerState<PropertyAddScreen> {
                 ),
               ).animate(delay: 450.ms).fadeIn(duration: 300.ms),
 
-              // ── LƯU PHÒNG ──
               Padding(
                 padding: const EdgeInsets.all(AppSpacing.md),
                 child: AnimatedSwitcher(

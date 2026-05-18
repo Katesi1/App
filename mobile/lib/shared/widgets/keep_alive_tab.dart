@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 
-/// Wrapper giữ state subtree khi TabBarView swipe sang tab khác — tránh
-/// reset scroll position + state nội tại (vd `_GroupTile._expanded`).
+/// Keeps a subtree's state alive when TabBarView swipes to another tab —
+/// avoids resetting scroll position + internal state (e.g. `_GroupTile._expanded`).
 ///
-/// Dùng khi children của TabBarView là widget được build inline (không phải
-/// class riêng có thể trực tiếp `with AutomaticKeepAliveClientMixin`).
+/// Use this when TabBarView children are inline-built widgets (not their own
+/// class that could `with AutomaticKeepAliveClientMixin` directly).
 ///
 /// ```dart
 /// TabBarView(

@@ -1,4 +1,4 @@
-/// Trạng thái ngày trong calendar grid
+/// Status of a day in the calendar grid.
 enum CalendarDayStatus { available, hold, booked, locked }
 
 extension CalendarDayStatusX on CalendarDayStatus {
@@ -11,7 +11,7 @@ extension CalendarDayStatusX on CalendarDayStatus {
       };
 }
 
-/// Một ngày trong grid calendar
+/// A single day in the calendar grid.
 class CalendarDay {
   final String date;
   final double price;
@@ -30,7 +30,7 @@ class CalendarDay {
       );
 }
 
-/// Một property (phòng/căn) trong calendar grid
+/// A property (room/unit) in the calendar grid.
 class CalendarRoomRow {
   final String id;
   final String code;
@@ -65,7 +65,7 @@ class CalendarRoomRow {
       );
 }
 
-/// Response từ /calendar/grid và /calendar/public-grid
+/// Response from /calendar/grid and /calendar/public-grid.
 class CalendarGrid {
   final List<CalendarRoomRow> properties;
 
@@ -79,7 +79,7 @@ class CalendarGrid {
       );
 }
 
-/// Thông tin liên hệ admin (từ /calendar/admin-contact)
+/// Admin contact info (from /calendar/admin-contact).
 class AdminContact {
   final String name;
   final String phone;

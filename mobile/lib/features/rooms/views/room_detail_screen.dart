@@ -39,7 +39,6 @@ class RoomDetailScreen extends ConsumerWidget {
         backgroundColor: colors.bgCanvas,
         body: CustomScrollView(
           slivers: [
-            // ── Hero image gallery ──────────────────────────────────
             SliverToBoxAdapter(
               child: _ImageGalleryHeader(room: room, roomId: roomId),
             ),
@@ -50,7 +49,6 @@ class RoomDetailScreen extends ConsumerWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // ── Title + Status badge ────────────────────────
                     Row(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
@@ -110,7 +108,6 @@ class RoomDetailScreen extends ConsumerWidget {
 
                     const SizedBox(height: 10),
 
-                    // ── Price ────────────────────────────────────────
                     Text(
                       room.priceDisplay,
                       style: GoogleFonts.beVietnamPro(
@@ -124,7 +121,6 @@ class RoomDetailScreen extends ConsumerWidget {
 
                     const SizedBox(height: 16),
 
-                    // ── Info chips ───────────────────────────────────
                     Wrap(
                       spacing: 10,
                       runSpacing: 8,
@@ -152,7 +148,6 @@ class RoomDetailScreen extends ConsumerWidget {
                       ],
                     ).animate(delay: 100.ms).fadeIn(duration: 300.ms),
 
-                    // ── Amenities ────────────────────────────────────
                     if (room.amenities.isNotEmpty) ...[
                       const SizedBox(height: 16),
                       Wrap(
@@ -165,7 +160,6 @@ class RoomDetailScreen extends ConsumerWidget {
 
                     const SizedBox(height: 24),
 
-                    // ── Địa chỉ ───────────────────────────────────
                     _DetailRow(
                       title: 'Địa chỉ',
                       icon: Icons.location_on_outlined,
@@ -176,7 +170,6 @@ class RoomDetailScreen extends ConsumerWidget {
 
                     const SizedBox(height: 16),
 
-                    // ── Mô tả ─────────────────────────────────────
                     _DetailSection(
                       title: 'Mô tả',
                       value: room.description?.isNotEmpty == true
@@ -186,7 +179,6 @@ class RoomDetailScreen extends ConsumerWidget {
 
                     const SizedBox(height: 24),
 
-                    // ── Quy định + Lưu ý ──────────────────────────
                     if (room.rules != null && room.rules!.isNotEmpty) ...[
                       _DetailSection(
                         title: 'Quy định',
@@ -204,7 +196,6 @@ class RoomDetailScreen extends ConsumerWidget {
                       const SizedBox(height: 24),
                     ],
 
-                    // ── Price grid ──────────────────────────────────
                     if (room.price != null) ...[
                       Text(
                         'Bảng giá',
@@ -219,7 +210,6 @@ class RoomDetailScreen extends ConsumerWidget {
                       const SizedBox(height: 24),
                     ],
 
-                    // ── Action button ──────────────────────────────
                     SizedBox(
                       width: double.infinity,
                       height: 48,
@@ -315,7 +305,6 @@ class _ImageGalleryHeaderState extends State<_ImageGalleryHeader> {
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
-        // ── Main image area ───────────────────────────────
         Stack(
           children: [
             GestureDetector(
@@ -403,7 +392,7 @@ class _ImageGalleryHeaderState extends State<_ImageGalleryHeader> {
               ),
             ),
 
-            // Badge ảnh (luôn hiện khi có ảnh)
+            // Image badge (always shown when images exist).
             if (images.isNotEmpty)
               Positioned(
                 bottom: 12,
@@ -439,7 +428,7 @@ class _ImageGalleryHeaderState extends State<_ImageGalleryHeader> {
                 ),
               ),
 
-            // Dot indicators (chỉ khi nhiều ảnh)
+            // Dot indicators (only when multiple images).
             if (images.length > 1)
               Positioned(
                 bottom: 14,
@@ -467,7 +456,7 @@ class _ImageGalleryHeaderState extends State<_ImageGalleryHeader> {
           ],
         ),
 
-        // ── Thumbnail strip (ngoài Stack, hiển thị đúng) ─
+        // Thumbnail strip (outside Stack for correct display).
         if (images.length > 1)
           _ThumbnailStrip(
             images: images,
@@ -501,7 +490,6 @@ class _ImageGalleryHeaderState extends State<_ImageGalleryHeader> {
     buf.writeln();
     buf.writeln('━━━━━━━━━━━━━━━━━');
 
-    // Thông tin phòng
     buf.writeln('🛏  Phòng ngủ: ${room.bedrooms}');
     if (room.bathrooms > 0) {
       buf.writeln('🚿 Phòng tắm: ${room.bathrooms}');
@@ -511,7 +499,6 @@ class _ImageGalleryHeaderState extends State<_ImageGalleryHeader> {
       buf.writeln('   (tiêu chuẩn ${room.standardGuests} người)');
     }
 
-    // Tiện ích
     if (room.amenities.isNotEmpty) {
       buf.writeln();
       buf.writeln('✅ Tiện ích:');
@@ -520,14 +507,12 @@ class _ImageGalleryHeaderState extends State<_ImageGalleryHeader> {
       }
     }
 
-    // Mô tả
     if (room.description?.isNotEmpty == true) {
       buf.writeln();
       buf.writeln('📝 Mô tả:');
       buf.writeln(room.description);
     }
 
-    // Phụ thu
     if (room.adultSurcharge != null && room.adultSurcharge! > 0) {
       buf.writeln();
       buf.writeln(
@@ -538,7 +523,6 @@ class _ImageGalleryHeaderState extends State<_ImageGalleryHeader> {
           '💰 Phụ thu trẻ em: ${_fmtPrice(room.childSurcharge!)}đ/người');
     }
 
-    // Chính sách huỷ
     if (room.cancellationPolicy != null) {
       const policyLabels = ['Linh hoạt', 'Vừa phải', 'Nghiêm ngặt'];
       final label = (room.cancellationPolicy! < policyLabels.length)
@@ -619,7 +603,7 @@ class _ThumbnailStripState extends State<_ThumbnailStrip> {
   @override
   void didUpdateWidget(_ThumbnailStrip oldWidget) {
     super.didUpdateWidget(oldWidget);
-    // Tự động scroll thumbnail đến item đang chọn
+    // Auto-scroll thumbnail strip to the selected item.
     if (oldWidget.selectedIndex != widget.selectedIndex) {
       final targetOffset = (widget.selectedIndex * 72.0) - 100;
       _scrollCtrl.animateTo(

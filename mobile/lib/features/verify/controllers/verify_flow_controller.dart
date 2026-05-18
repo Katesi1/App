@@ -120,11 +120,10 @@ final paymentHistoryListProvider = StateNotifierProvider.autoDispose<
   return PaymentHistoryNotifier(ref.read(verifyRepositoryProvider));
 });
 
-/// Controller cho toàn flow verify + subscription.
+/// Controller for the entire verify + subscription flow.
 ///
-/// State được persist qua [_persistDraft] — khi user close app giữa flow,
-/// next launch sẽ resume từ step cuối. (Mock: log only — chưa wire
-/// SharedPreferences vì spec yêu cầu chỉ làm design + logic.)
+/// State is persisted via [_persistDraft] — if the user closes the app
+/// mid-flow, the next launch resumes from the last step.
 final verifyFlowControllerProvider =
     StateNotifierProvider<VerifyFlowController, VerifyFlowState>(
   (ref) => VerifyFlowController(ref.read(verifyRepositoryProvider)),
@@ -139,13 +138,14 @@ class VerifyFlowController extends StateNotifier<VerifyFlowState> {
   }
 
   // ════════════════════════════════════════════════════════════
-  // Hydrate — load state từ backend khi vào lại flow
+  // Hydrate — load state from backend when re-entering the flow
   // ════════════════════════════════════════════════════════════
 
-  /// Đồng bộ trạng thái KYC với backend (`GET /kyc/status`).
+  /// Sync KYC state with backend (`GET /kyc/status`).
   ///
-  /// Gọi khi user mở app lại / vào paywall modal — để resume đúng step
-  /// thay vì luôn bắt đầu từ CCCD trước. Idempotent, an toàn để gọi nhiều lần.
+  /// Call when the user re-opens the app or enters the paywall modal so the
+  /// flow resumes at the right step instead of always restarting from CCCD
+  /// front. Idempotent — safe to call repeatedly.
   Future<void> hydrate() async {
     try {
       final snap = await _repo.getKycStatus();
@@ -158,7 +158,7 @@ class VerifyFlowController extends StateNotifier<VerifyFlowState> {
         trialEndsAt: snap.trialEndsAt,
       );
     } catch (_) {
-      // Hydrate fail không nên crash flow — user vẫn có thể start lại từ đầu.
+      // Hydrate failure should not crash the flow — user can still restart.
     }
   }
 
@@ -172,7 +172,7 @@ class VerifyFlowController extends StateNotifier<VerifyFlowState> {
       final json = jsonDecode(raw) as Map<String, dynamic>;
       state = VerifyFlowState.fromJson(json);
     } catch (_) {
-      // Không block flow nếu parse lỗi draft cũ.
+      // Don't block the flow if parsing the old draft fails.
     }
   }
 
@@ -180,10 +180,10 @@ class VerifyFlowController extends StateNotifier<VerifyFlowState> {
   // KYC — Step 1, 2, 3
   // ════════════════════════════════════════════════════════════
 
-  /// Step 1: Upload CCCD mặt trước.
+  /// Step 1: Upload the front of the CCCD.
   ///
-  /// `ocrResult` là dữ liệu đã extract trên device (xem [CCCDScannerScreen]).
-  /// Có thể null nếu user chọn ảnh từ gallery.
+  /// `ocrResult` is data already extracted on-device (see [CCCDScannerScreen]).
+  /// May be null if the user picks the image from the gallery.
   Future<CCCDUpload> uploadCCCDFront(
     File image, {
     OCRResult? ocrResult,
@@ -194,16 +194,17 @@ class VerifyFlowController extends StateNotifier<VerifyFlowState> {
     return result;
   }
 
-  /// Step 2: Upload CCCD mặt sau.
+  /// Step 2: Upload the back of the CCCD.
   ///
-  /// `ocrResult` từ QR code mặt sau (chính xác 100% nếu CCCD chip mới).
+  /// `ocrResult` comes from the QR code on the back (100% accurate on newer
+  /// chipped CCCDs).
   Future<CCCDUpload> uploadCCCDBack(
     File image, {
     OCRResult? ocrResult,
   }) async {
     final result = await _repo.uploadCCCDBack(image, ocrResult: ocrResult);
-    // Merge data trước (OCR text) + sau (QR machine-readable). Field nào QR
-    // có → ưu tiên QR vì chính xác hơn (xem `OCRResult.mergeWith`).
+    // Merge front (OCR text) + back (QR machine-readable). Any field the QR
+    // provides → prefer QR since it's more accurate (see `OCRResult.mergeWith`).
     final merged = state.cccdFront?.copyWith(
       ocrResult: state.cccdFront?.ocrResult?.mergeWith(result.ocrResult),
     );
@@ -214,15 +215,15 @@ class VerifyFlowController extends StateNotifier<VerifyFlowState> {
 
   /// Step 3: Upload selfie.
   ///
-  /// **Không auto-reject theo `faceMatchScore`**. Lý do:
-  /// - Backend chưa wire FPT.AI → score luôn `null/0` → reject nhầm
-  /// - Score 0.7-0.85 hay rơi vào user thật do ánh sáng/góc/kính → hard
-  ///   cutoff ở client = chặn nhầm khách hàng
-  /// - Admin nhìn cả CCCD + selfie + score trong queue → quyết định cuối
-  ///   cùng (xem [KYCApprovalDetailScreen])
+  /// **Do NOT auto-reject based on `faceMatchScore`**. Reasons:
+  /// - Backend hasn't wired FPT.AI yet → score is always `null/0` → false reject
+  /// - Scores 0.7-0.85 often hit real users due to lighting/angle/glasses → a
+  ///   hard client cutoff would block legitimate customers
+  /// - Admin sees CCCD + selfie + score together in the queue and makes the
+  ///   final call (see [KYCApprovalDetailScreen])
   ///
-  /// `faceMatchScore` và `isValid` từ backend chỉ là **hint hiển thị cho
-  /// admin** trong queue, không phải gate ở client.
+  /// `faceMatchScore` and `isValid` from backend are only **display hints for
+  /// admin** in the queue, not a client-side gate.
   Future<SelfieUpload> uploadSelfie(File image) async {
     final cccdFront = state.cccdFront;
     if (cccdFront == null) {
@@ -243,13 +244,13 @@ class VerifyFlowController extends StateNotifier<VerifyFlowState> {
   // ════════════════════════════════════════════════════════════
   // Subscription — Step 4
   // ════════════════════════════════════════════════════════════
-  // `expectedRooms` derive từ `plan.rooms` trong `selectPlan()` —
-  // user không tự nhập số phòng nữa (model mới: tier-based, mỗi tier ứng
-  // số phòng cố định).
+  // `expectedRooms` is derived from `plan.rooms` in `selectPlan()` — the user
+  // no longer enters the room count manually (new tier-based model with fixed
+  // rooms per tier).
 
-  /// Pick plan + cycle. `expectedRooms` auto-derive từ `plan.rooms` (giữ
-  /// trong state cho payment + admin queue). Enterprise: rooms = -1 → giữ
-  /// nguyên giá trị cũ (không override).
+  /// Pick plan + cycle. `expectedRooms` auto-derives from `plan.rooms` (kept
+  /// in state for payment + admin queue). Enterprise: rooms = -1 → keep the
+  /// existing value (do not override).
   void selectPlan(Plan plan, BillingCycle cycle) {
     state = state.copyWith(
       selectedPlan: plan,
@@ -268,7 +269,7 @@ class VerifyFlowController extends StateNotifier<VerifyFlowState> {
   // Payment — Step 6
   // ════════════════════════════════════════════════════════════
 
-  /// Tạo payment session (mở QR / bank info / card form).
+  /// Create a payment session (opens QR / bank info / card form).
   Future<PaymentSession> initiatePayment(PaymentMethod method) async {
     final plan = state.selectedPlan;
     if (plan == null) {
@@ -291,8 +292,8 @@ class VerifyFlowController extends StateNotifier<VerifyFlowState> {
     return session;
   }
 
-  /// Tạo phiên gia hạn subscription (renew). Backend dùng plan + cycle
-  /// hiện tại của user, app chỉ cần gửi method.
+  /// Create a subscription renewal payment session. Backend uses the user's
+  /// current plan + cycle; the app only sends the method.
   Future<PaymentSession> initiateRenewal(PaymentMethod method) async {
     final session = await _repo.renewSubscription(method: method);
     state = state.copyWith(
@@ -303,9 +304,9 @@ class VerifyFlowController extends StateNotifier<VerifyFlowState> {
     return session;
   }
 
-  /// Poll trạng thái payment (Screen 5 gọi mỗi 3s).
+  /// Poll payment status (Screen 5 calls every 3s).
   ///
-  /// Khi paid → auto submit hồ sơ chờ admin duyệt.
+  /// Once paid → auto-submit the application for admin review.
   Future<PaymentStatus> checkPaymentStatus() async {
     final session = state.paymentSession;
     if (session == null) return PaymentStatus.pending;
@@ -334,7 +335,7 @@ class VerifyFlowController extends StateNotifier<VerifyFlowState> {
     _persistDraft();
   }
 
-  /// Polling provider (Screen 6 gọi mỗi 30s).
+  /// Polling provider (Screen 6 calls every 30s).
   Future<VerifyStatus> checkApprovalStatus() async {
     final id = state.submissionId;
     if (id == null) return state.status;
@@ -353,10 +354,10 @@ class VerifyFlowController extends StateNotifier<VerifyFlowState> {
   }
 
   // ════════════════════════════════════════════════════════════
-  // Resubmit + Refund (sau khi reject)
+  // Resubmit + Refund (after rejection)
   // ════════════════════════════════════════════════════════════
 
-  /// Sau khi user re-upload hết các item bị reject → submit lại để admin duyệt.
+  /// After the user re-uploads all rejected items → submit again for admin review.
   Future<void> resubmit() async {
     await _repo.resubmit(items: state.rejectedItems);
     state = state.copyWith(
@@ -384,13 +385,13 @@ class VerifyFlowController extends StateNotifier<VerifyFlowState> {
   // Dev helpers
   // ════════════════════════════════════════════════════════════
 
-  /// Reset toàn flow về state ban đầu (dùng cho debug + sau khi refund).
+  /// Reset the entire flow to the initial state (for debug + after refund).
   void resetFlow() {
     state = const VerifyFlowState();
     _persistDraft();
   }
 
-  /// Persist draft xuống local storage để resume flow sau khi app restart.
+  /// Persist draft to local storage so the flow can resume after app restart.
   void _persistDraft() {
     SharedPreferences.getInstance().then((prefs) {
       final payload = jsonEncode(state.toJson());
@@ -399,8 +400,8 @@ class VerifyFlowController extends StateNotifier<VerifyFlowState> {
   }
 }
 
-/// Convenience provider: liệt kê các item KYC để hiển thị checklist trên
-/// Rejected screen (mỗi item có status approved/rejected/notSubmitted).
+/// Convenience provider: lists KYC items for the checklist on the Rejected
+/// screen (each item is approved/rejected/notSubmitted).
 final kycItemsStatusProvider = Provider<List<KycItemStatus>>((ref) {
   final s = ref.watch(verifyFlowControllerProvider);
   return RejectableItem.values.map((item) {

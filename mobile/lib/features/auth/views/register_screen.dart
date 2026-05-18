@@ -115,8 +115,8 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen>
       case GoogleSignInSuccess():
         return;
       case GoogleSignInNeedsRole():
-        // Edge case: BE bỏ qua role được gửi (không nên xảy ra với role hợp lệ).
-        // Vẫn cho fallback push role picker để user tiếp tục được.
+        // Edge case: BE ignores the role we sent (shouldn't happen with a valid
+        // role). Still fall back to the role picker so the user can continue.
         context.push(
           '/auth/role-picker',
           extra: RolePickerArgs(
@@ -147,7 +147,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen>
 
     return Stack(
       children: [
-        // ── Background gradient (ngoài Scaffold để keyboard không ảnh hưởng) ──
+        // Background gradient (outside Scaffold so the keyboard doesn't affect it).
         const Positioned.fill(
           child: DecoratedBox(
             decoration: BoxDecoration(
@@ -157,7 +157,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen>
                 colors: [
                   AppColors.oceanDeep,
                   Color(
-                      0xFF0A3D5C), // custom interpolation, không thuộc token brand
+                      0xFF0A3D5C), // custom interpolation, not part of brand tokens
                   AppColors.ocean,
                 ],
                 stops: [0.0, 0.5, 1.0],
@@ -166,7 +166,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen>
           ),
         ),
 
-        // ── Animated wave circles (ngoài Scaffold) ──────────────────
+        // Animated wave circles (outside Scaffold).
         Positioned.fill(
           child: AnimatedBuilder(
             animation: _waveCtrl,
@@ -330,9 +330,9 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen>
                                 ),
                               ),
 
-                              // Đăng ký này chỉ dành cho chủ homestay.
-                              // Khách hàng đăng nhập qua Google ở màn Login.
-                              // Nhân viên đợi chủ homestay gửi email mời.
+                              // This sign-up is for homestay owners only.
+                              // Customers sign in via Google on the Login screen.
+                              // Staff wait for an email invite from their owner.
                               Container(
                                 padding: const EdgeInsets.symmetric(
                                     horizontal: 14, vertical: 14),
@@ -396,7 +396,6 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen>
 
                               const SizedBox(height: 20),
 
-                              // Họ tên
                               _buildField(
                                 delay: 400.ms,
                                 child: TextFormField(
@@ -423,7 +422,6 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen>
 
                               const SizedBox(height: 14),
 
-                              // Email
                               _buildField(
                                 delay: 460.ms,
                                 child: TextFormField(
@@ -452,7 +450,6 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen>
 
                               const SizedBox(height: 14),
 
-                              // Mật khẩu
                               _buildField(
                                 delay: 520.ms,
                                 child: TextFormField(
@@ -491,7 +488,6 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen>
 
                               const SizedBox(height: 14),
 
-                              // Xác nhận mật khẩu
                               _buildField(
                                 delay: 580.ms,
                                 child: TextFormField(
@@ -878,7 +874,7 @@ class _RegisterWavePainter extends CustomPainter {
     final paint = Paint()..style = PaintingStyle.fill;
     final t = progress * math.pi * 2;
 
-    // Tần số 1
+    // Frequency 1
     paint.color = Colors.white.withValues(alpha: 0.04);
     canvas.drawCircle(
         Offset(size.width * 0.9 + math.sin(t) * 20,
@@ -886,7 +882,7 @@ class _RegisterWavePainter extends CustomPainter {
         150,
         paint);
 
-    // Tần số 1, phase +π
+    // Frequency 1, phase +π
     paint.color = Colors.white.withValues(alpha: 0.03);
     canvas.drawCircle(
         Offset(-40 + math.sin(t + math.pi) * 25,
@@ -894,7 +890,7 @@ class _RegisterWavePainter extends CustomPainter {
         120,
         paint);
 
-    // Tần số 2
+    // Frequency 2
     paint.color = AppColors.jadeBright.withValues(alpha: 0.05);
     canvas.drawCircle(
         Offset(size.width * 0.5 + math.sin(t * 2) * 20,

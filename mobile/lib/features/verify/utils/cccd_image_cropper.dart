@@ -3,24 +3,24 @@ import 'dart:io';
 import 'package:image/image.dart' as img;
 import 'package:path_provider/path_provider.dart';
 
-/// Crop ảnh chụp full-resolution về đúng vùng khung CCCD trên màn hình.
+/// Crop a full-resolution capture down to the CCCD frame shown on screen.
 ///
-/// CCCD chuẩn TCVN: 85.6 × 53.98 mm → aspect ratio ≈ 1.586:1.
-/// Scanner hiển thị frame ở center màn hình, rộng [frameWidthFraction]
-/// (mặc định 0.86 của bề ngang preview). Hàm này crop center của ảnh
-/// theo cùng tỉ lệ + trả về `File` mới đã ghi ra disk.
+/// TCVN standard CCCD: 85.6 × 53.98 mm → aspect ratio ≈ 1.586:1.
+/// The scanner shows a frame at screen center with width [frameWidthFraction]
+/// (default 0.86 of the preview width). This function center-crops the image
+/// at the same ratio and returns a new `File` written to disk.
 class CCCDImageCropper {
   CCCDImageCropper._();
 
-  /// Tỉ lệ chuẩn CCCD (rộng / cao).
+  /// Standard CCCD aspect ratio (width / height).
   static const double aspectRatio = 1.586;
 
-  /// Crop center [src] về frame CCCD và lưu xuống tmp dir.
+  /// Center-crop [src] to the CCCD frame and save to the tmp dir.
   ///
-  /// [frameWidthFraction] là phần trăm chiều rộng frame so với chiều rộng
-  /// preview (0..1). Mặc định 0.86 — khớp với UI scanner.
+  /// [frameWidthFraction] is the frame width as a fraction of the preview
+  /// width (0..1). Default 0.86 — matches the scanner UI.
   ///
-  /// Trả về `null` nếu decode thất bại.
+  /// Returns `null` if decoding fails.
   static Future<File?> cropToCccdFrame(
     File src, {
     double frameWidthFraction = 0.86,
@@ -29,12 +29,12 @@ class CCCDImageCropper {
     final decoded = img.decodeImage(bytes);
     if (decoded == null) return null;
 
-    // Ảnh từ camera plugin đã được orientation-corrected (EXIF baked).
-    // Portrait shot → ảnh có height > width.
+    // Images from the camera plugin are already orientation-corrected (EXIF baked).
+    // Portrait shot → height > width.
     final w = decoded.width;
     final h = decoded.height;
 
-    // Tính frame width theo phần trăm của bề ngang ảnh.
+    // Compute frame width as a fraction of the image width.
     final frameW = (w * frameWidthFraction).round();
     final frameH = (frameW / aspectRatio).round();
 

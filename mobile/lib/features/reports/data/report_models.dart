@@ -1,6 +1,6 @@
 import '../../../data/models/booking_model.dart';
 
-/// 1 điểm dữ liệu trong revenue trend chart (theo ngày).
+/// One data point in the revenue trend chart (by day).
 class RevenuePoint {
   final DateTime date;
   final int revenue;
@@ -22,7 +22,7 @@ class RevenuePoint {
       );
 }
 
-/// Top phòng theo doanh thu / occupancy (Phase 3).
+/// Top rooms by revenue / occupancy (Phase 3).
 class TopRoom {
   final String roomId;
   final String name;
@@ -50,14 +50,14 @@ class TopRoom {
       );
 }
 
-/// Breakdown 6 tiêu chí (chuẩn Booking.com/Airbnb VN).
+/// 6-criteria rating breakdown (Booking.com / Airbnb VN convention).
 class RatingBreakdown {
-  final double cleanliness; // Sạch sẽ
-  final double location; // Vị trí
-  final double amenities; // Tiện nghi
-  final double service; // Dịch vụ
-  final double value; // Giá trị
-  final double accuracy; // Đúng mô tả
+  final double cleanliness;
+  final double location;
+  final double amenities;
+  final double service;
+  final double value;
+  final double accuracy;
 
   const RatingBreakdown({
     this.cleanliness = 0,
@@ -78,7 +78,7 @@ class RatingBreakdown {
         accuracy: (json['accuracy'] as num?)?.toDouble() ?? 0,
       );
 
-  /// Trả về list tuple `(label, score)` cho UI render bars.
+  /// Returns a list of `(label, score)` tuples for the UI bars.
   List<({String label, double score})> get items => [
         (label: 'Sạch sẽ', score: cleanliness),
         (label: 'Vị trí', score: location),
@@ -97,14 +97,14 @@ class RatingBreakdown {
       accuracy == 0;
 }
 
-/// Aggregate rating của 1 phòng.
+/// Aggregate rating for one property.
 class PropertyRating {
   final String propertyId;
   final String propertyName;
   final String? coverImage;
-  final double avgRating; // 0..5 (avg 6 tiêu chí)
+  final double avgRating; // 0..5 (avg of 6 criteria)
   final int totalReviews;
-  final Map<int, int> distribution; // key = số sao (1..5)
+  final Map<int, int> distribution; // key = star count (1..5)
   final RatingBreakdown breakdown;
 
   const PropertyRating({
@@ -131,8 +131,8 @@ class PropertyRating {
       );
 }
 
-/// Parse distribution map: backend trả `{"5": 8, "4": 4, ...}` (string key
-/// vì JSON spec). Convert sang `Map<int, int>` cho UI dễ lookup.
+/// Parse distribution map: backend returns `{"5": 8, "4": 4, ...}` (string keys
+/// per JSON spec). Convert to `Map<int, int>` for easier UI lookup.
 Map<int, int> _parseDistribution(dynamic raw) {
   if (raw is! Map) return const {};
   final result = <int, int>{};
@@ -144,13 +144,13 @@ Map<int, int> _parseDistribution(dynamic raw) {
   return result;
 }
 
-/// Tổng hợp đánh giá owner-level — backend đã tính weighted avg sẵn từ tất
-/// cả property của owner trong period. Ưu tiên dùng cái này thay vì client
-/// tự tính từ `propertyRatings`.
+/// Owner-level rating summary — backend computes weighted avg across all of
+/// the owner's properties in the period. Prefer this over client-side
+/// aggregation from `propertyRatings`.
 class RatingSummary {
   final double avgRating;
   final int totalReviews;
-  final int totalProperties; // số căn có review (không phải tổng số căn)
+  final int totalProperties; // count of properties with reviews (not total)
   final Map<int, int> distribution;
   final RatingBreakdown breakdown;
 
@@ -176,7 +176,7 @@ class RatingSummary {
       );
 }
 
-/// Phân bổ length of stay (số đêm) — bucket cho histogram.
+/// Length of stay distribution (number of nights) — histogram buckets.
 class LengthOfStayDistribution {
   final int oneNight;
   final int twoToThree;
@@ -208,7 +208,7 @@ class LengthOfStayDistribution {
       ];
 }
 
-/// Occupancy theo ngày trong tuần (T2-CN). Value 0..1.
+/// Occupancy by day of week (Mon-Sun). Value 0..1.
 class DayOfWeekOccupancy {
   /// Index 0 = T2 (Monday), 6 = CN (Sunday).
   final List<double> values;
@@ -227,7 +227,7 @@ class DayOfWeekOccupancy {
   bool get isEmpty => values.every((v) => v == 0);
 }
 
-/// 1 review của khách hàng.
+/// One customer review.
 class CustomerReview {
   final String id;
   final String propertyId;
@@ -264,7 +264,7 @@ class CustomerReview {
       );
 }
 
-/// So sánh với kỳ trước (% change).
+/// Comparison with previous period (% change).
 class PreviousPeriodComparison {
   final int revenue;
   final int bookings;
@@ -287,7 +287,7 @@ class PreviousPeriodComparison {
       );
 }
 
-/// Period filter cho report screen.
+/// Period filter for report screen.
 enum ReportPeriod { today, week, month, year, custom }
 
 extension ReportPeriodX on ReportPeriod {
@@ -308,10 +308,10 @@ extension ReportPeriodX on ReportPeriod {
       };
 }
 
-/// Report data tổng hợp — backend trả qua `/reports`. Backend đã wire đủ
-/// 9 field mới (revenue, adr, revenueByDay, topRooms, previousPeriod,
+/// Aggregated report data — backend serves via `/reports`. Backend wires all
+/// 9 new fields (revenue, adr, revenueByDay, topRooms, previousPeriod,
 /// ratingSummary, propertyRatings, recentReviews, lengthOfStay,
-/// dayOfWeekOccupancy) — xem `api-reviews-reports-frontend-spec.md`.
+/// dayOfWeekOccupancy) — see `api-reviews-reports-frontend-spec.md`.
 class ReportData {
   final int totalRooms;
   final int activeRooms;
@@ -327,36 +327,36 @@ class ReportData {
   final int roomsWithPrice;
   final List<BookingModel> recentBookings;
 
-  /// Doanh thu thực tế (không phải chỉ deposit). VND.
+  /// Actual revenue (not just deposit). VND.
   final int revenue;
 
   /// ADR — Average Daily Rate (revenue / room-nights sold). VND.
   final int adr;
 
-  /// Trend data theo ngày cho line chart.
+  /// Daily trend data for line chart.
   final List<RevenuePoint> revenueByDay;
 
-  /// Top 5 phòng theo doanh thu.
+  /// Top 5 rooms by revenue.
   final List<TopRoom> topRooms;
 
-  /// So sánh với kỳ trước.
+  /// Previous-period comparison.
   final PreviousPeriodComparison previousPeriod;
 
-  /// Aggregate rating từng phòng.
+  /// Per-property aggregate ratings.
   final List<PropertyRating> propertyRatings;
 
-  /// Tổng hợp đánh giá owner-level — backend đã tính weighted avg sẵn.
-  /// Khi `null` (backend cũ chưa trả) → fallback compute từ `propertyRatings`
-  /// thông qua các getter `overall*`.
+  /// Owner-level rating summary — backend precomputes weighted avg.
+  /// When `null` (legacy backend) → fallback computes from `propertyRatings`
+  /// via the `overall*` getters.
   final RatingSummary? ratingSummary;
 
-  /// Reviews mới nhất (preview).
+  /// Latest reviews (preview).
   final List<CustomerReview> recentReviews;
 
-  /// Histogram length of stay theo bucket.
+  /// Length-of-stay histogram by bucket.
   final LengthOfStayDistribution lengthOfStay;
 
-  /// Occupancy theo ngày trong tuần (T2-CN).
+  /// Occupancy by day of week (Mon-Sun).
   final DayOfWeekOccupancy dayOfWeekOccupancy;
 
   const ReportData({
@@ -385,9 +385,9 @@ class ReportData {
     this.dayOfWeekOccupancy = const DayOfWeekOccupancy(),
   });
 
-  /// Avg rating tổng hợp tất cả phòng (weighted by review count). Ưu tiên
-  /// `ratingSummary` từ backend, fallback compute từ `propertyRatings` nếu
-  /// backend cũ chưa trả.
+  /// Overall avg rating across all properties (weighted by review count).
+  /// Prefer `ratingSummary` from backend, fall back to computing from
+  /// `propertyRatings` for legacy backend.
   double get overallAvgRating {
     if (ratingSummary != null) return ratingSummary!.avgRating;
     if (propertyRatings.isEmpty) return 0;
@@ -405,7 +405,7 @@ class ReportData {
     return propertyRatings.fold(0, (sum, p) => sum + p.totalReviews);
   }
 
-  /// Distribution tổng hợp tất cả review (cộng từng sao).
+  /// Aggregate distribution across all reviews (sum per star).
   Map<int, int> get overallDistribution {
     if (ratingSummary != null) return ratingSummary!.distribution;
     final result = <int, int>{1: 0, 2: 0, 3: 0, 4: 0, 5: 0};
@@ -417,7 +417,7 @@ class ReportData {
     return result;
   }
 
-  /// Breakdown 6 tiêu chí — weighted average theo số review của từng property.
+  /// 6-criteria breakdown — weighted average by each property's review count.
   RatingBreakdown get overallBreakdown {
     if (ratingSummary != null) return ratingSummary!.breakdown;
     if (propertyRatings.isEmpty) return const RatingBreakdown();

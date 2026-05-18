@@ -8,7 +8,7 @@ import '../models/plan.dart';
 import '../models/selfie_upload.dart';
 import '../models/verify_enums.dart';
 
-/// Kết quả submit hồ sơ chờ admin duyệt.
+/// Result of submitting an application for admin review.
 class SubmissionResult {
   final String submissionId;
   final VerifyStatus status;
@@ -21,7 +21,7 @@ class SubmissionResult {
   });
 }
 
-/// Kết quả check approval (poll mỗi 30s từ Screen 6).
+/// Result of an approval poll (called every 30s from Screen 6).
 class ApprovalResult {
   final VerifyStatus status;
   final DateTime? approvedAt;
@@ -47,7 +47,7 @@ class RefundResult {
   const RefundResult({required this.refundedAt, required this.refundAmount});
 }
 
-/// Snapshot trạng thái KYC hiện tại từ backend (`GET /kyc/status`).
+/// Snapshot of the current KYC state from backend (`GET /kyc/status`).
 class KycStatusSnapshot {
   final VerifyStatus status;
   final String? submissionId;
@@ -56,8 +56,8 @@ class KycStatusSnapshot {
   final DateTime? approvedAt;
   final DateTime? trialEndsAt;
 
-  /// Backend trả `uploads: { cccdFront: bool, cccdBack: bool, selfie: bool }`
-  /// — `true` nghĩa là đã upload (nhưng có thể chưa có URL chi tiết).
+  /// Backend returns `uploads: { cccdFront: bool, cccdBack: bool, selfie: bool }`
+  /// — `true` means uploaded (but the detailed URL may not be available yet).
   final bool hasCccdFront;
   final bool hasCccdBack;
   final bool hasSelfie;

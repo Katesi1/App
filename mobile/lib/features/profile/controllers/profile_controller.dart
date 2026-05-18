@@ -6,7 +6,7 @@ import '../../auth/controllers/auth_controller.dart';
 final profileRepositoryProvider =
     Provider<UserRepository>((ref) => UserRepository());
 
-/// Cập nhật thông tin cá nhân
+/// Profile update actions.
 final profileActionsProvider =
     StateNotifierProvider<ProfileActionsNotifier, AsyncValue<void>>((ref) {
   return ProfileActionsNotifier(
@@ -24,7 +24,7 @@ class ProfileActionsNotifier extends StateNotifier<AsyncValue<void>> {
   ProfileActionsNotifier(this._userRepo, this._authRepo, this._ref)
       : super(const AsyncValue.data(null));
 
-  /// Cập nhật profile (name, email, phone)
+  /// Update profile (name, email, phone).
   Future<bool> updateProfile(String userId, Map<String, dynamic> data) async {
     state = const AsyncValue.loading();
     final result = await _userRepo.updateUser(userId, data);
@@ -38,7 +38,7 @@ class ProfileActionsNotifier extends StateNotifier<AsyncValue<void>> {
     return false;
   }
 
-  /// Đổi mật khẩu
+  /// Change password.
   Future<bool> changePassword({
     required String oldPassword,
     required String newPassword,

@@ -251,12 +251,12 @@ class AppTheme {
   static ThemeData get dark {
     const scheme = AppColorScheme.dark();
 
-    // CALM OPERATIONS palette: primary = jadeText (light blue) làm bg,
-    // text on primary = darkBg (dark canvas). KHÔNG dùng jadeMuted+white.
+    // CALM OPERATIONS palette: primary = jadeText (light blue) as bg,
+    // text on primary = darkBg (dark canvas). DO NOT use jadeMuted+white.
     const colorScheme = ColorScheme(
       brightness: Brightness.dark,
-      primary: AppColors.jadeText, // #B5D4DA — light, dùng làm BG button
-      onPrimary: AppColors.darkBg, // #16252B — dark text trên primary
+      primary: AppColors.jadeText, // #B5D4DA — light, used as button BG
+      onPrimary: AppColors.darkBg, // #16252B — dark text on primary
       primaryContainer: AppColors.jadeBg,
       onPrimaryContainer: AppColors.jadeText,
       secondary: AppColors.goldText,
@@ -422,8 +422,7 @@ class AppTheme {
         space: 1,
       ),
 
-      // ── FAB ─────────────────────────────────────────────────────────────
-      // FAB là widget duy nhất ĐƯỢC PHÉP có glow shadow trong calm operations.
+      // FAB is the ONLY widget allowed to have glow shadow under calm operations.
       floatingActionButtonTheme: FloatingActionButtonThemeData(
         backgroundColor: AppColors.jadeText,
         foregroundColor: AppColors.darkBg,

@@ -7,7 +7,7 @@ import '../../../../core/storage/secure_storage.dart';
 import '../../../../data/models/user_model.dart';
 import '../models/staff_invite.dart';
 
-/// Kết quả accept invite — sealed để caller exhaustive switch.
+/// Accept invite result — sealed for caller exhaustive switch.
 sealed class AcceptInviteOutcome {
   const AcceptInviteOutcome();
 }
@@ -25,7 +25,7 @@ class AcceptInviteFailure extends AcceptInviteOutcome {
 class StaffRepository {
   final Dio _dio = ApiClient.instance;
 
-  /// OWNER tạo invite + BE gửi email cho nhân viên.
+  /// OWNER creates invite + backend emails the staff member.
   Future<ApiResponse<StaffInvite>> createInvite(String email) async {
     try {
       final response = await _dio.post(
@@ -62,7 +62,7 @@ class StaffRepository {
     }
   }
 
-  /// OWNER list invite của mình.
+  /// OWNER lists own invites.
   Future<ApiResponse<List<StaffInvite>>> listInvites({
     StaffInviteStatus? status,
   }) async {
@@ -84,7 +84,7 @@ class StaffRepository {
     }
   }
 
-  /// OWNER huỷ invite.
+  /// OWNER cancels invite.
   Future<ApiResponse<void>> cancelInvite(String inviteId) async {
     try {
       final response = await _dio.delete(
@@ -99,7 +99,7 @@ class StaffRepository {
     }
   }
 
-  /// Public — verify token/short code để hiện màn confirm cho user.
+  /// Public — verify token/short code to show user confirm screen.
   Future<ApiResponse<StaffInvitePreview>> verifyInvite(String token) async {
     try {
       final response = await _dio.get(
@@ -122,7 +122,7 @@ class StaffRepository {
     }
   }
 
-  /// Public — accept invite bằng Google idToken.
+  /// Public — accept invite via Google idToken.
   Future<AcceptInviteOutcome> acceptWithGoogle({
     required String token,
     required String idToken,
@@ -134,7 +134,7 @@ class StaffRepository {
     });
   }
 
-  /// Public — accept invite bằng email/password.
+  /// Public — accept invite via email/password.
   Future<AcceptInviteOutcome> acceptWithPassword({
     required String token,
     required String name,
@@ -182,7 +182,7 @@ class StaffRepository {
     }
   }
 
-  /// OWNER list nhân viên hiện tại.
+  /// OWNER lists current staff.
   Future<ApiResponse<List<UserModel>>> listStaff({bool? isActive}) async {
     try {
       final response = await _dio.get(
@@ -201,7 +201,7 @@ class StaffRepository {
     }
   }
 
-  /// OWNER soft-delete nhân viên.
+  /// OWNER soft-deletes a staff member.
   Future<ApiResponse<void>> removeStaff(String userId) async {
     try {
       final response = await _dio.delete(ApiConstants.staffDetail(userId));

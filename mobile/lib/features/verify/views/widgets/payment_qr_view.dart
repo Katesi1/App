@@ -6,17 +6,17 @@ import 'package:qr_flutter/qr_flutter.dart';
 
 import '../../../../core/theme/app_color_scheme.dart';
 
-/// Render QR thống nhất cho cả VNPay QR + VietQR.
+/// Unified QR renderer for both VNPay QR and VietQR.
 ///
-/// Backend có 2 cách trả QR:
-/// 1. `payload` (EMVCo raw string, vd `00020101021238...`) — FE render bằng
-///    `QrImageView` (nhỏ gọn, scale tốt).
-/// 2. `imageBase64` (PNG đã render, có thể có prefix `data:image/png;base64,`)
-///    — FE decode + `Image.memory`. Fallback khi backend dùng SDK VNPay sinh
-///    sẵn ảnh.
+/// Backend returns QR in 2 forms:
+/// 1. `payload` (raw EMVCo string, e.g. `00020101021238...`) — FE renders via
+///    `QrImageView` (compact, scales cleanly).
+/// 2. `imageBase64` (rendered PNG, may have `data:image/png;base64,` prefix) —
+///    FE decodes + `Image.memory`. Fallback when backend uses the VNPay SDK
+///    that emits a pre-rendered image.
 ///
-/// Widget tự chọn nguồn theo thứ tự: payload > imageBase64. Nếu cả 2 null thì
-/// hiện placeholder + thông báo lỗi.
+/// The widget chooses the source in order: payload > imageBase64. If both are
+/// null, it shows a placeholder + error message.
 class PaymentQrView extends StatelessWidget {
   final String? payload;
   final String? imageBase64;

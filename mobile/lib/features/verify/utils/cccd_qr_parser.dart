@@ -1,29 +1,30 @@
 import '../data/models/ocr_result.dart';
 
-/// Parser cho QR code mặt sau CCCD chip mới (Bộ Công An).
+/// Parser for the back QR code of the new chipped CCCD (Ministry of Public
+/// Security).
 ///
-/// Format chuẩn — các field phân cách bằng `|`:
+/// Standard format — fields separated by `|`:
 /// ```
 /// <cccdId>|<cmndCu>|<hoTen>|<dob>|<gioiTinh>|<queQuan>|<diaChi>|<ngayCap>
 /// ```
 ///
-/// Một số issuer trả 7 field (gộp queQuan + diaChi thành address). Parser
-/// cover cả hai layout.
+/// Some issuers return 7 fields (queQuan + diaChi merged into address). The
+/// parser handles both layouts.
 ///
-/// Field detail:
-/// - `cccdId`: 12 chữ số (ID mới)
-/// - `cmndCu`: 9 chữ số (CMND cũ — có thể empty nếu user không có)
-/// - `hoTen`: full name (có dấu, viết hoa)
-/// - `dob`: ngày sinh format `ddMMyyyy` (sẽ convert sang `dd/MM/yyyy`)
+/// Field details:
+/// - `cccdId`: 12 digits (new ID)
+/// - `cmndCu`: 9 digits (old CMND — may be empty if the user has none)
+/// - `hoTen`: full name (with diacritics, uppercase)
+/// - `dob`: date of birth in `ddMMyyyy` (converted to `dd/MM/yyyy`)
 /// - `gioiTinh`: "Nam" | "Nữ"
-/// - `queQuan`: quê quán (xã/huyện/tỉnh)
-/// - `diaChi`: nơi thường trú (số nhà, đường, xã/huyện/tỉnh)
-/// - `ngayCap`: ngày cấp format `ddMMyyyy`
+/// - `queQuan`: hometown (ward/district/province)
+/// - `diaChi`: permanent address (house number, street, ward/district/province)
+/// - `ngayCap`: issue date in `ddMMyyyy`
 class VietnamCccdQrParser {
   VietnamCccdQrParser._();
 
-  /// Parse raw QR string. Trả `null` nếu format không đúng (không phải QR
-  /// CCCD VN, hoặc thiếu field bắt buộc).
+  /// Parse the raw QR string. Returns `null` if the format is wrong (not a
+  /// VN CCCD QR, or missing required fields).
   static OCRResult? parse(String raw) {
     final trimmed = raw.trim();
     if (trimmed.isEmpty) return null;
@@ -34,8 +35,8 @@ class VietnamCccdQrParser {
     if (parts.length < 7) return null;
 
     final cccdId = parts[0].trim();
-    // ID phải là 12 chữ số (CCCD chip mới). Nếu không phải → không phải QR
-    // CCCD → ignore.
+    // ID must be 12 digits (new chipped CCCD). Otherwise this isn't a CCCD QR
+    // → ignore.
     if (!RegExp(r'^\d{12}$').hasMatch(cccdId)) return null;
 
     final cmndOld = parts[1].trim();
@@ -52,7 +53,7 @@ class VietnamCccdQrParser {
       address = parts[6].trim();
       issueDateRaw = parts[7].trim();
     } else {
-      // 7 fields — không có hometown riêng
+      // 7 fields — no separate hometown field
       address = parts[5].trim();
       issueDateRaw = parts[6].trim();
     }
@@ -69,8 +70,8 @@ class VietnamCccdQrParser {
     );
   }
 
-  /// `ddMMyyyy` (8 chữ số) hoặc `dd/MM/yyyy` → `dd/MM/yyyy`.
-  /// Giữ nguyên nếu format khác hoặc empty.
+  /// `ddMMyyyy` (8 digits) or `dd/MM/yyyy` → `dd/MM/yyyy`.
+  /// Leaves the value unchanged for other formats or empty input.
   static String? _formatDate(String raw) {
     if (raw.isEmpty) return null;
     if (raw.contains('/')) return raw;

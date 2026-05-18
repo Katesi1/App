@@ -13,8 +13,8 @@ import 'verify_format.dart';
 /// 1. Default: border 1px borderDefault.
 /// 2. Selected: border 2px brand + check icon corner.
 ///
-/// Enterprise: hiển thị "Liên hệ" thay vì giá. Tap → caller redirect
-/// `/profile/help`.
+/// Enterprise: shows "Contact us" instead of a price. Tap → caller redirects
+/// to `/profile/help`.
 class PlanCard extends StatelessWidget {
   final Plan plan;
   final BillingCycle cycle;
@@ -122,7 +122,7 @@ class PlanCard extends StatelessWidget {
           ),
         ),
 
-        // Selected check icon (chỉ cho plan có giá cố định)
+        // Selected check icon (only for fixed-price plans)
         if (isSelected && plan.hasFixedPrice)
           Positioned(
             top: 12,
@@ -151,7 +151,7 @@ class PlanCard extends StatelessWidget {
   }
 }
 
-/// Hiển thị giá ở góc phải card. Enterprise → "Liên hệ" + arrow.
+/// Show the price in the top-right of the card. Enterprise → "Contact us" + arrow.
 class _PriceBlock extends StatelessWidget {
   final Plan plan;
   final BillingCycle cycle;
@@ -162,7 +162,7 @@ class _PriceBlock extends StatelessWidget {
     final colors = context.colors;
 
     if (!plan.hasFixedPrice) {
-      // Enterprise — không có giá cố định
+      // Enterprise — no fixed price
       return Column(
         crossAxisAlignment: CrossAxisAlignment.end,
         children: [

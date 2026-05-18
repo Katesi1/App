@@ -17,7 +17,7 @@ class TimelineStep {
   });
 }
 
-/// Status timeline vertical với rail 1.5px ở left (signature pattern
+/// Vertical status timeline with a 1.5px rail on the left (signature pattern,
 /// spec section 5.6 Pending Approval).
 ///
 /// Calm operations rules:
@@ -41,8 +41,8 @@ class StatusTimeline extends StatelessWidget {
       ),
       child: Stack(
         children: [
-          // Vertical rail 1.5px ở left 13 (giữa của icon 28×28).
-          // Top/bottom inset 14 để rail không tràn ra ngoài top step icon.
+          // Vertical 1.5px rail at left 13 (center of the 28×28 icon).
+          // Top/bottom inset 14 so the rail doesn't extend past the first icon.
           Positioned(
             left: 13.25,
             top: 28,

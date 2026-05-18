@@ -8,16 +8,16 @@ import '../data/models/verify_enums.dart';
 import 'cccd_front_ocr_parser.dart';
 import 'cccd_qr_parser.dart';
 
-/// Kết quả validate ảnh CCCD từ gallery.
+/// Result of validating a CCCD image from gallery.
 class CccdValidationResult {
-  /// True nếu phát hiện đặc trưng CCCD trong ảnh (keyword text hoặc QR
-  /// payload đúng format).
+  /// True when CCCD-specific signals are detected (keyword text or QR payload
+  /// matching the expected format).
   final bool isCccd;
 
-  /// Dữ liệu OCR/QR đã extract (null nếu không nhận diện được).
+  /// Extracted OCR/QR data (null if nothing was detected).
   final OCRResult? ocrResult;
 
-  /// Lý do reject (null nếu pass). Hiện cho user biết tại sao.
+  /// Reject reason (null on pass). Shown to user so they know why.
   final String? reason;
 
   const CccdValidationResult({
@@ -27,21 +27,21 @@ class CccdValidationResult {
   });
 }
 
-/// Validate ảnh tĩnh (từ gallery) là CCCD trước khi upload.
+/// Validate a still image (from gallery) is a CCCD before uploading.
 ///
-/// Khác `CCCDScannerScreen` (live frame stream để auto-shutter), validator này
-/// chạy ML Kit 1 lần trên file để check ảnh có phải CCCD không. Tránh trường
-/// hợp owner gửi nhầm ảnh selfie/phong cảnh/giấy tờ khác.
+/// Unlike `CCCDScannerScreen` (live frame stream for auto-shutter), this
+/// validator runs ML Kit once on a file to check whether it's a CCCD. Prevents
+/// owners from accidentally uploading selfies/landscapes/other documents.
 ///
 /// Logic:
-/// - Mặt trước: chạy `TextRecognizer` → match keyword "CĂN CƯỚC CÔNG DÂN",
-///   "CITIZEN IDENTITY"... (≥ 2 hit). Có thì extract OCR fields.
-/// - Mặt sau: chạy `BarcodeScanner` (QR mode) → tìm payload bắt đầu 12 chữ
-///   số. Có thì parse QR.
+/// - Front: run `TextRecognizer` → match keywords "CĂN CƯỚC CÔNG DÂN",
+///   "CITIZEN IDENTITY"... (≥ 2 hits). On match, extract OCR fields.
+/// - Back: run `BarcodeScanner` (QR mode) → look for a payload starting with
+///   12 digits. On match, parse the QR.
 class CccdImageValidator {
   CccdImageValidator._();
 
-  /// Keywords tin cậy cho mặt trước CCCD VN. ≥ 2 hit để giảm false positive.
+  /// Reliable keywords for the front of a VN CCCD. ≥ 2 hits to reduce false positives.
   static const _frontKeywords = [
     'CĂN CƯỚC CÔNG DÂN',
     'CAN CUOC CONG DAN',
@@ -57,7 +57,7 @@ class CccdImageValidator {
     'NATIONALITY',
   ];
 
-  /// Keywords mặt sau CCCD VN. Dùng làm fallback khi không có QR (chip cũ).
+  /// Keywords for the back of a VN CCCD. Used as fallback when no QR is present (older chip).
   static const _backKeywords = [
     'ĐẶC ĐIỂM NHÂN DẠNG',
     'PERSONAL IDENTIFICATION',
@@ -71,12 +71,12 @@ class CccdImageValidator {
     'PLACE OF RESIDENCE',
   ];
 
-  /// Validate ảnh từ gallery. Trả về kết quả + extracted OCR.
+  /// Validate an image from gallery. Returns the result + extracted OCR.
   ///
-  /// **Quan trọng**: caller responsible cho việc xử lý kết quả:
-  /// - `isCccd: true` → upload bình thường
-  /// - `isCccd: false` → show warning dialog, có thể allow override hoặc
-  ///   bắt user chụp lại
+  /// **Important**: the caller is responsible for handling the result:
+  /// - `isCccd: true` → upload as usual
+  /// - `isCccd: false` → show warning dialog; may allow override or require
+  ///   the user to retake
   static Future<CccdValidationResult> validate({
     required File image,
     required CCCDSide side,
@@ -117,8 +117,8 @@ class CccdImageValidator {
     }
   }
 
-  /// Mặt sau: thử QR trước (chính xác 100% nếu chip mới); fallback sang OCR
-  /// keyword text (cho CCCD chip cũ không QR — admin sẽ duyệt + nhập tay).
+  /// Back side: try QR first (100% accurate on new chip); fallback to OCR
+  /// keyword text (for old chip without QR — admin reviews + types manually).
   static Future<CccdValidationResult> _validateBack(InputImage input) async {
     final scanner = BarcodeScanner(formats: const [BarcodeFormat.qrCode]);
     try {
@@ -126,14 +126,14 @@ class CccdImageValidator {
       for (final b in barcodes) {
         final raw = b.rawValue;
         if (raw == null || raw.isEmpty) continue;
-        // CCCD QR luôn bắt đầu bằng 12-digit ID + |
+        // CCCD QR always starts with a 12-digit ID + |
         if (!RegExp(r'^\d{12}\|').hasMatch(raw)) continue;
         final ocr = VietnamCccdQrParser.parse(raw);
         if (ocr != null) {
           return CccdValidationResult(isCccd: true, ocrResult: ocr);
         }
       }
-      // Không có QR → thử OCR keyword text (chip cũ + chip mới chụp mờ)
+      // No QR → try OCR keyword text (old chip + blurry new chip).
       return _validateBackByText(input);
     } catch (e) {
       return CccdValidationResult(
@@ -145,8 +145,8 @@ class CccdImageValidator {
     }
   }
 
-  /// Fallback: OCR keyword text mặt sau (≥2 hit). Trả pass khi nhận diện được
-  /// đặc trưng "BỘ CÔNG AN", "CỤC TRƯỞNG", "ĐẶC ĐIỂM NHÂN DẠNG"...
+  /// Fallback: OCR keyword text on the back side (≥2 hits). Passes when the
+  /// distinctive markers "BỘ CÔNG AN", "CỤC TRƯỞNG", "ĐẶC ĐIỂM NHÂN DẠNG"... are found.
   static Future<CccdValidationResult> _validateBackByText(
     InputImage input,
   ) async {

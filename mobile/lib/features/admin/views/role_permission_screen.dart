@@ -30,8 +30,8 @@ class _RolePermissionScreenState extends ConsumerState<RolePermissionScreen>
     super.initState();
     _tabController = TabController(length: _roles.length, vsync: this);
     _tabController.addListener(() {
-      // Animation callback fire ~60 lần/s khi swipe. Chỉ rebuild khi index
-      // thực sự đổi → tránh re-run ref.watch + fold cho cả 2 tab mỗi tick.
+      // Animation callback fires ~60Hz during swipe. Rebuild only when index
+      // actually changes → avoid re-running ref.watch + fold every tick.
       if (!_tabController.indexIsChanging) return;
       if (mounted) setState(() {});
     });

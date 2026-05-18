@@ -5,13 +5,13 @@ import '../../../../core/theme/app_color_scheme.dart';
 import '../../../../core/theme/app_spacing.dart';
 import 'stepper_progress.dart';
 
-/// AppBar custom cho các screen verify flow.
+/// Custom AppBar for the verify flow screens.
 ///
 /// Anatomy:
 /// - Back button 32×32, bg darkContainer, icon textTertiary, radius 8
-/// - Overline 10px w700 letter-spacing 0.5 — "BƯỚC X/Y · Verify CCCD"
+/// - Overline 10px w700 letter-spacing 0.5 — "STEP X/Y · Verify CCCD"
 /// - Title 14px w700 textPrimary
-/// - Stepper progress 4 segments bên dưới (nếu có currentStep)
+/// - 4-segment stepper progress below (when currentStep is provided)
 class VerifyAppBar extends StatelessWidget implements PreferredSizeWidget {
   final String overline;
   final String title;
@@ -53,13 +53,12 @@ class VerifyAppBar extends StatelessWidget implements PreferredSizeWidget {
                   _BackButton(
                     onTap: onBack ??
                         () {
-                          // Verify flow thường được vào qua pushReplacement
-                          // → stack có thể rỗng. Fallback /home (router auto
-                          // redirect /dashboard nếu management user).
+                          // Verify flow is usually entered via pushReplacement
+                          // so the stack may be empty. Fall back to /dashboard.
                           if (context.canPop()) {
                             context.pop();
                           } else {
-                            context.go('/home');
+                            context.go('/dashboard');
                           }
                         },
                   ),

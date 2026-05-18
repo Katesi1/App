@@ -15,12 +15,12 @@ import '../../verify/data/models/verify_enums.dart';
 import '../../verify/views/paywall_modal.dart';
 import '../widgets/property_management_card.dart';
 
-// gradient.brandHero stop "jade-mid" theo spec section 3.7
+// gradient.brandHero stop "jade-mid" per spec section 3.7
 const _jadeMidLight = Color(0xFF1B7E94);
 
-/// Trang quản lý phòng (Admin) — 3 tabs: Villa, Homestay, Khách sạn
-/// Dùng homestay data — mỗi homestay là 1 căn (villa/homestay/khách sạn).
-/// Ấn vào card → HomestayDetailScreen (Ảnh, Thông tin, Tiện ích, Bảng giá...).
+/// Property management screen (Admin) — 3 tabs: Villa, Homestay, Hotel.
+/// Uses homestay data — each homestay is one unit (villa/homestay/hotel).
+/// Tap card → HomestayDetailScreen (images, info, amenities, pricing...).
 class PropertyManagementScreen extends ConsumerStatefulWidget {
   const PropertyManagementScreen({super.key});
 
@@ -40,8 +40,8 @@ class _PropertyManagementScreenState
   final _searchFocusNode = FocusNode();
   Timer? _debounce;
 
-  // typeValues matches PropertyType int: 0=VILLA, 1=HOMESTAY, 2=HOTEL
-  // typeValues == null nghĩa là tab "Tất cả" — không filter theo type
+  // typeValues matches PropertyType int: 0=VILLA, 1=HOMESTAY, 2=HOTEL.
+  // typeValues == null = "All" tab — no type filter.
   static const _tabs = [
     (label: 'Tất cả', icon: Icons.apps_rounded, typeValues: null),
     (label: 'Villa', icon: Icons.villa_rounded, typeValues: [0]),
@@ -88,9 +88,9 @@ class _PropertyManagementScreenState
     });
   }
 
-  /// Lọc homestay theo tab — so sánh int type field.
-  /// [typeValues] null = tab "Tất cả" → không filter theo type.
-  /// [typeValues] có thể chứa nhiều type (vd: Homestay = [1]).
+  /// Filter homestays by tab — compare int type field.
+  /// [typeValues] null = "All" tab → no type filter.
+  /// [typeValues] may contain multiple types (e.g. Homestay = [1]).
   List<HomestayModel> _filterByTab(
       List<HomestayModel> homestays, List<int>? typeValues) {
     var filtered = typeValues == null
@@ -144,8 +144,8 @@ class _PropertyManagementScreenState
                   Row(
                     children: [
                       GestureDetector(
-                        // Fallback /dashboard khi stack rỗng (user vào trực
-                        // tiếp qua bottom nav `context.go` → không pop được).
+                        // Fallback /dashboard when stack is empty (user entered
+                        // directly via bottom nav `context.go` → cannot pop).
                         onTap: () {
                           if (context.canPop()) {
                             context.pop();
@@ -231,7 +231,7 @@ class _PropertyManagementScreenState
 
                   const SizedBox(height: 12),
 
-                  // TabBar — scrollable để tránh overflow khi có nhiều tab
+                  // TabBar — scrollable to avoid overflow with many tabs.
                   TabBar(
                     controller: _tabController,
                     isScrollable: true,
@@ -331,10 +331,10 @@ class _PropertyManagementScreenState
     );
   }
 
-  /// Owner phải verify CCCD trước khi tạo property.
-  /// - Owner đã approved → push thẳng property add screen
-  /// - Owner chưa approved → show paywall, route theo status hiện tại
-  /// - Admin / Sale → bypass verify (không cần KYC)
+  /// Owner must verify CCCD before creating a property.
+  /// - Owner approved → push property add screen directly
+  /// - Owner not approved → show paywall, route per current status
+  /// - Admin / Sale → bypass verify (no KYC required)
   Future<void> _onCreateProperty() async {
     final user = ref.read(currentUserProvider);
     final verifyState = ref.read(verifyFlowControllerProvider);
@@ -347,8 +347,8 @@ class _PropertyManagementScreenState
       return;
     }
 
-    // Routing theo status: pending → /verify/pending, rejected → /verify/rejected,
-    // còn lại → showPaywallModal → /verify/cccd-front (hoặc resume bước hiện tại).
+    // Routing by status: pending → /verify/pending, rejected → /verify/rejected,
+    // otherwise → showPaywallModal → /verify/cccd-front (or resume current step).
     if (verifyState.status == VerifyStatus.awaitingApproval) {
       context.push('/verify/pending');
       return;
@@ -360,7 +360,7 @@ class _PropertyManagementScreenState
 
     final ok = await showPaywallModal(context);
     if (ok == true && mounted) {
-      // Resume từ step cuối nếu có draft, ngược lại bắt đầu từ CCCD front.
+      // Resume from last step if draft exists, otherwise start from CCCD front.
       final step = verifyState.currentStep;
       final route = switch (step) {
         2 => '/verify/cccd-back',

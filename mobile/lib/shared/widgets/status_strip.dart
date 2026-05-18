@@ -4,12 +4,12 @@ import 'package:google_fonts/google_fonts.dart';
 import '../../core/theme/app_color_scheme.dart';
 import '../../core/theme/app_spacing.dart';
 
-/// Status Strip pattern — context info bar dùng ở mọi place có info
-/// như "đã thu", "sắp đến", "đang ở", "còn X phòng".
+/// Status Strip pattern — context info bar used anywhere we need an info
+/// line like "paid", "upcoming", "occupied", "X rooms left".
 ///
 /// Anatomy:
-/// - Border-left rail 3px màu theo variant
-/// - Background nhạt cùng tone (alpha 8% light, 16% dark)
+/// - 3px border-left rail in the variant's colour
+/// - Subtle tonal background (alpha 8% light, 16% dark)
 /// - Icon (small, theo variant color)
 /// - Label (w600 size 12) + optional subtitle (size 11 textSecondary)
 /// - Trailing widget optional (CTA/value)

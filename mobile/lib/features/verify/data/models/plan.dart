@@ -2,18 +2,19 @@ import 'package:equatable/equatable.dart';
 
 import 'verify_enums.dart';
 
-/// Subscription plan — tier-based, mỗi tier ứng với số phòng cố định.
+/// Subscription plan — tier-based, each tier maps to a fixed room count.
 ///
-/// User KHÔNG tự chọn số phòng — pick tier xong → `rooms` derive từ tier.
-/// Enterprise: `monthlyPrice = 0` đại diện "Liên hệ" (custom contract).
+/// The user does NOT pick a room count — once a tier is selected, `rooms` is
+/// derived from it. Enterprise: `monthlyPrice = 0` represents "Contact us"
+/// (custom contract).
 class Plan extends Equatable {
   final String id;
   final Tier tier;
 
-  /// Số phòng được phép (= `tier.rooms`). Enterprise = `-1` (unlimited).
+  /// Allowed room count (= `tier.rooms`). Enterprise = `-1` (unlimited).
   final int rooms;
 
-  /// Giá VND/tháng. `0` = "Liên hệ" (chỉ Enterprise).
+  /// Price VND/month. `0` = "Contact us" (Enterprise only).
   final int monthlyPrice;
 
   final List<String> features;
@@ -29,8 +30,8 @@ class Plan extends Equatable {
   bool get isEnterprise => tier.isEnterprise;
   bool get hasFixedPrice => monthlyPrice > 0;
 
-  /// Parse từ backend `GET /billing/plans`. Backend trả `id` dạng `rooms_5`,
-  /// `enterprise`... — derive tier từ `id`.
+  /// Parse from backend `GET /billing/plans`. Backend returns `id` like
+  /// `rooms_5`, `enterprise`, etc. — tier is derived from `id`.
   factory Plan.fromJson(Map<String, dynamic> json) {
     final id = json['id'] as String;
     final tier = _tierFromId(id);
@@ -65,17 +66,17 @@ class Plan extends Equatable {
   List<Object?> get props => [id, tier, rooms, monthlyPrice, features];
 }
 
-/// Catalog 6 plan mặc định — fallback khi backend không reachable.
+/// 6-plan default catalog — fallback when backend is unreachable.
 ///
-/// Pricing đề xuất (round numbers, volume discount tăng dần — bạn sửa sau):
-/// | Tier        | Rooms | Monthly      | Per-room/tháng |
+/// Suggested pricing (round numbers, growing volume discount — tune later):
+/// | Tier        | Rooms | Monthly      | Per-room/month |
 /// |-------------|-------|--------------|----------------|
 /// | Mini        | 1     | 199.000      | 199.000        |
 /// | Starter     | 5     | 599.000      | 119.800        |
 /// | Standard    | 10    | 999.000      | 99.900         |
 /// | Pro         | 20    | 1.799.000    | 89.950         |
 /// | Business    | 50    | 3.999.000    | 79.980         |
-/// | Enterprise  | ∞     | Liên hệ      | —              |
+/// | Enterprise  | ∞     | Contact us   | —              |
 const kDefaultPlans = <Plan>[
   Plan(
     id: 'rooms_1',
@@ -147,15 +148,15 @@ const kDefaultPlans = <Plan>[
   ),
 ];
 
-/// Util tính giá. Đơn giản hoá so với phiên bản trước (không còn rooms × giá
-/// + sàn) — mỗi tier có `monthlyPrice` cố định.
+/// Pricing util. Simpler than the previous version (no rooms × price + floor)
+/// — each tier has a fixed `monthlyPrice`.
 class PlanPriceCalculator {
   PlanPriceCalculator._();
 
-  /// Giảm 20% khi chọn yearly.
+  /// 20% discount when choosing yearly.
   static const double yearlyDiscount = 0.20;
 
-  /// VAT 10%.
+  /// 10% VAT.
   static const double vatRate = 0.10;
 
   static int monthly(Plan plan) => plan.monthlyPrice;
@@ -170,7 +171,7 @@ class PlanPriceCalculator {
 
   static int vat(int subtotal) => (subtotal * vatRate).round();
 
-  /// Tổng = subtotal + VAT (nếu tính). Trả `0` cho Enterprise (giá "Liên hệ").
+  /// Total = subtotal + VAT (if included). Returns `0` for Enterprise ("Contact us").
   static int total(Plan plan, BillingCycle cycle, {bool includeVat = true}) {
     if (!plan.hasFixedPrice) return 0;
     final subtotal = cycle == BillingCycle.yearly
@@ -179,7 +180,7 @@ class PlanPriceCalculator {
     return includeVat ? subtotal + vat(subtotal) : subtotal;
   }
 
-  /// Lookup plan theo tier trong catalog.
+  /// Look up a plan by tier within the catalog.
   static Plan planFor(Tier tier, List<Plan> catalog) =>
       catalog.firstWhere((p) => p.tier == tier);
 }

@@ -2,14 +2,14 @@ import 'package:flutter/material.dart';
 
 import '../../../../core/theme/app_color_scheme.dart';
 
-/// Stepper progress 4 segments dùng trên đầu mỗi screen verify.
+/// 4-segment stepper progress shown at the top of each verify screen.
 ///
 /// Anatomy:
 /// - 4 segments height 3px, gap 6px
 /// - Active: fill brandLight (jadeMuted)
 /// - Inactive: fill borderDefault
-/// - Border-radius full (100) — chỉ hợp lệ cho progress bar segments,
-///   KHÔNG dùng cho status pill (status pill dùng radius 4-6).
+/// - Full border-radius (100) — only valid for progress-bar segments; do NOT
+///   use for status pills (status pills use radius 4-6).
 class StepperProgress extends StatelessWidget {
   final int currentStep; // 1-based (1, 2, 3, 4)
   final int totalSteps;

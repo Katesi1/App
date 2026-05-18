@@ -7,9 +7,9 @@ import '../models/booking_model.dart';
 class ReportRepository {
   final _dio = ApiClient.instance;
 
-  /// Lấy report. Param mới (`period`/`from`/`to`) ưu tiên hơn legacy
-  /// (`month`/`year`). Backend mặc định = `month` (tháng hiện tại) nếu
-  /// không truyền gì.
+  /// Fetch a report. New params (`period`/`from`/`to`) take precedence over
+  /// legacy (`month`/`year`). Backend defaults to `month` (current month)
+  /// if nothing is provided.
   Future<ApiResponse<Map<String, dynamic>>> getReport({
     String? period,
     DateTime? from,
@@ -29,7 +29,7 @@ class ReportRepository {
         },
       );
       final data = response.data['data'] as Map<String, dynamic>;
-      // Parse recentBookings nếu có
+      // Parse recentBookings if present.
       if (data['recentBookings'] != null) {
         data['recentBookingsParsed'] = (data['recentBookings'] as List)
             .map((e) => BookingModel.fromJson(e))

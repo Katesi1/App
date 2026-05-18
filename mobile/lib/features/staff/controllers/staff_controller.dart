@@ -10,11 +10,11 @@ export '../data/repositories/staff_repository.dart'
 final staffRepositoryProvider =
     Provider<StaffRepository>((ref) => StaffRepository());
 
-/// Filter status cho `staffInvitesProvider`. UI dropdown set giá trị này.
+/// Filter status for `staffInvitesProvider`. UI dropdown sets this value.
 final staffInviteFilterProvider =
     StateProvider<StaffInviteStatus?>((ref) => null);
 
-/// List invite OWNER đã tạo. Re-fetch sau mỗi mutation qua `invalidate`.
+/// Invites created by OWNER. Re-fetched after each mutation via `invalidate`.
 final staffInvitesProvider =
     FutureProvider.autoDispose<List<StaffInvite>>((ref) async {
   final repo = ref.read(staffRepositoryProvider);
@@ -24,7 +24,7 @@ final staffInvitesProvider =
   throw Exception(result.message);
 });
 
-/// List nhân viên (SALE) hiện tại của OWNER.
+/// OWNER's current SALE staff list.
 final staffListProvider =
     FutureProvider.autoDispose<List<UserModel>>((ref) async {
   final repo = ref.read(staffRepositoryProvider);
@@ -33,7 +33,7 @@ final staffListProvider =
   throw Exception(result.message);
 });
 
-/// Mutations: invite/cancel/remove. Trả `(success, message)` để UI hiện snackbar.
+/// Mutations: invite/cancel/remove. Returns `(success, message)` for UI snackbar.
 class StaffActionsNotifier extends StateNotifier<AsyncValue<void>> {
   final StaffRepository _repo;
   final Ref _ref;

@@ -8,8 +8,8 @@ import '../../../data/repositories/user_repository.dart';
 import '../../../shared/widgets/loading_widget.dart';
 import '../../auth/controllers/auth_controller.dart';
 
-/// Self-delete account flow — compliance Apple Guideline 5.1.1(v) +
-/// Google Play User Data + GDPR Article 17 (right to erasure).
+/// Self-delete account flow — required for Apple Guideline 5.1.1(v),
+/// Google Play User Data policy, and GDPR Article 17 (right to erasure).
 class DeleteAccountScreen extends ConsumerStatefulWidget {
   const DeleteAccountScreen({super.key});
 
@@ -46,7 +46,7 @@ class _DeleteAccountScreenState extends ConsumerState<DeleteAccountScreen> {
 
       if (!mounted) return;
       AppSnackBar.success(context, result.message);
-      // Router redirect /login tự động khi authState.isLoggedIn = false.
+      // Router redirects to /login automatically when authState.isLoggedIn = false.
     } else {
       setState(() => _submitting = false);
       AppSnackBar.error(context, result.message);

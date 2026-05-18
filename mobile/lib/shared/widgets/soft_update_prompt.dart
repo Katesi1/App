@@ -3,11 +3,11 @@ import 'package:url_launcher/url_launcher.dart';
 
 import '../../core/services/app_version_service.dart';
 
-/// Hiện dialog cập nhật theo mức độ:
-/// - [AppVersionStatus.softUpdate]: dismissible, có nút "Để sau"
-/// - [AppVersionStatus.forceUpdate]: KHÔNG dismissible, chỉ có nút "Cập nhật"
+/// Show the update dialog based on severity:
+/// - [AppVersionStatus.softUpdate]: dismissible, with a "Later" button
+/// - [AppVersionStatus.forceUpdate]: NOT dismissible, only an "Update" button
 ///
-/// Trả `true` nếu user bấm Cập nhật + đã mở store URL thành công.
+/// Returns `true` if the user tapped Update and the store URL opened successfully.
 Future<bool> showAppUpdatePrompt(
   BuildContext context, {
   required AppVersionInfo info,
@@ -22,7 +22,7 @@ Future<bool> showAppUpdatePrompt(
     context: context,
     barrierDismissible: !isForce,
     builder: (_) => PopScope(
-      canPop: !isForce, // chặn back button khi force-update
+      canPop: !isForce, // block back button on force-update
       child: AlertDialog(
         title: Text(
           isForce ? 'Bắt buộc cập nhật' : 'Có bản cập nhật mới',
@@ -67,8 +67,8 @@ Future<bool> showAppUpdatePrompt(
               }
               if (!context.mounted) return;
               if (!isForce) Navigator.of(context).pop(true);
-              // Force-update: KHÔNG pop — giữ dialog tới khi user
-              // restart app sau khi update.
+              // Force-update: do NOT pop — keep the dialog open until the
+              // user restarts the app after updating.
             },
             child: const Text('Cập nhật'),
           ),
@@ -79,7 +79,7 @@ Future<bool> showAppUpdatePrompt(
   return result ?? false;
 }
 
-/// Backwards-compat wrapper — gọi từ code cũ chỉ truyền version.
+/// Backwards-compat wrapper — called from old code that only passes a version.
 @Deprecated('Use showAppUpdatePrompt with AppVersionInfo instead')
 Future<void> showSoftUpdatePrompt(
   BuildContext context, {

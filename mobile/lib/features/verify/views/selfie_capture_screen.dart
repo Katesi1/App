@@ -28,8 +28,8 @@ class _SelfieCaptureScreenState extends ConsumerState<SelfieCaptureScreen> {
   bool _uploading = false;
 
   Future<void> _capture() async {
-    // Mở in-app selfie scanner (front cam + Face Detection auto-shutter)
-    // thay vì camera hệ thống.
+    // Open the in-app selfie scanner (front cam + Face Detection auto-shutter)
+    // instead of the system camera.
     final file = await Navigator.of(context).push<File>(
       MaterialPageRoute(
         builder: (_) => const SelfieScannerScreen(),
@@ -42,7 +42,7 @@ class _SelfieCaptureScreenState extends ConsumerState<SelfieCaptureScreen> {
     try {
       await ref.read(verifyFlowControllerProvider.notifier).uploadSelfie(file);
       if (!mounted) return;
-      // Push (không pushReplacement) để user back về retake selfie nếu cần.
+      // Use push (not pushReplacement) so the user can go back and retake.
       context.push('/verify/select-plan');
     } catch (e) {
       if (mounted) {

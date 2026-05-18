@@ -41,12 +41,12 @@ class _RoomListScreenState extends ConsumerState<RoomListScreen>
   int _adults = 0;
   int _children = 0;
 
-  // Sort theo giá: null = mặc định, true = tăng dần, false = giảm dần
+  // Price sort: null = default, true = ascending, false = descending.
   bool? _priceAscending;
 
-  // Tabs
-  // typeValues: 0=VILLA, 1=HOMESTAY, 2=HOTEL
-  // typeValues == null nghĩa là tab "Tất cả" — không filter theo type
+  // Tabs.
+  // typeValues: 0=VILLA, 1=HOMESTAY, 2=HOTEL.
+  // typeValues == null = "All" tab — no type filter.
   static const _tabs = [
     (label: 'Tất cả', icon: Icons.apps_rounded, typeValues: null),
     (label: 'Villa', icon: Icons.villa_rounded, typeValues: [0]),
@@ -110,17 +110,16 @@ class _RoomListScreenState extends ConsumerState<RoomListScreen>
     });
   }
 
-  /// Lọc rooms theo tab.
-  /// [typeValues] null = tab "Tất cả" → không filter theo type.
-  /// [typeValues] có thể chứa nhiều type (vd: Homestay = [1]).
+  /// Filters rooms by tab.
+  /// [typeValues] null = "All" tab → no type filter.
+  /// [typeValues] may contain multiple types (e.g. Homestay = [1]).
   List<RoomModel> _filterByTab(List<RoomModel> rooms, List<int>? typeValues) {
-    // Ẩn phòng tạm nghỉ
+    // Hide inactive rooms.
     var list = rooms.where((r) => r.isActive).toList();
     list = typeValues == null
         ? List<RoomModel>.from(list)
         : list.where((r) => typeValues.contains(r.type)).toList();
 
-    // Search
     if (_searchQuery.isNotEmpty) {
       final query = _searchQuery.toLowerCase();
       list = list
@@ -130,7 +129,7 @@ class _RoomListScreenState extends ConsumerState<RoomListScreen>
           .toList();
     }
 
-    // Sort theo giá (weekdayPrice). Phòng chưa có giá → đẩy xuống cuối.
+    // Sort by price (weekdayPrice). Rooms without price go to end.
     if (_priceAscending != null) {
       list.sort((a, b) {
         final pa = a.price?.weekdayPrice;
@@ -142,12 +141,11 @@ class _RoomListScreenState extends ConsumerState<RoomListScreen>
       });
     }
 
-    // Filter theo view
     if (_selectedViews.isNotEmpty) {
       list = list.where((r) => _selectedViews.contains(r.view)).toList();
     }
 
-    // Filter theo số khách: standardGuests >= tổng (người lớn + trẻ em)
+    // Filter by guest count: standardGuests >= total (adults + children).
     final totalGuests = _adults + _children;
     if (totalGuests > 0) {
       list = list.where((r) => r.standardGuests >= totalGuests).toList();
@@ -309,7 +307,6 @@ class _RoomListScreenState extends ConsumerState<RoomListScreen>
                 ),
                 Divider(height: 1, color: colors.borderDefault),
 
-                // ── View ──
                 SectionLabel(label: 'VIEW'),
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 20),
@@ -332,7 +329,6 @@ class _RoomListScreenState extends ConsumerState<RoomListScreen>
                   ),
                 ),
 
-                // ── Sắp xếp giá ──
                 SectionLabel(label: 'SẮP XẾP GIÁ'),
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 20),
@@ -362,7 +358,6 @@ class _RoomListScreenState extends ConsumerState<RoomListScreen>
                   ),
                 ),
 
-                // ── Check-in / Check-out ──
                 SectionLabel(label: 'NGÀY'),
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 20),
@@ -389,7 +384,6 @@ class _RoomListScreenState extends ConsumerState<RoomListScreen>
                   ),
                 ),
 
-                // ── Số khách ──
                 SectionLabel(label: 'SỐ KHÁCH'),
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 20),
@@ -512,7 +506,6 @@ class _RoomListScreenState extends ConsumerState<RoomListScreen>
         },
         child: NestedScrollView(
           headerSliverBuilder: (context, innerBoxIsScrolled) => [
-            // ── Header + TabBar ──
             SliverToBoxAdapter(
               child: Container(
                 padding: EdgeInsets.only(
@@ -629,7 +622,6 @@ class _RoomListScreenState extends ConsumerState<RoomListScreen>
                         ),
                       ],
                     ),
-                    // ── Search input ──
                     if (_isSearching) ...[
                       const SizedBox(height: 12),
                       Container(
@@ -680,7 +672,6 @@ class _RoomListScreenState extends ConsumerState<RoomListScreen>
                       ),
                     ],
                     const SizedBox(height: 12),
-                    // ── TabBar — scrollable để tránh overflow ──
                     TabBar(
                       controller: _tabController,
                       isScrollable: true,
@@ -717,7 +708,6 @@ class _RoomListScreenState extends ConsumerState<RoomListScreen>
               ),
             ),
 
-            // ── Active filter chips ──
             if (_hasActiveFilters)
               SliverToBoxAdapter(
                 child: Padding(

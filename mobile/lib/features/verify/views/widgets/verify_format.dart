@@ -1,14 +1,14 @@
-/// Format helpers riêng cho verify flow.
+/// Format helpers specific to the verify flow.
 ///
-/// Tách khỏi `core/utils/helpers.dart` vì:
-/// - Format tiền ở verify dùng định dạng đầy đủ "23.602.000đ" (có dấu chấm
-///   ngăn nghìn), khác `AppHelpers.formatPrice` đang truncate sang "23.6tr".
-/// - Verify cần format short cho plan card ("2.985K", "26.8M") + format
-///   full cho order summary + button CTA.
+/// Kept separate from `core/utils/helpers.dart` because:
+/// - Verify uses the full "23.602.000đ" format (with thousands dots), which
+///   differs from `AppHelpers.formatPrice` (truncates to "23.6tr").
+/// - Verify needs a short format for plan cards ("2.985K", "26.8M") + full
+///   format for order summary + CTA buttons.
 class VerifyFormat {
   VerifyFormat._();
 
-  /// Định dạng đầy đủ "23.602.000đ" — dùng cho order summary, button CTA.
+  /// Full format "23.602.000đ" — used for order summary and CTA buttons.
   static String priceVND(int amount) {
     final s = amount.abs().toString();
     final buf = StringBuffer();
@@ -20,8 +20,8 @@ class VerifyFormat {
     return '$sign${buf.toString()}đ';
   }
 
-  /// Format short "2.985.000đ" → "2.985K" hoặc "23.602.000đ" → "23.6M".
-  /// Dùng cho plan card price (16px header).
+  /// Short format "2.985.000đ" → "2.985K" or "23.602.000đ" → "23.6M".
+  /// Used for plan card prices (16px header).
   static String priceShort(int amount) {
     if (amount >= 1000000) {
       final m = amount / 1000000;
@@ -39,7 +39,7 @@ class VerifyFormat {
   static String dateVN(DateTime d) =>
       '${_two(d.day)}/${_two(d.month)}/${d.year}';
 
-  /// "27 / 04 / 2026" — dùng cho ngày bắt đầu trial (signature pattern).
+  /// "27 / 04 / 2026" — used for the trial start date (signature pattern).
   static String dateSpaced(DateTime d) =>
       '${_two(d.day)} / ${_two(d.month)} / ${d.year}';
 

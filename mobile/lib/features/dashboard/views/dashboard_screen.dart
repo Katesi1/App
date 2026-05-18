@@ -17,11 +17,11 @@ import '../../../shared/widgets/app_scaffold.dart';
 import '../../../shared/widgets/loading_widget.dart';
 import '../../../shared/widgets/pagination_bar.dart';
 
-// gradient.brandHero stop "jade-mid" theo spec section 3.7
+// gradient.brandHero stop "jade-mid" per spec section 3.7
 const _jadeMidLight = Color(0xFF1B7E94);
 
-/// Map field `kycStatus` từ backend (`none|pending|rejected|approved`) sang
-/// [VerifyStatus] để [_VerifyCTABanner] biết hiển thị variant nào.
+/// Maps backend `kycStatus` (`none|pending|rejected|approved`) to
+/// [VerifyStatus] so [_VerifyCTABanner] knows which variant to render.
 VerifyStatus _verifyStatusFromUserKyc(String kycStatus) {
   switch (kycStatus) {
     case 'pending':
@@ -61,8 +61,8 @@ class DashboardScreen extends ConsumerWidget {
         data: (stats) => RefreshIndicator(
           color: colors.brand,
           onRefresh: () async {
-            // Refresh stats + user profile cùng lúc để bắt KYC/subscription
-            // status thay đổi từ backend (vd: admin vừa approve KYC).
+            // Refresh stats + user profile together to catch backend-side
+            // KYC/subscription status changes (e.g. admin just approved KYC).
             ref.invalidate(dashboardStatsProvider);
             ref.invalidate(bookingListProvider(null));
             await ref.read(authProvider.notifier).refreshProfile();
@@ -72,15 +72,14 @@ class DashboardScreen extends ConsumerWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // ── Header ─────────────────────────────────────────────
                 _DashHeader(
                   userName: user?.name ?? 'Homestay',
                   formattedDate: formattedDate,
                 ),
 
-                // ── Verify CTA cho Owner chưa verify ────────────────
-                // Source of truth: user.kycStatus từ /auth/profile (backend),
-                // KHÔNG dựa vào verifyFlowController (local, non-persisted).
+                // Verify CTA for unverified Owner.
+                // Source of truth: user.kycStatus from /auth/profile (backend),
+                // NOT verifyFlowController (local, non-persisted).
                 if (user != null && user.isOwner && !user.isKycApproved)
                   Padding(
                     padding: const EdgeInsets.fromLTRB(16, 0, 16, 0),
@@ -92,8 +91,8 @@ class DashboardScreen extends ConsumerWidget {
                     ),
                   ),
 
-                // ── Subscription banner cho OWNER đã KYC approved ─────
-                // Trial / past_due / cancelled — active thì không hiện.
+                // Subscription banner for OWNER with approved KYC.
+                // Trial / past_due / cancelled — hidden when active.
                 if (user != null &&
                     user.isOwner &&
                     user.isKycApproved &&
@@ -106,7 +105,7 @@ class DashboardScreen extends ConsumerWidget {
                     ),
                   ),
 
-                // ── Cảnh báo SALE chưa gán owner ─────────────────────
+                // SALE not yet assigned to owner warning.
                 if (user != null &&
                     user.isSale &&
                     !user.isSaleMembershipActive)
@@ -270,8 +269,8 @@ class DashboardScreen extends ConsumerWidget {
                         height: 96,
                         child: ListView(
                           scrollDirection: Axis.horizontal,
-                          // Padding bù lại horizontal: 16 của Column cha để
-                          // item đầu/cuối không chạm mép screen.
+                          // Compensates parent Column's horizontal: 16 so first/last
+                          // items don't touch screen edges.
                           padding: EdgeInsets.zero,
                           physics: const BouncingScrollPhysics(),
                           children: [
@@ -320,10 +319,10 @@ class DashboardScreen extends ConsumerWidget {
                   ),
                 ),
 
-                // ── Shortcut quản lý phòng + lịch CHỈ cho SALE ──────────
-                // OWNER/ADMIN đã có bottom nav + admin tab nên không cần.
-                // SALE chưa được gán owner → lock; có owner → vào dữ liệu
-                // của owner (backend auto-scope theo ownerId của SALE).
+                // Room + calendar management shortcut — SALE only.
+                // OWNER/ADMIN already have bottom nav + admin tab.
+                // SALE without assigned owner → locked; with owner → enters
+                // owner's data (backend auto-scopes by SALE's ownerId).
                 if (user != null && user.isSale) ...[
                   const SizedBox(height: 28),
                   Padding(
@@ -358,7 +357,7 @@ class DashboardScreen extends ConsumerWidget {
 
                 const SizedBox(height: 28),
 
-                // ── Booking gần đây ─────────────────────────────────────
+                // Recent bookings section.
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 16),
                   child: Column(
@@ -396,7 +395,7 @@ class DashboardScreen extends ConsumerWidget {
   }
 }
 
-// ─── Booking gần đây (phân trang) ────────────────────────────────────────────
+// Recent bookings section (paginated).
 class _DashboardRecentBookingsSection extends ConsumerStatefulWidget {
   const _DashboardRecentBookingsSection();
 
@@ -971,7 +970,7 @@ class _QuickAction extends StatelessWidget {
   }
 }
 
-// ─── Manage Shortcut (row card lớn, dùng cho /rooms + /calendar) ──────────────
+// Manage Shortcut (large row card, used for /rooms + /calendar).
 class _ManageShortcut extends StatelessWidget {
   final IconData icon;
   final Color iconColor;
@@ -1220,9 +1219,9 @@ class _BookingItem extends StatelessWidget {
   }
 }
 
-/// Banner subscription cho OWNER đã verify approved.
-/// 3 variant: trial countdown / past_due (cần thanh toán) / cancelled.
-/// Active không hiện (caller đã guard).
+/// Subscription banner for OWNER with approved KYC.
+/// 3 variants: trial countdown / past_due (payment needed) / cancelled.
+/// Active state is hidden (caller already guards).
 class _SubscriptionBanner extends ConsumerWidget {
   final UserModel user;
   const _SubscriptionBanner({required this.user});
@@ -1231,7 +1230,7 @@ class _SubscriptionBanner extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final colors = context.colors;
 
-    // Trial variant cho phép dismiss (positive). Past-due / cancelled không.
+    // Trial variant allows dismiss (positive). Past-due / cancelled do not.
     final isTrial = user.isInTrial;
     final dismissed =
         isTrial && ref.watch(trialBannerDismissedProvider);
@@ -1306,7 +1305,7 @@ class _SubscriptionBanner extends ConsumerWidget {
               ),
             ),
             if (isTrial)
-              // X dismiss button — chỉ cho trial vì positive variant
+              // X dismiss button — only for trial (positive variant).
               GestureDetector(
                 onTap: () => ref
                     .read(trialBannerDismissedProvider.notifier)
@@ -1333,7 +1332,7 @@ class _SubscriptionBanner extends ConsumerWidget {
     );
   }
 
-  /// Bottom sheet chi tiết subscription. Tap "Liên hệ hỗ trợ" → /profile/help.
+  /// Subscription detail bottom sheet. Tap the support CTA → /profile/help.
   void _showDetailSheet(BuildContext context) {
     final colors = context.colors;
     final isDark = Theme.of(context).brightness == Brightness.dark;
@@ -1416,7 +1415,7 @@ class _SubscriptionBanner extends ConsumerWidget {
     );
   }
 
-  /// Nội dung bottom sheet theo variant: title / body / CTA label.
+  /// Bottom sheet content per variant: title / body / CTA label.
   (String, String, String) _sheetContent() {
     final plan = user.subscriptionPlanId ?? '—';
     final cycle = switch (user.subscriptionCycle) {
@@ -1462,7 +1461,7 @@ class _SubscriptionBanner extends ConsumerWidget {
     );
   }
 
-  /// Trả tuple: (gradient, borderColor, icon, iconColor, titleColor,
+  /// Returns tuple: (gradient, borderColor, icon, iconColor, titleColor,
   /// subtitleColor, title, subtitle).
   (Gradient, Color, IconData, Color, Color, Color, String, String)
       _resolveVariant(AppColorScheme colors) {
@@ -1490,7 +1489,7 @@ class _SubscriptionBanner extends ConsumerWidget {
             : 'Hệ thống sẽ tự động charge theo gói đã chọn vào ngày mai.',
       );
     }
-    // Past due — payment fail, cần update (giữ đỏ — phải action)
+    // Past due — payment failed, needs update (red — action required).
     if (user.isSubscriptionPastDue) {
       return (
         LinearGradient(
@@ -1505,7 +1504,7 @@ class _SubscriptionBanner extends ConsumerWidget {
         'Tài khoản sẽ bị khoá nếu không cập nhật phương thức thanh toán.',
       );
     }
-    // Cancelled — subscription đã huỷ
+    // Cancelled — subscription was cancelled.
     if (user.isSubscriptionCancelled) {
       return (
         LinearGradient(
@@ -1520,7 +1519,7 @@ class _SubscriptionBanner extends ConsumerWidget {
         'Liên hệ hỗ trợ nếu muốn tiếp tục sử dụng.',
       );
     }
-    // Fallback (subscription_status='none' nhưng KYC approved — edge case)
+    // Fallback (subscription_status='none' but KYC approved — edge case).
     return (
       LinearGradient(
         colors: [AppColors.infoBgDark, AppColors.infoBgDark],
@@ -1536,9 +1535,8 @@ class _SubscriptionBanner extends ConsumerWidget {
   }
 }
 
-/// Banner nổi bật trên dashboard cho Owner chưa verify (hoặc đang chờ /
-/// bị reject). Tap → showPaywallModal hoặc đẩy thẳng về screen tương ứng
-/// với status hiện tại.
+/// Prominent dashboard banner for unverified Owner (or pending/rejected).
+/// Tap → showPaywallModal or routes to the screen matching current status.
 class _VerifyCTABanner extends StatelessWidget {
   final VerifyStatus status;
   const _VerifyCTABanner({required this.status});
@@ -1547,8 +1545,8 @@ class _VerifyCTABanner extends StatelessWidget {
   Widget build(BuildContext context) {
     final colors = context.colors;
 
-    // Mọi màu derive từ `context.colors` (theme-aware) thay vì hardcode
-    // *Dark constants — banner phải đẹp ở cả light và dark.
+    // All colors derive from `context.colors` (theme-aware) instead of
+    // hardcoded *Dark constants — banner must look good in light and dark.
     final (
       Color bg,
       Color borderColor,

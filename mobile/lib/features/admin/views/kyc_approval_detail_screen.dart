@@ -18,14 +18,14 @@ import '../data/models/kyc_submission.dart';
 /// Admin KYC detail — preview submission + approve/reject.
 ///
 /// Layout:
-/// 1. Status banner (chỉ khi đã handled)
+/// 1. Status banner (only when already handled)
 /// 2. Owner info card
 /// 3. CCCD front (image + OCR data)
 /// 4. CCCD back (image)
 /// 5. Selfie (image + face match score)
 /// 6. Subscription summary
 /// 7. SLA / overdue warning
-/// 8. Action bar (chỉ khi pending): "Từ chối" + "Phê duyệt"
+/// 8. Action bar (pending only): "Reject" + "Approve"
 class KYCApprovalDetailScreen extends ConsumerWidget {
   final String submissionId;
 
@@ -73,7 +73,7 @@ class _Content extends ConsumerStatefulWidget {
 }
 
 class _ContentState extends ConsumerState<_Content> {
-  /// Set các item user (admin) muốn reject (multi-select).
+  /// Items the admin wants to reject (multi-select).
   final Set<RejectableItem> _rejectingItems = {};
 
   Future<void> _approve() async {

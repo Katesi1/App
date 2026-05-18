@@ -21,9 +21,10 @@ import 'widgets/camera_frame_overlay.dart';
 import 'widgets/not_cccd_warning_dialog.dart';
 import 'widgets/verify_app_bar.dart';
 
-/// Screen 2 — Chụp CCCD (mặt trước hoặc mặt sau).
+/// Screen 2 — capture CCCD (front or back).
 ///
-/// Một screen handle cả 2 side qua [CCCDSide] arg. Step 1/4 = front, 2/4 = back.
+/// One screen handles both sides via the [CCCDSide] arg. Step 1/4 = front,
+/// 2/4 = back.
 class CCCDCaptureScreen extends ConsumerStatefulWidget {
   final CCCDSide side;
   final bool isResubmit;
@@ -46,8 +47,8 @@ class _CCCDCaptureScreenState extends ConsumerState<CCCDCaptureScreen> {
   String get _stepLabel => _isFront ? 'Mặt trước CCCD' : 'Mặt sau CCCD';
 
   Future<void> _pickFromCamera() async {
-    // Mở in-app scanner (live preview + on-device OCR/QR auto-detect).
-    // Scanner pop về `ScannerResult` gồm File đã crop + OCR/QR đã extract.
+    // Open the in-app scanner (live preview + on-device OCR/QR auto-detect).
+    // The scanner pops a `ScannerResult` with a cropped File + extracted OCR/QR.
     final result = await Navigator.of(context).push<ScannerResult>(
       MaterialPageRoute(
         builder: (_) => CCCDScannerScreen(side: widget.side),
@@ -65,9 +66,9 @@ class _CCCDCaptureScreenState extends ConsumerState<CCCDCaptureScreen> {
     if (image == null || !mounted) return;
     final file = File(image.path);
 
-    // Validate CHỈ cho mặt trước (chạy ML Kit text recognition match
-    // keyword "CĂN CƯỚC CÔNG DÂN", "FULL NAME"...). Mặt sau bỏ qua vì
-    // không phải CCCD nào cũng có QR rõ → admin sẽ duyệt thủ công.
+    // Only validate the front (run ML Kit text recognition matching keywords
+    // "CĂN CƯỚC CÔNG DÂN", "FULL NAME"...). Skip the back since not every
+    // CCCD has a clear QR → admin reviews manually.
     if (!_isFront) {
       await _upload(file, ocr: null);
       return;
@@ -87,8 +88,8 @@ class _CCCDCaptureScreenState extends ConsumerState<CCCDCaptureScreen> {
         reason: validation.reason,
       );
       if (!mounted || force != true) return;
-      // User cố ý upload dù validator nghi ngờ — cho phép upload với
-      // `ocr: null`, admin sẽ duyệt thủ công.
+      // User chose to upload despite the validator's concern — allow upload
+      // with `ocr: null`; admin reviews manually.
       await _upload(file, ocr: null);
       return;
     }
@@ -117,9 +118,9 @@ class _CCCDCaptureScreenState extends ConsumerState<CCCDCaptureScreen> {
   }
 
   void _navigateNext() {
-    // Dùng `push` (không phải pushReplacement) để user back lại được nếu
-    // chụp nhầm ảnh ở bước trước. Stack tăng vài screen nhưng acceptable
-    // (verify flow chỉ 3-4 step).
+    // Use `push` (not pushReplacement) so the user can go back if they
+    // captured the wrong image on a previous step. Stack grows by a few
+    // screens but that's acceptable (the verify flow is only 3-4 steps).
     if (_isFront) {
       context.push('/verify/cccd-back');
     } else {
@@ -156,7 +157,7 @@ class _CCCDCaptureScreenState extends ConsumerState<CCCDCaptureScreen> {
               AppSpacing.md,
               AppSpacing.md,
               AppSpacing.md,
-              120, // chừa chỗ cho buttons fixed bottom
+              120, // leave room for the fixed bottom buttons
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,

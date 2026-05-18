@@ -8,15 +8,15 @@ class ApiResponse<T> {
   ApiResponse({required this.success, this.data, required this.message});
 }
 
-// Helper để parse lỗi từ Dio
+// Helper to parse Dio errors into user-facing messages.
 String parseDioError(DioException e) {
   if (e.response?.data != null) {
     final data = e.response!.data;
     if (data is Map && data['message'] != null) {
       final raw = data['message'].toString();
-      // BE đôi khi concat nhiều validation errors thành 1 string:
+      // BE sometimes concatenates multiple validation errors into one string:
       // "Email không được để trống, Email không hợp lệ, Mật khẩu tối thiểu 6 ký tự"
-      // → chỉ hiện lỗi đầu tiên để UX rõ ràng (1 vấn đề / lần).
+      // → only show the first error for clearer UX (one issue at a time).
       if (raw.contains(',')) {
         return raw.split(',').first.trim();
       }

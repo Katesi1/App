@@ -87,7 +87,7 @@ class HomestaySimpleModel {
 
 class RoomModel {
   final String id;
-  // API mới dùng propertyId, cũ dùng homestayId — giữ tên Dart để không phá UI
+  // New API uses propertyId; old API uses homestayId — keep the Dart name to avoid breaking UI.
   final String homestayId;
   final String name;
   final String code;
@@ -102,9 +102,9 @@ class RoomModel {
   final List<String> amenities;
   final int? cancellationPolicy; // 0=FLEXIBLE, 1=MODERATE, 2=STRICT
   final String?
-      view; // "sea" = view biển, "city" = view thành phố, null = không
-  final String? rules; // Quy định (1 chuỗi text)
-  final List<String> services; // Dịch vụ trả phí
+      view; // "sea" = sea view, "city" = city view, null = none
+  final String? rules; // House rules (single text string)
+  final List<String> services; // Paid services
   final double? adultSurcharge;
   final double? childSurcharge;
   final bool isActive;
@@ -140,7 +140,7 @@ class RoomModel {
 
   factory RoomModel.fromJson(Map<String, dynamic> json) => RoomModel(
         id: json['id'] ?? '',
-        // Hỗ trợ cả propertyId (API mới) và homestayId (API cũ)
+        // Support both propertyId (new API) and homestayId (old API).
         homestayId: json['propertyId'] ?? json['homestayId'] ?? '',
         name: json['name'] ?? '',
         code: json['code'] ?? '',
@@ -170,8 +170,8 @@ class RoomModel {
                 ?.map((e) => RoomImageModel.fromJson(e))
                 .toList() ??
             [],
-        // API mới trả price flat (weekdayPrice/weekendPrice/holidayPrice ở root).
-        // API cũ trả nested object json['price']. Hỗ trợ cả 2.
+        // New API returns flat price (weekdayPrice/weekendPrice/holidayPrice at root).
+        // Old API returns a nested object json['price']. Both supported.
         price: json['price'] != null
             ? RoomPriceModel.fromJson(json['price'])
             : (json['weekdayPrice'] != null ||
@@ -182,7 +182,7 @@ class RoomModel {
                     roomId: json['id'] ?? '',
                     weekdayPrice:
                         (json['weekdayPrice'] as num?)?.toDouble() ?? 0,
-                    // API mới chỉ có 1 weekendPrice — gán cho cả friday + saturday
+                    // New API has a single weekendPrice — assign to both friday + saturday
                     fridayPrice:
                         (json['weekendPrice'] as num?)?.toDouble() ?? 0,
                     saturdayPrice:
@@ -191,7 +191,7 @@ class RoomModel {
                         (json['holidayPrice'] as num?)?.toDouble() ?? 0,
                   )
                 : null,
-        // Hỗ trợ cả property (API mới) và homestay (API cũ)
+        // Support both property (new API) and homestay (old API).
         homestay: (json['property'] ?? json['homestay']) != null
             ? HomestaySimpleModel.fromJson(json['property'] ?? json['homestay'])
             : null,

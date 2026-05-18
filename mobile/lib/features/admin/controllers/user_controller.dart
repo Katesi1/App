@@ -19,7 +19,7 @@ final userListProvider =
   throw Exception(result.message);
 });
 
-// ─── My staff provider — OWNER xem nhân viên của mình ────────────────────────
+// My staff provider — OWNER views own staff.
 final myStaffProvider =
     FutureProvider.autoDispose<List<UserModel>>((ref) async {
   final link = ref.keepAlive();
@@ -30,8 +30,8 @@ final myStaffProvider =
   throw Exception(result.message);
 });
 
-// ─── Provider thống nhất — tự chọn API theo role ─────────────────────────────
-// ADMIN → GET /users, OWNER → GET /users/my-staff
+// Unified provider — picks API by role.
+// ADMIN → GET /users, OWNER → GET /users/my-staff.
 final staffListProvider =
     FutureProvider.autoDispose<List<UserModel>>((ref) async {
   final link = ref.keepAlive();

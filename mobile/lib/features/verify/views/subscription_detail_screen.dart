@@ -73,12 +73,12 @@ class _SubscriptionDetailScreenState
       case PaymentMethod.card:
         break;
     }
-    // Refresh history sau khi user đóng dialog (assumption: webhook đã hoặc
-    // sẽ cập nhật status). Không poll ở đây để giữ logic đơn giản.
+    // Refresh history after the user closes the dialog (assumption: webhook
+    // has or will update status). Don't poll here to keep logic simple.
     Future<void>.delayed(const Duration(seconds: 2), () {
       if (mounted) {
         ref.invalidate(paymentHistoryProvider);
-        // Reload danh sách full pagination nếu user đang mở /verify/payment-history
+        // Reload the full paginated list if the user has /verify/payment-history open.
         ref.invalidate(paymentHistoryListProvider);
       }
     });

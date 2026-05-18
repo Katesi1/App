@@ -4,11 +4,11 @@ import '../../../verify/data/models/cccd_upload.dart';
 import '../../../verify/data/models/selfie_upload.dart';
 import '../../../verify/data/models/verify_enums.dart';
 
-/// Một hồ sơ KYC chờ admin duyệt — view-model cho [KYCApprovalListScreen]
-/// và [KYCApprovalDetailScreen].
+/// A KYC application waiting for admin review — view-model for
+/// [KYCApprovalListScreen] and [KYCApprovalDetailScreen].
 ///
-/// Wraps [CCCDUpload] front + back + [SelfieUpload] cùng metadata về owner
-/// đã submit (tên, phone, plan đã chọn, total tiền tạm giữ).
+/// Wraps [CCCDUpload] front + back + [SelfieUpload] along with submitting
+/// owner metadata (name, phone, selected plan, total amount held in escrow).
 class KYCSubmission extends Equatable {
   final String id;
 
@@ -25,18 +25,18 @@ class KYCSubmission extends Equatable {
 
   // ── Subscription context ──
   final String planName; // e.g. "Professional · Hàng năm"
-  final int totalAmount; // tiền đã thanh toán (tạm giữ)
+  final int totalAmount; // amount already paid (held in escrow)
   final int expectedRooms;
 
   // ── Timeline ──
   final DateTime submittedAt;
   final VerifyStatus status;
 
-  /// Reason nếu admin reject (null nếu chưa quyết định).
+  /// Reason if admin rejected (null if not yet decided).
   final String? rejectReason;
   final List<RejectableItem> rejectedItems;
 
-  /// Tên admin xử lý (set khi approve/reject).
+  /// Name of the admin who handled it (set on approve/reject).
   final String? handledByAdmin;
   final DateTime? handledAt;
 
@@ -64,10 +64,10 @@ class KYCSubmission extends Equatable {
   bool get isApproved => status == VerifyStatus.approved;
   bool get isRejected => status == VerifyStatus.rejected;
 
-  /// Số giờ kể từ lúc submit (để hiển thị "5h trước" / "Quá 24h").
+  /// Time since submission (used to display "5h ago" / "Overdue 24h").
   Duration get age => DateTime.now().difference(submittedAt);
 
-  /// Vượt SLA 24h chưa.
+  /// Whether the 24h SLA has been exceeded.
   bool get isOverdue => age.inHours >= 24 && isPending;
 
   KYCSubmission copyWith({

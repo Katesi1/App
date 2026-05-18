@@ -4,19 +4,19 @@ import '../../verify/data/models/verify_enums.dart';
 import '../data/models/kyc_submission.dart';
 import '../data/repositories/admin_kyc_repository.dart';
 
-/// Filter cho admin KYC list.
+/// Filter for the admin KYC list.
 enum KYCQueueFilter { pending, all, approved, rejected }
 
-/// State của filter (UI controlled).
+/// Filter state (UI-controlled).
 final kycQueueFilterProvider =
     StateProvider<KYCQueueFilter>((_) => KYCQueueFilter.pending);
 
-/// Toàn bộ submissions (pre-filter).
+/// All submissions (pre-filter).
 final kycSubmissionsProvider = FutureProvider<List<KYCSubmission>>(
   (ref) => ref.read(adminKYCRepositoryProvider).fetchAll(),
 );
 
-/// Submissions sau khi áp filter — sort overdue/oldest pending lên đầu.
+/// Submissions after applying the filter — sort overdue/oldest pending first.
 final filteredKycSubmissionsProvider =
     Provider<AsyncValue<List<KYCSubmission>>>((ref) {
   final filter = ref.watch(kycQueueFilterProvider);
@@ -32,7 +32,7 @@ final filteredKycSubmissionsProvider =
       KYCQueueFilter.all => List<KYCSubmission>.from(list),
     };
 
-    // Pending: overdue lên đầu, sau đó oldest first (FIFO).
+    // Pending: overdue first, then oldest first (FIFO).
     // Resolved (approved/rejected): newest first.
     if (filter == KYCQueueFilter.pending) {
       filtered.sort((a, b) {
@@ -50,7 +50,7 @@ final filteredKycSubmissionsProvider =
   });
 });
 
-/// Số submission pending (cho badge counter trên admin home).
+/// Number of pending submissions (for the badge counter on admin home).
 final pendingKycCountProvider = Provider<AsyncValue<int>>((ref) {
   final all = ref.watch(kycSubmissionsProvider);
   return all.whenData(
@@ -58,7 +58,7 @@ final pendingKycCountProvider = Provider<AsyncValue<int>>((ref) {
   );
 });
 
-/// Detail của 1 submission.
+/// Detail of a single submission.
 final kycSubmissionProvider =
     FutureProvider.family<KYCSubmission?, String>((ref, id) {
   return ref.read(adminKYCRepositoryProvider).fetchById(id);

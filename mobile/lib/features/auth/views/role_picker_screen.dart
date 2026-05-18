@@ -10,10 +10,10 @@ import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../controllers/auth_controller.dart';
 
-/// OAuth provider — quyết định endpoint BE gọi sau khi user chọn role.
+/// OAuth provider — picks which BE endpoint to call after the user selects a role.
 enum SocialProvider { google, apple }
 
-/// Args truyền qua `state.extra` khi push `/auth/role-picker` từ login flow.
+/// Args passed via `state.extra` when pushing `/auth/role-picker` from the login flow.
 class RolePickerArgs {
   final String idToken;
   final GoogleProfile profile;

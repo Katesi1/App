@@ -2,16 +2,16 @@ import 'dart:io';
 
 import 'ocr_result.dart';
 
-/// Kết quả pop từ [CCCDScannerScreen] về caller.
+/// Result popped from [CCCDScannerScreen] back to the caller.
 ///
-/// Bao gồm cả ảnh đã chụp + dữ liệu OCR/QR đã extract trên device. Caller
-/// truyền cả 2 lên backend trong cùng multipart request — backend KHÔNG cần
-/// chạy OCR engine của riêng nó.
+/// Includes the captured image + data already extracted on-device (OCR/QR).
+/// The caller forwards both to backend in the same multipart request — the
+/// backend does NOT need to run its own OCR engine.
 class ScannerResult {
   final File image;
 
-  /// Dữ liệu trích xuất từ ảnh (OCR mặt trước hoặc QR mặt sau). `null` nếu
-  /// scanner không extract được (vd ảnh chụp tay, không nhận diện được).
+  /// Data extracted from the image (front OCR or back QR). `null` if the
+  /// scanner couldn't extract (e.g. handheld photo, unreadable).
   final OCRResult? ocrResult;
 
   const ScannerResult({required this.image, this.ocrResult});

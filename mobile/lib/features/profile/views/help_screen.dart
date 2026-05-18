@@ -8,7 +8,7 @@ import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../shared/widgets/loading_widget.dart';
 
-// gradient.brandHero stop "jade-mid" theo spec section 3.7 — chưa có token sẵn
+// gradient.brandHero stop "jade-mid" per spec section 3.7 — no token defined yet.
 const _jadeMidLight = Color(0xFF1B7E94);
 
 class HelpScreen extends StatefulWidget {

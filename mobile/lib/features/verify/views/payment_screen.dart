@@ -19,27 +19,27 @@ import 'widgets/payment_method_tile.dart';
 import 'widgets/verify_app_bar.dart';
 import 'widgets/verify_format.dart';
 
-/// 3 phương thức thanh toán FE expose:
-/// - VNPay QR: Quét QR bằng app ngân hàng (tức thời)
-/// - Bank transfer: STK + nội dung CK (5-30 phút, Casso/Sepay reconcile)
-/// - Card: Visa/Mastercard/JCB qua VNPay (tức thời)
+/// 3 payment methods exposed by FE:
+/// - VNPay QR: scan QR with bank app (instant)
+/// - Bank transfer: account number + memo (5-30 min, Casso/Sepay reconcile)
+/// - Card: Visa/Mastercard/JCB via VNPay (instant)
 ///
-/// BE phải accept cả 3 method ở `POST /payments/initiate`. Nếu BE chưa active
-/// `card`, FE sẽ catch error + hiện message graceful.
+/// BE must accept all 3 methods at `POST /payments/initiate`. If BE hasn't
+/// enabled `card` yet, FE catches the error and shows a graceful message.
 const _kAvailableMethods = <PaymentMethod>[
   PaymentMethod.vnpayQR,
   PaymentMethod.bankTransfer,
   PaymentMethod.card,
 ];
 
-/// Screen 5 — Thanh toán.
+/// Screen 5 — Payment.
 ///
 /// Flow:
-/// 1. User select method → tap CTA
-/// 2. Controller create payment session (mock: 800ms)
-/// 3. Show method-specific dialog (QR / bank info / card form mock)
-/// 4. Poll status mỗi 3s, max 5 phút (100 lần)
-/// 5. Khi paid → controller auto submitForApproval → push pending screen
+/// 1. User selects method → taps CTA
+/// 2. Controller creates payment session
+/// 3. Show method-specific dialog (QR / bank info / card form)
+/// 4. Poll status every 3s, max 5 minutes (100 calls)
+/// 5. On paid → controller auto-submitForApproval → push pending screen
 class PaymentScreen extends ConsumerStatefulWidget {
   const PaymentScreen({super.key});
 
@@ -75,7 +75,7 @@ class _PaymentScreenState extends ConsumerState<PaymentScreen> {
 
       if (!mounted) return;
 
-      // Mở dialog tương ứng method. Card đã lock ở UI nên không xử lý.
+      // Open the dialog matching the method. Card is locked in UI so not handled.
       switch (_selected) {
         case PaymentMethod.vnpayQR:
           showDialog<void>(
@@ -92,7 +92,7 @@ class _PaymentScreenState extends ConsumerState<PaymentScreen> {
           );
           break;
         case PaymentMethod.card:
-          // Không reach: card đã disable trên UI.
+          // Unreachable: card is disabled in UI.
           break;
       }
       _startPolling();
@@ -107,15 +107,16 @@ class _PaymentScreenState extends ConsumerState<PaymentScreen> {
     }
   }
 
-  /// Số poll tối đa theo method:
-  /// - VNPay QR: 20 polls × 3s = 60s. IPN từ VNPay về thường ~3-5s sau pay
-  ///   (spec §7.5). Quá 60s mà chưa thấy paid → có sự cố backend/IPN config
-  ///   → fallback "Liên hệ hỗ trợ" thay vì để user chờ vô vọng.
-  /// - Bank transfer: 600 polls × 3s = 30 phút. Đối soát Casso/Sepay 5-30
-  ///   phút (spec §5.2). Quá 30 phút → user có thể đóng app, webhook tự xử.
+  /// Max poll count per method:
+  /// - VNPay QR: 20 polls × 3s = 60s. VNPay IPN usually returns ~3-5s after
+  ///   payment (spec §7.5). > 60s without paid → likely backend/IPN config
+  ///   issue → fallback "Contact support" rather than make the user wait forever.
+  /// - Bank transfer: 600 polls × 3s = 30 minutes. Casso/Sepay reconciliation
+  ///   is 5-30 min (spec §5.2). > 30 minutes → user can close app, webhook
+  ///   handles it.
   int get _maxPollCount => switch (_selected) {
         PaymentMethod.vnpayQR => 20, // 60s
-        PaymentMethod.bankTransfer => 600, // 30 phút
+        PaymentMethod.bankTransfer => 600, // 30 min
         PaymentMethod.card => 20,
       };
 
@@ -129,14 +130,14 @@ class _PaymentScreenState extends ConsumerState<PaymentScreen> {
         if (mounted) {
           setState(() => _processing = false);
           if (_selected == PaymentMethod.bankTransfer) {
-            // Bank transfer: không phải fail — user có thể đóng app, hệ thống
-            // sẽ tự xác nhận khi webhook ngân hàng chạy. Báo info.
+            // Bank transfer: not a failure — user can close the app and the
+            // system will auto-confirm when the bank webhook fires. Show info.
             _showInfo(
               'Vẫn đang đối soát chuyển khoản. Bạn có thể đóng app — '
               'hệ thống sẽ tự xác nhận khi nhận được tiền.',
             );
           } else {
-            // VNPay: bất thường nếu quá 60s. Hướng user đến hỗ trợ.
+            // VNPay: > 60s is abnormal. Direct user to support.
             _showError(
               'Chưa nhận được xác nhận từ VNPay sau 60 giây. '
               'Nếu bạn đã thanh toán, vui lòng liên hệ hỗ trợ.',
@@ -152,7 +153,7 @@ class _PaymentScreenState extends ConsumerState<PaymentScreen> {
         if (status == PaymentStatus.paid) {
           timer.cancel();
           if (!mounted) return;
-          // Đóng dialog đang mở (nếu có)
+          // Close any open dialog.
           if (Navigator.of(context, rootNavigator: true).canPop()) {
             Navigator.of(context, rootNavigator: true).pop();
           }
@@ -166,7 +167,7 @@ class _PaymentScreenState extends ConsumerState<PaymentScreen> {
           }
         }
       } catch (_) {
-        // silent retry — exponential backoff không cần thiết với mock
+        // silent retry — exponential backoff unnecessary for our use case
       }
     });
   }

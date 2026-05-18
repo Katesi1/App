@@ -2,23 +2,24 @@ import 'package:equatable/equatable.dart';
 
 import 'verify_enums.dart';
 
-/// Thông tin chuyển khoản ngân hàng (backend trả về dạng object).
+/// Bank transfer info (backend returns it as an object).
 class BankInfo extends Equatable {
   final String bankName;
   final String accountNumber;
   final String accountName;
 
-  /// Nội dung chuyển khoản (vd "KYC ABC123DE").
+  /// Transfer memo (e.g. "KYC ABC123DE").
   final String content;
 
-  /// VietQR payload (chuẩn EMVCo, FE render bằng `QrImageView`).
-  /// Backend sinh từ VietQR.io API hoặc tự build EMV string từ STK + amount + content.
-  /// Nullable để backwards-compat nếu backend chưa wire.
+  /// VietQR payload (EMVCo standard, FE renders via `QrImageView`).
+  /// Backend either generates it from the VietQR.io API or builds the EMV
+  /// string from account + amount + content. Nullable for backwards compat
+  /// when the backend hasn't wired it yet.
   final String? vietQrPayload;
 
-  /// BIN (Bank Identification Number) chuẩn NAPAS, vd `970436` cho VCB.
-  /// Dùng để load logo NH từ vietqr.io (xem `bankLogoUrl`). Optional —
-  /// backend mới (post 2026-05-09) trả về, version cũ thì null.
+  /// NAPAS-standard BIN (Bank Identification Number), e.g. `970436` for VCB.
+  /// Used to load the bank logo from vietqr.io (see `bankLogoUrl`). Optional —
+  /// new backend (post 2026-05-09) returns it; older versions return null.
   final String? bankBin;
 
   const BankInfo({
@@ -51,13 +52,13 @@ class BankInfo extends Equatable {
         if (bankBin != null) 'bankBin': bankBin,
       };
 
-  /// Format hiển thị 4 dòng cho dialog "Chuyển khoản".
+  /// 4-line display format for the "Bank transfer" dialog.
   String get displayText => 'Ngân hàng: $bankName\n'
       'STK: $accountNumber\n'
       'Tên: $accountName\n'
       'Nội dung: $content';
 
-  /// URL logo ngân hàng từ vietqr.io. Null nếu backend không trả `bankBin`.
+  /// Bank logo URL from vietqr.io. Null if backend doesn't return `bankBin`.
   String? get bankLogoUrl => bankBin == null || bankBin!.isEmpty
       ? null
       : 'https://api.vietqr.io/img/$bankBin.png';
@@ -73,32 +74,34 @@ class BankInfo extends Equatable {
       ];
 }
 
-/// Một phiên thanh toán đang mở (VNPay / bank transfer / card).
+/// An open payment session (VNPay / bank transfer / card).
 class PaymentSession extends Equatable {
   final String sessionId;
   final PaymentMethod method;
 
-  /// Tổng tiền (đã bao gồm VAT) — VND.
+  /// Total amount (VAT included) — VND.
   final int totalAmount;
 
-  /// QR payload cho VNPay QR — định dạng EMVCo string raw (FE tự render bằng
-  /// `QrImageView`). Backend trả về sau khi gọi VNPay createQR API.
+  /// VNPay QR payload — raw EMVCo string (FE renders via `QrImageView`).
+  /// Backend returns it after calling the VNPay createQR API.
   ///
-  /// Nếu backend trả base64 PNG thay vì EMV string, dùng [qrImageBase64].
+  /// If backend returns base64 PNG instead of EMV string, use [qrImageBase64].
   final String? qrCode;
 
-  /// Fallback: ảnh QR base64 PNG (`data:image/png;base64,...` hoặc raw base64).
-  /// Dùng khi backend không tiện sinh EMV string mà render QR rồi gửi ảnh.
+  /// Fallback: base64 PNG QR image (`data:image/png;base64,...` or raw base64).
+  /// Used when backend can't easily emit EMV strings and renders the QR image
+  /// itself.
   final String? qrImageBase64;
 
-  /// Thông tin chuyển khoản (chỉ áp dụng bank transfer).
+  /// Bank transfer info (only for bank transfer method).
   final BankInfo? bankInfo;
 
-  /// Redirect URL — VNPay Gateway flow (mở WebView/browser để nhập thẻ ATM/quốc tế).
+  /// Redirect URL — VNPay Gateway flow (opens WebView/browser to enter
+  /// ATM/international card).
   final String? redirectUrl;
 
-  /// Deeplink để mở app banking trên cùng device (vd `vnpay://...`).
-  /// Sau khi user thanh toán xong, app banking sẽ callback về app qua deeplink.
+  /// Deeplink to open a banking app on the same device (e.g. `vnpay://...`).
+  /// After the user pays, the banking app calls back via deeplink.
   final String? payUrl;
 
   final DateTime expiresAt;
@@ -162,7 +165,7 @@ class PaymentSession extends Equatable {
       ];
 }
 
-/// Backend dùng `vnpay_qr|bank_transfer|card`, frontend enum dùng camelCase.
+/// Backend uses `vnpay_qr|bank_transfer|card`; frontend enum uses camelCase.
 PaymentMethod _methodFromApi(String raw) {
   switch (raw) {
     case 'vnpay_qr':
@@ -174,7 +177,7 @@ PaymentMethod _methodFromApi(String raw) {
     case 'card':
       return PaymentMethod.card;
     default:
-      // Fallback theo enum.name
+      // Fallback by enum.name
       return PaymentMethod.values.firstWhere(
         (m) => m.name.toLowerCase() == raw,
         orElse: () => PaymentMethod.bankTransfer,
@@ -183,7 +186,7 @@ PaymentMethod _methodFromApi(String raw) {
 }
 
 extension PaymentMethodApi on PaymentMethod {
-  /// Convert sang format backend (snake_case) khi gửi POST /payments/initiate.
+  /// Convert to backend format (snake_case) for POST /payments/initiate.
   String toApiString() {
     switch (this) {
       case PaymentMethod.vnpayQR:
@@ -196,7 +199,7 @@ extension PaymentMethodApi on PaymentMethod {
   }
 }
 
-/// Convert backend status string → enum frontend.
+/// Convert backend status string → frontend enum.
 PaymentStatus paymentStatusFromApi(String raw) {
   switch (raw.toLowerCase()) {
     case 'paid':
@@ -213,7 +216,7 @@ PaymentStatus paymentStatusFromApi(String raw) {
   }
 }
 
-/// Convert backend KYC status string → enum frontend.
+/// Convert backend KYC status string → frontend enum.
 VerifyStatus verifyStatusFromApi(String raw) {
   switch (raw) {
     case 'kycSubmitted':

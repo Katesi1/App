@@ -21,7 +21,6 @@ import '../../features/staff/views/staff_management_screen.dart';
 import '../../features/bookings/views/booking_calendar_screen.dart';
 import '../../features/bookings/views/owner_calendar_screen.dart';
 import '../../features/bookings/views/booking_list_screen.dart';
-import '../../features/bookings/views/hold_room_screen.dart';
 import '../../features/dashboard/views/dashboard_screen.dart';
 import '../../features/properties/views/property_amenities_screen.dart';
 import '../../features/properties/views/property_cancellation_screen.dart';
@@ -51,8 +50,6 @@ import '../../features/profile/views/terms_of_service_screen.dart';
 import '../../features/rooms/views/room_detail_screen.dart';
 import '../../features/rooms/views/room_list_screen.dart';
 import '../../features/reports/views/report_screen.dart';
-import '../../features/reviews/views/property_reviews_screen.dart';
-import '../../features/reviews/views/write_review_screen.dart';
 import '../../features/verify/data/models/verify_enums.dart';
 import '../../features/verify/views/cccd_capture_screen.dart';
 import '../../features/verify/views/payment_history_screen.dart';
@@ -148,9 +145,9 @@ String? resolveRedirectPath({
     if (isAdminOnly) return '/admin';
   }
 
-  // OWNER chưa hoàn thành KYC -> chặn mọi mutate page dưới /properties.
-  // Cho phép /properties (list) để user xem state hiện tại + banner CTA.
-  // Backend sẽ trả 403 nếu lọt qua, đây chỉ là UX guard.
+  // OWNER without completed KYC: block every mutate page under /properties.
+  // Keep /properties (list) accessible so the user can see status + CTA banner.
+  // Backend still returns 403 if a request slips through — this is a UX guard.
   if (user != null && user.needsKyc) {
     if (path != '/properties' && path.startsWith('/properties/')) {
       return '/verify/cccd-front';
@@ -185,14 +182,14 @@ final routerProvider = Provider<GoRouter>((ref) {
         builder: (_, state) {
           final args = state.extra as RolePickerArgs?;
           if (args == null) {
-            // Defensive: nếu navigate sai (vd cold deeplink) → quay về login.
+            // Defensive fallback for invalid navigation (e.g. cold deep link).
             return const LoginScreen();
           }
           return RolePickerScreen(args: args);
         },
       ),
 
-      // Staff invite — public, dùng cho deep link email + entry "Tôi có mã mời"
+      // Staff invite — public, used by email deep link + "I have an invite code" entry.
       GoRoute(
         path: '/staff/accept',
         builder: (_, state) {
@@ -201,7 +198,7 @@ final routerProvider = Provider<GoRouter>((ref) {
         },
       ),
 
-      // OWNER quản lý nhân viên (mời + danh sách)
+      // OWNER staff management (invites + list).
       GoRoute(
         path: '/staff/manage',
         builder: (_, __) => const StaffManagementScreen(),
@@ -342,21 +339,11 @@ final routerProvider = Provider<GoRouter>((ref) {
               key: state.pageKey,
               child: RoomDetailScreen(roomId: state.pathParameters['id']!),
             ),
-            routes: [
-              GoRoute(
-                path: 'hold',
-                pageBuilder: (_, state) => fadeScalePage(
-                  key: state.pageKey,
-                  child:
-                      HoldRoomScreen(propertyId: state.pathParameters['id']!),
-                ),
-              ),
-            ],
           ),
         ],
       ),
 
-      // ── Calendar (bottom nav "Lịch") ─────────────────────────────
+      // ── Calendar (bottom nav) ────────────────────────────────────
       GoRoute(
         path: '/calendar',
         pageBuilder: (_, state) => horizontalPage(
@@ -383,7 +370,7 @@ final routerProvider = Provider<GoRouter>((ref) {
         ),
       ),
 
-      // ── Properties (quản lý phòng) ─────────────────────────────────
+      // ── Properties (management) ────────────────────────────────────
       GoRoute(
         path: '/properties',
         pageBuilder: (_, state) => horizontalPage(
@@ -475,50 +462,11 @@ final routerProvider = Provider<GoRouter>((ref) {
         ],
       ),
 
-      // ── Reviews ─────────────────────────────────────────────────────
-      // `/reviews/:id` = public list. `/reviews/:id/write?bookingId=xxx` =
-      // customer viết review sau khi booking completed. Đặt ngoài
-      // `/properties/...` để không bị guard mode/role block (xem
-      // `resolveRedirectPath` — paths không trong customer/management
-      // list sẽ pass through cho cả 2 mode).
-      GoRoute(
-        path: '/reviews/:id',
-        pageBuilder: (_, state) => slideUpPage(
-          key: state.pageKey,
-          child: PropertyReviewsScreen(
-            propertyId: state.pathParameters['id']!,
-            propertyName: state.uri.queryParameters['name'],
-          ),
-        ),
-        routes: [
-          GoRoute(
-            path: 'write',
-            pageBuilder: (_, state) {
-              final bookingId = state.uri.queryParameters['bookingId'];
-              if (bookingId == null || bookingId.isEmpty) {
-                return slideUpPage(
-                  key: state.pageKey,
-                  child: const _MissingBookingScreen(),
-                );
-              }
-              return slideUpPage(
-                key: state.pageKey,
-                child: WriteReviewScreen(
-                  propertyId: state.pathParameters['id']!,
-                  bookingId: bookingId,
-                  propertyName: state.uri.queryParameters['name'],
-                ),
-              );
-            },
-          ),
-        ],
-      ),
-
       // ── Verify + Subscription Flow ──────────────────────────────────
-      // 8 screens — paywall (modal, không nằm trong router) + 7 screens dưới đây.
-      // Trigger paywall: gọi `showPaywallModal(context)` từ bất kỳ feature
-      // bị lock nào (property management, room management...). Sau khi user
-      // tap "Bắt đầu ngay" → push `/verify/cccd-front`.
+      // 7 routed screens + the paywall modal (not part of the router).
+      // Paywall trigger: call `showPaywallModal(context)` from any locked
+      // feature (property management, etc.). Tapping "Get started" pushes
+      // `/verify/cccd-front`.
       GoRoute(
         path: '/verify/cccd-front',
         pageBuilder: (_, state) => slideUpPage(
@@ -698,25 +646,3 @@ final routerProvider = Provider<GoRouter>((ref) {
     ),
   );
 });
-
-/// Fallback khi mở `/reviews/:id/write` mà thiếu `bookingId` query param —
-/// route hợp lệ nhưng thiếu data, không nên crash.
-class _MissingBookingScreen extends StatelessWidget {
-  const _MissingBookingScreen();
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: const Text('Viết đánh giá')),
-      body: const Center(
-        child: Padding(
-          padding: EdgeInsets.all(24),
-          child: Text(
-            'Thiếu thông tin booking. Mở từ "Booking của tôi" → booking đã hoàn tất.',
-            textAlign: TextAlign.center,
-          ),
-        ),
-      ),
-    );
-  }
-}

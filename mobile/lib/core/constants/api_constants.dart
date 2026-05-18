@@ -17,7 +17,7 @@ class ApiConstants {
   static const String users = '/users';
   static String userDetail(String id) => '/users/$id';
 
-  // Properties (cơ sở lưu trú — đây cũng là booking unit)
+  // Properties (lodging unit — also the booking unit).
   static const String properties = '/properties';
   static String propertyDetail(String id) => '/properties/$id';
   static String propertyImages(String id) => '/properties/$id/images';
@@ -41,7 +41,7 @@ class ApiConstants {
   // Property share (public link, no pricing data).
   static String propertyShare(String id) => '/properties/share/$id';
 
-  // KYC (verify identity cho OWNER)
+  // KYC (identity verification for OWNER).
   static const String kycUploadCccdFront = '/kyc/upload-cccd-front';
   static const String kycUploadCccdBack = '/kyc/upload-cccd-back';
   static const String kycUploadSelfie = '/kyc/upload-selfie';
@@ -63,7 +63,7 @@ class ApiConstants {
   static String paymentRefund(String sessionId) =>
       '/payments/$sessionId/refund';
 
-  // Admin KYC (chỉ ADMIN)
+  // Admin KYC (ADMIN-only).
   static const String adminKycQueue = '/admin/kyc/queue';
   static String adminKycApprove(String id) =>
       '/admin/kyc/submissions/$id/approve';
@@ -74,18 +74,18 @@ class ApiConstants {
   static const String calendarPublicGrid =
       '/calendar/public-grid'; // GET — public, no auth
   static const String calendarGrid =
-      '/calendar/grid'; // GET — management, Bearer token
+      '/calendar/grid'; // GET — management, Bearer token.
   static const String calendarLock =
-      '/calendar/lock'; // POST = lock, DELETE = unlock
+      '/calendar/lock'; // POST = lock, DELETE = unlock.
   static const String calendarSold =
-      '/calendar/sold'; // PATCH = đánh dấu đã bán
+      '/calendar/sold'; // PATCH = mark as sold.
   static const String calendarAdminContact = '/calendar/admin-contact';
 
   // Dashboard & Reports
   static const String dashboardStats = '/dashboard/stats';
   static const String reports = '/reports';
 
-  // Staff (OWNER mời nhân viên qua email)
+  // Staff (OWNER invites employees via email).
   static const String staffInvites = '/staff/invites';
   static String staffInviteDetail(String id) => '/staff/invites/$id';
   static String staffInviteVerify(String token) =>
@@ -94,19 +94,11 @@ class ApiConstants {
   static const String staff = '/staff';
   static String staffDetail(String userId) => '/staff/$userId';
 
-  // Reviews (đánh giá ở cấp Property — 6 tiêu chí 1-5 sao)
-  static String propertyReviews(String propertyId) =>
-      '/properties/$propertyId/reviews';
-  static String propertyReviewReply(String propertyId, String reviewId) =>
-      '/properties/$propertyId/reviews/$reviewId/reply';
-  static String adminHideReview(String reviewId) =>
-      '/admin/reviews/$reviewId';
-
-  // App version metadata cho force-update flow.
-  // BE trả: { latestVersion, minSupportedVersion, releaseNotes, storeUrl{ ios, android } }
+  // App version metadata for force-update flow.
+  // BE returns: { latestVersion, minSupportedVersion, releaseNotes, storeUrl{ ios, android } }
   static const String appVersion = '/app/version';
 
-  // Devices (FCM token registration cho push notification)
+  // Devices (FCM token registration for push notifications).
   static const String devices = '/devices';
   static String deviceDetail(String token) => '/devices/$token';
 
@@ -116,7 +108,7 @@ class ApiConstants {
   static String notificationRead(String id) => '/notifications/$id/read';
   static const String notificationsReadAll = '/notifications/read-all';
 
-  // Partner (bắt buộc header X-Partner-Key — truyền qua repository, không hardcode)
+  // Partner (X-Partner-Key header is required — passed via repository, never hardcoded).
   static const String partnerProperties = '/partner/properties';
   static String partnerPropertyDetail(String id) => '/partner/properties/$id';
   static String partnerPropertyAvailability(String id) =>

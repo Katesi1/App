@@ -10,14 +10,14 @@ import '../data/models/payment_history_item.dart';
 import '../data/models/verify_enums.dart';
 import 'widgets/verify_format.dart';
 
-/// Lịch sử thanh toán + gia hạn cho OWNER. Reach từ:
-/// - `/profile` → "Subscription" → "Lịch sử thanh toán"
-/// - `/verify/subscription-detail` → CTA "Xem lịch sử"
+/// Payment + renewal history for OWNER. Reached from:
+/// - `/profile` → "Subscription" → "Payment history"
+/// - `/verify/subscription-detail` → "View history" CTA
 ///
-/// Cursor-based pagination (xem `api-payments-frontend-spec.md` §7.3):
-/// - Trang đầu auto-fetch khi `paymentHistoryListProvider` mount
-/// - Scroll gần cuối list → auto-trigger `loadMore()` (200px threshold)
-/// - `state.hasMore == false` → ẩn footer "đang load"
+/// Cursor-based pagination (see `api-payments-frontend-spec.md` §7.3):
+/// - First page auto-fetches when `paymentHistoryListProvider` mounts
+/// - Scrolling near the bottom → auto-triggers `loadMore()` (200px threshold)
+/// - `state.hasMore == false` → hide the "loading" footer
 class PaymentHistoryScreen extends ConsumerStatefulWidget {
   const PaymentHistoryScreen({super.key});
 
@@ -148,7 +148,7 @@ class _Footer extends ConsumerWidget {
       );
     }
     if (state.error != null && state.items.isNotEmpty) {
-      // Lỗi loadMore — show retry, không thay thế list cũ.
+      // loadMore failed — show retry without replacing the existing list.
       return Padding(
         padding: const EdgeInsets.symmetric(vertical: 12),
         child: Center(
@@ -291,8 +291,9 @@ class _PaymentHistoryRow extends StatelessWidget {
                         ),
                       ),
                       Text(
-                        // Backend §7.4: refund row có `amount` dương — FE tự
-                        // thêm dấu trừ + màu coral để user nhìn thấy chiều âm.
+                        // Backend §7.4: refund rows have a positive `amount` —
+                        // FE adds the minus sign + coral colour so the user
+                        // sees the negative direction.
                         item.isRefund
                             ? '-${VerifyFormat.priceVND(item.amount)}'
                             : VerifyFormat.priceVND(item.amount),

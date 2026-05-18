@@ -38,17 +38,17 @@ class CalendarGridParams {
       Object.hash(startDate, endDate, propertyId, type, isPublic);
 }
 
-// ─── Grid provider (auto-refresh mỗi 30s khi đang watch) ────────────────────
+// Grid provider — auto-refreshes every 30s while watched.
 final calendarGridProvider =
     FutureProvider.family.autoDispose<CalendarGrid, CalendarGridParams>(
   (ref, params) async {
-    // Auto-refresh mỗi 30s — timer tự huỷ khi không còn screen nào watch
+    // Auto-refresh every 30s — timer cancels when no screens watch.
     final timer = Timer.periodic(const Duration(seconds: 30), (_) {
       ref.invalidateSelf();
     });
     ref.onDispose(timer.cancel);
 
-    // Giữ cache 5 phút khi chuyển tab tránh fetch lại ngay
+    // Keep cache 5 minutes when switching tabs to avoid immediate refetch.
     final link = ref.keepAlive();
     Timer(const Duration(minutes: 5), link.close);
 

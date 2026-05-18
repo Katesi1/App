@@ -20,13 +20,14 @@ import '../utils/cccd_image_validator.dart';
 import '../utils/cccd_qr_parser.dart';
 import 'widgets/not_cccd_warning_dialog.dart';
 
-/// Full-screen scanner cho CCCD.
+/// Full-screen CCCD scanner.
 ///
-/// Khác `CCCDCaptureScreen` (gọi `image_picker` mở camera native), screen này
-/// dựng `CameraPreview` ngay trong app + frame overlay đúng tỉ lệ CCCD +
-/// ML Kit text recognition để auto-shutter khi nhận diện đủ keyword.
+/// Unlike `CCCDCaptureScreen` (which calls `image_picker` for the native
+/// camera), this screen embeds a `CameraPreview` in-app with a CCCD-ratio
+/// frame overlay + ML Kit text recognition to auto-shutter when enough
+/// keywords are detected.
 ///
-/// Pop về parent với `File?` (cropped) — null nếu user huỷ.
+/// Pops the parent with a cropped `File?` — null if the user cancels.
 class CCCDScannerScreen extends StatefulWidget {
   final CCCDSide side;
 
@@ -52,19 +53,20 @@ class _CCCDScannerScreenState extends State<CCCDScannerScreen>
   _Status _status = _Status.searching;
 
   /// Cached extraction:
-  /// - Mặt trước: text OCR đã đọc lúc auto-shutter trigger → parse khi capture.
-  /// - Mặt sau: QR code raw đã decode (nếu nhận diện được).
+  /// - Front: OCR text read at the moment auto-shutter triggered → parsed
+  ///   when capturing.
+  /// - Back: raw decoded QR code (if detected).
   String? _lastOcrText;
   String? _lastQrPayload;
 
-  // Auto-capture sau khi detect ổn định ~1.2s (~6 frames @ 200ms throttle).
+  // Auto-capture after detection has been stable for ~1.2s (~6 frames @ 200ms throttle).
   static const int _detectThreshold = 6;
   static const Duration _processInterval = Duration(milliseconds: 200);
   static const double _frameWidthFraction = 0.86;
 
   bool get _isFront => widget.side == CCCDSide.front;
 
-  // Map device orientation → degrees (Android cần để compute rotation).
+  // Map device orientation → degrees (Android needs this to compute rotation).
   static const _orientationDegrees = <DeviceOrientation, int>{
     DeviceOrientation.portraitUp: 0,
     DeviceOrientation.landscapeLeft: 90,
@@ -76,8 +78,8 @@ class _CCCDScannerScreenState extends State<CCCDScannerScreen>
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
-    // Mặt trước: dùng OCR text recognizer.
-    // Mặt sau: dùng barcode scanner (QR code).
+    // Front: use OCR text recognizer.
+    // Back: use barcode scanner (QR code).
     if (_isFront) {
       _recognizer = TextRecognizer(script: TextRecognitionScript.latin);
     } else {
@@ -139,8 +141,9 @@ class _CCCDScannerScreenState extends State<CCCDScannerScreen>
 
       final controller = CameraController(
         rear,
-        // Medium (~640×480) đủ cho OCR/QR detect, giảm ~75% RAM/GPU so với high
-        // → tránh thermal throttle trên iPhone đời cũ khi stream image liên tục.
+        // Medium (~640×480) is enough for OCR/QR detection and uses ~75% less
+        // RAM/GPU than high → avoids thermal throttling on older iPhones when
+        // continuously streaming frames.
         ResolutionPreset.medium,
         enableAudio: false,
         imageFormatGroup: Platform.isAndroid
@@ -202,14 +205,14 @@ class _CCCDScannerScreenState extends State<CCCDScannerScreen>
         _setStatus(_Status.searching);
       }
     } catch (e) {
-      // Bỏ qua frame lỗi — frame sau sẽ thử lại.
+      // Skip the failing frame — the next one will retry.
       if (kDebugMode) debugPrint('[scanner] frame err: $e');
     } finally {
       _processing = false;
     }
   }
 
-  /// Mặt trước — OCR text + cache raw text để parse khi capture.
+  /// Front side — OCR text + cache raw text to parse when capturing.
   Future<bool> _processFrontFrame(InputImage input) async {
     final recognized = await _recognizer?.processImage(input);
     if (recognized == null) return false;
@@ -218,9 +221,10 @@ class _CCCDScannerScreenState extends State<CCCDScannerScreen>
     return hit;
   }
 
-  /// Mặt sau — quét QR code. CCCD chip mới có QR ở góc trên phải mặt sau.
-  /// Khi decode được QR có format hợp lệ (12-digit ID đầu tiên) thì trigger
-  /// auto-shutter ngay (không cần đếm frame như OCR text vì QR đã chính xác).
+  /// Back side — scan the QR code. The new chipped CCCD has its QR at the
+  /// top-right of the back. Once we decode a QR with a valid format (12-digit
+  /// ID prefix), trigger auto-shutter immediately (no need to count frames
+  /// like OCR text since the QR is already accurate).
   Future<bool> _processBackFrame(InputImage input) async {
     final scanner = _barcodeScanner;
     if (scanner == null) return false;
@@ -228,7 +232,7 @@ class _CCCDScannerScreenState extends State<CCCDScannerScreen>
     for (final b in barcodes) {
       final raw = b.rawValue;
       if (raw == null || raw.isEmpty) continue;
-      // Pre-check: phải bắt đầu bằng 12 chữ số (CCCD ID).
+      // Pre-check: must start with 12 digits (CCCD ID).
       if (RegExp(r'^\d{12}\|').hasMatch(raw)) {
         _lastQrPayload = raw;
         return true;
@@ -237,10 +241,10 @@ class _CCCDScannerScreenState extends State<CCCDScannerScreen>
     return false;
   }
 
-  /// Match keyword đặc trưng của CCCD VN (in cả tiếng Việt + English line).
+  /// Match CCCD-specific keywords (printed in both Vietnamese and English).
   ///
-  /// Yêu cầu ≥ 2 hit để giảm false positive (tránh trigger khi camera quay
-  /// random text ngoài CCCD).
+  /// Require ≥ 2 hits to reduce false positives (avoid triggering when the
+  /// camera points at random non-CCCD text).
   bool _matchesCccd(String text, CCCDSide side) {
     final upper = text.toUpperCase();
 
@@ -341,7 +345,7 @@ class _CCCDScannerScreenState extends State<CCCDScannerScreen>
 
       final finalImage = cropped ?? File(shot.path);
 
-      // Parse extraction đã cached từ frame trigger auto-shutter.
+      // Parse extraction cached from the frame that triggered auto-shutter.
       OCRResult? ocr;
       if (_isFront && _lastOcrText != null) {
         ocr = CccdFrontOcrParser.parse(_lastOcrText!);
@@ -350,8 +354,9 @@ class _CCCDScannerScreenState extends State<CCCDScannerScreen>
         ocr = VietnamCccdQrParser.parse(_lastQrPayload!);
       }
 
-      // Manual shutter ở mặt TRƯỚC (no cached OCR text) → chạy validator
-      // chặn user chụp bừa. Mặt sau bỏ qua validate (admin duyệt thủ công).
+      // Manual shutter on the FRONT side (no cached OCR text) → run the
+      // validator to block random captures. Back side skips validation (admin
+      // reviews manually).
       if (_isFront && ocr == null) {
         final validation = await CccdImageValidator.validate(
           image: finalImage,
@@ -367,7 +372,7 @@ class _CCCDScannerScreenState extends State<CCCDScannerScreen>
           );
           if (!mounted) return;
           if (force != true) {
-            // User chọn "Chụp lại" → restart stream + cho user thử lại.
+            // User picked "Retake" → restart stream + let them try again.
             _capturing = false;
             _setStatus(_Status.searching);
             try {
@@ -375,7 +380,7 @@ class _CCCDScannerScreenState extends State<CCCDScannerScreen>
             } catch (_) {}
             return;
           }
-          // User cố tình "Vẫn upload" → pop với ocr=null, admin duyệt thủ công.
+          // User insisted on "Upload anyway" → pop with ocr=null, admin reviews manually.
         }
       }
 
@@ -390,7 +395,7 @@ class _CCCDScannerScreenState extends State<CCCDScannerScreen>
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Chụp lỗi: $e')),
       );
-      // Restart stream để user thử lại.
+      // Restart the stream so the user can try again.
       try {
         await c.startImageStream(_onFrame);
       } catch (_) {}
@@ -437,10 +442,10 @@ class _CCCDScannerScreenState extends State<CCCDScannerScreen>
                     return Stack(
                       fit: StackFit.expand,
                       children: [
-                        // Live preview — fill screen, crop edges if cần.
+                        // Live preview — fill screen, crop edges if needed.
                         _FillCameraPreview(controller: _controller!),
 
-                        // Dark scrim với cutout ở giữa.
+                        // Dark scrim with a cutout at the center.
                         IgnorePointer(
                           child: CustomPaint(
                             painter: _ScrimPainter(
@@ -520,22 +525,23 @@ class _CCCDScannerScreenState extends State<CCCDScannerScreen>
 
 enum _Status { searching, detected, capturing }
 
-/// CameraPreview với BoxFit.cover (thay vì FittedBox default thường để chừa
-/// letterbox đen). Giữ tỉ lệ camera, nếu thừa thì crop.
+/// CameraPreview with BoxFit.cover (vs FittedBox default that leaves black
+/// letterbox). Keeps the camera ratio; overflow is cropped.
 class _FillCameraPreview extends StatelessWidget {
   final CameraController controller;
   const _FillCameraPreview({required this.controller});
 
   @override
   Widget build(BuildContext context) {
-    // Natural aspect — centered với letterbox khi cần.
-    // (Trước dùng BoxFit.cover + OverflowBox → camera bị scale up & crop edges,
-    //  CCCD thực tế bị crop khỏi vùng visible nếu user cầm phone đứng.)
+    // Natural aspect — centered with letterbox when needed.
+    // (Previously used BoxFit.cover + OverflowBox → camera was scaled up &
+    // edges cropped, so the real CCCD ended up outside the visible area when
+    // the user held the phone vertically.)
     return Center(child: CameraPreview(controller));
   }
 }
 
-/// Vẽ scrim đen mờ phủ toàn screen, trừ vùng cutout CCCD ở center.
+/// Paint a dim black scrim covering the whole screen except the centered CCCD cutout.
 class _ScrimPainter extends CustomPainter {
   final double frameWidthFraction;
   final double aspect;
@@ -569,12 +575,12 @@ class _ScrimPainter extends CustomPainter {
       old.frameWidthFraction != frameWidthFraction || old.aspect != aspect;
 }
 
-/// Overlay corner brackets + scan line + status pill ở phía trên frame.
+/// Overlay corner brackets + scan line + status pill above the frame.
 class _FrameOverlay extends StatefulWidget {
   final double frameWidthFraction;
   final double aspect;
   final _Status status;
-  final double progress; // 0..1, dùng cho progress bar khi detected
+  final double progress; // 0..1, used for the progress bar when detected
 
   const _FrameOverlay({
     required this.frameWidthFraction,
@@ -625,7 +631,7 @@ class _FrameOverlayState extends State<_FrameOverlay>
         return IgnorePointer(
           child: Stack(
             children: [
-              // Frame border gọn (1px) + corner brackets.
+              // Subtle frame border (1px) + corner brackets.
               Positioned(
                 left: left,
                 top: top,
@@ -687,7 +693,7 @@ class _FrameOverlayState extends State<_FrameOverlay>
                         );
                       },
                     ),
-                    // Progress bar dưới đáy frame khi đang detect
+                    // Progress bar at the bottom of the frame while detecting.
                     if (widget.status == _Status.detected)
                       Positioned(
                         left: 12,
@@ -707,7 +713,7 @@ class _FrameOverlayState extends State<_FrameOverlay>
                 ),
               ),
 
-              // Status pill phía trên frame
+              // Status pill above the frame.
               Positioned(
                 left: 0,
                 right: 0,
@@ -715,7 +721,7 @@ class _FrameOverlayState extends State<_FrameOverlay>
                 child: Center(child: _StatusPill(status: widget.status)),
               ),
 
-              // Hint dưới frame
+              // Hint below the frame.
               Positioned(
                 left: AppSpacing.md,
                 right: AppSpacing.md,

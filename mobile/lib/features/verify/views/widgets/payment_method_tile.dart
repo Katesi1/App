@@ -4,10 +4,10 @@ import '../../../../core/theme/app_color_scheme.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../data/models/verify_enums.dart';
 
-/// Một payment method tile (radio-style) cho Screen 5.
+/// A single payment-method tile (radio-style) for Screen 5.
 ///
-/// `isComingSoon` = true → tile bị mờ, disable tap, hiện badge "Đang phát triển"
-/// (dùng cho thẻ tín dụng — chưa tích hợp cổng card).
+/// `isComingSoon` = true → tile dims, taps disabled, shows the "Coming soon"
+/// badge (used for credit card — card gateway not integrated yet).
 class PaymentMethodTile extends StatelessWidget {
   final PaymentMethod method;
   final bool isSelected;

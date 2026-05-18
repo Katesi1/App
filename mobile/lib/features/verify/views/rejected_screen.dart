@@ -10,7 +10,7 @@ import '../controllers/verify_flow_controller.dart';
 import '../data/models/verify_enums.dart';
 import 'widgets/verify_format.dart';
 
-/// Screen 8 — Rejected (admin reject toàn bộ hoặc một phần).
+/// Screen 8 — Rejected (admin rejected fully or partially).
 class RejectedScreen extends ConsumerWidget {
   const RejectedScreen({super.key});
 
@@ -22,9 +22,9 @@ class RejectedScreen extends ConsumerWidget {
 
     return Scaffold(
       backgroundColor: colors.bgCanvas,
-      // User landed ở đây qua `pushReplacement` từ pending → stack rỗng,
-      // cần explicit exit. AppBar X dismiss → /home (router auto-redirect
-      // sang /dashboard nếu là management user).
+      // User landed here via `pushReplacement` from pending → stack is empty,
+      // we need an explicit exit. AppBar X dismisses → /home (router
+      // auto-redirects to /dashboard for management users).
       appBar: AppBar(
         backgroundColor: colors.bgCanvas,
         elevation: 0,
@@ -34,7 +34,7 @@ class RejectedScreen extends ConsumerWidget {
             icon: const Icon(Icons.close),
             color: colors.textSecondary,
             tooltip: 'Đóng',
-            onPressed: () => context.go('/home'),
+            onPressed: () => context.go('/dashboard'),
           ),
         ],
       ),
@@ -75,8 +75,8 @@ class RejectedScreen extends ConsumerWidget {
                     ),
                   const SizedBox(height: AppSpacing.md),
                   _NeedFixCard(items: items),
-                  // Sau khi refund xong → bottom action bar bị ẩn → cần
-                  // secondary CTA "Về trang chủ" để user thoát.
+                  // After refund completes → bottom action bar is hidden →
+                  // need a secondary "Back to home" CTA so the user can exit.
                   if (state.refundProcessed) ...[
                     const SizedBox(height: AppSpacing.md),
                     SizedBox(
@@ -86,8 +86,8 @@ class RejectedScreen extends ConsumerWidget {
                           side: BorderSide(color: colors.borderDefault),
                           foregroundColor: colors.textSecondary,
                         ),
-                        onPressed: () => context.go('/home'),
-                        child: const Text('Về trang chủ'),
+                        onPressed: () => context.go('/dashboard'),
+                        child: const Text('Về tổng quan'),
                       ),
                     ),
                   ],

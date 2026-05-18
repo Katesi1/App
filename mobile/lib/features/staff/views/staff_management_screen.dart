@@ -40,7 +40,7 @@ class _StaffManagementScreenState extends ConsumerState<StaffManagementScreen>
       builder: (_) => const _InviteStaffSheet(),
     );
     if (created == true && mounted) {
-      _tabCtrl.animateTo(1); // chuyển sang tab "Lời mời"
+      _tabCtrl.animateTo(1); // switch to "Invites" tab
     }
   }
 
@@ -88,7 +88,7 @@ class _StaffManagementScreenState extends ConsumerState<StaffManagementScreen>
   }
 }
 
-// ── Tab: Nhân viên đang active ────────────────────────────────────────────────
+// Tab: active staff.
 
 class _StaffListTab extends ConsumerStatefulWidget {
   const _StaffListTab();
@@ -254,7 +254,7 @@ class _StaffTile extends StatelessWidget {
   }
 }
 
-// ── Tab: Lời mời ──────────────────────────────────────────────────────────────
+// Tab: invites.
 
 class _InvitesListTab extends ConsumerStatefulWidget {
   const _InvitesListTab();
@@ -475,7 +475,7 @@ class _StatusBadge extends StatelessWidget {
   }
 }
 
-// ── Bottom sheet: nhập email mời ──────────────────────────────────────────────
+// Bottom sheet: enter invite email.
 
 class _InviteStaffSheet extends ConsumerStatefulWidget {
   const _InviteStaffSheet();

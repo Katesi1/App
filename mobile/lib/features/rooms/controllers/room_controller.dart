@@ -7,7 +7,7 @@ import '../../reports/controllers/report_controller.dart';
 final roomRepositoryProvider =
     Provider<RoomRepository>((ref) => RoomRepository());
 
-// Provider lấy danh sách phòng (scoped theo owner — dùng cho quản lý)
+// Room list provider (scoped by owner — used for management).
 final roomListProvider =
     FutureProvider.family<List<RoomModel>, String?>((ref, homestayId) async {
   final repo = ref.read(roomRepositoryProvider);
@@ -27,7 +27,7 @@ final allRoomsProvider =
   throw Exception(result.message);
 });
 
-// Provider lấy chi tiết phòng
+// Room detail provider.
 final roomDetailProvider =
     FutureProvider.family<RoomModel, String>((ref, id) async {
   final repo = ref.read(roomRepositoryProvider);

@@ -4,7 +4,7 @@ import '../../../core/theme/app_color_scheme.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../data/models/homestay_model.dart';
 
-/// Card quản lý phòng (dùng HomestayModel) — có nút edit
+/// Property management card (uses HomestayModel) — has edit button.
 class PropertyManagementCard extends StatelessWidget {
   final HomestayModel homestay;
   final VoidCallback? onTap;

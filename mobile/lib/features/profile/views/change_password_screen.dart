@@ -9,7 +9,7 @@ import '../../../core/theme/app_spacing.dart';
 import '../../../features/auth/controllers/auth_controller.dart';
 import '../../../shared/widgets/loading_widget.dart';
 
-// gradient.brandHero stop "jade-mid" theo spec section 3.7 — chưa có token sẵn
+// gradient.brandHero stop "jade-mid" per spec section 3.7 — no token defined yet.
 const _jadeMidLight = Color(0xFF1B7E94);
 
 class ChangePasswordScreen extends ConsumerStatefulWidget {
@@ -122,7 +122,6 @@ class _ChangePasswordScreenState extends ConsumerState<ChangePasswordScreen> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          // Mật khẩu hiện tại
                           _buildLabel('Mật khẩu hiện tại'),
                           const SizedBox(height: 6),
                           TextFormField(
@@ -145,7 +144,6 @@ class _ChangePasswordScreenState extends ConsumerState<ChangePasswordScreen> {
 
                           const SizedBox(height: 20),
 
-                          // Mật khẩu mới
                           _buildLabel('Mật khẩu mới'),
                           const SizedBox(height: 6),
                           TextFormField(
@@ -191,7 +189,6 @@ class _ChangePasswordScreenState extends ConsumerState<ChangePasswordScreen> {
 
                           const SizedBox(height: 20),
 
-                          // Xác nhận mật khẩu mới
                           _buildLabel('Xác nhận mật khẩu mới'),
                           const SizedBox(height: 6),
                           TextFormField(

@@ -15,10 +15,11 @@ import '../models/selfie_upload.dart';
 import '../models/verify_enums.dart';
 import 'verify_repository.dart';
 
-/// Real backend implementation cho [VerifyRepository].
+/// Real backend implementation of [VerifyRepository].
 ///
-/// Gọi các endpoint tại spec `BACKEND_CHANGES_REPORT.md` mục 4-7.
-/// Dio singleton có sẵn auth interceptor → mọi request tự đính bearer token.
+/// Calls the endpoints listed in `BACKEND_CHANGES_REPORT.md` sections 4-7.
+/// The Dio singleton already has the auth interceptor → every request
+/// auto-attaches the bearer token.
 class VerifyRepositoryImpl implements VerifyRepository {
   final Dio _dio;
 
@@ -34,11 +35,11 @@ class VerifyRepositoryImpl implements VerifyRepository {
   Future<CCCDUpload> uploadCCCDBack(File image, {OCRResult? ocrResult}) =>
       _uploadCccd(ApiConstants.kycUploadCccdBack, image, ocrResult);
 
-  /// Multipart upload: ảnh + (optional) OCR JSON đã extract trên device.
+  /// Multipart upload: image + (optional) OCR JSON already extracted on device.
   ///
-  /// Backend chỉ cần lưu ảnh lên Cloudinary + lưu `ocrResult` JSON vào
-  /// `kyc_uploads.ocr_result`. KHÔNG gọi OCR engine bên ngoài (frontend đã
-  /// extract bằng ML Kit / QR scanner trên device).
+  /// Backend just stores the image to Cloudinary + persists the `ocrResult`
+  /// JSON in `kyc_uploads.ocr_result`. Does NOT call an external OCR engine
+  /// (frontend already extracts via ML Kit / QR scanner on device).
   Future<CCCDUpload> _uploadCccd(
     String path,
     File image,
@@ -50,7 +51,7 @@ class VerifyRepositoryImpl implements VerifyRepository {
           image.path,
           filename: image.path.split('/').last,
         ),
-        // Field optional — chỉ gửi khi scanner extract được data
+        // Optional field — only sent when the scanner extracted data.
         if (ocr != null && !ocr.isEmpty) 'ocrResult': jsonEncode(ocr.toJson()),
       });
       final res = await _dio.post(
@@ -63,8 +64,8 @@ class VerifyRepositoryImpl implements VerifyRepository {
         ),
       );
       final data = res.data['data'] as Map<String, dynamic>;
-      // Backend có thể chưa lưu `ocrResult` (early integration) → fallback
-      // dùng ocr client đã gửi để frontend vẫn có data hiển thị ngay.
+      // Backend may not yet persist `ocrResult` (early integration) → fall
+      // back to the OCR the client sent so frontend can still display data.
       var upload = CCCDUpload.fromJson(data);
       if (upload.ocrResult == null && ocr != null && !ocr.isEmpty) {
         upload = upload.copyWith(ocrResult: ocr);
@@ -73,8 +74,9 @@ class VerifyRepositoryImpl implements VerifyRepository {
     } on DioException catch (e) {
       throw VerifyApiException(parseDioError(e));
     } on TypeError catch (_) {
-      // BE trả 200 nhưng body sai schema (null field, sai kiểu) → cast fail.
-      // Chuyển thành lỗi nghiệp vụ để UI hiển thị friendly thay vì crash.
+      // BE returned 200 but the body has a bad schema (null field, wrong type)
+      // → cast fails. Convert to a business error so UI shows a friendly
+      // message instead of crashing.
       throw const VerifyApiException(
         'Phản hồi máy chủ không hợp lệ. Vui lòng thử lại sau.',
       );
@@ -105,8 +107,9 @@ class VerifyRepositoryImpl implements VerifyRepository {
     } on DioException catch (e) {
       throw VerifyApiException(parseDioError(e));
     } on TypeError catch (_) {
-      // BE trả 200 nhưng body sai schema (null field, sai kiểu) → cast fail.
-      // Chuyển thành lỗi nghiệp vụ để UI hiển thị friendly thay vì crash.
+      // BE returned 200 but the body has a bad schema (null field, wrong type)
+      // → cast fails. Convert to a business error so UI shows a friendly
+      // message instead of crashing.
       throw const VerifyApiException(
         'Phản hồi máy chủ không hợp lệ. Vui lòng thử lại sau.',
       );
@@ -140,8 +143,9 @@ class VerifyRepositoryImpl implements VerifyRepository {
     } on DioException catch (e) {
       throw VerifyApiException(parseDioError(e));
     } on TypeError catch (_) {
-      // BE trả 200 nhưng body sai schema (null field, sai kiểu) → cast fail.
-      // Chuyển thành lỗi nghiệp vụ để UI hiển thị friendly thay vì crash.
+      // BE returned 200 but the body has a bad schema (null field, wrong type)
+      // → cast fails. Convert to a business error so UI shows a friendly
+      // message instead of crashing.
       throw const VerifyApiException(
         'Phản hồi máy chủ không hợp lệ. Vui lòng thử lại sau.',
       );
@@ -159,8 +163,9 @@ class VerifyRepositoryImpl implements VerifyRepository {
     } on DioException catch (e) {
       throw VerifyApiException(parseDioError(e));
     } on TypeError catch (_) {
-      // BE trả 200 nhưng body sai schema (null field, sai kiểu) → cast fail.
-      // Chuyển thành lỗi nghiệp vụ để UI hiển thị friendly thay vì crash.
+      // BE returned 200 but the body has a bad schema (null field, wrong type)
+      // → cast fails. Convert to a business error so UI shows a friendly
+      // message instead of crashing.
       throw const VerifyApiException(
         'Phản hồi máy chủ không hợp lệ. Vui lòng thử lại sau.',
       );
@@ -192,8 +197,9 @@ class VerifyRepositoryImpl implements VerifyRepository {
     } on DioException catch (e) {
       throw VerifyApiException(parseDioError(e));
     } on TypeError catch (_) {
-      // BE trả 200 nhưng body sai schema (null field, sai kiểu) → cast fail.
-      // Chuyển thành lỗi nghiệp vụ để UI hiển thị friendly thay vì crash.
+      // BE returned 200 but the body has a bad schema (null field, wrong type)
+      // → cast fails. Convert to a business error so UI shows a friendly
+      // message instead of crashing.
       throw const VerifyApiException(
         'Phản hồi máy chủ không hợp lệ. Vui lòng thử lại sau.',
       );
@@ -209,8 +215,9 @@ class VerifyRepositoryImpl implements VerifyRepository {
     } on DioException catch (e) {
       throw VerifyApiException(parseDioError(e));
     } on TypeError catch (_) {
-      // BE trả 200 nhưng body sai schema (null field, sai kiểu) → cast fail.
-      // Chuyển thành lỗi nghiệp vụ để UI hiển thị friendly thay vì crash.
+      // BE returned 200 but the body has a bad schema (null field, wrong type)
+      // → cast fails. Convert to a business error so UI shows a friendly
+      // message instead of crashing.
       throw const VerifyApiException(
         'Phản hồi máy chủ không hợp lệ. Vui lòng thử lại sau.',
       );
@@ -232,8 +239,9 @@ class VerifyRepositoryImpl implements VerifyRepository {
     } on DioException catch (e) {
       throw VerifyApiException(parseDioError(e));
     } on TypeError catch (_) {
-      // BE trả 200 nhưng body sai schema (null field, sai kiểu) → cast fail.
-      // Chuyển thành lỗi nghiệp vụ để UI hiển thị friendly thay vì crash.
+      // BE returned 200 but the body has a bad schema (null field, wrong type)
+      // → cast fails. Convert to a business error so UI shows a friendly
+      // message instead of crashing.
       throw const VerifyApiException(
         'Phản hồi máy chủ không hợp lệ. Vui lòng thử lại sau.',
       );
@@ -262,8 +270,9 @@ class VerifyRepositoryImpl implements VerifyRepository {
     } on DioException catch (e) {
       throw VerifyApiException(parseDioError(e));
     } on TypeError catch (_) {
-      // BE trả 200 nhưng body sai schema (null field, sai kiểu) → cast fail.
-      // Chuyển thành lỗi nghiệp vụ để UI hiển thị friendly thay vì crash.
+      // BE returned 200 but the body has a bad schema (null field, wrong type)
+      // → cast fails. Convert to a business error so UI shows a friendly
+      // message instead of crashing.
       throw const VerifyApiException(
         'Phản hồi máy chủ không hợp lệ. Vui lòng thử lại sau.',
       );
@@ -281,8 +290,9 @@ class VerifyRepositoryImpl implements VerifyRepository {
     } on DioException catch (e) {
       throw VerifyApiException(parseDioError(e));
     } on TypeError catch (_) {
-      // BE trả 200 nhưng body sai schema (null field, sai kiểu) → cast fail.
-      // Chuyển thành lỗi nghiệp vụ để UI hiển thị friendly thay vì crash.
+      // BE returned 200 but the body has a bad schema (null field, wrong type)
+      // → cast fails. Convert to a business error so UI shows a friendly
+      // message instead of crashing.
       throw const VerifyApiException(
         'Phản hồi máy chủ không hợp lệ. Vui lòng thử lại sau.',
       );
@@ -291,8 +301,8 @@ class VerifyRepositoryImpl implements VerifyRepository {
 
   @override
   Future<RefundResult> requestRefund(String submissionId) async {
-    // Backend nhận `sessionId`, không phải `submissionId`. Lấy session từ
-    // chi tiết submission rồi gọi refund.
+    // Backend expects `sessionId`, not `submissionId`. Fetch the session from
+    // the submission detail then call refund.
     try {
       final detail = await _dio.get(
         ApiConstants.kycSubmissionDetail(submissionId),
@@ -311,8 +321,9 @@ class VerifyRepositoryImpl implements VerifyRepository {
     } on DioException catch (e) {
       throw VerifyApiException(parseDioError(e));
     } on TypeError catch (_) {
-      // BE trả 200 nhưng body sai schema (null field, sai kiểu) → cast fail.
-      // Chuyển thành lỗi nghiệp vụ để UI hiển thị friendly thay vì crash.
+      // BE returned 200 but the body has a bad schema (null field, wrong type)
+      // → cast fails. Convert to a business error so UI shows a friendly
+      // message instead of crashing.
       throw const VerifyApiException(
         'Phản hồi máy chủ không hợp lệ. Vui lòng thử lại sau.',
       );
@@ -338,8 +349,9 @@ class VerifyRepositoryImpl implements VerifyRepository {
     } on DioException catch (e) {
       throw VerifyApiException(parseDioError(e));
     } on TypeError catch (_) {
-      // BE trả 200 nhưng body sai schema (null field, sai kiểu) → cast fail.
-      // Chuyển thành lỗi nghiệp vụ để UI hiển thị friendly thay vì crash.
+      // BE returned 200 but the body has a bad schema (null field, wrong type)
+      // → cast fails. Convert to a business error so UI shows a friendly
+      // message instead of crashing.
       throw const VerifyApiException(
         'Phản hồi máy chủ không hợp lệ. Vui lòng thử lại sau.',
       );
@@ -359,8 +371,9 @@ class VerifyRepositoryImpl implements VerifyRepository {
     } on DioException catch (e) {
       throw VerifyApiException(parseDioError(e));
     } on TypeError catch (_) {
-      // BE trả 200 nhưng body sai schema (null field, sai kiểu) → cast fail.
-      // Chuyển thành lỗi nghiệp vụ để UI hiển thị friendly thay vì crash.
+      // BE returned 200 but the body has a bad schema (null field, wrong type)
+      // → cast fails. Convert to a business error so UI shows a friendly
+      // message instead of crashing.
       throw const VerifyApiException(
         'Phản hồi máy chủ không hợp lệ. Vui lòng thử lại sau.',
       );
@@ -369,7 +382,7 @@ class VerifyRepositoryImpl implements VerifyRepository {
 
   // ── Helpers ────────────────────────────────────────────────────────────────
 
-  /// Lấy submission ID hiện tại từ `/kyc/status` (backend tự suy ra theo token).
+  /// Get the current submission ID from `/kyc/status` (backend infers it from the token).
   Future<String> _resolveCurrentSubmissionId() async {
     final snapshot = await getKycStatus();
     final id = snapshot.submissionId;
@@ -387,8 +400,8 @@ class VerifyRepositoryImpl implements VerifyRepository {
   }
 }
 
-/// Lỗi nghiệp vụ khi gọi backend KYC (đã có message tiếng Việt từ server hoặc
-/// message fallback từ `parseDioError`).
+/// Business error from the KYC backend (carries the server's Vietnamese
+/// message or a fallback from `parseDioError`).
 class VerifyApiException implements Exception {
   final String message;
   const VerifyApiException(this.message);

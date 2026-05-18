@@ -6,7 +6,7 @@ import '../../../../core/theme/app_color_scheme.dart';
 import '../../data/report_models.dart';
 import 'report_format.dart';
 
-/// 3 metric có thể plot trên trend chart.
+/// 3 metrics that can be plotted on the trend chart.
 enum TrendMetric { revenue, occupancy, bookings }
 
 extension TrendMetricX on TrendMetric {
@@ -17,9 +17,9 @@ extension TrendMetricX on TrendMetric {
       };
 }
 
-/// Line chart hiển thị xu hướng doanh thu / lấp đầy / booking theo ngày.
+/// Line chart showing revenue / occupancy / bookings trends by day.
 ///
-/// Dùng `fl_chart`. Tap vào điểm bất kỳ → tooltip ngày + giá trị.
+/// Uses `fl_chart`. Tap any point → tooltip with date + value.
 class RevenueTrendChart extends StatefulWidget {
   final List<RevenuePoint> points;
   const RevenueTrendChart({super.key, required this.points});
@@ -167,7 +167,7 @@ class _RevenueTrendChartState extends State<RevenueTrendChart> {
           sideTitles: SideTitles(
             showTitles: true,
             reservedSize: 24,
-            // Hiện ngày mỗi 5 step để tránh chồng chữ
+            // Show every 5th date to avoid overlapping labels.
             interval: (widget.points.length / 5).ceilToDouble(),
             getTitlesWidget: (value, _) {
               final idx = value.toInt();
@@ -207,7 +207,7 @@ class _RevenueTrendChartState extends State<RevenueTrendChart> {
               strokeWidth: 1.5,
             ),
             checkToShowDot: (spot, _) {
-              // Show dot mỗi 3 điểm để gọn
+              // Show dot every 3rd point to reduce clutter.
               return spot.x.toInt() % 3 == 0;
             },
           ),

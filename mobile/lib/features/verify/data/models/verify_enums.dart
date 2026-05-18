@@ -1,24 +1,24 @@
-/// Enums cho verify + subscription flow.
+/// Enums for the verify + subscription flow.
 library;
 
-/// Trạng thái tổng hợp của hồ sơ verify.
+/// Aggregate state of a verify application.
 enum VerifyStatus {
-  draft, // Owner đang fill, chưa upload đủ
-  kycSubmitted, // Đã upload CCCD + selfie
-  paymentPending, // Chưa thanh toán
-  awaitingApproval, // Payment OK, chờ admin duyệt
-  approved, // Admin đã duyệt → trial active
-  rejected, // Admin reject (toàn bộ hoặc một phần)
-  refunded, // Đã hoàn tiền
+  draft, // Owner is filling in, not yet fully uploaded
+  kycSubmitted, // CCCD + selfie uploaded
+  paymentPending, // Not paid yet
+  awaitingApproval, // Payment OK, waiting on admin approval
+  approved, // Admin approved → trial active
+  rejected, // Admin rejected (fully or partially)
+  refunded, // Refunded
 }
 
-/// Mặt CCCD cần chụp.
+/// Which side of the CCCD to capture.
 enum CCCDSide { front, back }
 
 enum BillingCycle { monthly, yearly }
 
-/// 6 tier theo số phòng cố định. Plan = tier; user không tự chọn số phòng
-/// (số phòng = thuộc tính của tier). Enterprise = không giới hạn, giá liên hệ.
+/// 6 tiers with fixed room counts. Plan = tier; user does not pick room count
+/// (it's an attribute of the tier). Enterprise = unlimited, contact-only pricing.
 enum Tier { rooms1, rooms5, rooms10, rooms20, rooms50, enterprise }
 
 extension TierX on Tier {
@@ -40,7 +40,7 @@ extension TierX on Tier {
         Tier.enterprise => 'Không giới hạn — hợp đồng riêng',
       };
 
-  /// Số phòng cố định của tier. Enterprise = -1 (custom/unlimited).
+  /// Fixed room count for the tier. Enterprise = -1 (custom/unlimited).
   int get rooms => switch (this) {
         Tier.rooms1 => 1,
         Tier.rooms5 => 5,
@@ -81,7 +81,7 @@ extension PaymentMethodX on PaymentMethod {
 
 enum PaymentStatus { pending, paid, failed, expired, refunded }
 
-/// Item có thể bị reject riêng lẻ trong KYC.
+/// KYC items that can be rejected individually.
 enum RejectableItem { cccdFront, cccdBack, selfie }
 
 extension RejectableItemX on RejectableItem {

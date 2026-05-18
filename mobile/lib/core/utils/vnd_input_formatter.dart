@@ -1,7 +1,7 @@
 import 'package:flutter/services.dart';
 
-/// Formatter tự thêm dấu . phân cách nghìn cho tiền VND.
-/// Parse lại: text.replaceAll('.', '') rồi double.tryParse().
+/// Formatter that auto-inserts `.` as thousands separators for VND amounts.
+/// Reverse parse: `text.replaceAll('.', '')` then `double.tryParse()`.
 class VndInputFormatter extends TextInputFormatter {
   @override
   TextEditingValue formatEditUpdate(

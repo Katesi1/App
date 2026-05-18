@@ -10,7 +10,7 @@ import '../../core/services/device_id_service.dart';
 import '../../core/storage/secure_storage.dart';
 import '../models/user_model.dart';
 
-/// Profile Google trả khi user mới — FE dùng để hiện preview trên RolePickerScreen.
+/// Google profile returned for new users — FE uses it to preview on RolePickerScreen.
 class GoogleProfile {
   final String email;
   final String name;
@@ -32,31 +32,31 @@ class GoogleProfile {
       );
 }
 
-/// Kết quả Google Sign-In. Sealed để caller exhaustive switch.
+/// Google Sign-In result. Sealed so callers can exhaustively switch.
 sealed class GoogleSignInOutcome {
   const GoogleSignInOutcome();
 }
 
-/// Login/Register thành công — đã có tokens + user.
+/// Login/Register succeeded — tokens + user are available.
 class GoogleSignInSuccess extends GoogleSignInOutcome {
   final UserModel user;
   const GoogleSignInSuccess(this.user);
 }
 
-/// User mới, BE yêu cầu chọn role. UI push RolePickerScreen kèm [idToken] +
-/// [profile] để gọi lại `/auth/google` sau khi chọn xong.
+/// New user — BE requires picking a role. UI pushes RolePickerScreen with
+/// [idToken] + [profile] to call `/auth/google` again after the choice.
 class GoogleSignInNeedsRole extends GoogleSignInOutcome {
   final String idToken;
   final GoogleProfile profile;
   const GoogleSignInNeedsRole({required this.idToken, required this.profile});
 }
 
-/// User huỷ pop-up Google.
+/// User cancelled the Google popup.
 class GoogleSignInCancelled extends GoogleSignInOutcome {
   const GoogleSignInCancelled();
 }
 
-/// Lỗi (network, BE reject, idToken sai...).
+/// Error (network, BE reject, bad idToken, etc.).
 class GoogleSignInFailure extends GoogleSignInOutcome {
   final String message;
   const GoogleSignInFailure(this.message);
@@ -127,11 +127,11 @@ class AuthRepository {
     }
   }
 
-  /// Login với email (+ phone khi BE deploy `identifier` field).
+  /// Login with email (+ phone once BE ships the `identifier` field).
   ///
-  /// ⚠️ Hiện tại BE DTO vẫn có `@IsEmail()` trên field `email` — login phone
-  /// trả 400 "Email không hợp lệ". Khi BE deploy field `identifier` xong,
-  /// đổi `'email'` → `'identifier'` ở body.
+  /// WARNING: BE DTO still has `@IsEmail()` on the `email` field — phone
+  /// login returns 400 "Email không hợp lệ". Once BE deploys the `identifier`
+  /// field, switch the body key from `'email'` → `'identifier'`.
   Future<ApiResponse<UserModel>> login(
       String identifier, String password) async {
     try {
@@ -180,14 +180,14 @@ class AuthRepository {
     }
   }
 
-  /// Mở popup Google chỉ để lấy idToken (KHÔNG gọi `/auth/google`).
-  /// Dùng cho flow accept invite — caller tự gọi `/staff/invites/accept` với
-  /// idToken trả về.
+  /// Open the Google popup just to fetch an idToken (does NOT call
+  /// `/auth/google`). Used for the accept-invite flow — caller invokes
+  /// `/staff/invites/accept` with the returned idToken.
   ///
   /// Returns:
-  /// - `(idToken, null)` khi thành công
-  /// - `(null, errorMessage)` khi fail
-  /// - `(null, null)` khi user huỷ
+  /// - `(idToken, null)` on success
+  /// - `(null, errorMessage)` on failure
+  /// - `(null, null)` when the user cancels
   Future<(String?, String?)> getGoogleIdToken() async {
     try {
       final googleUser = await _googleSignIn.signIn();
@@ -203,13 +203,14 @@ class AuthRepository {
     }
   }
 
-  /// Bắt đầu flow Google Sign-In. Lấy idToken + gửi cho BE.
+  /// Start the Google Sign-In flow. Fetch idToken and exchange with BE.
   ///
-  /// - [role] = null + user mới → BE trả `isNewUser: true` → outcome
-  ///   [GoogleSignInNeedsRole]. UI push RolePickerScreen rồi gọi lại
-  ///   [completeGoogleSignInWithRole] với role user chọn.
-  /// - [role] có giá trị + user mới → BE tạo user role đó → [GoogleSignInSuccess]
-  /// - User đã tồn tại → BE bỏ qua [role] → [GoogleSignInSuccess]
+  /// - [role] = null + new user → BE returns `isNewUser: true` → outcome
+  ///   [GoogleSignInNeedsRole]. UI pushes RolePickerScreen and then calls
+  ///   [completeGoogleSignInWithRole] with the chosen role.
+  /// - [role] provided + new user → BE creates the user with that role →
+  ///   [GoogleSignInSuccess]
+  /// - Existing user → BE ignores [role] → [GoogleSignInSuccess]
   Future<GoogleSignInOutcome> loginWithGoogle({int? role}) async {
     try {
       final googleUser = await _googleSignIn.signIn();
@@ -232,12 +233,13 @@ class AuthRepository {
     }
   }
 
-  /// Apple Sign In — bắt buộc theo Apple Guideline 4.8 khi app có Google login.
-  /// Trả `GoogleSignInOutcome` để dùng chung router/UI logic với Google flow.
+  /// Sign In with Apple — required by Apple Guideline 4.8 when the app
+  /// supports Google login. Returns `GoogleSignInOutcome` to share router/UI
+  /// logic with the Google flow.
   ///
-  /// iOS native: dùng `SignInWithApple.getAppleIDCredential` (popup hệ thống).
-  /// Android/Web: package fallback web flow — chưa support trong app này nên
-  /// caller chỉ enable button khi `Platform.isIOS`.
+  /// iOS native: uses `SignInWithApple.getAppleIDCredential` (system popup).
+  /// Android/Web: the package's fallback web flow — not supported in this
+  /// app, so the caller only enables the button when `Platform.isIOS`.
   Future<GoogleSignInOutcome> loginWithApple({int? role}) async {
     try {
       final available = await SignInWithApple.isAvailable();
@@ -284,8 +286,9 @@ class AuthRepository {
     }
   }
 
-  /// Tương tự `completeGoogleSignInWithRole` nhưng cho Apple flow.
-  /// Apple chỉ trả tên/email lần đầu user authorize → FE cache tạm để gửi lại.
+  /// Like `completeGoogleSignInWithRole` but for the Apple flow.
+  /// Apple only returns name/email on the first authorization → FE caches
+  /// them so they can be re-sent.
   Future<GoogleSignInOutcome> completeAppleSignInWithRole({
     required String idToken,
     required int role,
@@ -345,7 +348,7 @@ class AuthRepository {
         return const GoogleSignInFailure(
             'Phản hồi role picker thiếu profile');
       }
-      // Thêm idToken vào outcome để FE gọi lại endpoint sau role picker.
+      // Include idToken in the outcome so FE can replay the endpoint after the role picker.
       return GoogleSignInNeedsRole(
         idToken: idToken,
         profile: GoogleProfile(
@@ -377,9 +380,10 @@ class AuthRepository {
     return GoogleSignInSuccess(user);
   }
 
-  /// Sau khi user chọn role trên RolePickerScreen, gọi lại `/auth/google` với
-  /// idToken cũ + role. idToken có thể đã hết hạn (TTL 1h) → caller nên handle
-  /// 401 bằng cách quay lại [loginWithGoogle] để lấy idToken mới.
+  /// After the user picks a role on RolePickerScreen, call `/auth/google`
+  /// again with the previous idToken + role. The idToken may have expired
+  /// (TTL 1h) → caller should handle 401 by falling back to [loginWithGoogle]
+  /// to fetch a fresh one.
   Future<GoogleSignInOutcome> completeGoogleSignInWithRole({
     required String idToken,
     required int role,
@@ -413,7 +417,7 @@ class AuthRepository {
       );
     }
 
-    // Case: BE trả role picker prompt (200 + isNewUser=true).
+    // Case: BE returns the role picker prompt (200 + isNewUser=true).
     if (payload['isNewUser'] == true) {
       final profileMap = payload['googleProfile'];
       if (profileMap is! Map<String, dynamic>) {
@@ -426,7 +430,7 @@ class AuthRepository {
       );
     }
 
-    // Case: success — có tokens + user.
+    // Case: success — tokens + user present.
     final tokens = _extractTokens(payload);
     if (tokens == null || tokens.$1.isEmpty || tokens.$2.isEmpty) {
       return const GoogleSignInFailure(
@@ -447,7 +451,7 @@ class AuthRepository {
     return GoogleSignInSuccess(user);
   }
 
-  /// GET /auth/profile — đồng bộ user sau khi mở app / làm mới phiên.
+  /// GET /auth/profile — refresh the user after app open / session renewal.
   Future<ApiResponse<UserModel>> getProfile() async {
     try {
       final response = await _dio.get(ApiConstants.profile);
@@ -558,9 +562,9 @@ class AuthRepository {
     return token != null;
   }
 
-  /// Header anti-spam cho `/auth/register` và `/auth/google`.
-  /// BE tracking theo deviceId (3 account/24h/device) + IP (10/24h).
-  /// Nếu lấy device ID fail → bỏ header, BE fallback IP-only.
+  /// Anti-spam headers for `/auth/register` and `/auth/google`.
+  /// BE tracks per deviceId (3 accounts/24h/device) + IP (10/24h).
+  /// If fetching device ID fails → drop the header; BE falls back to IP-only.
   Future<Map<String, dynamic>> _antiSpamHeaders() async {
     final deviceId = await DeviceIdService.instance.getDeviceId();
     if (deviceId == null) return const {};
@@ -575,7 +579,7 @@ class AuthRepository {
     if (data is Map<String, dynamic>) {
       return data;
     }
-    // Một số backend trả token/user trực tiếp ở root response.
+    // Some backends return token/user directly at the root of the response.
     return body;
   }
 

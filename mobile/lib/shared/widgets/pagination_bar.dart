@@ -4,9 +4,9 @@ import 'package:google_fonts/google_fonts.dart';
 import '../../core/theme/app_color_scheme.dart';
 import '../../core/theme/app_spacing.dart';
 
-/// Phân trang gọn: ‹  số trang  ›
+/// Compact pagination: ‹  page  ›
 class AppPaginationBar extends StatelessWidget {
-  /// Trang hiện tại (0-based).
+  /// Current page (0-based).
   final int currentPage;
 
   final int totalPages;

@@ -7,25 +7,25 @@ import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 
 import '../../data/repositories/device_repository.dart';
 
-/// Channel ID Android — phải khớp `default_notification_channel_id` trong
+/// Android channel ID — must match `default_notification_channel_id` in
 /// AndroidManifest.xml.
 const String _androidChannelId = 'halong24h_default';
 const String _androidChannelName = 'Halong24h';
 const String _androidChannelDesc =
     'Thông báo booking, thanh toán, KYC và cập nhật từ Halong24h';
 
-/// Background message handler — phải là top-level function (yêu cầu của FCM).
-/// Chạy trong isolate riêng → không truy cập được state hiện tại.
+/// Background message handler — must be a top-level function (FCM requirement).
+/// Runs in a separate isolate → cannot access current state.
 @pragma('vm:entry-point')
 Future<void> firebaseMessagingBackgroundHandler(RemoteMessage message) async {
-  // Background: chỉ log. iOS tự hiện banner từ payload `notification.*`.
-  // Android cũng tự hiện vì có default channel + payload `notification.*`.
+  // Background: just log. iOS auto-shows banner from `notification.*` payload.
+  // Android also auto-shows because of default channel + `notification.*`.
   if (kDebugMode) {
     debugPrint('[FCM] Background message: ${message.messageId}');
   }
 }
 
-/// Service singleton handle FCM lifecycle: permission, token, listeners.
+/// Singleton service handling FCM lifecycle: permission, token, listeners.
 class PushNotificationService {
   PushNotificationService._();
   static final PushNotificationService instance = PushNotificationService._();
@@ -35,24 +35,25 @@ class PushNotificationService {
       FlutterLocalNotificationsPlugin();
   final DeviceRepository _deviceRepo = DeviceRepository();
 
-  /// Token hiện tại — cache để gọi unregister khi logout.
+  /// Current token — cached so we can call unregister on logout.
   String? _currentToken;
   StreamSubscription<String>? _tokenRefreshSub;
   StreamSubscription<RemoteMessage>? _foregroundSub;
   StreamSubscription<RemoteMessage>? _openedAppSub;
 
-  /// Callback do app set để xử lý deep link từ notification (vd
-  /// `context.go(deepLink)`). Set 1 lần ở widget root.
+  /// Callback set by the app to handle deep links from notifications (e.g.
+  /// `context.go(deepLink)`). Set once at the widget root.
   void Function(Map<String, dynamic> data)? onNotificationTap;
 
-  /// Gọi 1 lần lúc app khởi động (sau khi `Firebase.initializeApp`).
-  /// **KHÔNG** request permission ở đây — chỉ setup listeners. Permission xin
-  /// sau khi user login để UX không hỏi quyền ngay launch.
+  /// Called once at app startup (after `Firebase.initializeApp`).
+  /// Does **NOT** request permission here — only sets up listeners. Permission
+  /// is requested after the user logs in so the OS prompt doesn't appear on
+  /// the very first launch.
   Future<void> initialize() async {
-    // Background handler — phải set trước mọi thứ.
+    // Background handler — must be set before anything else.
     FirebaseMessaging.onBackgroundMessage(firebaseMessagingBackgroundHandler);
 
-    // Local notification plugin — dùng để hiện banner khi app foreground.
+    // Local notification plugin — used to show banners while in foreground.
     const androidInit =
         AndroidInitializationSettings('@mipmap/ic_launcher');
     const iosInit = DarwinInitializationSettings(
@@ -68,7 +69,7 @@ class PushNotificationService {
       },
     );
 
-    // Tạo Android channel (Android 8+).
+    // Create Android channel (Android 8+).
     final androidPlugin = _localNotifications
         .resolvePlatformSpecificImplementation<
             AndroidFlutterLocalNotificationsPlugin>();
@@ -81,24 +82,24 @@ class PushNotificationService {
       ),
     );
 
-    // Foreground: tự hiện banner qua flutter_local_notifications.
+    // Foreground: show banners ourselves via flutter_local_notifications.
     _foregroundSub = FirebaseMessaging.onMessage.listen(_onForegroundMessage);
 
     // Tap notification (background → foreground).
     _openedAppSub =
         FirebaseMessaging.onMessageOpenedApp.listen(_onOpenedApp);
 
-    // Cold start: app mở từ tap notification.
+    // Cold start: app opened by tapping a notification.
     final initialMessage = await _fcm.getInitialMessage();
     if (initialMessage != null) {
-      // Defer 1 frame để router/auth state init xong.
+      // Defer 1 frame so router/auth state are initialized.
       Future.delayed(const Duration(milliseconds: 500), () {
         _handleTapData(initialMessage.data);
       });
     }
   }
 
-  /// Gọi sau khi user login — xin permission, lấy token, gửi BE.
+  /// Call after user login — request permission, get token, send to BE.
   /// Idempotent.
   Future<void> registerForUser() async {
     final settings = await _fcm.requestPermission(
@@ -111,8 +112,8 @@ class PushNotificationService {
       return;
     }
 
-    // iOS: cần APNs token trước khi getToken (Firebase tự handle, nhưng có
-    // edge case ở simulator). Try-catch để không crash app.
+    // iOS: needs APNs token before getToken (Firebase handles this, but there
+    // are edge cases on the simulator). Try-catch to avoid crashing the app.
     try {
       final token = await _fcm.getToken();
       if (token == null) {
@@ -122,7 +123,7 @@ class PushNotificationService {
       _currentToken = token;
       await _registerTokenWithBackend(token);
 
-      // Listen token refresh (FCM định kỳ rotate).
+      // Listen for token refresh (FCM rotates periodically).
       _tokenRefreshSub?.cancel();
       _tokenRefreshSub = _fcm.onTokenRefresh.listen((newToken) async {
         _currentToken = newToken;
@@ -133,7 +134,7 @@ class PushNotificationService {
     }
   }
 
-  /// Gọi trước khi logout — unregister token khỏi BE.
+  /// Call before logout — unregister the token from BE.
   Future<void> unregisterForUser() async {
     final token = _currentToken;
     _tokenRefreshSub?.cancel();
@@ -142,14 +143,14 @@ class PushNotificationService {
     if (token != null) {
       await _deviceRepo.unregister(token);
     }
-    // Xoá token local — lần login tiếp theo sẽ get token mới.
+    // Delete local token — next login will fetch a fresh one.
     try {
       await _fcm.deleteToken();
     } catch (_) {}
     _currentToken = null;
   }
 
-  /// Cleanup khi app dispose (rất hiếm, chỉ trong test).
+  /// Cleanup on app dispose (rare, mostly used in tests).
   void dispose() {
     _tokenRefreshSub?.cancel();
     _foregroundSub?.cancel();
@@ -171,8 +172,8 @@ class PushNotificationService {
     final notification = message.notification;
     if (notification == null) return;
 
-    // Hiện banner local — chỉ khi có nội dung. Background sẽ tự hiện qua
-    // hệ thống, không cần xử lý.
+    // Show local banner — only when there is content. Background banners are
+    // shown by the OS automatically; no work needed here.
     _localNotifications.show(
       notification.hashCode,
       notification.title,

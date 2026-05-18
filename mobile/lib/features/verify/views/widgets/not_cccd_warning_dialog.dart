@@ -4,16 +4,16 @@ import '../../../../core/theme/app_color_scheme.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_spacing.dart';
 
-/// Dialog cảnh báo ảnh vừa chọn/chụp không nhận diện được CCCD.
+/// Warning dialog when the selected/captured image isn't recognized as a CCCD.
 ///
-/// Style theo design system: rounded card 20, warning amber theme, icon
-/// trong khung tròn, title bold, body subtle, 2 button outlined +
-/// filled-warning. Reuse cho cả gallery pick (cccd_capture_screen) và
-/// manual shutter (cccd_scanner_screen).
+/// Design system: rounded card 20, warning amber theme, icon inside a circular
+/// frame, bold title, subtle body, two buttons (outlined + filled-warning).
+/// Reused for both gallery pick (cccd_capture_screen) and manual shutter
+/// (cccd_scanner_screen).
 ///
 /// Returns:
-/// - `true` → user chọn "Vẫn upload"
-/// - `false`/`null` → user chọn "Chụp lại" / dismiss
+/// - `true` → user chose "Upload anyway"
+/// - `false`/`null` → user chose "Retake" / dismiss
 Future<bool?> showNotCccdWarning(
   BuildContext context, {
   required String? reason,
@@ -72,7 +72,7 @@ class _NotCccdWarningDialog extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            // ── Icon trong khung tròn warning ──
+            // Warning icon inside circular frame.
             Container(
               width: 56,
               height: 56,

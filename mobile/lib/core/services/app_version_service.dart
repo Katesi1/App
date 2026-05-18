@@ -7,21 +7,21 @@ import 'package:package_info_plus/package_info_plus.dart';
 import '../constants/api_constants.dart';
 import '../network/api_client.dart';
 
-/// Status sau khi check version với BE.
+/// Status returned after checking version against BE.
 enum AppVersionStatus {
-  upToDate,         // version hiện tại OK
-  softUpdate,       // có version mới nhưng chưa bắt buộc
-  forceUpdate,      // version hiện tại < minSupported → block
-  unknown,          // không gọi được BE → bỏ qua
+  upToDate,         // current version is OK
+  softUpdate,       // newer version available, not required
+  forceUpdate,      // current version < minSupported → block
+  unknown,          // BE unreachable → skip
 }
 
 class AppVersionInfo {
   final AppVersionStatus status;
-  final String currentVersion;     // build hiện tại của app (vd "1.0.2")
-  final String? latestVersion;     // version mới nhất BE biết
+  final String currentVersion;     // current build of the app (e.g. "1.0.2")
+  final String? latestVersion;     // latest version BE knows about
   final String? minSupportedVersion;
   final String? releaseNotes;
-  final String? storeUrl;          // URL App Store / Play Store theo platform
+  final String? storeUrl;          // App Store / Play Store URL per platform
 
   const AppVersionInfo({
     required this.status,
@@ -38,16 +38,17 @@ class AppVersionInfo {
   );
 }
 
-/// Gọi `/app/version` để check force/soft update. Tách thành service riêng để
-/// dễ mock trong test + invoke từ main.dart trước routing.
+/// Calls `/app/version` to check for force/soft update. Extracted into its own
+/// service so it can be mocked in tests and invoked from main.dart before
+/// routing.
 class AppVersionService {
   AppVersionService._();
   static final AppVersionService instance = AppVersionService._();
 
   final Dio _dio = ApiClient.instance;
 
-  /// Trả về status. Lỗi network → [AppVersionStatus.unknown] (đừng block app
-  /// vì BE down).
+  /// Returns the status. Network error → [AppVersionStatus.unknown] (don't
+  /// block the app just because BE is down).
   Future<AppVersionInfo> check() async {
     try {
       final info = await PackageInfo.fromPlatform();
@@ -61,9 +62,9 @@ class AppVersionService {
           'currentVersion': currentVersion,
         },
         options: Options(
-          // Không gắn auth token (endpoint phải public).
+          // Don't attach auth token (endpoint must be public).
           headers: {'Authorization': null},
-          // Time out nhanh để không delay startup quá lâu.
+          // Short timeout so we don't delay startup too long.
           receiveTimeout: const Duration(seconds: 5),
         ),
       );
@@ -115,8 +116,8 @@ class AppVersionService {
     }
   }
 
-  /// So sánh semver-like (`1.2.3`). Trả -1, 0, 1.
-  /// Bỏ qua build metadata sau `+`. Phần thiếu coi là 0.
+  /// Compare semver-like (`1.2.3`). Returns -1, 0, 1.
+  /// Ignores build metadata after `+`. Missing segments are treated as 0.
   int _compare(String a, String b) {
     int parse(String segment) =>
         int.tryParse(segment.replaceAll(RegExp(r'[^0-9]'), '')) ?? 0;

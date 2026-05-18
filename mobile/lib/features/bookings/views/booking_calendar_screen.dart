@@ -18,8 +18,8 @@ import '../../../shared/widgets/calendar_grid_widget.dart';
 import '../../../shared/widgets/loading_widget.dart';
 import '../../calendar/controllers/calendar_controller.dart';
 
-/// Lịch tổng — dành cho tất cả user xem (public, không cần auth).
-/// Tap ô → mở modal liên hệ admin qua Zalo.
+/// Public calendar — viewable by all users (no auth required).
+/// Tap cell → opens modal to contact admin via Zalo.
 class BookingCalendarScreen extends ConsumerStatefulWidget {
   const BookingCalendarScreen({super.key});
 
@@ -68,7 +68,7 @@ class _BookingCalendarScreenState extends ConsumerState<BookingCalendarScreen> {
     return DateFormat('yyyy-MM-dd').format(lastDay);
   }
 
-  /// Map PropertyCategory → API type param (null = tất cả)
+  /// Maps PropertyCategory → API type param (null = all).
   int? get _typeParam => switch (_category) {
         PropertyCategory.all => null,
         PropertyCategory.villa => 0,

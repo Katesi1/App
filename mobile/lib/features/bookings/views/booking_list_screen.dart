@@ -91,8 +91,8 @@ class _BookingListScreenState extends ConsumerState<BookingListScreen> {
                 Row(
                   children: [
                     GestureDetector(
-                      // /bookings là top-level (vào qua bottom nav `context.go`
-                      // → stack rỗng, pop = no-op). Fallback /dashboard.
+                      // /bookings is top-level (entered via bottom nav `context.go`
+                      // → empty stack, pop = no-op). Fallback to /dashboard.
                       onTap: () {
                         if (context.canPop()) {
                           context.pop();

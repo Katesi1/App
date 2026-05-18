@@ -47,15 +47,15 @@ class DashboardStats {
 final dashboardRepositoryProvider =
     Provider<DashboardRepository>((ref) => DashboardRepository());
 
-/// Trạng thái dismiss của banner "STAFF chưa được gán owner".
-/// Reset (invalidate) sau mỗi lần login mới để banner hiện lại 1 lần / phiên.
+/// Dismiss state for "STAFF not assigned to owner" banner.
+/// Invalidated on each new login so banner shows once per session.
 final unassignedBannerDismissedProvider = StateProvider<bool>((ref) => false);
 
-/// Trạng thái dismiss của banner trial subscription. Chỉ áp dụng cho variant
-/// trial (positive). Past-due / cancelled không cho dismiss vì user phải action.
+/// Dismiss state for trial subscription banner. Only applies to trial
+/// (positive) variant. Past-due / cancelled cannot be dismissed (user must act).
 final trialBannerDismissedProvider = StateProvider<bool>((ref) => false);
 
-/// Provider lấy KPI dashboard từ real API /dashboard/stats
+/// Dashboard KPI provider — fetches from /dashboard/stats.
 final dashboardStatsProvider =
     FutureProvider.autoDispose<DashboardStats>((ref) async {
   final link = ref.keepAlive();

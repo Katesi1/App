@@ -6,15 +6,15 @@ import '../../data/models/plan.dart';
 import '../../data/models/verify_enums.dart';
 import 'verify_format.dart';
 
-/// Order summary card cho Screen 5 — breakdown chi tiết tiền.
+/// Order summary card for Screen 5 — detailed price breakdown.
 ///
 /// Anatomy (signature pattern spec section 5.5):
 /// - Card bg bgSurface, border 1px borderDefault, radius 12, padding 14
-/// - Mỗi line: label trái + value phải (12px w500/w700)
+/// - Each line: label left + value right (12px w500/w700)
 /// - Discount line: value successText
 /// - Divider 1px borderSubtle
 /// - Total: label 13px w700 + value 18px w800 jadeText
-/// - Trial badge cuối: bg successBg, text successText, padding 6×10, radius 8
+/// - Trial badge at the bottom: bg successBg, text successText, padding 6×10, radius 8
 class OrderSummaryCard extends StatelessWidget {
   final Plan plan;
   final BillingCycle cycle;

@@ -4,7 +4,7 @@ import 'package:google_fonts/google_fonts.dart';
 
 import '../../../../core/theme/app_color_scheme.dart';
 
-/// Donut chart hiển thị phân bổ booking theo status.
+/// Donut chart showing booking distribution by status.
 ///
 /// Center hole = total bookings. Color: hold=warning, confirmed=success,
 /// completed=brandLight, cancelled=error.
@@ -44,7 +44,7 @@ class StatusDonutChart extends StatelessWidget {
       ),
       child: Row(
         children: [
-          // Donut bên trái
+          // Donut on left.
           SizedBox(
             width: 110,
             height: 110,
@@ -106,7 +106,7 @@ class StatusDonutChart extends StatelessWidget {
             ),
           ),
           const SizedBox(width: 14),
-          // Legend bên phải
+          // Legend on right.
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,

@@ -4,7 +4,7 @@ class SelfieUpload extends Equatable {
   final String id;
   final String imageUrl;
 
-  /// Score (0..1) face match với CCCD đã upload trước. < 0.85 → mismatch.
+  /// Face-match score (0..1) against the previously uploaded CCCD. < 0.85 → mismatch.
   final double faceMatchScore;
   final bool isValid;
   final DateTime uploadedAt;

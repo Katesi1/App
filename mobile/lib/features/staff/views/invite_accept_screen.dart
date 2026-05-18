@@ -14,11 +14,11 @@ import '../../auth/controllers/auth_controller.dart';
 import '../controllers/staff_controller.dart';
 import '../data/models/staff_invite.dart';
 
-/// Public screen — không yêu cầu login. Có 2 entry:
+/// Public screen — no login required. Two entry points:
 /// 1. Deep link `https://halong24h.com/staff/accept?token=xxx` → token prefilled
-/// 2. User mở app → bấm "Tôi có mã mời" → nhập short code thủ công
+/// 2. User opens app → taps "I have an invite code" → enters short code manually
 class InviteAcceptScreen extends ConsumerStatefulWidget {
-  /// Token đầy đủ (64 hex) hoặc short code (HL-XXXXXX) — nếu null thì user nhập tay.
+  /// Full token (64 hex) or short code (HL-XXXXXX) — null = user enters manually.
   final String? initialToken;
 
   const InviteAcceptScreen({super.key, this.initialToken});
@@ -208,7 +208,7 @@ class _InviteAcceptScreenState extends ConsumerState<InviteAcceptScreen> {
     );
   }
 
-  // ── State 1: nhập mã ────────────────────────────────────────────────────────
+  // State 1: enter code.
   Widget _buildEnterToken() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -274,7 +274,7 @@ class _InviteAcceptScreenState extends ConsumerState<InviteAcceptScreen> {
     );
   }
 
-  // ── State 2: confirm + chọn cách đăng ký ────────────────────────────────────
+  // State 2: confirm + choose signup method.
   Widget _buildPreview() {
     final preview = _preview!;
     final dateFmt = DateFormat('dd/MM/yyyy');
@@ -471,7 +471,7 @@ class _OwnerCard extends StatelessWidget {
       );
 }
 
-// ── Sheet: Đăng ký bằng email/password ────────────────────────────────────────
+// Sheet: register via email/password.
 
 typedef _PasswordSubmit = Future<void> Function({
   required String name,

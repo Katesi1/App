@@ -7,16 +7,16 @@ import 'package:url_launcher/url_launcher.dart';
 
 import '../../../core/theme/app_color_scheme.dart';
 
-/// Wrap [ImagePicker] để xử lý permission denied một cách user-friendly.
+/// Wraps [ImagePicker] to handle permission-denied flows in a user-friendly way.
 ///
 /// Behavior:
-/// - User denied lần đầu → image_picker tự retry next call (iOS sẽ pop dialog).
-/// - User permanently denied (đã chọn "Don't Allow" / disable trong Settings):
-///   image_picker throw `PlatformException(code: 'camera_access_denied'
-///   | 'photo_access_denied')`. Wrapper bắt → show dialog "Vào cài đặt".
-/// - User cancel picker (back/swipe) → returns `null` (không show dialog).
+/// - User denies once → image_picker auto-retries the next call (iOS pops the dialog).
+/// - User permanently denies (chose "Don't Allow" / disabled in Settings):
+///   image_picker throws `PlatformException(code: 'camera_access_denied'
+///   | 'photo_access_denied')`. The wrapper catches it → shows "Open Settings" dialog.
+/// - User cancels the picker (back/swipe) → returns `null` (no dialog).
 ///
-/// Cách dùng:
+/// Usage:
 /// ```dart
 /// final file = await CameraPicker.fromCamera(context);
 /// if (file != null) await _upload(file);
@@ -26,7 +26,7 @@ class CameraPicker {
 
   static final ImagePicker _picker = ImagePicker();
 
-  /// Mở camera. Front-facing nếu [front] = true (cho selfie).
+  /// Open the camera. Front-facing when [front] = true (for selfie).
   static Future<XFile?> fromCamera(
     BuildContext context, {
     bool front = false,
@@ -60,7 +60,7 @@ class CameraPicker {
     }
   }
 
-  /// Mở thư viện ảnh.
+  /// Open the photo library.
   static Future<XFile?> fromGallery(
     BuildContext context, {
     int imageQuality = 85,
@@ -122,16 +122,16 @@ class CameraPicker {
     );
   }
 
-  /// Mở Settings app — iOS dùng `app-settings:`, Android dùng intent action
-  /// vào ứng dụng thông qua `package:` URI.
+  /// Open the system Settings app — iOS uses `app-settings:`, Android uses an
+  /// intent into the app via `package:` URI.
   ///
-  /// Note: iOS Apple cho phép deeplink `app-settings:` chỉ trỏ về Settings
-  /// chính của app này, không bị reject store. Trên Android cần biết package
-  /// id, ở đây dùng `app-settings:` fallback và để Android xử lý.
+  /// Note: Apple allows the `app-settings:` deeplink to target only this app's
+  /// own Settings; it's not a review rejection risk. Android needs the package
+  /// id; here we fall back to `app-settings:` and let Android handle it.
   static Future<void> _openAppSettings() async {
     final uri = Platform.isIOS
         ? Uri.parse('app-settings:')
-        : Uri.parse('package:'); // Android tự resolve về app settings
+        : Uri.parse('package:'); // Android resolves to app settings itself
     if (await canLaunchUrl(uri)) {
       await launchUrl(uri, mode: LaunchMode.externalApplication);
     }

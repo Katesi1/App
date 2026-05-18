@@ -1,20 +1,21 @@
 import 'package:firebase_crashlytics/firebase_crashlytics.dart';
 import 'package:flutter/foundation.dart';
 
-/// Crash reporting wrapper. Forward FlutterError + PlatformDispatcher errors
-/// + manual `record()` từ runZonedGuarded sang Firebase Crashlytics.
+/// Crash reporting wrapper. Forwards FlutterError + PlatformDispatcher errors
+/// + manual `record()` from runZonedGuarded to Firebase Crashlytics.
 ///
-/// Tắt Crashlytics ở debug mode để không spam dashboard với crash dev.
+/// Crashlytics is disabled in debug mode to avoid spamming the dashboard with
+/// dev crashes.
 class CrashReporter {
   static bool _initialized = false;
   static bool _crashlyticsEnabled = false;
 
-  /// Gọi 1 lần ở `main()` SAU khi `Firebase.initializeApp()`.
+  /// Call once in `main()` AFTER `Firebase.initializeApp()`.
   static Future<void> init() async {
     if (_initialized) return;
     _initialized = true;
 
-    // Gắn handler bất kể Crashlytics có sẵn sàng hay không.
+    // Attach handlers regardless of whether Crashlytics is ready.
     FlutterError.onError = (details) {
       FlutterError.presentError(details);
       _record('FlutterError', details.exception, details.stack);
@@ -31,8 +32,8 @@ class CrashReporter {
       return true;
     };
 
-    // Crashlytics chỉ enable ở release/profile. Debug = false để dev không
-    // gửi crash thật lên dashboard.
+    // Crashlytics is only enabled in release/profile. Debug = false so devs
+    // don't ship real crashes to the dashboard.
     try {
       await FirebaseCrashlytics.instance
           .setCrashlyticsCollectionEnabled(!kDebugMode);
@@ -42,7 +43,7 @@ class CrashReporter {
     }
   }
 
-  /// Gọi từ runZonedGuarded — async error ngoài Flutter framework.
+  /// Called from runZonedGuarded — async errors outside the Flutter framework.
   static void record(Object error, StackTrace stackTrace) {
     _record('Zone', error, stackTrace);
     if (_crashlyticsEnabled) {
@@ -50,8 +51,8 @@ class CrashReporter {
     }
   }
 
-  /// Set user ID + email cho Crashlytics — gọi sau login để link crash với
-  /// user. KHÔNG gửi PII nhạy cảm (chỉ user.id, không gửi email/phone).
+  /// Set user ID for Crashlytics — call after login to link crashes with the
+  /// user. Do NOT send sensitive PII (only user.id; never email/phone).
   static Future<void> setUserId(String? userId) async {
     if (!_crashlyticsEnabled) return;
     try {
@@ -59,7 +60,7 @@ class CrashReporter {
     } catch (_) {}
   }
 
-  /// Log breadcrumb — context cho crash (vd "tapped login button").
+  /// Log a breadcrumb — context for a crash (e.g. "tapped login button").
   static Future<void> log(String message) async {
     if (kDebugMode) debugPrint('[CrashReporter] $message');
     if (!_crashlyticsEnabled) return;

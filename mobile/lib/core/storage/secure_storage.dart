@@ -26,8 +26,8 @@ class SecureStorage {
 
   static Future<String?> getUserData() => _storage.read(key: _userData);
 
-  /// Lưu thông tin đăng nhập (phone + password) khi user tick "Ghi nhớ".
-  /// Tách riêng khỏi auth tokens để [clear] khi logout không xoá.
+  /// Save login credentials (phone + password) when the user ticks "Remember".
+  /// Kept separate from auth tokens so [clear] on logout does not erase them.
   static Future<void> saveCredentials(String email, String password) async {
     await _storage.write(key: _savedPhone, value: email);
     await _storage.write(key: _savedPassword, value: password);
@@ -46,7 +46,7 @@ class SecureStorage {
     await _storage.delete(key: _savedPassword);
   }
 
-  /// Xoá auth tokens + user data khi logout. KHÔNG xoá saved credentials.
+  /// Clear auth tokens + user data on logout. Does NOT clear saved credentials.
   static Future<void> clear() async {
     await _storage.delete(key: _accessToken);
     await _storage.delete(key: _refreshToken);

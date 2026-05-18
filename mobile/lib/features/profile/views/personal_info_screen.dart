@@ -11,7 +11,7 @@ import '../../../core/utils/phone_input.dart';
 import '../../../features/auth/controllers/auth_controller.dart';
 import '../../../shared/widgets/loading_widget.dart';
 
-// gradient.brandHero stop "jade-mid" theo spec section 3.7 — chưa có token sẵn
+// gradient.brandHero stop "jade-mid" per spec section 3.7 — no token defined yet.
 const _jadeMidLight = Color(0xFF1B7E94);
 
 class PersonalInfoScreen extends ConsumerStatefulWidget {
@@ -151,7 +151,6 @@ class _PersonalInfoScreenState extends ConsumerState<PersonalInfoScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // ── Group: Thông tin cơ bản ──────────────
                     _GroupCard(
                       isDark: isDark,
                       label: 'THÔNG TIN CƠ BẢN',
@@ -216,7 +215,6 @@ class _PersonalInfoScreenState extends ConsumerState<PersonalInfoScreen> {
 
                     const SizedBox(height: 16),
 
-                    // ── Group: Cá nhân ────────────────────────
                     _GroupCard(
                       isDark: isDark,
                       label: 'CÁ NHÂN',

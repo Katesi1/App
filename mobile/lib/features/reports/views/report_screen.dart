@@ -54,7 +54,6 @@ class ReportScreen extends ConsumerWidget {
                 child: ListView(
                   padding: const EdgeInsets.fromLTRB(16, 12, 16, 80),
                   children: [
-                    // ── Period selector ─────────────────────────────
                     _PeriodSelector(
                       current: params.period,
                       onChanged: (p) {
@@ -64,23 +63,18 @@ class ReportScreen extends ConsumerWidget {
                     ),
                     const SizedBox(height: AppSpacing.md),
 
-                    // ── 4 KPI cards (revenue first, with delta) ─────
                     _KpiGrid(report: report),
                     const SizedBox(height: AppSpacing.md),
 
-                    // ── Revenue trend chart ─────────────────────────
                     RevenueTrendChart(points: report.revenueByDay),
                     const SizedBox(height: AppSpacing.md),
 
-                    // ── Day-of-week occupancy heatmap ───────────────
                     DayOfWeekChart(data: report.dayOfWeekOccupancy),
                     const SizedBox(height: AppSpacing.md),
 
-                    // ── Length of stay histogram ────────────────────
                     LengthOfStayChart(distribution: report.lengthOfStay),
                     const SizedBox(height: AppSpacing.md),
 
-                    // ── Status donut ─────────────────────────────────
                     _SectionTitle(title: 'TRẠNG THÁI BOOKING'),
                     const SizedBox(height: 8),
                     StatusDonutChart(
@@ -91,7 +85,6 @@ class ReportScreen extends ConsumerWidget {
                     ),
                     const SizedBox(height: AppSpacing.md),
 
-                    // ── Top rooms ───────────────────────────────────
                     if (report.topRooms.isNotEmpty) ...[
                       _SectionTitle(title: 'TOP PHÒNG DOANH THU'),
                       const SizedBox(height: 8),
@@ -99,7 +92,6 @@ class ReportScreen extends ConsumerWidget {
                       const SizedBox(height: AppSpacing.md),
                     ],
 
-                    // ── Đánh giá khách ──────────────────────────────
                     _SectionTitle(title: 'ĐÁNH GIÁ KHÁCH'),
                     const SizedBox(height: 8),
                     PropertyRatingsSection(
@@ -109,14 +101,12 @@ class ReportScreen extends ConsumerWidget {
                       overallTotalReviews: report.overallTotalReviews,
                       overallDistribution: report.overallDistribution,
                     ),
-                    // ── Criteria breakdown 6 tiêu chí ───────────────
                     if (!report.overallBreakdown.isEmpty) ...[
                       const SizedBox(height: 12),
                       CriteriaBreakdownCard(breakdown: report.overallBreakdown),
                     ],
                     const SizedBox(height: AppSpacing.md),
 
-                    // ── Recent bookings (giữ nguyên) ────────────────
                     _SectionTitle(title: 'BOOKING GẦN ĐÂY'),
                     const SizedBox(height: 8),
                     if (report.recentBookings.isEmpty)
@@ -627,7 +617,7 @@ class _SectionTitle extends StatelessWidget {
   }
 }
 
-// ─── Recent bookings (giữ nguyên logic cũ) ────────────────────────────────
+// Recent bookings section.
 
 class _PaginatedRecentBookings extends StatefulWidget {
   final List<BookingModel> bookings;

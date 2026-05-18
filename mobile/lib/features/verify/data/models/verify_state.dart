@@ -6,32 +6,32 @@ import 'plan.dart';
 import 'selfie_upload.dart';
 import 'verify_enums.dart';
 
-/// State tổng cho toàn flow verify + subscription.
+/// Aggregate state for the entire verify + subscription flow.
 ///
-/// Lưu/load draft từ SharedPreferences để resume nếu user close app
-/// (xem [toJson] / [fromJson]).
+/// Drafts are saved/loaded via SharedPreferences so the user can resume after
+/// closing the app (see [toJson] / [fromJson]).
 class VerifyFlowState extends Equatable {
-  // ── KYC ──
+  // KYC
   final CCCDUpload? cccdFront;
   final CCCDUpload? cccdBack;
   final SelfieUpload? selfie;
 
-  /// Số lần fail face match liên tiếp (lock sau 3 lần).
+  /// Number of consecutive face-match failures (lock after 3).
   final int selfieFailAttempts;
 
-  // ── Property info ──
-  /// Số phòng dự kiến (driver tính giá + auto-suggest tier).
+  // Property info
+  /// Expected room count (drives pricing + tier auto-suggest).
   final int expectedRooms;
 
-  // ── Subscription ──
+  // Subscription
   final Plan? selectedPlan;
   final BillingCycle billingCycle;
 
-  // ── Payment ──
+  // Payment
   final PaymentSession? paymentSession;
   final PaymentStatus? paymentStatus;
 
-  // ── Submission ──
+  // Submission
   final String? submissionId;
   final VerifyStatus status;
   final String? rejectReason;
@@ -40,7 +40,7 @@ class VerifyFlowState extends Equatable {
   final DateTime? trialEndsAt;
   final DateTime? chargeStartsAt;
 
-  /// Có refund đã processed → Screen 8 chuyển sang confirmation.
+  /// True after refund processed → Screen 8 switches to the confirmation view.
   final bool refundProcessed;
   final int? refundedAmount;
 
@@ -65,11 +65,11 @@ class VerifyFlowState extends Equatable {
     this.refundedAmount,
   });
 
-  /// Đã upload đủ 3 ảnh CCCD front + back + selfie chưa.
+  /// Have all 3 uploads (CCCD front + back + selfie) been submitted?
   bool get hasCompleteKyc =>
       cccdFront != null && cccdBack != null && selfie != null;
 
-  /// Step số đang reach (1-4 cho KYC, 5-7 cho subscription).
+  /// Step the user is currently at (1-4 for KYC, 5-7 for subscription).
   int get currentStep {
     if (cccdFront == null) return 1;
     if (cccdBack == null) return 2;
@@ -217,12 +217,12 @@ class VerifyFlowState extends Equatable {
       ];
 }
 
-/// Custom exception khi face match score < threshold.
+/// Thrown when face match score is below threshold.
 class FaceMismatchException implements Exception {
   final double score;
   final int attemptNumber;
 
-  /// Còn được thử bao nhiêu lần nữa (3 - attempts).
+  /// Remaining attempts (3 - attempts).
   final int remainingAttempts;
 
   const FaceMismatchException({
@@ -236,7 +236,7 @@ class FaceMismatchException implements Exception {
       'FaceMismatchException(score=$score, attempt=$attemptNumber/3)';
 }
 
-/// Quá 3 lần fail face match → lock 1 giờ + escalate admin.
+/// More than 3 face-match failures → lock 1 hour + escalate to admin.
 class FaceMismatchTooManyAttemptsException implements Exception {
   const FaceMismatchTooManyAttemptsException();
 

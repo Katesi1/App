@@ -68,7 +68,7 @@ class AppHelpers {
     return formatPrice(total);
   }
 
-  /// Hiển thị số KPI; 0 → "-" (tránh "0k" nhầm thành "Ok").
+  /// Display KPI number; 0 → "-" (avoids "0k" being misread as "Ok").
   static String formatIntOrDash(int value) => value == 0 ? '-' : '$value';
 
   static String formatPriceOrDash(double price) =>

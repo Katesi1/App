@@ -3,11 +3,11 @@ import 'package:flutter/material.dart';
 import '../../../../core/theme/app_color_scheme.dart';
 import '../../../../core/theme/app_colors.dart';
 
-/// Camera frame overlay với 4 corner brackets + scan line gradient.
+/// Camera frame overlay with 4 corner brackets + scan line gradient.
 ///
-/// Calm operations: KHÔNG glow shadow, chỉ corner brackets + scan line subtle.
+/// Calm operations: NO glow shadow, only corner brackets + subtle scan line.
 class CameraFrameOverlay extends StatefulWidget {
-  /// Hint icon center (chỉ hiện khi [showCenterHint] = true).
+  /// Center hint icon (only shown when [showCenterHint] = true).
   final IconData centerIcon;
   final String hintTitle;
   final String hintSubtitle;
@@ -148,8 +148,8 @@ class _CameraFrameOverlayState extends State<CameraFrameOverlay>
   }
 }
 
-/// Một corner bracket 18×18 với border 2.5px.
-/// [rotate] = 0..3 — số lần rotate 90° clockwise.
+/// A single 18×18 corner bracket with 2.5px border.
+/// [rotate] = 0..3 — number of 90° clockwise rotations.
 class _Corner extends StatelessWidget {
   final Color color;
   final int rotate;
@@ -188,7 +188,7 @@ class _CornerPainter extends CustomPainter {
       oldDelegate.color != color;
 }
 
-/// Oval frame cho selfie (khác với rectangle CCCD).
+/// Oval frame for selfie (vs the rectangular CCCD frame).
 class SelfieFrameOverlay extends StatelessWidget {
   final String hintText;
 

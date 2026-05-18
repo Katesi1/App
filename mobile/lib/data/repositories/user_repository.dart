@@ -35,7 +35,7 @@ class UserRepository {
     }
   }
 
-  /// Lấy danh sách nhân viên của tôi (OWNER only)
+  /// Get my staff list (OWNER only).
   Future<ApiResponse<List<UserModel>>> getMyStaff() async {
     try {
       final response = await _dio.get('${ApiConstants.users}/my-staff');
@@ -48,7 +48,7 @@ class UserRepository {
     }
   }
 
-  /// Lấy danh sách SALE chưa có owner (OWNER dùng để add)
+  /// Get the list of SALE without an owner (OWNER uses this to add staff).
   Future<ApiResponse<List<UserModel>>> getAvailableStaff() async {
     try {
       final response = await _dio.get('${ApiConstants.users}/available-staff');
@@ -61,7 +61,7 @@ class UserRepository {
     }
   }
 
-  /// Thêm nhân viên vào đội (OWNER only)
+  /// Add staff to my team (OWNER only).
   Future<ApiResponse<UserModel>> addMyStaff(String email) async {
     try {
       final response = await _dio.post(
@@ -78,7 +78,7 @@ class UserRepository {
     }
   }
 
-  /// Gỡ nhân viên khỏi đội (OWNER only)
+  /// Remove staff from my team (OWNER only).
   Future<ApiResponse<void>> removeMyStaff(String id) async {
     try {
       await _dio.delete('${ApiConstants.users}/my-staff/$id');
@@ -124,12 +124,12 @@ class UserRepository {
     }
   }
 
-  /// Self-delete cho compliance App Store / Play Store / GDPR.
-  /// Hiện tại reuse `DELETE /users/:id` — BE cần confirm endpoint này cho phép
-  /// user self-delete (không chỉ ADMIN). Nếu BE chưa cho phép, sẽ trả 403 và
-  /// FE hiện error rõ ràng để user liên hệ support.
+  /// Self-delete for App Store / Play Store / GDPR compliance.
+  /// Currently reuses `DELETE /users/:id` — BE needs to confirm this endpoint
+  /// allows user self-delete (not just ADMIN). If BE doesn't allow it yet,
+  /// it returns 403 and FE shows a clear error so the user can contact support.
   ///
-  /// [reason] optional — gửi kèm để BE log lý do user xoá (analytics).
+  /// [reason] optional — sent along so BE can log the reason (analytics).
   Future<ApiResponse<void>> deleteMyAccount({String? reason}) async {
     try {
       await _dio.delete(

@@ -17,8 +17,8 @@ import 'widgets/verify_format.dart';
 
 /// Screen 6 — Pending approval.
 ///
-/// Polling status mỗi 30s. Khi nhận `approved` → push trial active screen,
-/// nhận `rejected` → push rejected screen.
+/// Polls status every 30s. On `approved` → push trial active screen; on
+/// `rejected` → push rejected screen.
 class PendingApprovalScreen extends ConsumerStatefulWidget {
   const PendingApprovalScreen({super.key});
 
@@ -35,7 +35,7 @@ class _PendingApprovalScreenState extends ConsumerState<PendingApprovalScreen>
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
-    // Kick first poll sớm hơn 30s để mock cảm thấy responsive
+    // Kick the first poll earlier than 30s so the UI feels responsive.
     Future.microtask(_check);
     _startPolling();
   }
@@ -47,8 +47,9 @@ class _PendingApprovalScreenState extends ConsumerState<PendingApprovalScreen>
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    // App background → stop polling để tránh drain pin (user mở app, đặt
-    // máy xuống đêm = 10800 request thừa). Resume + 1 check ngay khi quay lại.
+    // App backgrounded → stop polling to avoid draining battery (10800 extra
+    // requests if the user leaves the screen open overnight). Resume + run a
+    // single check when foregrounded.
     if (state == AppLifecycleState.paused ||
         state == AppLifecycleState.hidden) {
       _poll?.cancel();
@@ -74,8 +75,8 @@ class _PendingApprovalScreenState extends ConsumerState<PendingApprovalScreen>
       if (!mounted) return;
       if (status == VerifyStatus.approved) {
         _poll?.cancel();
-        // Sync user.kycStatus → 'approved' để dashboard banner biến mất ngay
-        // sau khi user navigate về (không phải pull-to-refresh).
+        // Sync user.kycStatus → 'approved' so the dashboard banner disappears
+        // right after the user navigates back (no pull-to-refresh needed).
         await ref.read(authProvider.notifier).refreshProfile();
         if (!mounted) return;
         context.pushReplacement('/verify/approved');
@@ -218,8 +219,8 @@ class _PendingApprovalScreenState extends ConsumerState<PendingApprovalScreen>
                         side: BorderSide(color: colors.borderDefault),
                         foregroundColor: colors.textBrand,
                       ),
-                      onPressed: () => context.go('/home'),
-                      child: const Text('Về trang chủ'),
+                      onPressed: () => context.go('/dashboard'),
+                      child: const Text('Về tổng quan'),
                     ),
                   ),
                 ),

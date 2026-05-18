@@ -21,7 +21,7 @@ class UserListScreen extends ConsumerStatefulWidget {
 }
 
 class _UserListScreenState extends ConsumerState<UserListScreen> {
-  // null = tất cả nhân viên (OWNER + SALE, loại trừ ADMIN)
+  // null = all staff (OWNER + SALE, excludes ADMIN).
   int? _roleFilter;
 
   // 1=OWNER, 2=SALE
@@ -62,7 +62,7 @@ class _UserListScreenState extends ConsumerState<UserListScreen> {
                 onRetry: () => ref.invalidate(staffListProvider),
               ),
               data: (allUsers) {
-                // Loại Admin ra khỏi danh sách quản lý
+                // Exclude Admin from management list.
                 final users = allUsers
                     .where((u) => !u.isAdmin)
                     .where((u) => _roleFilter == null || u.role == _roleFilter)
@@ -168,7 +168,7 @@ class _UserListScreenState extends ConsumerState<UserListScreen> {
           Row(
             children: [
               GestureDetector(
-                // /admin/users top-level — fallback /admin nếu stack rỗng.
+                // /admin/users is top-level — fallback to /admin if stack empty.
                 onTap: () {
                   if (context.canPop()) {
                     context.pop();
@@ -335,7 +335,7 @@ class _UserListScreenState extends ConsumerState<UserListScreen> {
     );
   }
 
-  /// OWNER xem danh sách SALE chưa gán → tap để thêm vào đội
+  /// OWNER views unassigned SALE list → tap to add to team.
   Future<void> _showAvailableStaffSheet(BuildContext context) async {
     final repo = ref.read(userRepositoryProvider);
     final result = await repo.getAvailableStaff();
@@ -527,7 +527,7 @@ class _UserListScreenState extends ConsumerState<UserListScreen> {
     }
   }
 
-  /// OWNER gỡ nhân viên khỏi đội
+  /// OWNER removes staff from team.
   Future<void> _removeStaff(BuildContext context, UserModel user) async {
     final ok = await showDialog<bool>(
       context: context,

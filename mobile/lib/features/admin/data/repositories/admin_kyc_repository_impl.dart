@@ -28,7 +28,7 @@ class AdminKycRepositoryImpl implements AdminKycRepository {
     } on DioException catch (e) {
       throw Exception(parseDioError(e));
     } on TypeError catch (_) {
-      // BE trả 200 nhưng body sai schema → tránh crash UI.
+      // BE returned 200 but body has wrong schema → avoid UI crash.
       throw Exception('Phản hồi máy chủ không hợp lệ. Vui lòng thử lại sau.');
     }
   }
@@ -66,9 +66,9 @@ class AdminKycRepositoryImpl implements AdminKycRepository {
         ApiConstants.adminKycApprove(id),
         data: {'trialDays': 7},
       );
-      // Backend trả `{submissionId, status, approvedAt, trialEndsAt}` —
-      // build minimal KYCSubmission từ response, controller sẽ invalidate
-      // `kycSubmissionsProvider` ngay sau đó nên UI sẽ refetch full data.
+      // Backend returns `{submissionId, status, approvedAt, trialEndsAt}` —
+      // build minimal KYCSubmission from response; controller will invalidate
+      // `kycSubmissionsProvider` right after so UI refetches full data.
       final data = res.data['data'] as Map<String, dynamic>;
       return _ackSubmission(
         id: id,
@@ -79,7 +79,7 @@ class AdminKycRepositoryImpl implements AdminKycRepository {
     } on DioException catch (e) {
       throw Exception(parseDioError(e));
     } on TypeError catch (_) {
-      // BE trả 200 nhưng body sai schema → tránh crash UI.
+      // BE returned 200 but body has wrong schema → avoid UI crash.
       throw Exception('Phản hồi máy chủ không hợp lệ. Vui lòng thử lại sau.');
     }
   }
@@ -111,7 +111,7 @@ class AdminKycRepositoryImpl implements AdminKycRepository {
     } on DioException catch (e) {
       throw Exception(parseDioError(e));
     } on TypeError catch (_) {
-      // BE trả 200 nhưng body sai schema → tránh crash UI.
+      // BE returned 200 but body has wrong schema → avoid UI crash.
       throw Exception('Phản hồi máy chủ không hợp lệ. Vui lòng thử lại sau.');
     }
   }
@@ -233,9 +233,9 @@ class AdminKycRepositoryImpl implements AdminKycRepository {
     );
   }
 
-  // ─── Helpers ────────────────────────────────────────────────────────────────
+  // Helpers.
 
-  /// Format `"professional"` + `"yearly"` → `"Professional · Hàng năm"`.
+  /// Formats `"professional"` + `"yearly"` → `"Professional · Hàng năm"`.
   String _formatPlanName(String? planId, {String? cycle}) {
     final name = switch (planId) {
       'starter' => 'Starter',
@@ -257,8 +257,8 @@ class AdminKycRepositoryImpl implements AdminKycRepository {
     return DateTime.tryParse(raw);
   }
 
-  // Backend đôi khi không trả image (vd OCR pending) — render placeholder
-  // thay vì crash UI.
+  // Backend sometimes omits image (e.g. OCR pending) — render placeholder
+  // instead of crashing UI.
   CCCDUpload _emptyCccd() => CCCDUpload(
         id: '',
         imageUrl: '',

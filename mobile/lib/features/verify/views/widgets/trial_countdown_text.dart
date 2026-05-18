@@ -4,9 +4,10 @@ import 'package:flutter/material.dart';
 
 import 'verify_format.dart';
 
-/// Realtime countdown badge cho Trial Active screen.
+/// Real-time countdown badge for the Trial Active screen.
 ///
-/// Tự update mỗi 60s (đủ chính xác cho user). Dispose timer khi widget unmount.
+/// Updates every 60s (precise enough for the user). Disposes the timer when
+/// the widget unmounts.
 class TrialCountdownText extends StatefulWidget {
   final DateTime trialEndsAt;
   final TextStyle? style;

@@ -122,7 +122,7 @@ class _BottomNav extends ConsumerStatefulWidget {
 class _BottomNavState extends ConsumerState<_BottomNav> {
   late int _current;
 
-  // ── Nav items theo role ────────────────────────────────────────────
+  // ── Nav items per role ─────────────────────────────────────────────
   static const _staffNavItems = <_NavItem>[
     _NavItem(
       icon: Icons.home_outlined,

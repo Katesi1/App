@@ -4,12 +4,12 @@ import '../../core/constants/api_constants.dart';
 import '../../core/network/api_client.dart';
 import '../../core/network/api_response.dart';
 
-/// Gọi `/devices` endpoint để register/unregister FCM token.
+/// Calls the `/devices` endpoint to register/unregister an FCM token.
 class DeviceRepository {
   final Dio _dio = ApiClient.instance;
 
-  /// Register FCM token cho user hiện tại. BE upsert theo token (cùng device
-  /// đổi user → user_id update). Idempotent.
+  /// Register the FCM token for the current user. BE upserts by token (same
+  /// device with a new user → user_id is updated). Idempotent.
   Future<ApiResponse<void>> register({
     required String fcmToken,
     required String platform,
@@ -36,7 +36,7 @@ class DeviceRepository {
     }
   }
 
-  /// Unregister FCM token (gọi trước khi logout). Idempotent.
+  /// Unregister the FCM token (call before logout). Idempotent.
   Future<ApiResponse<void>> unregister(String fcmToken) async {
     try {
       await _dio.delete(ApiConstants.deviceDetail(fcmToken));

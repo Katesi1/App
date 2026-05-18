@@ -10,7 +10,7 @@ import '../../data/models/payment_session.dart';
 import 'payment_qr_view.dart';
 import 'verify_format.dart';
 
-/// VNPay QR dialog — render QR thật từ session, đếm ngược + nút mở app banking.
+/// VNPay QR dialog — renders the real QR from the session, countdown + button to open the bank app.
 class VNPayQRDialog extends StatefulWidget {
   final PaymentSession session;
 
@@ -55,7 +55,7 @@ class _VNPayQRDialogState extends State<VNPayQRDialog>
       _ticker?.cancel();
       _ticker = null;
     } else if (state == AppLifecycleState.resumed && _ticker == null) {
-      // Sync ngay countdown khi user quay lại để không bị hiển thị thời gian cũ.
+      // Sync the countdown immediately so the user doesn't see stale time.
       if (mounted) setState(_recalc);
       _startTicker();
     }
@@ -89,9 +89,10 @@ class _VNPayQRDialogState extends State<VNPayQRDialog>
             (widget.session.redirectUrl != null &&
                 widget.session.redirectUrl!.isNotEmpty);
 
-    // Backend prod hiện chưa có VNPay createQR API → trả `qrCode = null` cho
-    // VNPay QR (xem `api-payments-frontend-spec.md` §7.1). FE rơi xuống
-    // branch redirect: hiển thị CTA mở payUrl thay vì placeholder QR rỗng.
+    // Backend prod doesn't have the VNPay createQR API yet → returns
+    // `qrCode = null` for VNPay QR (see `api-payments-frontend-spec.md` §7.1).
+    // FE falls back to the redirect branch: show the "Open payUrl" CTA
+    // instead of an empty QR placeholder.
     final useRedirectMode = !hasQr && canOpenBankApp;
 
     return Dialog(
@@ -239,7 +240,7 @@ class _VNPayQRDialogState extends State<VNPayQRDialog>
   }
 }
 
-/// Bank transfer dialog — VietQR + STK + nội dung CK + nút copy từng field.
+/// Bank transfer dialog — VietQR + account number + transfer memo + per-field copy.
 class BankTransferDialog extends StatefulWidget {
   final PaymentSession session;
 
@@ -497,9 +498,10 @@ class _BankTransferDialogState extends State<BankTransferDialog>
   }
 }
 
-/// Placeholder visual cho VNPay redirect mode (khi backend trả `qrCode=null`,
-/// chỉ có `payUrl`). Thay vì vùng QR rỗng gây hiểu nhầm, hiển thị icon
-/// browser + caption hướng dẫn để CTA "Mở cổng VNPay" thành flow chính.
+/// Visual placeholder for VNPay redirect mode (when backend returns
+/// `qrCode=null` and only `payUrl`). Instead of an empty/confusing QR area,
+/// show a browser icon + caption so the "Open VNPay gateway" CTA becomes the
+/// primary flow.
 class _RedirectIllustration extends StatelessWidget {
   final bool disabled;
   const _RedirectIllustration({required this.disabled});

@@ -9,12 +9,12 @@ class ApiClient {
   static late final Dio _dio;
   static bool _initialized = false;
 
-  /// Broadcast event khi token refresh fail → app phải đẩy user về login.
+  /// Broadcast event when token refresh fails → app must push user to login.
   ///
-  /// Subscriber: `AuthNotifier` (xem `auth_controller.dart`). Khi nhận:
-  /// 1. SecureStorage đã được clear bởi interceptor
-  /// 2. AuthNotifier reset state → router tự redirect `/login`
-  /// 3. Login screen show snackbar "Phiên đăng nhập đã hết hạn"
+  /// Subscriber: `AuthNotifier` (see `auth_controller.dart`). On receive:
+  /// 1. SecureStorage has already been cleared by the interceptor
+  /// 2. AuthNotifier resets state → router auto-redirects to `/login`
+  /// 3. Login screen shows snackbar "Session expired"
   static final StreamController<void> _forceLogoutController =
       StreamController<void>.broadcast();
 
@@ -50,7 +50,7 @@ class _AuthInterceptor extends Interceptor {
     ApiConstants.refresh,
   };
 
-  // Hàng chờ: các request nhận 401 trong khi đang refresh sẽ đợi ở đây
+  // Queue: requests that get 401 while a refresh is in flight wait here.
   final List<({RequestOptions options, ErrorInterceptorHandler handler})>
       _queue = [];
 
@@ -78,7 +78,7 @@ class _AuthInterceptor extends Interceptor {
     DioException err,
     ErrorInterceptorHandler handler,
   ) async {
-    // Public auth endpoints không cần refresh luồng 401.
+    // Public auth endpoints don't need the 401 refresh flow.
     if (_publicAuthPaths.contains(err.requestOptions.path)) {
       handler.next(err);
       return;
@@ -97,12 +97,12 @@ class _AuthInterceptor extends Interceptor {
       } catch (_) {}
     }
 
-    // Chỉ xử lý 401 (Unauthorized)
+    // Only handle 401 (Unauthorized).
     if (err.response?.statusCode != 401) {
       return handler.next(err);
     }
 
-    // Nếu đang refresh → đưa request vào hàng chờ, không retry ngay
+    // If a refresh is already in flight → queue the request, don't retry now.
     if (_isRefreshing) {
       _queue.add((options: err.requestOptions, handler: handler));
       return;
@@ -138,16 +138,16 @@ class _AuthInterceptor extends Interceptor {
         await SecureStorage.saveRefreshToken(newRefreshToken);
       }
 
-      // Retry request gốc với token mới
+      // Retry original request with the new token.
       err.requestOptions.headers['Authorization'] = 'Bearer $newAccessToken';
       final retryResponse = await _dio.fetch(err.requestOptions);
       handler.resolve(retryResponse);
 
-      // Replay tất cả request đang chờ trong hàng
+      // Replay all queued requests.
       await _replayQueue(newAccessToken, err);
     } catch (_) {
-      // Refresh thất bại → xoá token + broadcast force-logout cho AuthNotifier
-      // (state reset → router redirect /login + snackbar).
+      // Refresh failed → clear token + broadcast force-logout to AuthNotifier
+      // (state reset → router redirects to /login + snackbar).
       await SecureStorage.clear();
       ApiClient._forceLogoutController.add(null);
       await _failAll(err);
@@ -157,7 +157,7 @@ class _AuthInterceptor extends Interceptor {
     }
   }
 
-  /// Replay tất cả request trong hàng chờ với token mới
+  /// Replay all queued requests with the new token.
   Future<void> _replayQueue(String newToken, DioException originalErr) async {
     final pending = List.of(_queue);
     _queue.clear();
@@ -172,7 +172,7 @@ class _AuthInterceptor extends Interceptor {
     }
   }
 
-  /// Fail tất cả request đang chờ (refresh thất bại)
+  /// Fail all queued requests (refresh failed).
   Future<void> _failAll(DioException err) async {
     final pending = List.of(_queue);
     _queue.clear();

@@ -11,10 +11,10 @@ import '../../core/theme/app_spacing.dart';
 /// Spec: `halong24h-component-specs-v2.md` section "Card AI insight".
 ///
 /// Anatomy:
-/// - Background gradient gold (alpha 12% → 4% light, mạnh hơn dark)
-/// - Border 1px gold 30%
-/// - Icon container 36×36 nền gold500 với shadow gold
-/// - Overline "GỢI Ý TỪ AI" w800 size 11 — gold700 light / goldBright dark
+/// - Gold gradient background (alpha 12% → 4% light, stronger in dark)
+/// - 1px gold 30% border
+/// - 36×36 icon container on gold500 with gold shadow
+/// - Overline label (e.g. "GỢI Ý TỪ AI") w800 size 11 — gold700 light / goldBright dark
 /// - Message body — textPrimary
 /// - 2 action button optional (primary filled gold + outlined)
 /// - Dismiss button optional (top-right close)
@@ -91,7 +91,7 @@ class AIInsightCard extends StatelessWidget {
                 child: Icon(
                   icon,
                   size: 20,
-                  // Light: white trên gold500 OK; dark: gold900 cho contrast
+                  // Light: white on gold500 is fine; dark: gold900 for contrast.
                   color: isDark ? AppColors.gold900 : Colors.white,
                 ),
               ),
@@ -189,7 +189,7 @@ class _PrimaryAction extends StatelessWidget {
           style: GoogleFonts.beVietnamPro(
             fontSize: 12,
             fontWeight: FontWeight.w700,
-            // Spec: light white / dark gold900 — contrast tốt cả 2 mode
+            // Spec: light white / dark gold900 — good contrast in both modes
             color: isDark ? AppColors.gold900 : Colors.white,
           ),
         ),
@@ -220,7 +220,7 @@ class _SecondaryAction extends StatelessWidget {
           style: GoogleFonts.beVietnamPro(
             fontSize: 12,
             fontWeight: FontWeight.w700,
-            // gold700 cho text trên light; goldBright dark — qua textBrandAccent
+            // gold700 text on light; goldBright on dark — both via textBrandAccent
             color: colors.textBrandAccent,
           ),
         ),

@@ -2,17 +2,17 @@ import 'package:equatable/equatable.dart';
 
 import 'ocr_result.dart';
 
-/// Một upload CCCD (front hoặc back) với kết quả OCR.
+/// A CCCD upload (front or back) along with its OCR result.
 class CCCDUpload extends Equatable {
   final String id;
   final String imageUrl;
   final OCRResult? ocrResult;
 
-  /// Confidence của OCR (0..1). < 0.8 → cảnh báo người dùng chụp lại.
+  /// OCR confidence (0..1). < 0.8 → warn the user to retake.
   final double confidence;
   final DateTime uploadedAt;
 
-  /// Đường dẫn local (nếu chưa upload xong / chỉ preview offline).
+  /// Local path (if upload hasn't completed yet / for offline preview).
   final String? localPath;
 
   const CCCDUpload({

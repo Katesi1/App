@@ -10,9 +10,9 @@ import '../../../shared/widgets/calendar_grid_widget.dart';
 import '../../../shared/widgets/loading_widget.dart';
 import '../../calendar/controllers/calendar_controller.dart';
 
-/// Lịch riêng cho chủ nhà — chỉ hiện các căn của chủ nhà (Bearer token).
-/// OWNER/SALE thấy property của mình, ADMIN thấy tất cả.
-/// Tap ô = lock/mở phòng.
+/// Owner-only calendar — shows only owner's properties (Bearer token).
+/// OWNER/SALE see their own properties, ADMIN sees all.
+/// Tap cell = lock/unlock room.
 class OwnerCalendarScreen extends ConsumerStatefulWidget {
   const OwnerCalendarScreen({super.key});
 
@@ -27,11 +27,11 @@ class _OwnerCalendarScreenState extends ConsumerState<OwnerCalendarScreen> {
   DateTime _weekStart = _mondayOf(DateTime.now());
   DateTime _monthStart = DateTime(DateTime.now().year, DateTime.now().month);
 
-  // Local override: key = "${roomId}_${yyyy-MM-dd}" → đã bán thủ công
+  // Local override: key = "${roomId}_${yyyy-MM-dd}" → manually marked sold.
   final Set<String> _manualSoldKeys = {};
 
-  // Cache grid cuối cùng render thành công — dùng để giữ UI khi navigate
-  // sang tuần/tháng mới đang fetch, tránh flash loading indicator.
+  // Cache of last successfully rendered grid — keeps UI when navigating to
+  // a new week/month while fetching, avoiding loading indicator flash.
   List<CalendarRoom>? _lastRooms;
 
   static DateTime _mondayOf(DateTime date) {
@@ -65,7 +65,7 @@ class _OwnerCalendarScreenState extends ConsumerState<OwnerCalendarScreen> {
     return DateFormat('yyyy-MM-dd').format(lastDay);
   }
 
-  /// Map PropertyCategory → API type param (null = tất cả)
+  /// Maps PropertyCategory → API type param (null = all).
   int? get _typeParam => switch (_category) {
         PropertyCategory.all => null,
         PropertyCategory.villa => 0,
@@ -106,7 +106,7 @@ class _OwnerCalendarScreenState extends ConsumerState<OwnerCalendarScreen> {
       startDate: _startDate,
       endDate: _endDate,
       type: _typeParam,
-      isPublic: false, // management — dùng /calendar/grid với Bearer token
+      isPublic: false, // management — uses /calendar/grid with Bearer token
     );
 
     final gridAsync = ref.watch(calendarGridProvider(gridParams));
@@ -143,26 +143,26 @@ class _OwnerCalendarScreenState extends ConsumerState<OwnerCalendarScreen> {
     );
   }
 
-  /// Render grid với UX smooth khi navigate tuần/tháng:
-  /// - **Có data**: cache `_lastRooms`, render grid với AnimatedSwitcher fade transition
-  /// - **Loading + có cache**: hiện grid cũ + spinner mờ overlay (không flash trắng)
-  /// - **Loading + chưa cache**: LoadingWidget full
+  /// Renders grid with smooth UX when navigating weeks/months:
+  /// - **Has data**: cache `_lastRooms`, render with AnimatedSwitcher fade transition
+  /// - **Loading + has cache**: show old grid + dim spinner overlay (no white flash)
+  /// - **Loading + no cache**: full LoadingWidget
   /// - **Error**: ErrorStateWidget
   Widget _buildGridBody(
     AsyncValue<CalendarGrid> gridAsync,
     CalendarGridParams gridParams,
     AppColorScheme colors,
   ) {
-    // Animation key — đổi khi navigate (date range) hoặc switch view mode.
+    // Animation key — changes on navigate (date range) or view mode switch.
     final animKey = ValueKey(
       '${_viewMode.name}_${gridParams.startDate}_${gridParams.endDate}',
     );
 
     return gridAsync.when(
-      // Cold start: chưa từng load → full loading
+      // Cold start: never loaded → full loading.
       loading: () {
         if (_lastRooms == null) return const LoadingWidget();
-        // Đã có data cũ → hiện grid cũ + overlay mờ
+        // Has cached data → show old grid + dim overlay.
         return _stackWithOverlay(
           child: _buildGrid(_lastRooms!, gridParams, animKey),
           colors: colors,
@@ -190,7 +190,7 @@ class _OwnerCalendarScreenState extends ConsumerState<OwnerCalendarScreen> {
             message: 'Không có phòng nào',
           );
         }
-        // Cache cho lần navigate sau.
+        // Cache for next navigation.
         WidgetsBinding.instance.addPostFrameCallback((_) {
           if (mounted) setState(() => _lastRooms = rooms);
         });
@@ -209,7 +209,7 @@ class _OwnerCalendarScreenState extends ConsumerState<OwnerCalendarScreen> {
       switchInCurve: Curves.easeOutCubic,
       switchOutCurve: Curves.easeInCubic,
       transitionBuilder: (child, animation) {
-        // Slide nhẹ + fade — feel "carousel" giữa các tuần/tháng.
+        // Slight slide + fade — "carousel" feel between weeks/months.
         final offset = Tween<Offset>(
           begin: const Offset(0.04, 0),
           end: Offset.zero,
@@ -232,8 +232,8 @@ class _OwnerCalendarScreenState extends ConsumerState<OwnerCalendarScreen> {
     );
   }
 
-  /// Hiện grid cũ + spinner mờ overlay khi đang fetch data mới.
-  /// Tránh flash white trong lúc chờ network.
+  /// Shows old grid + dim spinner overlay while fetching new data.
+  /// Avoids white flash during network wait.
   Widget _stackWithOverlay({
     required Widget child,
     required AppColorScheme colors,
@@ -422,7 +422,6 @@ class _OwnerCalendarScreenState extends ConsumerState<OwnerCalendarScreen> {
               ),
               const SizedBox(height: 24),
               if (isAvailable) ...[
-                // Khoá ngày
                 _ActionBtn(
                   icon: Icons.lock_rounded,
                   label: 'Khoá ngày',
@@ -434,7 +433,6 @@ class _OwnerCalendarScreenState extends ConsumerState<OwnerCalendarScreen> {
                   },
                 ),
                 const SizedBox(height: 10),
-                // Giữ chỗ
                 _ActionBtn(
                   icon: Icons.lock_clock_rounded,
                   label: 'Giữ chỗ',
@@ -446,7 +444,6 @@ class _OwnerCalendarScreenState extends ConsumerState<OwnerCalendarScreen> {
                   },
                 ),
                 const SizedBox(height: 10),
-                // Đánh dấu đã bán
                 _ActionBtn(
                   icon: Icons.sell_rounded,
                   label: 'Đánh dấu đã bán',
@@ -458,7 +455,6 @@ class _OwnerCalendarScreenState extends ConsumerState<OwnerCalendarScreen> {
                   },
                 ),
               ] else if (isHold) ...[
-                // Mở khoá
                 _ActionBtn(
                   icon: Icons.lock_open_rounded,
                   label: 'Mở khoá phòng',
@@ -470,7 +466,6 @@ class _OwnerCalendarScreenState extends ConsumerState<OwnerCalendarScreen> {
                   },
                 ),
                 const SizedBox(height: 10),
-                // Chuyển sang đã bán
                 _ActionBtn(
                   icon: Icons.sell_rounded,
                   label: 'Đánh dấu đã bán',
@@ -482,7 +477,6 @@ class _OwnerCalendarScreenState extends ConsumerState<OwnerCalendarScreen> {
                   },
                 ),
               ] else if (isLocked) ...[
-                // Mở khoá
                 _ActionBtn(
                   icon: Icons.lock_open_rounded,
                   label: 'Mở khoá ngày',
@@ -494,7 +488,7 @@ class _OwnerCalendarScreenState extends ConsumerState<OwnerCalendarScreen> {
                   },
                 ),
               ] else ...[
-                // Đã bán — chỉ có thể mở lại
+                // Sold — can only be unlocked.
                 Container(
                   width: double.infinity,
                   padding:
@@ -580,7 +574,7 @@ class _OwnerCalendarScreenState extends ConsumerState<OwnerCalendarScreen> {
           propertyId: room.id,
           date: dateStr,
           gridParams: gridParams,
-          status: 1, // HOLD (giữ chỗ)
+          status: 1, // HOLD
         );
 
     if (!mounted) return;

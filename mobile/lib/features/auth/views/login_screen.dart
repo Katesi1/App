@@ -121,7 +121,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
       return;
     }
 
-    // Đăng nhập thành công → lưu hoặc xoá credentials theo checkbox
+    // Login succeeded → save or clear credentials based on the checkbox.
     if (_rememberMe) {
       await SecureStorage.saveCredentials(identifier, password);
     } else {
@@ -200,7 +200,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
     final topPadding = MediaQuery.of(context).padding.top;
     final bottomInset = MediaQuery.of(context).viewPadding.bottom;
 
-    // Detect force-logout (token refresh fail) → show snackbar 1 lần.
+    // Detect force-logout (token refresh fail) → show snackbar once.
     ref.listen(authProvider, (prev, next) {
       if (next.forceLoggedOut && (prev?.forceLoggedOut ?? false) == false) {
         ScaffoldMessenger.of(context)
@@ -223,14 +223,14 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
               duration: const Duration(seconds: 4),
             ),
           );
-        // Clear flag để snackbar không hiện lại khi user back-vào lại screen.
+        // Clear flag so the snackbar doesn't reappear if the user returns.
         ref.read(authProvider.notifier).consumeForceLogoutFlag();
       }
     });
 
     return Stack(
       children: [
-        // ── Background gradient (ngoài Scaffold để keyboard không ảnh hưởng) ──
+        // Background gradient (outside Scaffold so the keyboard doesn't affect it).
         const Positioned.fill(
           child: DecoratedBox(
             decoration: BoxDecoration(
@@ -240,7 +240,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
                 colors: [
                   AppColors.oceanDeep,
                   Color(
-                      0xFF0A3D5C), // custom interpolation, không thuộc token brand
+                      0xFF0A3D5C), // custom interpolation, not part of brand tokens
                   AppColors.ocean,
                 ],
                 stops: [0.0, 0.5, 1.0],
@@ -249,7 +249,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
           ),
         ),
 
-        // ── Animated wave circles (ngoài Scaffold) ──────────────────
+        // Animated wave circles (outside Scaffold).
         Positioned.fill(
           child: AnimatedBuilder(
             animation: _waveCtrl,
@@ -634,8 +634,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
                                         .fadeIn(duration: 400.ms)
                                         .slideY(begin: 0.1, end: 0),
 
-                                    // Apple button — chỉ hiện trên iOS theo
-                                    // Apple Guideline 4.8 (Android không bắt buộc).
+                                    // Apple button — iOS-only per Apple
+                                    // Guideline 4.8 (not required on Android).
                                     if (Platform.isIOS) ...[
                                       const SizedBox(height: 12),
                                       _AppleButton(
@@ -681,7 +681,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
 
                                     const SizedBox(height: 12),
 
-                                    // Invite-by-email entry — cho nhân viên
+                                    // Invite-by-email entry — for staff members.
                                     Center(
                                       child: GestureDetector(
                                         onTap: () =>
@@ -793,7 +793,7 @@ class _WavePainter extends CustomPainter {
     final paint = Paint()..style = PaintingStyle.fill;
     final t = progress * math.pi * 2;
 
-    // Large circle top-right — tần số 1 (1 vòng đầy đủ)
+    // Large circle top-right — frequency 1 (one full cycle).
     paint.color = Colors.white.withValues(alpha: 0.05);
     canvas.drawCircle(
       Offset(size.width + 40 + math.sin(t) * 20, -60 + math.cos(t) * 30),
@@ -801,7 +801,7 @@ class _WavePainter extends CustomPainter {
       paint,
     );
 
-    // Medium circle bottom-left — tần số 1, phase +π (ngược chiều)
+    // Medium circle bottom-left — frequency 1, phase +π (counter-rotating).
     paint.color = Colors.white.withValues(alpha: 0.03);
     canvas.drawCircle(
       Offset(-60 + math.sin(t + math.pi) * 40,
@@ -810,7 +810,7 @@ class _WavePainter extends CustomPainter {
       paint,
     );
 
-    // Small teal accent — tần số 2 (2 vòng, nhanh hơn)
+    // Small teal accent — frequency 2 (two cycles, faster).
     paint.color = AppColors.jadeBright.withValues(alpha: 0.07);
     canvas.drawCircle(
       Offset(size.width * 0.7 + math.sin(t * 2) * 18,
@@ -819,7 +819,7 @@ class _WavePainter extends CustomPainter {
       paint,
     );
 
-    // Gold accent dot — tần số 1, phase +π/2
+    // Gold accent dot — frequency 1, phase +π/2.
     paint.color = AppColors.gold500.withValues(alpha: 0.08);
     canvas.drawCircle(
       Offset(size.width * 0.15 + math.cos(t + math.pi / 2) * 10,

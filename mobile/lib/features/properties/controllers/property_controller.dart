@@ -12,9 +12,8 @@ final homestayRepositoryProvider = Provider<HomestayRepository>(
   (ref) => HomestayRepository(),
 );
 
-// ─── List provider ────────────────────────────────────────────────────────────
-// includeInactive: true → dùng ở management screen (admin/staff thấy cả cơ sở bị tắt)
-// includeInactive: false (default) → dùng ở customer / public views
+// includeInactive: true → used in management screen (admin/staff see inactive too).
+// includeInactive: false (default) → used in customer / public views.
 final homestayListProvider = FutureProvider.family<List<HomestayModel>, bool>(
     (ref, includeInactive) async {
   final repo = ref.read(homestayRepositoryProvider);
@@ -40,7 +39,7 @@ class HomestayActionsNotifier extends StateNotifier<AsyncValue<void>> {
   HomestayActionsNotifier(this._repo, this._ref)
       : super(const AsyncValue.data(null));
 
-  /// Invalidate tất cả providers liên quan sau mỗi action
+  /// Invalidates all related providers after each action.
   void _refreshAll({String? id}) {
     _ref.invalidate(homestayListProvider(true));
     _ref.invalidate(homestayListProvider(false));
@@ -53,7 +52,7 @@ class HomestayActionsNotifier extends StateNotifier<AsyncValue<void>> {
     _ref.invalidate(bookingListProvider);
   }
 
-  /// Trả về ID phòng vừa tạo, hoặc null nếu lỗi
+  /// Returns the newly created property ID, or null on error.
   Future<String?> create(Map<String, dynamic> data) async {
     state = const AsyncValue.loading();
     final result = await _repo.createHomestay(data);

@@ -3,8 +3,8 @@ import '../../core/constants/api_constants.dart';
 import '../../core/network/api_client.dart';
 import '../../core/network/api_response.dart';
 
-/// Partner API — mọi request cần [partnerKey] (header `X-Partner-Key`).
-/// Không lưu key trong repo; caller truyền vào (env / cấu hình riêng).
+/// Partner API — every request requires [partnerKey] (header `X-Partner-Key`).
+/// The key is NOT stored in the repo; caller passes it in (env / separate config).
 class PartnerRepository {
   final _dio = ApiClient.instance;
 

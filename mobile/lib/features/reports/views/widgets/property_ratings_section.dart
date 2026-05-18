@@ -5,14 +5,14 @@ import '../../../../core/theme/app_color_scheme.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../data/report_models.dart';
 
-/// Section "ĐÁNH GIÁ CĂN" — overview + per-property ratings + recent reviews.
+/// "Property Ratings" section — overview + per-property ratings + recent reviews.
 ///
 /// Anatomy:
 /// - Top: overall avg rating (big star) + total review count + 5-star
-///   distribution bars (như Booking.com style)
-/// - Mid: list "Phòng được yêu thích nhất" — top 3 phòng theo avgRating
-///   (chỉ phòng có ≥ 3 review để tránh noise từ phòng mới)
-/// - Bottom: 3 review gần nhất (preview) — customer name + rating + comment
+///   distribution bars (Booking.com style)
+/// - Mid: "Most-loved rooms" list — top 3 by avgRating
+///   (only properties with ≥ 3 reviews to avoid noise from new ones)
+/// - Bottom: 3 most recent reviews preview — customer name + rating + comment
 class PropertyRatingsSection extends StatelessWidget {
   final List<PropertyRating> ratings;
   final List<CustomerReview> reviews;
@@ -86,7 +86,7 @@ class PropertyRatingsSection extends StatelessWidget {
     );
   }
 
-  /// Lọc + sort top 3 phòng có rating cao nhất, ≥ 3 review để loại noise.
+  /// Filter + sort top 3 by rating, require ≥ 3 reviews to filter noise.
   List<PropertyRating> _topRated(List<PropertyRating> all) {
     final filtered = all.where((p) => p.totalReviews >= 3).toList();
     filtered.sort((a, b) => b.avgRating.compareTo(a.avgRating));
@@ -94,7 +94,7 @@ class PropertyRatingsSection extends StatelessWidget {
   }
 }
 
-// ─── Overview card ─────────────────────────────────────────────────────────
+// Overview card.
 
 class _OverviewCard extends StatelessWidget {
   final double avgRating;
@@ -120,7 +120,7 @@ class _OverviewCard extends StatelessWidget {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Big rating bên trái
+          // Big rating on left.
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -147,7 +147,7 @@ class _OverviewCard extends StatelessWidget {
             ],
           ),
           const SizedBox(width: 20),
-          // Distribution bars bên phải
+          // Distribution bars on right.
           Expanded(
             child: Column(
               children: [5, 4, 3, 2, 1].map((star) {

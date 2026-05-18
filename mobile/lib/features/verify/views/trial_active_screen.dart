@@ -11,7 +11,7 @@ import '../data/models/verify_enums.dart';
 import 'widgets/trial_countdown_text.dart';
 import 'widgets/verify_format.dart';
 
-/// Screen 7 — Trial active sau khi admin duyệt.
+/// Screen 7 — Trial active after admin approval.
 class TrialActiveScreen extends ConsumerWidget {
   const TrialActiveScreen({super.key});
 
@@ -28,9 +28,9 @@ class TrialActiveScreen extends ConsumerWidget {
 
     return Scaffold(
       backgroundColor: colors.bgCanvas,
-      // AppBar tối giản — chỉ hiện nút X để dismiss về dashboard.
-      // User landed ở đây qua `pushReplacement` từ pending screen nên
-      // navigation stack rỗng → cần explicit exit point.
+      // Minimal AppBar — only an X to dismiss back to dashboard. User lands
+      // here via `pushReplacement` from the pending screen, so the navigation
+      // stack is empty → we need an explicit exit point.
       appBar: AppBar(
         backgroundColor: colors.bgCanvas,
         elevation: 0,
@@ -75,8 +75,8 @@ class TrialActiveScreen extends ConsumerWidget {
                         .fadeIn(duration: 320.ms)
                         .slideY(begin: 0.1, end: 0),
                   const SizedBox(height: AppSpacing.md),
-                  // Secondary CTA: cho user "Để sau" → về dashboard, không
-                  // ép phải tạo homestay ngay lập tức.
+                  // Secondary CTA: let users tap "Later" → dashboard, instead
+                  // of forcing them to create a homestay immediately.
                   SizedBox(
                     height: 48,
                     child: OutlinedButton(

@@ -7,7 +7,7 @@ import '../models/room_model.dart';
 class RoomRepository {
   final _dio = ApiClient.instance;
 
-  /// Lấy phòng scoped theo owner (dùng cho quản lý)
+  /// Get rooms scoped by owner (for management).
   Future<ApiResponse<List<RoomModel>>> getRooms({
     String? homestayId,
     bool includeInactive = true,

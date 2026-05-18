@@ -166,7 +166,7 @@ class _CalendarGridWidgetState extends State<CalendarGridWidget> {
               ? AppColors.gold.withValues(alpha: 0.12)
               : AppColors.goldLight.withValues(alpha: 0.5);
 
-          // Color cho text — today luôn ocean đậm, weekend coral/oceanMid
+          // Text color — today is always deep ocean, weekend coral/oceanMid.
           final dayColor = isToday
               ? AppColors.ocean
               : isSaturday
@@ -207,7 +207,7 @@ class _CalendarGridWidgetState extends State<CalendarGridWidget> {
                   ),
                 ),
                 const SizedBox(height: 1),
-                // Today: số bọc trong vòng tròn ocean để nổi bật
+                // Today: day number wrapped in ocean circle to stand out.
                 isToday
                     ? Container(
                         width: 22,
@@ -330,7 +330,7 @@ class _CalendarGridWidgetState extends State<CalendarGridWidget> {
                       ),
                     ),
                     child: Text(
-                      // Strip prefix "DEMO-" để tên ngắn gọn, vd
+                      // Strip prefix "DEMO-" for concise names, e.g.
                       // "DEMO-VILLA-01" → "VILLA-01".
                       rooms[i].code.replaceFirst(
                           RegExp(r'^(DEMO|PROD|TEST)-', caseSensitive: false),
@@ -476,7 +476,7 @@ class _CalendarGridWidgetState extends State<CalendarGridWidget> {
         ),
     };
 
-    // Disable tap cho ngày quá khứ
+    // Disable tap for past dates.
     final today = DateTime.now();
     final todayDate = DateTime(today.year, today.month, today.day);
     final isPast = date.isBefore(todayDate);

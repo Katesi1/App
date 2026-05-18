@@ -19,14 +19,6 @@ void main() {
       });
     });
 
-    group('isManagement', () {
-      test('all roles are management', () {
-        expect(UserRole.admin.isManagement, true);
-        expect(UserRole.owner.isManagement, true);
-        expect(UserRole.sale.isManagement, true);
-      });
-    });
-
     group('fromInt', () {
       test('parses all roles', () {
         expect(UserRoleExtension.fromInt(0), UserRole.admin);

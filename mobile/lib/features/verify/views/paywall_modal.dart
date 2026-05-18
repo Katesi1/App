@@ -9,10 +9,10 @@ import '../controllers/verify_flow_controller.dart';
 
 /// Screen 1 — Paywall modal.
 ///
-/// Trigger: Free Owner click action bị lock (Tạo property / Quản lý phòng /
-/// Báo cáo doanh thu). Modal hiện giải thích flow + 4 step preview.
+/// Trigger: Free Owner taps a locked action (create property / manage rooms
+/// / revenue report). Modal explains the flow + 4-step preview.
 ///
-/// Anatomy theo spec section 5.1.
+/// Anatomy per spec section 5.1.
 class PaywallModal extends ConsumerStatefulWidget {
   final VoidCallback? onProceed;
   final VoidCallback? onDefer;
@@ -27,8 +27,9 @@ class _PaywallModalState extends ConsumerState<PaywallModal> {
   @override
   void initState() {
     super.initState();
-    // Hydrate trạng thái KYC từ backend khi mở modal — để hiện đúng
-    // "Tiếp tục bước X" thay vì luôn "Bắt đầu ngay" dù đã làm dở.
+    // Hydrate KYC state from backend when the modal opens — so we show the
+    // right "Continue at step X" instead of always "Start now" even when a
+    // draft exists.
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
       ref.read(verifyFlowControllerProvider.notifier).hydrate();
@@ -149,10 +150,11 @@ class _PaywallModalState extends ConsumerState<PaywallModal> {
           const SizedBox(height: AppSpacing.lg),
 
           // Buttons row.
-          // CHÚ Ý: callbacks tự handle pop (qua `showPaywallModal` helper).
-          // Nếu pop ở đây trước khi gọi callback, modal close với result null,
-          // làm caller `await showPaywallModal()` luôn nhận null thay vì
-          // true/false → check `ok == true` ở caller fail → KHÔNG navigate.
+          // NOTE: callbacks handle pop themselves (via `showPaywallModal`
+          // helper). If we pop here before calling the callback, the modal
+          // closes with a null result, so the caller's `await showPaywallModal()`
+          // always receives null instead of true/false → `ok == true` check
+          // fails → it would NOT navigate.
           Row(
             children: [
               Expanded(
@@ -199,7 +201,7 @@ class _PaywallModalState extends ConsumerState<PaywallModal> {
     );
   }
 
-  /// 4 bước verify flow — title + subtitle.
+  /// 4 verify-flow steps — title + subtitle.
   static const List<(String, String)> _steps = [
     ('Chụp CCCD + Selfie', 'Xác minh danh tính cá nhân'),
     ('Thông tin homestay', 'Tên, địa chỉ, số phòng dự kiến'),
@@ -350,11 +352,11 @@ class _PrimaryButton extends StatelessWidget {
   }
 }
 
-/// Helper hiển thị paywall modal.
+/// Helper to show the paywall modal.
 ///
 /// Returns:
-/// - `true` nếu user tap "Bắt đầu ngay" (caller nên push verify flow)
-/// - `false` nếu user tap "Để sau" / dismiss
+/// - `true` if the user taps "Start now" (caller should push the verify flow)
+/// - `false` if the user taps "Later" / dismisses
 Future<bool?> showPaywallModal(BuildContext context) {
   return showModalBottomSheet<bool>(
     context: context,

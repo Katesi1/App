@@ -7,7 +7,7 @@ import '../../../../core/theme/app_colors.dart';
 import '../../data/report_models.dart';
 
 // ════════════════════════════════════════════════════════════════════════════
-// 1. Criteria breakdown (6 tiêu chí trong ratings section)
+// 1. Criteria breakdown (6 criteria in ratings section).
 // ════════════════════════════════════════════════════════════════════════════
 
 class CriteriaBreakdownCard extends StatelessWidget {
@@ -105,7 +105,7 @@ class _CriteriaRow extends StatelessWidget {
 }
 
 // ════════════════════════════════════════════════════════════════════════════
-// 2. Length of stay histogram (4 bucket: 1đ / 2-3 / 4-7 / 8+)
+// 2. Length-of-stay histogram (4 buckets: 1 / 2-3 / 4-7 / 8+ nights).
 // ════════════════════════════════════════════════════════════════════════════
 
 class LengthOfStayChart extends StatelessWidget {
@@ -268,7 +268,7 @@ class LengthOfStayChart extends StatelessWidget {
 }
 
 // ════════════════════════════════════════════════════════════════════════════
-// 3. Day-of-week occupancy heatmap (7 ô T2-CN, intensity = occupancy)
+// 3. Day-of-week occupancy heatmap (7 cells Mon-Sun, intensity = occupancy).
 // ════════════════════════════════════════════════════════════════════════════
 
 class DayOfWeekChart extends StatelessWidget {
@@ -384,7 +384,7 @@ class _DayCell extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = context.colors;
-    // Map occupancy 0..1 → alpha trên brand color (0.1 → 0.95)
+    // Map occupancy 0..1 → alpha on brand color (0.1 → 0.95).
     final alpha = 0.1 + value * 0.85;
     final pct = (value * 100).round();
 

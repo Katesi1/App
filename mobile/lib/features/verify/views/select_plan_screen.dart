@@ -13,13 +13,13 @@ import 'widgets/plan_card.dart';
 import 'widgets/verify_app_bar.dart';
 import 'widgets/verify_format.dart';
 
-/// Screen 4 — Chọn gói subscription.
+/// Screen 4 — pick subscription plan.
 ///
-/// 6 tier theo số phòng cố định: Mini (1) / Starter (5) / Standard (10) /
-/// Pro (20) / Business (50) / Enterprise (unlimited — Liên hệ).
-/// User pick tier xong → số phòng = `tier.rooms`, không tự nhập.
-/// Toggle Monthly/Yearly áp dụng cho 5 tier có giá cố định; Enterprise
-/// bypass toggle, tap → /profile/help liên hệ.
+/// 6 tiers with fixed room counts: Mini (1) / Starter (5) / Standard (10) /
+/// Pro (20) / Business (50) / Enterprise (unlimited — contact us).
+/// Once the user picks a tier, room count = `tier.rooms` — not user-entered.
+/// Monthly/Yearly toggle applies to the 5 fixed-price tiers; Enterprise
+/// bypasses the toggle, tap → /profile/help to contact sales.
 class SelectPlanScreen extends ConsumerStatefulWidget {
   const SelectPlanScreen({super.key});
 
@@ -36,7 +36,7 @@ class _SelectPlanScreenState extends ConsumerState<SelectPlanScreen> {
     super.initState();
     final state = ref.read(verifyFlowControllerProvider);
     _cycle = state.billingCycle;
-    // Default Starter (5 phòng) — tier phổ biến nhất cho homestay nhỏ.
+    // Default Starter (5 rooms) — most common tier for small homestays.
     _selected = state.selectedPlan?.tier ?? Tier.rooms5;
   }
 

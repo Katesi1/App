@@ -12,10 +12,10 @@ import '../../verify/views/widgets/verify_format.dart';
 import '../controllers/kyc_approval_controller.dart';
 import '../data/models/kyc_submission.dart';
 
-/// Admin queue — list KYC submissions chờ duyệt.
+/// Admin queue — list of KYC submissions pending review.
 ///
-/// 4 tabs: Chờ duyệt (default) / Đã duyệt / Bị từ chối / Tất cả.
-/// Sort: overdue lên đầu cho tab "Chờ duyệt", oldest first.
+/// 4 tabs: Pending (default) / Approved / Rejected / All.
+/// Sort: overdue first for "Pending" tab, oldest first otherwise.
 class KYCApprovalListScreen extends ConsumerWidget {
   const KYCApprovalListScreen({super.key});
 

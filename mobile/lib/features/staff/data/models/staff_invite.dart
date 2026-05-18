@@ -1,6 +1,6 @@
 import 'package:equatable/equatable.dart';
 
-/// Trạng thái invite — khớp BE.
+/// Invite status — matches backend.
 enum StaffInviteStatus { pending, accepted, expired, cancelled, unknown }
 
 StaffInviteStatus _statusFromString(String? raw) {
@@ -50,7 +50,7 @@ extension StaffInviteStatusX on StaffInviteStatus {
   }
 }
 
-/// Invite mà OWNER đã tạo. Trả từ `POST /staff/invites` và `GET /staff/invites`.
+/// Invite created by OWNER. Returned from `POST /staff/invites` and `GET /staff/invites`.
 class StaffInvite extends Equatable {
   final String id;
   final String email;
@@ -106,8 +106,8 @@ class StaffInvite extends Equatable {
       ];
 }
 
-/// Preview thông tin OWNER + invite — trả từ `GET /staff/invites/verify/:token`.
-/// Dùng để hiện màn confirm trước khi accept.
+/// Preview of OWNER info + invite — returned from `GET /staff/invites/verify/:token`.
+/// Used to show confirm screen before accepting.
 class StaffInvitePreview extends Equatable {
   final String email;
   final String ownerName;

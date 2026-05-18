@@ -2,17 +2,17 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../data/repositories/report_repository.dart';
 import '../data/report_models.dart';
 
-// Re-export để các caller cũ vẫn import từ controller được.
+// Re-export so old callers can still import from controller.
 export '../data/report_models.dart';
 
-/// Filter params cho report. `period` là enum (today/week/month/year/custom).
-/// Khi `custom` → `from`/`to` bắt buộc. Backward-compat với `month/year`.
+/// Report filter params. `period` is an enum (today/week/month/year/custom).
+/// When `custom` → `from`/`to` are required. Backward-compat with `month/year`.
 class ReportParams {
   final ReportPeriod period;
   final DateTime? from;
   final DateTime? to;
 
-  /// Legacy: chỉ dùng khi `period == ReportPeriod.month` mà gọi backend cũ.
+  /// Legacy: only used when `period == ReportPeriod.month` calls old backend.
   final int? month;
   final int? year;
 
@@ -55,13 +55,13 @@ class ReportParams {
 final reportRepositoryProvider =
     Provider<ReportRepository>((ref) => ReportRepository());
 
-/// State của period filter (UI controlled). Default = tháng hiện tại.
+/// Period filter state (UI controlled). Default = current month.
 final selectedReportParamsProvider =
     StateProvider<ReportParams>((ref) => const ReportParams());
 
-/// Provider lấy report. Backend đã support `period/from/to` (mặc định
-/// `month` nếu không truyền). Custom period bắt buộc cả `from` lẫn `to`.
-/// Legacy `month/year` chỉ dùng khi explicit (rare).
+/// Report provider. Backend supports `period/from/to` (defaults to `month`
+/// if not passed). Custom period requires both `from` and `to`.
+/// Legacy `month/year` only used when explicit (rare).
 final reportDataProvider = FutureProvider.autoDispose
     .family<ReportData, ReportParams?>((ref, params) async {
   final link = ref.keepAlive();
@@ -69,8 +69,8 @@ final reportDataProvider = FutureProvider.autoDispose
   final repo = ref.read(reportRepositoryProvider);
 
   final p = params ?? const ReportParams();
-  // Custom period bắt buộc đủ from/to — nếu thiếu thì rơi về month mặc định
-  // để tránh request 400 ngay lúc user mới mở picker.
+  // Custom period requires both from/to — if missing, fall back to default
+  // month to avoid 400 request when user just opens the picker.
   final useCustom = p.period == ReportPeriod.custom &&
       p.from != null &&
       p.to != null;

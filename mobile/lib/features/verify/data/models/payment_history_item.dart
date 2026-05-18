@@ -2,43 +2,43 @@ import 'package:equatable/equatable.dart';
 
 import 'verify_enums.dart';
 
-/// Một dòng trong lịch sử thanh toán (KYC initial + renew/extension).
+/// A row in the payment history (initial KYC + renew/extension).
 ///
-/// Backend trả về từ `GET /payments/history`. Mỗi giao dịch lưu nguyên trạng
-/// status hiện tại (paid/refunded/failed/expired) — KHÔNG xoá khi refund,
-/// chỉ chuyển status để user tracking đầy đủ vòng đời.
+/// Returned by `GET /payments/history`. Each transaction keeps its current
+/// status (paid/refunded/failed/expired) — refunds do NOT delete the row, only
+/// transition status, so the user can track the full lifecycle.
 class PaymentHistoryItem extends Equatable {
   final String id;
 
-  /// Loại giao dịch:
-  /// - `subscription` = thanh toán đăng ký lần đầu (sau KYC)
-  /// - `renew` = gia hạn theo cycle hiện tại
-  /// - `upgrade` = đổi sang plan cao hơn (charge prorate)
-  /// - `refund` = giao dịch hoàn tiền (số âm)
+  /// Transaction type:
+  /// - `subscription` = initial subscription payment (post-KYC)
+  /// - `renew` = renewal on the current cycle
+  /// - `upgrade` = switch to a higher plan (prorated charge)
+  /// - `refund` = refund transaction (negative)
   final PaymentHistoryKind kind;
 
-  /// Hiển thị "Mini · Tháng" / "Standard · Năm" — backend trả sẵn.
+  /// Display label like "Mini · Monthly" / "Standard · Yearly" — backend provides.
   final String planLabel;
 
-  /// Chu kỳ tính phí.
+  /// Billing cycle.
   final BillingCycle cycle;
 
-  /// Số tiền (VND). Refund có thể là số dương — phân biệt qua `kind`.
+  /// Amount (VND). Refunds may be positive — distinguish via `kind`.
   final int amount;
 
   final PaymentMethod method;
   final PaymentStatus status;
 
-  /// Khi giao dịch được khởi tạo (POST /payments/initiate).
+  /// When the transaction was created (POST /payments/initiate).
   final DateTime createdAt;
 
-  /// Khi giao dịch hoàn tất (paid hoặc failed). Null nếu vẫn pending.
+  /// When the transaction settled (paid or failed). Null if still pending.
   final DateTime? settledAt;
 
-  /// Mã giao dịch ngân hàng / VNPay reference (nullable).
+  /// Bank/VNPay reference code (nullable).
   final String? referenceCode;
 
-  /// Số hoá đơn (nếu có invoice riêng).
+  /// Invoice number (if a separate invoice is issued).
   final String? invoiceNumber;
 
   const PaymentHistoryItem({
@@ -95,13 +95,13 @@ class PaymentHistoryItem extends Equatable {
       ];
 }
 
-/// 1 trang history + cursor cho lần fetch tiếp theo. Match response shape
-/// `{ data: [...], meta: { nextCursor, limit } }` của backend (xem
+/// One page of history + cursor for the next fetch. Matches the response shape
+/// `{ data: [...], meta: { nextCursor, limit } }` from backend (see
 /// `api-payments-frontend-spec.md` §5).
 class PaymentHistoryPage extends Equatable {
   final List<PaymentHistoryItem> items;
 
-  /// Truyền vào query `?cursor=...` để fetch trang tiếp. `null` ⇒ hết data.
+  /// Pass via query `?cursor=...` to fetch the next page. `null` ⇒ no more data.
   final String? nextCursor;
 
   final int limit;

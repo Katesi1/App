@@ -79,9 +79,9 @@ class _NotificationScreenState extends ConsumerState<NotificationScreen> {
                     return _NotificationCard(
                       notification: notification,
                       onTap: () {
-                        // Navigate sang detail. Detail screen tự mark-as-read
-                        // sau khi mount + show smart "Mở liên kết" button
-                        // theo targetType (booking/kyc/payment).
+                        // Navigate to detail. Detail screen auto-marks as read
+                        // after mount + shows smart "Open link" button per
+                        // targetType (booking/kyc/payment).
                         context.push('/notifications/${notification.id}');
                       },
                     );
@@ -242,8 +242,8 @@ class _NotificationCard extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(width: 8),
-                // Unread dot — chỉ hiện khi chưa đọc. Khi mark-as-read,
-                // dot biến mất hoàn toàn (không đổi sang xám).
+                // Unread dot — only shown when unread. After mark-as-read,
+                // dot disappears entirely (doesn't fade to grey).
                 if (!notification.isRead)
                   Container(
                     width: 8,

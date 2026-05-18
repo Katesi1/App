@@ -5,8 +5,8 @@ import '../../../../core/theme/app_color_scheme.dart';
 class ReportFormat {
   ReportFormat._();
 
-  /// Tính % delta giữa current vs previous. Trả `null` nếu prev = 0
-  /// (không có baseline để so sánh).
+  /// Computes % delta between current vs previous. Returns `null` if
+  /// previous == 0 (no baseline for comparison).
   static double? percentDelta(num current, num previous) {
     if (previous == 0) return null;
     return ((current - previous) / previous) * 100;
@@ -31,7 +31,7 @@ class ReportFormat {
     return '$v₫';
   }
 
-  /// Format full VND có dấu chấm phân cách. 1500000 → "1.500.000 ₫".
+  /// Full VND format with thousand separators. 1500000 → "1.500.000 ₫".
   static String vndFull(num? value) {
     final v = (value ?? 0).round();
     final str = v.toString();
@@ -43,13 +43,13 @@ class ReportFormat {
     return '${buf.toString()} ₫';
   }
 
-  /// Trim `.0` cuối nếu số nguyên (vd 1.0tr → 1tr, 1.5tr → 1.5tr).
+  /// Trims trailing `.0` for integers (e.g. 1.0tr → 1tr, 1.5tr → 1.5tr).
   static String _trimZero(double v) {
     final fixed = v.toStringAsFixed(1);
     return fixed.endsWith('.0') ? fixed.substring(0, fixed.length - 2) : fixed;
   }
 
-  /// Color cho delta % — xanh nếu tăng, đỏ nếu giảm.
+  /// Color for delta % — green if positive, red if negative.
   static Color deltaColor(AppColorScheme colors, double? delta) {
     if (delta == null || delta == 0) return colors.textTertiary;
     return delta > 0 ? colors.success : colors.error;
@@ -61,7 +61,7 @@ class ReportFormat {
     return delta > 0 ? Icons.arrow_upward_rounded : Icons.arrow_downward_rounded;
   }
 
-  /// Format delta % thành "↑ 12.3%" / "↓ 5.0%" / "—".
+  /// Formats delta % as "↑ 12.3%" / "↓ 5.0%" / "—".
   static String deltaLabel(double? delta) {
     if (delta == null) return '—';
     final abs = delta.abs().toStringAsFixed(1);

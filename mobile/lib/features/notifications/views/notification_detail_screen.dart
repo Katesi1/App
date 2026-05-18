@@ -11,14 +11,14 @@ import '../../../data/models/notification_model.dart';
 import '../../../shared/widgets/loading_widget.dart';
 import '../controllers/notification_controller.dart';
 
-/// Detail screen cho 1 thông báo. Resolve model qua `id` từ
-/// `notificationListProvider` (backend không có endpoint detail riêng).
+/// Notification detail screen. Resolves model by `id` from
+/// `notificationListProvider` (backend has no separate detail endpoint).
 ///
-/// On mount: tự động `markAsRead` nếu chưa đọc → list sẽ cập nhật khi user
-/// back ra (provider invalidate).
+/// On mount: auto-calls `markAsRead` if unread → list updates when user
+/// navigates back (provider invalidate).
 ///
-/// Smart navigation: nếu `targetType` + `targetId` có → button "Mở liên kết"
-/// → push tới resource liên quan (booking, kyc, payment...).
+/// Smart navigation: if `targetType` + `targetId` present → "Open link" button
+/// → pushes to related resource (booking, kyc, payment...).
 class NotificationDetailScreen extends ConsumerStatefulWidget {
   final String id;
   const NotificationDetailScreen({super.key, required this.id});
@@ -82,8 +82,8 @@ class _NotificationDetailScreenState
               subMessage: 'Thông báo có thể đã bị xoá',
             );
           }
-          // Mark-as-read sau khi list load thành công (postFrame trong init
-          // chạy sớm hơn list async load).
+          // Mark-as-read after list loads successfully (postFrame in init
+          // runs before list async load completes).
           if (!_markedAsRead && !notification.isRead) {
             WidgetsBinding.instance
                 .addPostFrameCallback((_) => _maybeMarkRead());
@@ -107,7 +107,7 @@ class _DetailBody extends StatelessWidget {
     return ListView(
       padding: const EdgeInsets.all(AppSpacing.md),
       children: [
-        // ── Header card: icon + type badge ──
+        // Header card: icon + type badge.
         Container(
           padding: const EdgeInsets.all(AppSpacing.md),
           decoration: BoxDecoration(
@@ -158,7 +158,6 @@ class _DetailBody extends StatelessWidget {
 
         const SizedBox(height: AppSpacing.md),
 
-        // ── Title ──
         Text(
           notification.title,
           style: GoogleFonts.beVietnamPro(
@@ -171,7 +170,6 @@ class _DetailBody extends StatelessWidget {
 
         const SizedBox(height: AppSpacing.sm),
 
-        // ── Body / subtitle ──
         Text(
           notification.subtitle.isEmpty
               ? '(Không có nội dung chi tiết)'
@@ -186,7 +184,7 @@ class _DetailBody extends StatelessWidget {
 
         const SizedBox(height: AppSpacing.lg),
 
-        // ── Smart action button (nếu có target) ──
+        // Smart action button (if target present).
         if (_resolveTargetRoute(notification) != null)
           SizedBox(
             width: double.infinity,
@@ -232,16 +230,16 @@ class _DetailBody extends StatelessWidget {
     if (route != null) context.push(route);
   }
 
-  /// Map (`type`, `targetType`, `targetId`) → route. Trả `null` nếu noti
-  /// không có resource liên kết (vd `system` thông báo chung chung).
+  /// Maps (`type`, `targetType`, `targetId`) → route. Returns `null` if
+  /// notification has no linked resource (e.g. generic `system` notification).
   static String? _resolveTargetRoute(NotificationModel n) {
     final id = n.targetId;
     final t = n.targetType?.toLowerCase();
 
     // KYC events
     if (t == 'kyc' || t == 'kyc_submission') {
-      // Có nhiều state — đẩy về dashboard, banner sẽ tự route đúng paywall/
-      // pending/approved/rejected.
+      // Multiple states — route to dashboard, banner will navigate to the
+      // correct paywall/pending/approved/rejected screen.
       return '/dashboard';
     }
 
@@ -258,7 +256,7 @@ class _DetailBody extends StatelessWidget {
       return '/profile/help';
     }
 
-    // System / general — không có route cụ thể
+    // System / general — no specific route.
     return null;
   }
 

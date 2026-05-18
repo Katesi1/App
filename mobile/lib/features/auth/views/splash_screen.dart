@@ -119,7 +119,7 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
                 colors: [
                   AppColors.oceanDeep,
                   Color(
-                      0xFF083550), // custom interpolation, không thuộc token brand
+                      0xFF083550), // custom interpolation, not part of brand tokens
                   AppColors.ocean,
                 ],
                 stops: [0.0, 0.5, 1.0],
@@ -190,7 +190,7 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
                               ],
                             ),
                           ),
-                          // Logo — không clip, không crop
+                          // Logo — no clipping, no crop
                           SizedBox(
                             width: 96,
                             height: 96,
@@ -286,7 +286,7 @@ class _SplashWavePainter extends CustomPainter {
     final paint = Paint()..style = PaintingStyle.fill;
     final t = progress * math.pi * 2;
 
-    // Tần số 1
+    // Frequency 1
     paint.color = Colors.white.withValues(alpha: 0.04);
     canvas.drawCircle(
         Offset(size.width * 0.85 + math.sin(t) * 25,
@@ -294,7 +294,7 @@ class _SplashWavePainter extends CustomPainter {
         160,
         paint);
 
-    // Tần số 1, phase +π (ngược chiều → trông tự nhiên hơn)
+    // Frequency 1, phase +π (counter-rotating → looks more natural)
     paint.color = Colors.white.withValues(alpha: 0.03);
     canvas.drawCircle(
         Offset(size.width * 0.1 + math.sin(t + math.pi) * 20,
@@ -302,7 +302,7 @@ class _SplashWavePainter extends CustomPainter {
         180,
         paint);
 
-    // Tần số 2, phase +π/2
+    // Frequency 2, phase +π/2
     paint.color = AppColors.jadeBright.withValues(alpha: 0.06);
     canvas.drawCircle(
         Offset(size.width * 0.6 + math.sin(t * 2 + math.pi / 2) * 25,

@@ -99,7 +99,7 @@ class PermissionGroup {
       );
 }
 
-/// Định nghĩa cấu trúc module + default enabled cho từng role.
+/// Defines module structure + default enabled state per role.
 class PermissionDefinitions {
   static List<PermissionGroup> defaultsForRole(UserRole role) {
     final defaults = _defaultEnabled[role] ?? {};
@@ -127,7 +127,7 @@ class PermissionDefinitions {
         .toList();
   }
 
-  /// Áp enabled states đã lưu lên cấu trúc mặc định.
+  /// Applies saved enabled states onto the default structure.
   static List<PermissionGroup> applyOverrides(
     UserRole role,
     Map<String, bool> saved,
@@ -157,7 +157,7 @@ class PermissionDefinitions {
         .toList();
   }
 
-  /// Flatten toàn bộ entries thành map id→enabled để lưu vào storage.
+  /// Flattens all entries to id→enabled map for storage.
   static Map<String, bool> toMap(List<PermissionGroup> groups) {
     final map = <String, bool>{};
     for (final group in groups) {
@@ -170,7 +170,7 @@ class PermissionDefinitions {
     return map;
   }
 
-  // ─── Cấu trúc module (không có enabled — chỉ định nghĩa shape) ─────────────
+  // Module structure (no enabled — shape definition only).
 
   static final List<PermissionGroup> _structure = [
     PermissionGroup(
