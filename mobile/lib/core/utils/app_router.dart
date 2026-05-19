@@ -47,7 +47,6 @@ import '../../features/profile/views/personal_info_screen.dart';
 import '../../features/profile/views/privacy_policy_screen.dart';
 import '../../features/profile/views/profile_screen.dart';
 import '../../features/profile/views/terms_of_service_screen.dart';
-import '../../features/bookings/views/hold_room_screen.dart';
 import '../../features/rooms/views/room_detail_screen.dart';
 import '../../features/rooms/views/room_list_screen.dart';
 import '../../features/reports/views/report_screen.dart';
@@ -340,16 +339,6 @@ final routerProvider = Provider<GoRouter>((ref) {
               key: state.pageKey,
               child: RoomDetailScreen(roomId: state.pathParameters['id']!),
             ),
-            routes: [
-              GoRoute(
-                path: 'hold',
-                pageBuilder: (_, state) => fadeScalePage(
-                  key: state.pageKey,
-                  child:
-                      HoldRoomScreen(propertyId: state.pathParameters['id']!),
-                ),
-              ),
-            ],
           ),
         ],
       ),
