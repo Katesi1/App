@@ -173,9 +173,10 @@ class AuthNotifier extends StateNotifier<AuthState> {
       phone: phone,
     );
     if (result.success) {
-      state = AuthState(user: result.data, isLoggedIn: true);
-      _invalidateDataProviders();
-      _onAuthenticated();
+      // Tài khoản đã được tạo nhưng KHÔNG auto-login — user phải đăng nhập
+      // lại thủ công để xác minh mật khẩu. Clear tokens mà repo vừa lưu.
+      await SecureStorage.clear();
+      state = AuthState();
       return null;
     } else {
       state = state.copyWith(error: result.message);

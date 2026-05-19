@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../core/storage/secure_storage.dart';
 import '../../../core/theme/app_color_scheme.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../data/repositories/user_repository.dart';
@@ -41,6 +42,9 @@ class _DeleteAccountScreenState extends ConsumerState<DeleteAccountScreen> {
     if (!mounted) return;
 
     if (result.success) {
+      // Xoá saved credentials (Remember me) để login screen không auto-fill
+      // input của tài khoản vừa bị xoá.
+      await SecureStorage.clearCredentials();
       // Logout local: clear tokens, FCM unregister, reset state.
       await ref.read(authProvider.notifier).logout();
 

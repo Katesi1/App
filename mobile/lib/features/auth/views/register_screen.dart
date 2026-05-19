@@ -100,7 +100,31 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen>
           margin: const EdgeInsets.all(AppSpacing.md),
         ),
       );
+      return;
     }
+
+    // Tạo tài khoản thành công → bắt buộc đăng nhập lại để xác minh mật khẩu.
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(
+        SnackBar(
+          content: Row(
+            children: const [
+              Icon(Icons.check_circle_outline, color: Colors.white, size: 18),
+              SizedBox(width: AppSpacing.sm),
+              Expanded(
+                child: Text('Tạo tài khoản thành công. Vui lòng đăng nhập.'),
+              ),
+            ],
+          ),
+          backgroundColor: AppColors.emerald,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(AppRadius.sm)),
+          margin: const EdgeInsets.all(AppSpacing.md),
+        ),
+      );
+    context.go('/login');
   }
 
   Future<void> _registerWithGoogle() async {
