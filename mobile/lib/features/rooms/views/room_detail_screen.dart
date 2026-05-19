@@ -2,6 +2,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:photo_view/photo_view.dart';
 import 'package:photo_view/photo_view_gallery.dart';
@@ -208,6 +209,49 @@ class RoomDetailScreen extends ConsumerWidget {
                       _PriceGrid(price: room.price!),
                       const SizedBox(height: 24),
                     ],
+
+                    SizedBox(
+                      width: double.infinity,
+                      height: 48,
+                      child: Container(
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            colors: isDark
+                                ? [colors.brand, colors.brandLight]
+                                : const [
+                                    AppColors.jade900,
+                                    AppColors.jade500,
+                                  ],
+                          ),
+                          borderRadius: BorderRadius.circular(AppRadius.md),
+                          boxShadow: [
+                            BoxShadow(
+                              color: colors.brand
+                                  .withValues(alpha: isDark ? 0.40 : 0.30),
+                              blurRadius: 16,
+                              offset: const Offset(0, 4),
+                            ),
+                          ],
+                        ),
+                        child: Material(
+                          color: Colors.transparent,
+                          child: InkWell(
+                            onTap: () => context.push('/rooms/$roomId/hold'),
+                            borderRadius: BorderRadius.circular(AppRadius.md),
+                            child: Center(
+                              child: Text(
+                                'Tạo booking',
+                                style: GoogleFonts.beVietnamPro(
+                                  color: colors.textOnPrimary,
+                                  fontWeight: FontWeight.w600,
+                                  fontSize: 14,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
                   ],
                 ),
               ),
