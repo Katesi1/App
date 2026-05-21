@@ -1,4 +1,4 @@
-import 'package:dio/dio.dart';
+﻿import 'package:dio/dio.dart';
 import '../../core/constants/api_constants.dart';
 import '../../core/network/api_client.dart';
 import '../../core/network/api_response.dart';
@@ -31,7 +31,7 @@ class ReportRepository {
       final data = response.data['data'] as Map<String, dynamic>;
       // Parse recentBookings nếu có
       if (data['recentBookings'] != null) {
-        data['recentBookingsParsed'] = (data['recentBookings'] as List)
+        data['recentBookingsParsed'] = (data['recentBookings'] as List? ?? [])
             .map((e) => BookingModel.fromJson(e))
             .toList();
       }

@@ -1,4 +1,4 @@
-import 'package:dio/dio.dart';
+﻿import 'package:dio/dio.dart';
 import '../../core/constants/api_constants.dart';
 import '../../core/network/api_client.dart';
 import '../../core/network/api_response.dart';
@@ -20,7 +20,7 @@ class RoomRepository {
           if (includeInactive) 'includeInactive': true,
         },
       );
-      final list = (response.data['data'] as List)
+      final list = (response.data['data'] as List? ?? [])
           .map((e) => RoomModel.fromJson(e))
           .toList();
       return ApiResponse(success: true, data: list, message: '');
@@ -33,7 +33,7 @@ class RoomRepository {
   Future<ApiResponse<List<RoomModel>>> getAllPublicRooms() async {
     try {
       final response = await _dio.get(ApiConstants.propertiesPublic);
-      final list = (response.data['data'] as List)
+      final list = (response.data['data'] as List? ?? [])
           .map((e) => RoomModel.fromJson(e))
           .where((r) => r.isActive)
           .toList();
@@ -116,7 +116,7 @@ class RoomRepository {
           receiveTimeout: const Duration(seconds: 60),
         ),
       );
-      final list = (response.data['data'] as List)
+      final list = (response.data['data'] as List? ?? [])
           .map((e) => RoomImageModel.fromJson(e))
           .toList();
       return ApiResponse(success: true, data: list, message: '');

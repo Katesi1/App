@@ -1,4 +1,4 @@
-import 'package:dio/dio.dart';
+﻿import 'package:dio/dio.dart';
 import '../../core/constants/api_constants.dart';
 import '../../core/network/api_client.dart';
 import '../../core/network/api_response.dart';
@@ -20,7 +20,7 @@ class PartnerRepository {
         ApiConstants.partnerProperties,
         options: _headers(partnerKey),
       );
-      final list = (response.data['data'] as List)
+      final list = (response.data['data'] as List? ?? [])
           .map((e) => Map<String, dynamic>.from(e as Map))
           .toList();
       return ApiResponse(success: true, data: list, message: '');

@@ -27,7 +27,7 @@ class BookingRepository {
         ApiConstants.bookings,
         queryParameters: propertyId != null ? {'propertyId': propertyId} : null,
       );
-      final list = (response.data['data'] as List)
+      final list = (response.data['data'] as List? ?? [])
           .map((e) => BookingModel.fromJson(e))
           .toList();
       return ApiResponse(success: true, data: list, message: '');
@@ -43,7 +43,7 @@ class BookingRepository {
         '${ApiConstants.bookings}/calendar/$propertyId',
         queryParameters: {'year': year, 'month': month},
       );
-      final list = (response.data['data'] as List)
+      final list = (response.data['data'] as List? ?? [])
           .map((e) => CalendarBooking.fromJson(e))
           .toList();
       return ApiResponse(success: true, data: list, message: '');

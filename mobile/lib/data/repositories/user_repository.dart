@@ -1,4 +1,4 @@
-import 'package:dio/dio.dart';
+﻿import 'package:dio/dio.dart';
 import '../../core/constants/api_constants.dart';
 import '../../core/network/api_client.dart';
 import '../../core/network/api_response.dart';
@@ -26,7 +26,7 @@ class UserRepository {
         ApiConstants.users,
         queryParameters: role != null ? {'role': role} : null,
       );
-      final list = (response.data['data'] as List)
+      final list = (response.data['data'] as List? ?? [])
           .map((e) => UserModel.fromJson(e))
           .toList();
       return ApiResponse(success: true, data: list, message: '');
@@ -39,7 +39,7 @@ class UserRepository {
   Future<ApiResponse<List<UserModel>>> getMyStaff() async {
     try {
       final response = await _dio.get('${ApiConstants.users}/my-staff');
-      final list = (response.data['data'] as List)
+      final list = (response.data['data'] as List? ?? [])
           .map((e) => UserModel.fromJson(e))
           .toList();
       return ApiResponse(success: true, data: list, message: '');
@@ -52,7 +52,7 @@ class UserRepository {
   Future<ApiResponse<List<UserModel>>> getAvailableStaff() async {
     try {
       final response = await _dio.get('${ApiConstants.users}/available-staff');
-      final list = (response.data['data'] as List)
+      final list = (response.data['data'] as List? ?? [])
           .map((e) => UserModel.fromJson(e))
           .toList();
       return ApiResponse(success: true, data: list, message: '');

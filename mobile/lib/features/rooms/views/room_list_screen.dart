@@ -644,6 +644,7 @@ class _RoomListScreenState extends ConsumerState<RoomListScreen>
                           controller: _searchController,
                           focusNode: _searchFocusNode,
                           onChanged: _onSearchChanged,
+                          textAlignVertical: TextAlignVertical.center,
                           style: GoogleFonts.beVietnamPro(
                             fontSize: 14,
                             color: Colors.white,
@@ -675,8 +676,11 @@ class _RoomListScreenState extends ConsumerState<RoomListScreen>
                                   )
                                 : null,
                             border: InputBorder.none,
-                            contentPadding:
-                                const EdgeInsets.symmetric(vertical: 10),
+                            enabledBorder: InputBorder.none,
+                            focusedBorder: InputBorder.none,
+                            filled: false,
+                            isDense: true,
+                            contentPadding: EdgeInsets.zero,
                           ),
                         ),
                       ),

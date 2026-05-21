@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -8,7 +10,6 @@ import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../core/utils/helpers.dart';
 import '../../../data/models/user_model.dart';
-import '../../../shared/widgets/app_scaffold.dart';
 import '../../../shared/widgets/loading_widget.dart';
 import '../../auth/controllers/auth_controller.dart';
 import '../controllers/user_controller.dart';
@@ -21,12 +22,58 @@ class UserListScreen extends ConsumerStatefulWidget {
 }
 
 class _UserListScreenState extends ConsumerState<UserListScreen> {
-  // null = tất cả nhân viên (OWNER + SALE, loại trừ ADMIN)
   int? _roleFilter;
-
-  // 1=OWNER, 2=SALE
   static const _filterRoles = [2, 1];
   static const _filterLabels = ['Sale', 'Chủ nhà'];
+
+  bool _isSearching = false;
+  String _searchQuery = '';
+  final _searchCtrl = TextEditingController();
+  final _searchFocusNode = FocusNode();
+  Timer? _debounce;
+
+  @override
+  void dispose() {
+    _searchCtrl.dispose();
+    _searchFocusNode.dispose();
+    _debounce?.cancel();
+    super.dispose();
+  }
+
+  void _onSearchChanged(String v) {
+    _debounce?.cancel();
+    _debounce = Timer(const Duration(milliseconds: 300), () {
+      if (mounted) setState(() => _searchQuery = v);
+    });
+  }
+
+  void _toggleSearch() {
+    setState(() {
+      _isSearching = !_isSearching;
+      if (!_isSearching) {
+        _searchQuery = '';
+        _searchCtrl.clear();
+      } else {
+        Future.delayed(const Duration(milliseconds: 80),
+            () => _searchFocusNode.requestFocus());
+      }
+    });
+  }
+
+  List<UserModel> _applyFilters(List<UserModel> all) {
+    var result = all.where((u) => !u.isAdmin);
+    if (_roleFilter != null) {
+      result = result.where((u) => u.role == _roleFilter);
+    }
+    if (_searchQuery.isNotEmpty) {
+      final q = _searchQuery.toLowerCase();
+      result = result.where((u) =>
+          u.name.toLowerCase().contains(q) ||
+          u.phone.contains(q) ||
+          (u.email?.toLowerCase().contains(q) ?? false));
+    }
+    return result.toList();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -37,10 +84,8 @@ class _UserListScreenState extends ConsumerState<UserListScreen> {
 
     final usersAsync = ref.watch(staffListProvider);
 
-    return AppScaffold(
-      title: 'Nhân viên',
-      selectedIndex: 4,
-      showAppBar: false,
+    return Scaffold(
+      backgroundColor: colors.bgCanvas,
       floatingActionButton: _buildFab(context, isAdmin),
       body: Column(
         children: [
@@ -62,13 +107,15 @@ class _UserListScreenState extends ConsumerState<UserListScreen> {
                 onRetry: () => ref.invalidate(staffListProvider),
               ),
               data: (allUsers) {
-                // Loại Admin ra khỏi danh sách quản lý
-                final users = allUsers
-                    .where((u) => !u.isAdmin)
-                    .where((u) => _roleFilter == null || u.role == _roleFilter)
-                    .toList();
+                final users = _applyFilters(allUsers);
 
                 if (users.isEmpty) {
+                  if (_searchQuery.isNotEmpty) {
+                    return EmptyStateWidget(
+                      icon: Icons.search_off_rounded,
+                      message: 'Không tìm thấy nhân viên\nkhớp với "$_searchQuery"',
+                    );
+                  }
                   return EmptyStateWidget(
                     icon: Icons.people_outline_rounded,
                     message: isAdmin
@@ -134,7 +181,7 @@ class _UserListScreenState extends ConsumerState<UserListScreen> {
         top: MediaQuery.of(context).padding.top + 8,
         left: 20,
         right: 20,
-        bottom: 24,
+        bottom: _isSearching ? 16 : 24,
       ),
       decoration: const BoxDecoration(
         gradient: LinearGradient(
@@ -171,83 +218,147 @@ class _UserListScreenState extends ConsumerState<UserListScreen> {
               ),
             ),
           ),
-          Row(
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              GestureDetector(
-                // /admin/users top-level — fallback /admin nếu stack rỗng.
-                onTap: () {
-                  if (context.canPop()) {
-                    context.pop();
-                  } else {
-                    context.go('/admin');
-                  }
-                },
-                child: Container(
-                  width: 36,
-                  height: 36,
-                  margin: const EdgeInsets.only(right: 12),
-                  decoration: BoxDecoration(
-                    color: Colors.white.withValues(alpha: 0.12),
-                    shape: BoxShape.circle,
-                    border:
-                        Border.all(color: Colors.white.withValues(alpha: 0.18)),
+              Row(
+                children: [
+                  GestureDetector(
+                    onTap: () {
+                      if (context.canPop()) {
+                        context.pop();
+                      } else {
+                        context.go('/admin');
+                      }
+                    },
+                    child: Container(
+                      width: 36,
+                      height: 36,
+                      margin: const EdgeInsets.only(right: 12),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withValues(alpha: 0.12),
+                        shape: BoxShape.circle,
+                        border: Border.all(
+                            color: Colors.white.withValues(alpha: 0.18)),
+                      ),
+                      child: const Icon(Icons.arrow_back_rounded,
+                          color: Colors.white, size: 18),
+                    ),
                   ),
-                  child: const Icon(Icons.arrow_back_rounded,
-                      color: Colors.white, size: 18),
-                ),
-              ),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      isAdmin ? 'Quản lý nhân viên' : 'Nhân viên của tôi',
-                      style: GoogleFonts.beVietnamPro(
-                        fontSize: 20,
-                        fontWeight: FontWeight.w700,
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          isAdmin ? 'Quản lý nhân viên' : 'Nhân viên của tôi',
+                          style: GoogleFonts.beVietnamPro(
+                            fontSize: 20,
+                            fontWeight: FontWeight.w700,
+                            color: Colors.white,
+                          ),
+                        ),
+                        if (!_isSearching) ...[
+                          const SizedBox(height: 2),
+                          Text(
+                            isAdmin
+                                ? 'Gán vai trò · Kích hoạt tài khoản'
+                                : 'Thêm nhân viên bằng số điện thoại',
+                            style: GoogleFonts.beVietnamPro(
+                              fontSize: 12,
+                              color: Colors.white.withValues(alpha: 0.65),
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
+                  ),
+                  // Search icon
+                  GestureDetector(
+                    onTap: _toggleSearch,
+                    child: Container(
+                      width: 36,
+                      height: 36,
+                      margin: const EdgeInsets.only(right: 8),
+                      decoration: BoxDecoration(
+                        color: _isSearching
+                            ? Colors.white.withValues(alpha: 0.25)
+                            : Colors.white.withValues(alpha: 0.12),
+                        shape: BoxShape.circle,
+                        border: Border.all(
+                            color: Colors.white.withValues(alpha: 0.18)),
+                      ),
+                      child: Icon(
+                        _isSearching ? Icons.close_rounded : Icons.search_rounded,
                         color: Colors.white,
+                        size: 18,
                       ),
                     ),
-                    const SizedBox(height: 2),
-                    Text(
-                      isAdmin
-                          ? 'Gán vai trò · Kích hoạt tài khoản'
-                          : 'Thêm nhân viên bằng số điện thoại',
-                      style: GoogleFonts.beVietnamPro(
-                        fontSize: 12,
-                        color: Colors.white.withValues(alpha: 0.65),
+                  ),
+                  GestureDetector(
+                    onTap: () => context.push('/profile'),
+                    child: Container(
+                      width: 40,
+                      height: 40,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        gradient: const LinearGradient(
+                          colors: [AppColors.jade300, AppColors.gold500],
+                        ),
+                        border: Border.all(
+                          color: Colors.white.withValues(alpha: 0.3),
+                          width: 1.5,
+                        ),
+                      ),
+                      child: Center(
+                        child: Text(
+                          userName.isNotEmpty ? userName[0].toUpperCase() : 'A',
+                          style: GoogleFonts.beVietnamPro(
+                            color: Colors.white,
+                            fontWeight: FontWeight.w700,
+                            fontSize: 15,
+                          ),
+                        ),
                       ),
                     ),
-                  ],
-                ),
+                  ),
+                ],
               ),
-              GestureDetector(
-                onTap: () => context.push('/profile'),
-                child: Container(
-                  width: 40,
-                  height: 40,
+              // Search input (visible when _isSearching)
+              if (_isSearching) ...[
+                const SizedBox(height: 12),
+                Container(
+                  height: 44,
                   decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    gradient: const LinearGradient(
-                      colors: [AppColors.jade300, AppColors.gold500],
-                    ),
+                    color: Colors.white.withValues(alpha: 0.15),
+                    borderRadius: BorderRadius.circular(AppRadius.lg),
                     border: Border.all(
-                      color: Colors.white.withValues(alpha: 0.3),
-                      width: 1.5,
-                    ),
+                        color: Colors.white.withValues(alpha: 0.25)),
                   ),
-                  child: Center(
-                    child: Text(
-                      userName.isNotEmpty ? userName[0].toUpperCase() : 'A',
-                      style: GoogleFonts.beVietnamPro(
-                        color: Colors.white,
-                        fontWeight: FontWeight.w700,
-                        fontSize: 15,
+                  child: TextField(
+                    controller: _searchCtrl,
+                    focusNode: _searchFocusNode,
+                    onChanged: _onSearchChanged,
+                    textAlignVertical: TextAlignVertical.center,
+                    style: GoogleFonts.beVietnamPro(
+                        color: Colors.white, fontSize: 14),
+                    decoration: InputDecoration(
+                      hintText: 'Tìm theo tên, SĐT, email...',
+                      hintStyle: GoogleFonts.beVietnamPro(
+                        color: Colors.white.withValues(alpha: 0.55),
+                        fontSize: 14,
                       ),
+                      prefixIcon: const Icon(Icons.search_rounded,
+                          color: Colors.white54, size: 18),
+                      border: InputBorder.none,
+                      enabledBorder: InputBorder.none,
+                      focusedBorder: InputBorder.none,
+                      filled: false,
+                      isDense: true,
+                      contentPadding: EdgeInsets.zero,
                     ),
                   ),
                 ),
-              ),
+              ],
             ],
           ),
         ],

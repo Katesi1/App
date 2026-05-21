@@ -19,10 +19,13 @@ import 'shared/providers/view_mode_provider.dart';
 import 'shared/widgets/soft_update_prompt.dart';
 
 void main() {
-  final widgetsBinding = WidgetsFlutterBinding.ensureInitialized();
-  FlutterNativeSplash.preserve(widgetsBinding: widgetsBinding);
   runZonedGuarded(
     () async {
+      // ensureInitialized + FlutterNativeSplash phải trong cùng zone với
+      // runApp để tránh "Zone mismatch" crash.
+      final widgetsBinding = WidgetsFlutterBinding.ensureInitialized();
+      FlutterNativeSplash.preserve(widgetsBinding: widgetsBinding);
+
       // Init locale 'vi' + 'vi_VN' để DateFormat(..., 'vi') không throw
       // LocaleDataException. Fast + sync — không cần timeout.
       try {

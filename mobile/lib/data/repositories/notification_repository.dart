@@ -1,4 +1,4 @@
-import 'package:dio/dio.dart';
+﻿import 'package:dio/dio.dart';
 import '../../core/constants/api_constants.dart';
 import '../../core/network/api_client.dart';
 import '../../core/network/api_response.dart';
@@ -10,7 +10,7 @@ class NotificationRepository {
   Future<ApiResponse<List<NotificationModel>>> getNotifications() async {
     try {
       final response = await _dio.get(ApiConstants.notifications);
-      final list = (response.data['data'] as List)
+      final list = (response.data['data'] as List? ?? [])
           .map((e) => NotificationModel.fromJson(e))
           .toList();
       return ApiResponse(success: true, data: list, message: '');

@@ -44,33 +44,117 @@ class _RolePermissionScreenState extends ConsumerState<RolePermissionScreen>
 
     return Scaffold(
       backgroundColor: colors.bgSurfaceContainer,
-      appBar: AppBar(
-        backgroundColor: colors.bgSurface,
-        elevation: 0,
-        surfaceTintColor: Colors.transparent,
-        leading: IconButton(
-          icon: Icon(Icons.arrow_back_rounded, color: colors.textPrimary),
-          onPressed: () => Navigator.of(context).pop(),
-        ),
-        title: Text(
-          'Phân quyền theo vai trò',
-          style: GoogleFonts.beVietnamPro(
-            fontSize: 16,
-            fontWeight: FontWeight.w700,
-            color: colors.textPrimary,
+      body: Column(
+        children: [
+          _buildHeader(context),
+          Expanded(
+            child: TabBarView(
+              controller: _tabController,
+              children: _roles.map((role) => _RoleTab(role: role)).toList(),
+            ),
           ),
-        ),
-        bottom: PreferredSize(
-          preferredSize: const Size.fromHeight(58),
-          child: _RoleTabBar(
-            tabController: _tabController,
-            roles: _roles,
-          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildHeader(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      decoration: const BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [AppColors.jade900, AppColors.jade500],
         ),
       ),
-      body: TabBarView(
-        controller: _tabController,
-        children: _roles.map((role) => _RoleTab(role: role)).toList(),
+      child: Column(
+        children: [
+          Padding(
+            padding: EdgeInsets.only(
+              top: MediaQuery.of(context).padding.top + 8,
+              left: 20,
+              right: 20,
+              bottom: 16,
+            ),
+            child: Stack(
+              clipBehavior: Clip.none,
+              children: [
+                Positioned(
+                  right: -50,
+                  top: -40,
+                  child: Container(
+                    width: 140,
+                    height: 140,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: AppColors.jade300.withValues(alpha: 0.10),
+                    ),
+                  ),
+                ),
+                Positioned(
+                  left: -30,
+                  bottom: -30,
+                  child: Container(
+                    width: 90,
+                    height: 90,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: AppColors.gold500.withValues(alpha: 0.08),
+                    ),
+                  ),
+                ),
+                Row(
+                  children: [
+                    GestureDetector(
+                      onTap: () => Navigator.of(context).pop(),
+                      child: Container(
+                        width: 36,
+                        height: 36,
+                        margin: const EdgeInsets.only(right: 12),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withValues(alpha: 0.12),
+                          shape: BoxShape.circle,
+                          border: Border.all(
+                            color: Colors.white.withValues(alpha: 0.18),
+                          ),
+                        ),
+                        child: const Icon(
+                          Icons.arrow_back_rounded,
+                          color: Colors.white,
+                          size: 18,
+                        ),
+                      ),
+                    ),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Phân quyền vai trò',
+                            style: GoogleFonts.beVietnamPro(
+                              fontSize: 20,
+                              fontWeight: FontWeight.w700,
+                              color: Colors.white,
+                            ),
+                          ),
+                          Text(
+                            'Quản lý quyền hạn cho từng vai trò',
+                            style: GoogleFonts.beVietnamPro(
+                              fontSize: 12,
+                              color: Colors.white.withValues(alpha: 0.65),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+          _RoleTabBar(tabController: _tabController, roles: _roles),
+        ],
       ),
     );
   }
@@ -86,17 +170,17 @@ class _RoleTabBar extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final colors = context.colors;
-
     return Container(
       decoration: BoxDecoration(
-        color: colors.bgSurface,
-        border: Border(bottom: BorderSide(color: colors.borderDefault)),
+        color: Colors.white.withValues(alpha: 0.08),
+        border: Border(
+          top: BorderSide(color: Colors.white.withValues(alpha: 0.15)),
+        ),
       ),
       child: TabBar(
         controller: tabController,
         labelPadding: EdgeInsets.zero,
-        indicatorColor: colors.brand,
+        indicatorColor: Colors.white,
         indicatorWeight: 2.5,
         dividerColor: Colors.transparent,
         tabs: roles.map((role) {
@@ -117,12 +201,10 @@ class _RoleTabBar extends ConsumerWidget {
                 ),
           );
 
-          final isSelected =
-              tabController.index == roles.indexOf(role);
-          final roleColor = _roleAccent(role);
+          final isSelected = tabController.index == roles.indexOf(role);
 
           return Tab(
-            height: 58,
+            height: 52,
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16),
               child: Row(
@@ -131,7 +213,9 @@ class _RoleTabBar extends ConsumerWidget {
                   Icon(
                     _roleIcon(role),
                     size: 16,
-                    color: isSelected ? roleColor : colors.textTertiary,
+                    color: isSelected
+                        ? Colors.white
+                        : Colors.white.withValues(alpha: 0.5),
                   ),
                   const SizedBox(width: 8),
                   Column(
@@ -144,8 +228,8 @@ class _RoleTabBar extends ConsumerWidget {
                           fontSize: 13,
                           fontWeight: FontWeight.w700,
                           color: isSelected
-                              ? roleColor
-                              : colors.textSecondary,
+                              ? Colors.white
+                              : Colors.white.withValues(alpha: 0.55),
                         ),
                       ),
                       if (total > 0)
@@ -155,8 +239,8 @@ class _RoleTabBar extends ConsumerWidget {
                             fontSize: 10,
                             fontWeight: FontWeight.w500,
                             color: isSelected
-                                ? roleColor.withValues(alpha: 0.75)
-                                : colors.textTertiary,
+                                ? Colors.white.withValues(alpha: 0.85)
+                                : Colors.white.withValues(alpha: 0.4),
                           ),
                         ),
                     ],

@@ -36,6 +36,9 @@
 # Prevent stripping of Flutter plugin registrant
 -keep class com.halongtravel.halong24h.GeneratedPluginRegistrant { *; }
 
+# Google Play Core (deferred components — Flutter uses these internally)
+-dontwarn com.google.android.play.core.**
+
 # Suppress warnings từ third-party libraries không liên quan
 -dontwarn javax.annotation.**
 -dontwarn org.conscrypt.**

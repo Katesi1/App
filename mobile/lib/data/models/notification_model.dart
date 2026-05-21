@@ -37,18 +37,27 @@ class NotificationModel extends Equatable {
 
   factory NotificationModel.fromJson(Map<String, dynamic> json) {
     return NotificationModel(
-      id: json['id'] as String,
-      title: json['title'] as String,
+      id: json['id'] as String? ?? '',
+      title: json['title'] as String? ?? '',
       subtitle: json['subtitle'] as String? ?? '',
       type: NotificationType.values.firstWhere(
         (e) => e.name == (json['type'] as String?)?.toLowerCase(),
         orElse: () => NotificationType.system,
       ),
       isRead: json['isRead'] as bool? ?? false,
-      createdAt: DateTime.parse(json['createdAt'] as String),
+      createdAt: _parseDate(json['createdAt']),
       targetId: json['targetId'] as String?,
       targetType: json['targetType'] as String?,
     );
+  }
+
+  static DateTime _parseDate(dynamic value) {
+    if (value == null) return DateTime.now();
+    try {
+      return DateTime.parse(value.toString());
+    } catch (_) {
+      return DateTime.now();
+    }
   }
 
   Map<String, dynamic> toJson() => {

@@ -70,6 +70,40 @@ void main() {
     });
   });
 
+  group('AppHelpers.formatIntOrDash', () {
+    test('returns "-" when value is 0', () {
+      expect(AppHelpers.formatIntOrDash(0), '-');
+    });
+
+    test('returns the number as string for positive values', () {
+      expect(AppHelpers.formatIntOrDash(100), '100');
+      expect(AppHelpers.formatIntOrDash(1), '1');
+      expect(AppHelpers.formatIntOrDash(9999), '9999');
+    });
+
+    test('returns the number as string for negative values', () {
+      expect(AppHelpers.formatIntOrDash(-5), '-5');
+    });
+  });
+
+  group('AppHelpers.formatPriceOrDash', () {
+    test('returns "-" when price is 0', () {
+      expect(AppHelpers.formatPriceOrDash(0), '-');
+    });
+
+    test('delegates to formatPrice for non-zero millions', () {
+      expect(AppHelpers.formatPriceOrDash(1500000), '1.5tr');
+    });
+
+    test('delegates to formatPrice for non-zero thousands', () {
+      expect(AppHelpers.formatPriceOrDash(500000), '500k');
+    });
+
+    test('delegates to formatPrice for exact million', () {
+      expect(AppHelpers.formatPriceOrDash(1000000), '1.0tr');
+    });
+  });
+
   group('AppHelpers.vietnameseDayOfWeek', () {
     test('returns correct Vietnamese day names', () {
       expect(AppHelpers.vietnameseDayOfWeek(1), 'Thứ Hai');

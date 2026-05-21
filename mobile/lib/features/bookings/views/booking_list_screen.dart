@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -9,7 +11,6 @@ import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../data/models/booking_model.dart';
 import '../../auth/controllers/auth_controller.dart';
-import '../../../shared/widgets/app_scaffold.dart';
 import '../../../shared/widgets/loading_widget.dart';
 import '../controllers/booking_controller.dart';
 
@@ -21,7 +22,6 @@ class BookingListScreen extends ConsumerStatefulWidget {
 }
 
 class _BookingListScreenState extends ConsumerState<BookingListScreen> {
-  // null = all
   BookingStatus? _filterStatus;
 
   static const _filters = <BookingStatus?>[
@@ -33,16 +33,65 @@ class _BookingListScreenState extends ConsumerState<BookingListScreen> {
 
   static const _filterLabels = ['Tất cả', 'Đang giữ', 'Đã đặt', 'Đã huỷ'];
 
+  bool _isSearching = false;
+  String _searchQuery = '';
+  final _searchCtrl = TextEditingController();
+  final _searchFocusNode = FocusNode();
+  Timer? _debounce;
+
+  @override
+  void dispose() {
+    _searchCtrl.dispose();
+    _searchFocusNode.dispose();
+    _debounce?.cancel();
+    super.dispose();
+  }
+
+  void _onSearchChanged(String v) {
+    _debounce?.cancel();
+    _debounce = Timer(const Duration(milliseconds: 300), () {
+      if (mounted) setState(() => _searchQuery = v);
+    });
+  }
+
+  void _toggleSearch() {
+    setState(() {
+      _isSearching = !_isSearching;
+      if (!_isSearching) {
+        _searchQuery = '';
+        _searchCtrl.clear();
+      } else {
+        Future.delayed(
+            const Duration(milliseconds: 80), () => _searchFocusNode.requestFocus());
+      }
+    });
+  }
+
+  List<BookingModel> _applyFilters(List<BookingModel> all) {
+    var result = _filterStatus == null
+        ? all
+        : all.where((b) => b.status == _filterStatus).toList();
+    if (_searchQuery.isNotEmpty) {
+      final q = _searchQuery.toLowerCase();
+      result = result.where((b) {
+        final name = (b.customerName ?? '').toLowerCase();
+        final phone = b.customerPhone ?? '';
+        final propName =
+            ((b.property?['name'] ?? '') as String).toLowerCase();
+        return name.contains(q) || phone.contains(q) || propName.contains(q);
+      }).toList();
+    }
+    return result;
+  }
+
   @override
   Widget build(BuildContext context) {
     final colors = context.colors;
     final bookingsAsync = ref.watch(bookingListProvider(null));
     final user = ref.watch(currentUserProvider);
 
-    return AppScaffold(
-      title: '',
-      selectedIndex: 4,
-      showAppBar: false,
+    return Scaffold(
+      backgroundColor: colors.bgCanvas,
       body: Column(
         children: [
           // ── Gradient header ──────────────────────────────────────────
@@ -52,7 +101,7 @@ class _BookingListScreenState extends ConsumerState<BookingListScreen> {
               top: MediaQuery.of(context).padding.top + 8,
               left: 20,
               right: 20,
-              bottom: 24,
+              bottom: _isSearching ? 16 : 24,
             ),
             decoration: const BoxDecoration(
               gradient: LinearGradient(
@@ -88,59 +137,127 @@ class _BookingListScreenState extends ConsumerState<BookingListScreen> {
                     ),
                   ),
                 ),
-                Row(
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    GestureDetector(
-                      // /bookings là top-level (vào qua bottom nav `context.go`
-                      // → stack rỗng, pop = no-op). Fallback /dashboard.
-                      onTap: () {
-                        if (context.canPop()) {
-                          context.pop();
-                        } else {
-                          context.go('/dashboard');
-                        }
-                      },
-                      child: Container(
-                        width: 36,
-                        height: 36,
-                        margin: const EdgeInsets.only(right: 12),
-                        decoration: BoxDecoration(
-                          color: Colors.white.withValues(alpha: 0.12),
-                          shape: BoxShape.circle,
-                          border: Border.all(
-                              color: Colors.white.withValues(alpha: 0.18)),
+                    Row(
+                      children: [
+                        GestureDetector(
+                          onTap: () {
+                            if (context.canPop()) {
+                              context.pop();
+                            } else {
+                              context.go('/dashboard');
+                            }
+                          },
+                          child: Container(
+                            width: 36,
+                            height: 36,
+                            margin: const EdgeInsets.only(right: 12),
+                            decoration: BoxDecoration(
+                              color: Colors.white.withValues(alpha: 0.12),
+                              shape: BoxShape.circle,
+                              border: Border.all(
+                                  color: Colors.white.withValues(alpha: 0.18)),
+                            ),
+                            child: const Icon(Icons.arrow_back_rounded,
+                                color: Colors.white, size: 18),
+                          ),
                         ),
-                        child: const Icon(Icons.arrow_back_rounded,
-                            color: Colors.white, size: 18),
-                      ),
-                    ),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'Quản lý Booking',
-                            style: GoogleFonts.beVietnamPro(
-                              fontSize: 20,
-                              fontWeight: FontWeight.w700,
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Quản lý Booking',
+                                style: GoogleFonts.beVietnamPro(
+                                  fontSize: 20,
+                                  fontWeight: FontWeight.w700,
+                                  color: Colors.white,
+                                ),
+                              ),
+                              if (!_isSearching) ...[
+                                const SizedBox(height: 2),
+                                Text(
+                                  'Theo dõi và xử lý đặt phòng',
+                                  style: GoogleFonts.beVietnamPro(
+                                    fontSize: 12,
+                                    color:
+                                        Colors.white.withValues(alpha: 0.65),
+                                  ),
+                                ),
+                              ],
+                            ],
+                          ),
+                        ),
+                        // Search icon
+                        GestureDetector(
+                          onTap: _toggleSearch,
+                          child: Container(
+                            width: 36,
+                            height: 36,
+                            margin: const EdgeInsets.only(right: 8),
+                            decoration: BoxDecoration(
+                              color: _isSearching
+                                  ? Colors.white.withValues(alpha: 0.25)
+                                  : Colors.white.withValues(alpha: 0.12),
+                              shape: BoxShape.circle,
+                              border: Border.all(
+                                  color:
+                                      Colors.white.withValues(alpha: 0.18)),
+                            ),
+                            child: Icon(
+                              _isSearching
+                                  ? Icons.close_rounded
+                                  : Icons.search_rounded,
                               color: Colors.white,
+                              size: 18,
                             ),
                           ),
-                          const SizedBox(height: 2),
-                          Text(
-                            'Theo dõi và xử lý đặt phòng',
-                            style: GoogleFonts.beVietnamPro(
-                              fontSize: 12,
-                              color: Colors.white.withValues(alpha: 0.65),
+                        ),
+                        _AvatarBtn(
+                          userName: user?.name ?? user?.phone ?? '',
+                          onTap: () => context.push('/profile'),
+                        ),
+                      ],
+                    ),
+                    // Search input
+                    if (_isSearching) ...[
+                      const SizedBox(height: 12),
+                      Container(
+                        height: 44,
+                        decoration: BoxDecoration(
+                          color: Colors.white.withValues(alpha: 0.15),
+                          borderRadius:
+                              BorderRadius.circular(AppRadius.lg),
+                          border: Border.all(
+                              color: Colors.white.withValues(alpha: 0.25)),
+                        ),
+                        child: TextField(
+                          controller: _searchCtrl,
+                          focusNode: _searchFocusNode,
+                          onChanged: _onSearchChanged,
+                          textAlignVertical: TextAlignVertical.center,
+                          style: GoogleFonts.beVietnamPro(
+                              color: Colors.white, fontSize: 14),
+                          decoration: InputDecoration(
+                            hintText: 'Tìm theo tên khách, SĐT, tên phòng...',
+                            hintStyle: GoogleFonts.beVietnamPro(
+                              color: Colors.white.withValues(alpha: 0.55),
+                              fontSize: 14,
                             ),
+                            prefixIcon: const Icon(Icons.search_rounded,
+                                color: Colors.white54, size: 18),
+                            border: InputBorder.none,
+                            enabledBorder: InputBorder.none,
+                            focusedBorder: InputBorder.none,
+                            filled: false,
+                            isDense: true,
+                            contentPadding: EdgeInsets.zero,
                           ),
-                        ],
+                        ),
                       ),
-                    ),
-                    _AvatarBtn(
-                      userName: user?.name ?? user?.phone ?? '',
-                      onTap: () => context.push('/profile'),
-                    ),
+                    ],
                   ],
                 ),
               ],
@@ -187,11 +304,16 @@ class _BookingListScreenState extends ConsumerState<BookingListScreen> {
                 onRetry: () => ref.invalidate(bookingListProvider(null)),
               ),
               data: (bookings) {
-                final filtered = _filterStatus == null
-                    ? bookings
-                    : bookings.where((b) => b.status == _filterStatus).toList();
+                final filtered = _applyFilters(bookings);
 
                 if (filtered.isEmpty) {
+                  if (_searchQuery.isNotEmpty) {
+                    return EmptyStateWidget(
+                      icon: Icons.search_off_rounded,
+                      message:
+                          'Không tìm thấy booking\nkhớp với "$_searchQuery"',
+                    );
+                  }
                   return EmptyStateWidget(
                     icon: Icons.event_note_outlined,
                     message: _filterStatus == null
