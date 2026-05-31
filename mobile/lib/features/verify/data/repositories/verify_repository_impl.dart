@@ -380,6 +380,40 @@ class VerifyRepositoryImpl implements VerifyRepository {
     }
   }
 
+  // ── Apple In-App Purchase verification (iOS only) ──────────────────────────
+
+  @override
+  Future<AppleReceiptVerification> verifyAppleReceipt({
+    required String productId,
+    required String purchaseId,
+    required String receiptData,
+  }) async {
+    try {
+      final res = await _dio.post(
+        ApiConstants.paymentAppleVerify,
+        data: {
+          'productId': productId,
+          'purchaseId': purchaseId,
+          'receiptData': receiptData,
+        },
+      );
+      final data = res.data['data'] as Map<String, dynamic>;
+      final statusRaw = (data['status'] ?? 'approved') as String;
+      return AppleReceiptVerification(
+        status: verifyStatusFromApi(statusRaw),
+        expiresAt: _parseDate(data['expiresAt'] ?? data['expires_at']),
+        originalTransactionId: (data['originalTransactionId'] ??
+            data['original_transaction_id']) as String?,
+      );
+    } on DioException catch (e) {
+      throw VerifyApiException(parseDioError(e));
+    } on TypeError catch (_) {
+      throw const VerifyApiException(
+        'Phản hồi máy chủ không hợp lệ. Vui lòng thử lại sau.',
+      );
+    }
+  }
+
   // ── Helpers ────────────────────────────────────────────────────────────────
 
   /// Get the current submission ID from `/kyc/status` (backend infers it from the token).

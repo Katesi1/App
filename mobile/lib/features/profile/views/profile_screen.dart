@@ -319,10 +319,10 @@ class ProfileScreen extends ConsumerWidget {
       case VerifyStatus.approved:
         return _MenuItemData(
           icon: Icons.workspace_premium_rounded,
-          label: 'Gói đăng ký + Trial',
-          subtitle: 'Đã verify · Trial 7 ngày đang chạy',
+          label: 'Gói đăng ký',
+          subtitle: 'Nâng cấp gói, gia hạn, hoặc xem lịch sử thanh toán',
           iconColor: colors.success,
-          onTap: () => context.push('/verify/approved'),
+          onTap: () => context.push('/verify/subscription-detail'),
         );
       case VerifyStatus.awaitingApproval:
         return _MenuItemData(

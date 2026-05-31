@@ -1,7 +1,7 @@
 name: mobile
 description: "Homestay Management App"
 publish_to: 'none'
-version: 1.0.1+7
+version: 1.0.1+8
 
 environment:
   sdk: ^3.5.0
@@ -78,6 +78,11 @@ dependencies:
 
   # QR rendering (VNPay QR + VietQR payment screens)
   qr_flutter: ^4.1.0
+
+  # Apple In-App Purchase (StoreKit) — required on iOS per Guideline 3.1.1.
+  # iOS payment_screen forces subscriptions through Apple IAP; Android keeps
+  # the existing VNPay / Pays2 flow.
+  in_app_purchase: ^3.2.0
 
   # Utils
   equatable: ^2.0.7

@@ -17,6 +17,11 @@ class Plan extends Equatable {
   /// Price VND/month. `0` = "Contact us" (Enterprise only).
   final int monthlyPrice;
 
+  /// Price VND/year. Set explicitly to match Apple's discrete pricing tiers
+  /// (Apple doesn't allow arbitrary VND values — only ~30 fixed points).
+  /// If `null`, derived as `monthlyPrice × 12 × (1 - yearlyDiscount)`.
+  final int? yearlyPrice;
+
   final List<String> features;
 
   const Plan({
@@ -24,6 +29,7 @@ class Plan extends Equatable {
     required this.tier,
     required this.rooms,
     required this.monthlyPrice,
+    this.yearlyPrice,
     required this.features,
   });
 
@@ -40,6 +46,7 @@ class Plan extends Equatable {
       tier: tier,
       rooms: (json['rooms'] as num?)?.toInt() ?? tier.rooms,
       monthlyPrice: (json['monthlyPrice'] as num?)?.toInt() ?? 0,
+      yearlyPrice: (json['yearlyPrice'] as num?)?.toInt(),
       features: List<String>.from(json['features'] as List? ?? const []),
     );
   }
@@ -59,11 +66,13 @@ class Plan extends Equatable {
         'tier': tier.name,
         'rooms': rooms,
         'monthlyPrice': monthlyPrice,
+        if (yearlyPrice != null) 'yearlyPrice': yearlyPrice,
         'features': features,
       };
 
   @override
-  List<Object?> get props => [id, tier, rooms, monthlyPrice, features];
+  List<Object?> get props =>
+      [id, tier, rooms, monthlyPrice, yearlyPrice, features];
 }
 
 /// 6-plan default catalog — fallback when backend is unreachable.
@@ -83,6 +92,7 @@ const kDefaultPlans = <Plan>[
     tier: Tier.rooms1,
     rooms: 1,
     monthlyPrice: 199000,
+    yearlyPrice: 1999000, // Apple tier-aligned (~16% discount)
     features: [
       'Booking + Calendar',
       'Check-in / Check-out',
@@ -94,6 +104,7 @@ const kDefaultPlans = <Plan>[
     tier: Tier.rooms5,
     rooms: 5,
     monthlyPrice: 599000,
+    yearlyPrice: 5999000, // Apple tier-aligned (~16% discount)
     features: [
       'Tất cả tính năng Mini',
       'Pricing rules cơ bản',
@@ -105,6 +116,7 @@ const kDefaultPlans = <Plan>[
     tier: Tier.rooms10,
     rooms: 10,
     monthlyPrice: 999000,
+    yearlyPrice: 9999000, // Apple tier-aligned (~16% discount)
     features: [
       'Tất cả tính năng Starter',
       'Dynamic pricing',
@@ -117,6 +129,7 @@ const kDefaultPlans = <Plan>[
     tier: Tier.rooms20,
     rooms: 20,
     monthlyPrice: 1799000,
+    yearlyPrice: 17999000, // Apple tier-aligned (~16% discount)
     features: [
       'Tất cả tính năng Standard',
       'Multi-staff không giới hạn',
@@ -128,6 +141,9 @@ const kDefaultPlans = <Plan>[
     tier: Tier.rooms50,
     rooms: 50,
     monthlyPrice: 3999000,
+    // Apple VND max = 29.999.000đ. Capping here makes Business Yearly the
+    // best-value option (37.5% discount) — surface this in marketing.
+    yearlyPrice: 29999000,
     features: [
       'Tất cả tính năng Pro',
       'Channel sync (Booking.com, Agoda...)',
@@ -153,15 +169,21 @@ const kDefaultPlans = <Plan>[
 class PlanPriceCalculator {
   PlanPriceCalculator._();
 
-  /// 20% discount when choosing yearly.
-  static const double yearlyDiscount = 0.20;
+  /// Fallback yearly discount (~16%) when a plan doesn't have an explicit
+  /// `yearlyPrice`. Real plans set `yearlyPrice` directly to match Apple's
+  /// pricing tiers.
+  static const double yearlyDiscount = 0.16;
 
   /// 10% VAT.
   static const double vatRate = 0.10;
 
   static int monthly(Plan plan) => plan.monthlyPrice;
 
+  /// Yearly price after the loyalty discount.
+  /// Prefers `plan.yearlyPrice` (explicit, aligned with Apple tiers), falls
+  /// back to derived value (`monthly × 12 × (1 - discount)`) when not set.
   static int yearlyAfterDiscount(Plan plan) =>
+      plan.yearlyPrice ??
       (plan.monthlyPrice * 12 * (1 - yearlyDiscount)).round();
 
   static int yearlyBeforeDiscount(Plan plan) => plan.monthlyPrice * 12;
@@ -180,7 +202,59 @@ class PlanPriceCalculator {
     return includeVat ? subtotal + vat(subtotal) : subtotal;
   }
 
-  /// Look up a plan by tier within the catalog.
+  /// Look up a plan by tier within the catalog. Falls back to the bundled
+  /// default for the same tier if the catalog doesn't carry it — keeps the
+  /// UI alive when the backend ships an incomplete plan list.
   static Plan planFor(Tier tier, List<Plan> catalog) =>
-      catalog.firstWhere((p) => p.tier == tier);
+      catalog.firstWhere(
+        (p) => p.tier == tier,
+        orElse: () =>
+            kDefaultPlans.firstWhere((p) => p.tier == tier),
+      );
+}
+
+/// Apple App Store Connect product IDs for each (tier, billing cycle).
+///
+/// **Setup checklist for App Store Connect:**
+///  1. Create one auto-renewable subscription group: `Halong24h Subscriptions`.
+///  2. Inside the group, create 12 subscription products (6 tiers × 2 cycles):
+///     - Product ID: exactly as listed below (e.g. `com.halong24h.sub.rooms5_monthly`)
+///     - Reference name: `Starter Monthly`, `Starter Yearly`, ...
+///     - Duration: 1 month / 1 year
+///     - Pricing tier: closest VND match to the plan's `monthlyPrice` (or
+///       `monthly × 12 × 0.8` for yearly with built-in 20% discount).
+///     - Family Sharing: OFF (B2B account).
+///     - Free trial: 7 days introductory offer (matches existing flow).
+///  3. Enterprise tier: skip — sold via direct contract, not IAP.
+///
+/// Enterprise (`Tier.enterprise`) has no IAP product — caller should NOT
+/// offer IAP for it; show a "Contact sales" CTA instead.
+class AppleProductIds {
+  AppleProductIds._();
+
+  /// Bundle ID prefix for App Store Connect IAP products.
+  /// Must match the `Bundle ID` registered in App Store Connect.
+  static const String _prefix = 'com.halong24h.sub';
+
+  /// Map (tier, cycle) → Apple product ID. Returns `null` for Enterprise
+  /// (no IAP — contact sales).
+  static String? forPlan(Tier tier, BillingCycle cycle) {
+    if (tier == Tier.enterprise) return null;
+    final tierSlug = switch (tier) {
+      Tier.rooms1 => 'rooms1',
+      Tier.rooms5 => 'rooms5',
+      Tier.rooms10 => 'rooms10',
+      Tier.rooms20 => 'rooms20',
+      Tier.rooms50 => 'rooms50',
+      Tier.enterprise => '', // unreachable
+    };
+    final cycleSlug = cycle == BillingCycle.yearly ? 'yearly' : 'monthly';
+    return '$_prefix.${tierSlug}_$cycleSlug';
+  }
+
+  /// Full set of product IDs to query from StoreKit at app start.
+  static Set<String> get all => {
+        for (final tier in Tier.values.where((t) => t != Tier.enterprise))
+          for (final cycle in BillingCycle.values) forPlan(tier, cycle)!,
+      };
 }

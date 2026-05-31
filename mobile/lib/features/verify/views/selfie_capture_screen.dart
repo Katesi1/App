@@ -42,8 +42,15 @@ class _SelfieCaptureScreenState extends ConsumerState<SelfieCaptureScreen> {
     try {
       await ref.read(verifyFlowControllerProvider.notifier).uploadSelfie(file);
       if (!mounted) return;
-      // Use push (not pushReplacement) so the user can go back and retake.
-      context.push('/verify/select-plan');
+      // KYC submission is decoupled from subscription purchase — submit the
+      // identity verification immediately and route to the pending screen.
+      // The user picks + buys a plan separately (from /verify/subscription-detail
+      // or the trial active screen after admin approval).
+      await ref
+          .read(verifyFlowControllerProvider.notifier)
+          .submitForApproval();
+      if (!mounted) return;
+      context.pushReplacement('/verify/pending');
     } catch (e) {
       if (mounted) {
         final msg = e.toString().replaceAll('Exception: ', '');

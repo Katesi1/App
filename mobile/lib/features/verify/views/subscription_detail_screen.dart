@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../../../core/theme/app_color_scheme.dart';
 import '../../../core/theme/app_spacing.dart';
+import '../../../core/utils/app_store_compliance.dart';
 import '../controllers/verify_flow_controller.dart';
 import '../data/models/payment_session.dart';
 import '../data/models/plan.dart';
@@ -119,10 +121,14 @@ class _SubscriptionDetailScreenState
                 ? 'Hàng năm'
                 : 'Hàng tháng',
           ),
-          _DetailItem(
-            label: 'Chi phí',
-            value: VerifyFormat.priceVND(total),
-          ),
+          // On iOS, the source of truth for price + renewal is Apple
+          // (Settings > Apple ID > Subscriptions). We hide the VND amount to
+          // avoid mismatch with the locale price the user paid via StoreKit.
+          if (!usesAppleIAP)
+            _DetailItem(
+              label: 'Chi phí',
+              value: VerifyFormat.priceVND(total),
+            ),
           if (state.trialEndsAt != null)
             _DetailItem(
               label: 'Trial đến',
@@ -134,33 +140,118 @@ class _SubscriptionDetailScreenState
               value: VerifyFormat.dateVN(state.chargeStartsAt!),
             ),
           const SizedBox(height: AppSpacing.lg),
-          SizedBox(
-            height: 48,
-            child: FilledButton.icon(
-              onPressed: _renewing || plan == null ? null : _handleRenew,
-              icon: _renewing
-                  ? const SizedBox(
-                      width: 14,
-                      height: 14,
-                      child: CircularProgressIndicator(strokeWidth: 2),
-                    )
-                  : const Icon(Icons.autorenew, size: 18),
-              label: Text(
-                _renewing
-                    ? 'Đang tạo phiên...'
-                    : 'Gia hạn ngay (${VerifyFormat.priceVND(total)})',
+          if (usesAppleIAP) ...[
+            // Apple subscription lifecycle:
+            //  - Buy first time          → "Chọn gói + Mua qua App Store"
+            //  - Auto-renewal            → Apple handles automatically (no UI needed)
+            //  - Upgrade / Downgrade     → "Đổi gói" → select-plan → IAP (Apple prorates)
+            //  - Cancel / Change card    → "Quản lý đăng ký trên App Store"
+            //                              (REQUIRED by Apple Guideline 3.1.2(a) —
+            //                              deep link to iOS Settings, the only way
+            //                              to cancel or change payment method)
+            //  - Restore (new device)    → "Khôi phục đăng ký đã mua"
+            //                              (REQUIRED by Apple — re-fires the
+            //                              purchase stream with `restored` events)
+            if (plan == null) ...[
+              SizedBox(
+                height: 48,
+                child: FilledButton.icon(
+                  onPressed: () => context.push('/verify/select-plan'),
+                  icon:
+                      const Icon(Icons.workspace_premium_outlined, size: 18),
+                  label: const Text('Chọn gói + Mua qua App Store'),
+                ),
+              ),
+              const SizedBox(height: AppSpacing.sm),
+            ] else ...[
+              // User has an active plan — let them upgrade/downgrade to a
+              // different tier. Apple shows the IAP sheet and handles
+              // proration automatically when the new tier is in the same
+              // subscription group as the current one.
+              SizedBox(
+                height: 48,
+                child: FilledButton.icon(
+                  onPressed: () => context.push('/verify/select-plan'),
+                  icon: const Icon(Icons.upgrade_rounded, size: 18),
+                  label: const Text('Đổi gói (nâng cấp/hạ cấp)'),
+                ),
+              ),
+              const SizedBox(height: AppSpacing.sm),
+            ],
+            SizedBox(
+              height: 44,
+              child: OutlinedButton.icon(
+                onPressed: () async {
+                  final uri = Uri.parse(appleManageSubscriptionsUrl);
+                  await launchUrl(uri,
+                      mode: LaunchMode.externalApplication);
+                },
+                icon: const Icon(Icons.settings_outlined, size: 18),
+                label: const Text('Huỷ đăng ký / Đổi thẻ thanh toán'),
               ),
             ),
-          ),
-          const SizedBox(height: AppSpacing.sm),
-          SizedBox(
-            height: 44,
-            child: OutlinedButton.icon(
-              onPressed: () => context.push('/verify/payment-history'),
-              icon: const Icon(Icons.receipt_long_outlined, size: 18),
-              label: const Text('Lịch sử thanh toán'),
+            const SizedBox(height: AppSpacing.sm),
+            SizedBox(
+              height: 44,
+              child: OutlinedButton.icon(
+                onPressed: () async {
+                  try {
+                    await ref
+                        .read(verifyFlowControllerProvider.notifier)
+                        .restoreApplePurchases();
+                    if (!context.mounted) return;
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text(
+                          'Đang khôi phục đăng ký. Đăng ký hợp lệ sẽ tự kích hoạt.',
+                        ),
+                      ),
+                    );
+                  } catch (e) {
+                    if (!context.mounted) return;
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text(
+                          e.toString().replaceAll('Exception: ', ''),
+                        ),
+                        backgroundColor: context.colors.error,
+                      ),
+                    );
+                  }
+                },
+                icon: const Icon(Icons.refresh, size: 18),
+                label: const Text('Khôi phục đăng ký đã mua'),
+              ),
             ),
-          ),
+          ] else ...[
+            SizedBox(
+              height: 48,
+              child: FilledButton.icon(
+                onPressed: _renewing || plan == null ? null : _handleRenew,
+                icon: _renewing
+                    ? const SizedBox(
+                        width: 14,
+                        height: 14,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : const Icon(Icons.autorenew, size: 18),
+                label: Text(
+                  _renewing
+                      ? 'Đang tạo phiên...'
+                      : 'Gia hạn ngay (${VerifyFormat.priceVND(total)})',
+                ),
+              ),
+            ),
+            const SizedBox(height: AppSpacing.sm),
+            SizedBox(
+              height: 44,
+              child: OutlinedButton.icon(
+                onPressed: () => context.push('/verify/payment-history'),
+                icon: const Icon(Icons.receipt_long_outlined, size: 18),
+                label: const Text('Lịch sử thanh toán'),
+              ),
+            ),
+          ],
         ],
       ),
     );

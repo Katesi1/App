@@ -48,7 +48,7 @@ class _SelectPlanScreenState extends ConsumerState<SelectPlanScreen> {
     return Scaffold(
       backgroundColor: colors.bgCanvas,
       appBar: const VerifyAppBar(
-        overline: 'BƯỚC 5/7 · SUBSCRIPTION',
+        overline: 'NÂNG GÓI · SUBSCRIPTION',
         title: 'Chọn gói phù hợp',
       ),
       body: plansAsync.when(

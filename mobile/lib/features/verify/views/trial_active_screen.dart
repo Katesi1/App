@@ -63,6 +63,15 @@ class TrialActiveScreen extends ConsumerWidget {
                       .fadeIn(duration: 320.ms)
                       .slideY(begin: 0.1, end: 0),
                   const SizedBox(height: AppSpacing.md),
+                  // Subscription purchase CTA — KYC is approved, but the user
+                  // hasn't picked a plan yet. Plan selection + payment is a
+                  // separate flow from KYC (decoupled per Apple 3.1.1 + UX).
+                  if (plan == null)
+                    _ChoosePlanCard()
+                        .animate(delay: 300.ms)
+                        .fadeIn(duration: 320.ms)
+                        .slideY(begin: 0.1, end: 0),
+                  if (plan == null) const SizedBox(height: AppSpacing.md),
                   if (plan != null)
                     _SubscriptionCard(
                       plan: plan,
@@ -235,6 +244,66 @@ class _StartHereCard extends StatelessWidget {
               onPressed: () => context.go('/properties/new'),
               icon: const Icon(Icons.add, size: 18),
               label: const Text('Tạo homestay đầu tiên'),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Promotes the separate "pick a plan + pay" flow once KYC is approved but
+/// no plan has been selected yet. Tap → `/verify/select-plan`.
+class _ChoosePlanCard extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.colors;
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: colors.bgWarm,
+        border: Border.all(color: colors.borderGold),
+        borderRadius: BorderRadius.circular(14),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'CHỌN GÓI THANH TOÁN',
+            style: TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.w700,
+              letterSpacing: 0.3,
+              color: colors.textTertiary,
+            ),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            'Bạn đang dùng thử miễn phí',
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.w700,
+              color: colors.textPrimary,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            'Chọn gói sớm để duy trì tài khoản sau khi trial kết thúc — '
+            'huỷ bất cứ lúc nào trong Cài đặt.',
+            style: TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w500,
+              color: colors.textSecondary,
+              height: 1.5,
+            ),
+          ),
+          const SizedBox(height: 12),
+          SizedBox(
+            height: 44,
+            child: OutlinedButton.icon(
+              onPressed: () => context.push('/verify/select-plan'),
+              icon: const Icon(Icons.workspace_premium_outlined, size: 18),
+              label: const Text('Xem các gói'),
             ),
           ),
         ],

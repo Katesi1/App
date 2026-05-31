@@ -32,8 +32,10 @@ class UserModel {
   @JsonKey(defaultValue: 'none')
   final String
       subscriptionStatus; // none | trial | active | past_due | cancelled
-  final String? subscriptionPlanId; // starter | professional | enterprise
+  final String? subscriptionPlanId; // rooms_1 | rooms_5 | ... | enterprise
   final String? subscriptionCycle; // monthly | yearly
+  final String? subscriptionProvider; // apple_iap | vnpay | pays2 | null
+  final DateTime? subscriptionExpiresAt; // subscription/trial expiry from backend
   final DateTime? trialEndsAt;
   final DateTime? nextChargeAt;
 
@@ -55,6 +57,8 @@ class UserModel {
     this.subscriptionStatus = 'none',
     this.subscriptionPlanId,
     this.subscriptionCycle,
+    this.subscriptionProvider,
+    this.subscriptionExpiresAt,
     this.trialEndsAt,
     this.nextChargeAt,
   });
@@ -136,11 +140,27 @@ class UserModel {
   bool get isSubscriptionActive => subscriptionStatus == 'active';
   bool get isSubscriptionPastDue => subscriptionStatus == 'past_due';
   bool get isSubscriptionCancelled => subscriptionStatus == 'cancelled';
+  bool get isSubscriptionExpired => subscriptionStatus == 'expired';
+
+  /// True when the subscription is backed by Apple In-App Purchase (iOS).
+  /// Used to surface "manage in App Store" instead of an in-app cancel flow.
+  bool get isAppleSubscription => subscriptionProvider == 'apple_iap';
 
   /// Whole days left in the trial, or null when the user isn't in trial.
   int? get trialDaysLeft {
     if (!isInTrial || trialEndsAt == null) return null;
     final diff = trialEndsAt!.difference(DateTime.now()).inDays;
+    return diff < 0 ? 0 : diff;
+  }
+
+  /// Whole days left until the subscription expires (active/past_due/cancelled
+  /// that still has access), or null when no expiry is known. Falls back to
+  /// [trialEndsAt] while the backend hasn't started sending
+  /// `subscriptionExpiresAt`.
+  int? get subscriptionDaysLeft {
+    final expiry = subscriptionExpiresAt ?? trialEndsAt;
+    if (expiry == null) return null;
+    final diff = expiry.difference(DateTime.now()).inDays;
     return diff < 0 ? 0 : diff;
   }
 
@@ -162,6 +182,8 @@ class UserModel {
     String? subscriptionStatus,
     String? subscriptionPlanId,
     String? subscriptionCycle,
+    String? subscriptionProvider,
+    DateTime? subscriptionExpiresAt,
     DateTime? trialEndsAt,
     DateTime? nextChargeAt,
   }) =>
@@ -183,6 +205,9 @@ class UserModel {
         subscriptionStatus: subscriptionStatus ?? this.subscriptionStatus,
         subscriptionPlanId: subscriptionPlanId ?? this.subscriptionPlanId,
         subscriptionCycle: subscriptionCycle ?? this.subscriptionCycle,
+        subscriptionProvider: subscriptionProvider ?? this.subscriptionProvider,
+        subscriptionExpiresAt:
+            subscriptionExpiresAt ?? this.subscriptionExpiresAt,
         trialEndsAt: trialEndsAt ?? this.trialEndsAt,
         nextChargeAt: nextChargeAt ?? this.nextChargeAt,
       );

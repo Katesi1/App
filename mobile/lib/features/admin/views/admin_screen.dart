@@ -272,6 +272,23 @@ class AdminScreen extends ConsumerWidget {
                     onTap: () => context.push('/admin/role-permissions'),
                   ),
 
+                  // OWNER subscription entry — visible only for OWNER (admins
+                  // don't subscribe). Tap → /verify/subscription-detail which
+                  // hosts the "Chọn gói + Mua qua App Store" CTA (iOS) or the
+                  // renew flow (Android).
+                  if (user?.isOwner ?? false) ...[
+                    const SizedBox(height: 10),
+                    _MenuCard(
+                      icon: Icons.workspace_premium_rounded,
+                      iconBg: AppColors.goldBg,
+                      iconColor: AppColors.goldText,
+                      title: 'Gói đăng ký',
+                      subtitle:
+                          'Nâng cấp, gia hạn, hoặc xem lịch sử thanh toán',
+                      onTap: () => context.push('/verify/subscription-detail'),
+                    ),
+                  ],
+
                   if (isAdmin) ...[
                     const SizedBox(height: 10),
                     _MenuCard(

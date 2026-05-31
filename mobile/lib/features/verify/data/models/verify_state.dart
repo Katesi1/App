@@ -44,6 +44,15 @@ class VerifyFlowState extends Equatable {
   final bool refundProcessed;
   final int? refundedAmount;
 
+  /// Apple IAP — true while a StoreKit purchase is in flight (sheet open or
+  /// backend receipt verification in progress). UI uses this to disable the
+  /// CTA + show loading. Not persisted.
+  final bool applePurchasePending;
+
+  /// Last Apple IAP error to surface to the user (snackbar / inline message).
+  /// Cleared via `copyWith(clearAppleError: true)` after display.
+  final String? applePurchaseError;
+
   const VerifyFlowState({
     this.cccdFront,
     this.cccdBack,
@@ -63,6 +72,8 @@ class VerifyFlowState extends Equatable {
     this.chargeStartsAt,
     this.refundProcessed = false,
     this.refundedAmount,
+    this.applePurchasePending = false,
+    this.applePurchaseError,
   });
 
   /// Have all 3 uploads (CCCD front + back + selfie) been submitted?
@@ -98,7 +109,10 @@ class VerifyFlowState extends Equatable {
     DateTime? chargeStartsAt,
     bool? refundProcessed,
     int? refundedAmount,
+    bool? applePurchasePending,
+    String? applePurchaseError,
     bool clearReject = false,
+    bool clearAppleError = false,
   }) =>
       VerifyFlowState(
         cccdFront: cccdFront ?? this.cccdFront,
@@ -120,6 +134,11 @@ class VerifyFlowState extends Equatable {
         chargeStartsAt: chargeStartsAt ?? this.chargeStartsAt,
         refundProcessed: refundProcessed ?? this.refundProcessed,
         refundedAmount: refundedAmount ?? this.refundedAmount,
+        applePurchasePending:
+            applePurchasePending ?? this.applePurchasePending,
+        applePurchaseError: clearAppleError
+            ? null
+            : (applePurchaseError ?? this.applePurchaseError),
       );
 
   Map<String, dynamic> toJson() => {
@@ -214,6 +233,8 @@ class VerifyFlowState extends Equatable {
         chargeStartsAt,
         refundProcessed,
         refundedAmount,
+        applePurchasePending,
+        applePurchaseError,
       ];
 }
 

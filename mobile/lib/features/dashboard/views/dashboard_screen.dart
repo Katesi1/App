@@ -1393,9 +1393,16 @@ class _SubscriptionBanner extends ConsumerWidget {
               child: ElevatedButton.icon(
                 onPressed: () {
                   Navigator.of(sheetCtx).maybePop();
-                  context.push('/profile/help');
+                  // Subscription detail screen handles every state: it offers
+                  // "Chọn gói + Mua qua App Store" (iOS, no active plan),
+                  // "Manage on App Store" (iOS, paid), or the legacy renew
+                  // flow (Android). The dashboard banner always lands there.
+                  context.push('/verify/subscription-detail');
                 },
-                icon: const Icon(Icons.support_agent_rounded, size: 18),
+                icon: const Icon(
+                  Icons.workspace_premium_outlined,
+                  size: 18,
+                ),
                 label: Text(ctaLabel),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: colors.brand,
@@ -1433,7 +1440,7 @@ class _SubscriptionBanner extends ConsumerWidget {
             'Còn $days ngày trial.\n'
             'Khi trial kết thúc, hệ thống tự động trừ tiền theo gói đã chọn. '
             'Bạn có thể đổi gói hoặc huỷ bất cứ lúc nào.',
-        'Liên hệ hỗ trợ',
+        'Quản lý gói đăng ký',
       );
     }
     if (user.isSubscriptionPastDue) {
@@ -1442,22 +1449,24 @@ class _SubscriptionBanner extends ConsumerWidget {
         'Gói: $planText\n\n'
             'Lần thanh toán gần nhất bị từ chối. Vui lòng cập nhật phương thức '
             'thanh toán mới hoặc liên hệ hỗ trợ để tránh gián đoạn dịch vụ.',
-        'Liên hệ hỗ trợ ngay',
+        'Cập nhật thanh toán',
       );
     }
     if (user.isSubscriptionCancelled) {
       return (
         'Subscription đã huỷ',
         'Gói: $planText\n\n'
-            'Tài khoản đã bị tạm ngưng nhận booking. Liên hệ hỗ trợ để kích '
+            'Tài khoản đã bị tạm ngưng nhận booking. Đăng ký gói mới để kích '
             'hoạt lại.',
-        'Liên hệ hỗ trợ',
+        'Đăng ký gói mới',
       );
     }
+    // KYC approved but no plan picked yet — decoupled purchase flow.
     return (
-      'Subscription chưa kích hoạt',
-      'Liên hệ hỗ trợ để được tư vấn gói phù hợp.',
-      'Liên hệ hỗ trợ',
+      'Chưa chọn gói thanh toán',
+      'Tài khoản đã xác minh xong. Chọn gói phù hợp số phòng để bắt đầu '
+          'nhận booking.',
+      'Chọn gói ngay',
     );
   }
 
@@ -1519,18 +1528,18 @@ class _SubscriptionBanner extends ConsumerWidget {
         'Liên hệ hỗ trợ nếu muốn tiếp tục sử dụng.',
       );
     }
-    // Fallback (subscription_status='none' but KYC approved — edge case).
+    // KYC approved but no subscription yet — main CTA to /verify/select-plan.
     return (
       LinearGradient(
         colors: [AppColors.infoBgDark, AppColors.infoBgDark],
       ),
       AppColors.darkBorder,
-      Icons.info_outline,
+      Icons.workspace_premium_outlined,
       colors.brandLight,
       colors.textPrimary,
       colors.textSecondary,
-      'Chưa kích hoạt subscription',
-      'Vui lòng liên hệ hỗ trợ.',
+      'Chọn gói để bắt đầu',
+      'Tài khoản đã xác minh. Chọn gói thanh toán để nhận booking.',
     );
   }
 }

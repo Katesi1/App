@@ -104,4 +104,44 @@ abstract class VerifyRepository {
   Future<PaymentSession> renewSubscription({
     required PaymentMethod method,
   });
+
+  /// Apple IAP receipt verification (iOS only, Guideline 3.1.1).
+  ///
+  /// Called after StoreKit returns `PurchaseStatus.purchased` or `restored`.
+  /// Backend must:
+  ///  1. POST receipt to Apple's `verifyReceipt` endpoint (production +
+  ///     sandbox fallback) or use App Store Server API v2.
+  ///  2. Verify `bundle_id` matches and the `productId` in the receipt
+  ///     matches what the client claims.
+  ///  3. Idempotently activate / extend the user's subscription based on
+  ///     `expires_date_ms` and `original_transaction_id`.
+  ///  4. Subscribe to Apple Server-to-Server Notifications V2 for renewals,
+  ///     refunds, grace period, etc. (NOT this method's responsibility).
+  ///
+  /// Returns the new [VerifyStatus] (`approved` on success). Throws if the
+  /// receipt is invalid; caller should NOT call `completePurchase` in that
+  /// case (StoreKit will redeliver so we can retry).
+  Future<AppleReceiptVerification> verifyAppleReceipt({
+    required String productId,
+    required String purchaseId,
+    required String receiptData,
+  });
+}
+
+/// Result of `verifyAppleReceipt`.
+class AppleReceiptVerification {
+  /// Resulting subscription status after verification (e.g. `approved`).
+  final VerifyStatus status;
+
+  /// Server-side subscription expiration. Used by the UI to show "Đến HH/MM".
+  final DateTime? expiresAt;
+
+  /// Original Apple transaction ID — backend persists for idempotency.
+  final String? originalTransactionId;
+
+  const AppleReceiptVerification({
+    required this.status,
+    this.expiresAt,
+    this.originalTransactionId,
+  });
 }

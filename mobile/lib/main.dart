@@ -16,10 +16,13 @@ import 'shared/providers/theme_provider.dart';
 import 'shared/widgets/soft_update_prompt.dart';
 
 void main() {
-  final widgetsBinding = WidgetsFlutterBinding.ensureInitialized();
-  FlutterNativeSplash.preserve(widgetsBinding: widgetsBinding);
+  // Bindings + splash MUST be initialized inside the same Zone that calls
+  // runApp — otherwise Flutter throws "Zone mismatch" and Crashlytics logs a
+  // noisy false-positive at every cold start.
   runZonedGuarded(
     () async {
+      final widgetsBinding = WidgetsFlutterBinding.ensureInitialized();
+      FlutterNativeSplash.preserve(widgetsBinding: widgetsBinding);
       // Init locale 'vi' + 'vi_VN' so DateFormat(..., 'vi') doesn't throw
       // LocaleDataException. Fast + sync — no timeout needed.
       try {

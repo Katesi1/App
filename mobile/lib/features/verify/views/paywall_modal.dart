@@ -87,7 +87,7 @@ class _PaywallModalState extends ConsumerState<PaywallModal> {
 
           // Title
           Text(
-            'Đăng phòng để kiếm tiền',
+            'Xác minh tài khoản',
             style: TextStyle(
               fontSize: 18,
               fontWeight: FontWeight.w700,
@@ -97,7 +97,7 @@ class _PaywallModalState extends ConsumerState<PaywallModal> {
           ),
           const SizedBox(height: 6),
           Text(
-            'Để bắt đầu nhận booking, bạn cần verify CCCD và mua gói subscription.',
+            'Xác minh CCCD để mở khoá tính năng quản lý. Bạn có thể chọn gói thanh toán sau khi admin duyệt.',
             textAlign: TextAlign.center,
             style: TextStyle(
               fontSize: 13,
@@ -108,7 +108,8 @@ class _PaywallModalState extends ConsumerState<PaywallModal> {
           ),
           const SizedBox(height: AppSpacing.lg),
 
-          // 4 step preview card
+          // Step preview card — KYC only. Plan purchase is a separate flow
+          // post-approval (decoupled from KYC).
           Container(
             padding: const EdgeInsets.all(14),
             decoration: BoxDecoration(
@@ -120,7 +121,7 @@ class _PaywallModalState extends ConsumerState<PaywallModal> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'QUY TRÌNH 4 BƯỚC',
+                  'QUY TRÌNH 3 BƯỚC',
                   style: TextStyle(
                     fontSize: 10,
                     fontWeight: FontWeight.w700,
@@ -201,12 +202,12 @@ class _PaywallModalState extends ConsumerState<PaywallModal> {
     );
   }
 
-  /// 4 verify-flow steps — title + subtitle.
+  /// 3 KYC steps — plan purchase is decoupled and happens post-approval
+  /// from the trial-active or subscription-detail screen.
   static const List<(String, String)> _steps = [
     ('Chụp CCCD + Selfie', 'Xác minh danh tính cá nhân'),
-    ('Thông tin homestay', 'Tên, địa chỉ, số phòng dự kiến'),
-    ('Chọn gói + Thanh toán', '3 tier · Trial 7 ngày miễn phí'),
     ('Chờ admin duyệt', 'Trong vòng 24 giờ'),
+    ('Chọn gói thanh toán', 'Sau khi duyệt — chọn gói phù hợp số phòng'),
   ];
 }
 

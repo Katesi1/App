@@ -502,9 +502,10 @@ class _BookingCalendarScreenState extends ConsumerState<BookingCalendarScreen> {
                     colors.brandLight.withValues(alpha: isDark ? 0.18 : 0.12),
                 title: 'Chia sẻ ảnh chụp lịch',
                 subtitle: 'Gửi ngay qua Zalo, nhắn tin — ai cũng xem được',
-                onTap: () {
+                onTap: (tileCtx) {
+                  final origin = _rectFromContext(tileCtx);
                   Navigator.pop(ctx);
-                  _doShareImage();
+                  _doShareImage(origin);
                 },
               ),
               const SizedBox(height: 12),
@@ -514,9 +515,10 @@ class _BookingCalendarScreenState extends ConsumerState<BookingCalendarScreen> {
                 iconBg: colors.brand.withValues(alpha: isDark ? 0.18 : 0.10),
                 title: 'Gửi link app & lịch',
                 subtitle: 'Nhân viên mở link để tải app và xem lịch realtime',
-                onTap: () {
+                onTap: (tileCtx) {
+                  final origin = _rectFromContext(tileCtx);
                   Navigator.pop(ctx);
-                  _doShareAppLink();
+                  _doShareAppLink(origin);
                 },
               ),
             ],
@@ -526,7 +528,7 @@ class _BookingCalendarScreenState extends ConsumerState<BookingCalendarScreen> {
     );
   }
 
-  Future<void> _doShareImage() async {
+  Future<void> _doShareImage(Rect? sharePositionOrigin) async {
     setState(() => _isSharing = true);
     try {
       final imageBytes = await _screenshotController.capture(pixelRatio: 2.0);
@@ -540,13 +542,14 @@ class _BookingCalendarScreenState extends ConsumerState<BookingCalendarScreen> {
         [XFile(file.path, mimeType: 'image/png')],
         subject: 'Lịch Booking Halong24h',
         text: '📅 Lịch đặt phòng $_rangeLabel – Halong24h',
+        sharePositionOrigin: sharePositionOrigin,
       );
     } finally {
       if (mounted) setState(() => _isSharing = false);
     }
   }
 
-  Future<void> _doShareAppLink() async {
+  Future<void> _doShareAppLink(Rect? sharePositionOrigin) async {
     final message = '📅 Halong24h — Quản lý phòng & lịch booking\n\n'
         'Tải ứng dụng để xem lịch đặt phòng, nhận thông báo và quản lý homestay:\n\n'
         '${AppConstants.appStoreUrl}';
@@ -554,7 +557,17 @@ class _BookingCalendarScreenState extends ConsumerState<BookingCalendarScreen> {
     await Share.share(
       message,
       subject: 'Tải ứng dụng Halong24h',
+      sharePositionOrigin: sharePositionOrigin,
     );
+  }
+
+  /// iPad requires a `sharePositionOrigin` anchor for `UIActivityViewController`
+  /// popover. Falls back to `null` (iPhone uses bottom sheet) if the context's
+  /// render box is not laid out yet.
+  static Rect? _rectFromContext(BuildContext context) {
+    final box = context.findRenderObject() as RenderBox?;
+    if (box == null || !box.hasSize) return null;
+    return box.localToGlobal(Offset.zero) & box.size;
   }
 }
 
@@ -566,7 +579,7 @@ class _ShareOption extends StatelessWidget {
   final Color iconBg;
   final String title;
   final String subtitle;
-  final VoidCallback onTap;
+  final ValueChanged<BuildContext> onTap;
 
   const _ShareOption({
     required this.icon,
@@ -584,7 +597,7 @@ class _ShareOption extends StatelessWidget {
       color: colors.bgSurfaceContainer,
       borderRadius: BorderRadius.circular(AppRadius.md),
       child: InkWell(
-        onTap: onTap,
+        onTap: () => onTap(context),
         borderRadius: BorderRadius.circular(AppRadius.md),
         child: Padding(
           padding: const EdgeInsets.all(14),

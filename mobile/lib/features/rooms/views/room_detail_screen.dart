@@ -375,7 +375,7 @@ class _ImageGalleryHeaderState extends State<_ImageGalleryHeader> {
               left: 16,
               child: _CircleBtn(
                 icon: Icons.arrow_back_rounded,
-                onTap: () => Navigator.of(context).pop(),
+                onTap: (_) => Navigator.of(context).pop(),
               ),
             ),
 
@@ -385,10 +385,18 @@ class _ImageGalleryHeaderState extends State<_ImageGalleryHeader> {
               right: 16,
               child: _CircleBtn(
                 icon: Icons.share_rounded,
-                onTap: () => Share.share(
-                  _buildShareText(widget.room),
-                  subject: '${widget.room.code} · ${widget.room.name}',
-                ),
+                onTap: (btnContext) {
+                  final box =
+                      btnContext.findRenderObject() as RenderBox?;
+                  final origin = box != null
+                      ? box.localToGlobal(Offset.zero) & box.size
+                      : null;
+                  Share.share(
+                    _buildShareText(widget.room),
+                    subject: '${widget.room.code} · ${widget.room.name}',
+                    sharePositionOrigin: origin,
+                  );
+                },
               ),
             ),
 
@@ -675,13 +683,13 @@ class _ThumbnailStripState extends State<_ThumbnailStrip> {
 
 class _CircleBtn extends StatelessWidget {
   final IconData icon;
-  final VoidCallback onTap;
+  final ValueChanged<BuildContext> onTap;
   const _CircleBtn({required this.icon, required this.onTap});
 
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
-      onTap: onTap,
+      onTap: () => onTap(context),
       child: Container(
         width: 40,
         height: 40,

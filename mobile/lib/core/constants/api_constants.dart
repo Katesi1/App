@@ -63,6 +63,11 @@ class ApiConstants {
   static String paymentRefund(String sessionId) =>
       '/payments/$sessionId/refund';
 
+  // Apple In-App Purchase — backend receives the StoreKit receipt, validates
+  // with Apple's verifyReceipt / App Store Server API, and persists the
+  // subscription against the user.
+  static const String paymentAppleVerify = '/payments/apple/verify';
+
   // Admin KYC (ADMIN-only).
   static const String adminKycQueue = '/admin/kyc/queue';
   static String adminKycApprove(String id) =>

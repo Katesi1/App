@@ -29,14 +29,14 @@
 				<string>Editor</string>
 				<key>CFBundleURLSchemes</key>
 				<array>
-					<string>com.googleusercontent.apps.832659566372-2tl5gv5vrr1ivo7coss5e913kcsc5q78</string>
+					<string>com.googleusercontent.apps.492063080427-cvghpnt7mi6htniimvq5a9ntb768fbe5</string>
 				</array>
 			</dict>
 		</array>
 		<key>CFBundleVersion</key>
 		<string>$(FLUTTER_BUILD_NUMBER)</string>
 		<key>GIDClientID</key>
-		<string>832659566372-2tl5gv5vrr1ivo7coss5e913kcsc5q78.apps.googleusercontent.com</string>
+		<string>492063080427-cvghpnt7mi6htniimvq5a9ntb768fbe5.apps.googleusercontent.com</string>
 		<key>LSRequiresIPhoneOS</key>
 		<true/>
 		<key>UIApplicationSceneManifest</key>
@@ -97,5 +97,20 @@
 		     sẽ bị iOS crash app với privacy violation. -->
 		<key>NSMicrophoneUsageDescription</key>
 		<string>Halong24h không thu âm — chỉ dùng camera để quét CCCD và xác minh khuôn mặt.</string>
+		<!-- App only uses standard HTTPS + iOS keychain — no custom crypto.
+		     Setting this to false skips App Store Connect's Export Compliance
+		     prompt on every upload (would otherwise block TestFlight install
+		     until manually answered). -->
+		<key>ITSAppUsesNonExemptEncryption</key>
+		<false/>
+		<!-- Schemes the app calls `canLaunchUrl` on. iOS 14+ blocks the check
+		     (returns false) unless the scheme is declared here. http/https
+		     work by default; tel/sms/mailto need explicit allow-list. -->
+		<key>LSApplicationQueriesSchemes</key>
+		<array>
+			<string>tel</string>
+			<string>sms</string>
+			<string>mailto</string>
+		</array>
 	</dict>
 </plist>
