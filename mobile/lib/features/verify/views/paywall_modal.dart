@@ -14,7 +14,9 @@ import '../controllers/verify_flow_controller.dart';
 ///
 /// Anatomy per spec section 5.1.
 class PaywallModal extends ConsumerStatefulWidget {
-  final VoidCallback? onProceed;
+  /// Called with the verify route to resume at (matches the "Tiếp tục bước X"
+  /// label) so tapping "step 3" actually opens step 3, not step 1.
+  final ValueChanged<String>? onProceed;
   final VoidCallback? onDefer;
 
   const PaywallModal({super.key, this.onProceed, this.onDefer});
@@ -39,9 +41,6 @@ class _PaywallModalState extends ConsumerState<PaywallModal> {
   @override
   Widget build(BuildContext context) {
     final colors = context.colors;
-    final state = ref.watch(verifyFlowControllerProvider);
-    final hasDraft = state.currentStep > 1;
-    final draftStep = state.currentStep;
 
     return Container(
       decoration: BoxDecoration(
@@ -168,9 +167,19 @@ class _PaywallModalState extends ConsumerState<PaywallModal> {
               Expanded(
                 flex: 2,
                 child: _PrimaryButton(
-                  label: hasDraft ? 'Tiếp tục bước $draftStep' : 'Bắt đầu ngay',
+                  label: 'Bắt đầu xác thực',
                   trailingIcon: Icons.arrow_forward,
-                  onTap: () => widget.onProceed?.call(),
+                  onTap: () {
+                    // Always start fresh at CCCD front. Resuming mid-flow is
+                    // unsafe: the backend needs every CCCD upload re-sent (it
+                    // can't reconstruct cccdFrontId from a local draft), so
+                    // skipping the capture screens makes submit fail with
+                    // "please CCCD front". Clear any stale draft first.
+                    ref
+                        .read(verifyFlowControllerProvider.notifier)
+                        .clearDraft();
+                    widget.onProceed?.call('/verify/cccd-front');
+                  },
                 ),
               ),
             ],
@@ -356,17 +365,17 @@ class _PrimaryButton extends StatelessWidget {
 /// Helper to show the paywall modal.
 ///
 /// Returns:
-/// - `true` if the user taps "Start now" (caller should push the verify flow)
-/// - `false` if the user taps "Later" / dismisses
-Future<bool?> showPaywallModal(BuildContext context) {
-  return showModalBottomSheet<bool>(
+/// - the verify route to push (`/verify/cccd-front`) if the user proceeds.
+/// - `null` if the user taps "Later" / dismisses.
+Future<String?> showPaywallModal(BuildContext context) {
+  return showModalBottomSheet<String>(
     context: context,
     backgroundColor: Colors.transparent,
     isScrollControlled: true,
     barrierColor: const Color(0x99000000),
     builder: (ctx) => PaywallModal(
-      onProceed: () => Navigator.of(ctx).maybePop(true),
-      onDefer: () => Navigator.of(ctx).maybePop(false),
+      onProceed: (route) => Navigator.of(ctx).maybePop(route),
+      onDefer: () => Navigator.of(ctx).maybePop(),
     ),
   );
 }

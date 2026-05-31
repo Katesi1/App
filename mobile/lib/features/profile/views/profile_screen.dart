@@ -3,13 +3,16 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:url_launcher/url_launcher.dart';
+import '../../../core/constants/app_constants.dart';
 import '../../../core/theme/app_color_scheme.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../core/utils/helpers.dart';
+import '../../../data/models/user_model.dart';
 import '../../../features/auth/controllers/auth_controller.dart';
 import '../../../shared/providers/theme_provider.dart';
-import '../../verify/controllers/verify_flow_controller.dart';
+import '../../verify/data/models/plan.dart';
 import '../../verify/data/models/verify_enums.dart';
 import '../../verify/views/paywall_modal.dart';
 
@@ -26,7 +29,6 @@ class ProfileScreen extends ConsumerWidget {
     final themeMode = ref.watch(themeProvider);
     final isDark = themeMode == ThemeMode.dark;
     final topPad = MediaQuery.of(context).padding.top;
-    final verifyState = ref.watch(verifyFlowControllerProvider);
     final showVerifySection = user?.isOwner ?? false;
 
     return Scaffold(
@@ -88,8 +90,8 @@ class ProfileScreen extends ConsumerWidget {
                     _MenuCard(
                       isDark: isDark,
                       items: [
-                        _verifyMenuItem(
-                            context, ref, verifyState.status, colors),
+                        _kycMenuItem(context, user!.kycStatus, colors),
+                        _subscriptionMenuItem(context, user, colors),
                       ],
                     ),
                   ],
@@ -302,58 +304,155 @@ class ProfileScreen extends ConsumerWidget {
     }
   }
 
-  /// Build the KYC menu item based on the owner's current verify status.
+  /// KYC menu item — driven by the SERVER truth (`user.kycStatus`), not the
+  /// local verify-flow draft (which could be stale and wrongly invite the user
+  /// to "verify again" while the backend already has the submission pending).
   ///
-  /// Four states → different label + icon + route:
-  /// - `approved`: "Plan + Trial" (green) → /verify/approved
-  /// - `awaitingApproval`: "Pending review" (amber) → /verify/pending
-  /// - `rejected`: "Resubmit required" (red) → /verify/rejected
-  /// - draft / not started: "Verify CCCD" (gold) → showPaywallModal
-  _MenuItemData _verifyMenuItem(
+  /// - `pending`: "Hồ sơ đang chờ duyệt" → tap opens the contact sheet
+  ///   (call / email admin) instead of re-entering the KYC flow.
+  /// - `approved`: "Đã xác thực danh tính" (info only).
+  /// - `rejected`: "Cần bổ sung hồ sơ" → /verify/rejected.
+  /// - `none`/other: "Xác thực CCCD" → paywall → /verify/cccd-front.
+  _MenuItemData _kycMenuItem(
     BuildContext context,
-    WidgetRef ref,
-    VerifyStatus status,
+    String kycStatus,
     AppColorScheme colors,
   ) {
-    switch (status) {
-      case VerifyStatus.approved:
-        return _MenuItemData(
-          icon: Icons.workspace_premium_rounded,
-          label: 'Gói đăng ký',
-          subtitle: 'Nâng cấp gói, gia hạn, hoặc xem lịch sử thanh toán',
-          iconColor: colors.success,
-          onTap: () => context.push('/verify/subscription-detail'),
-        );
-      case VerifyStatus.awaitingApproval:
+    switch (kycStatus) {
+      case 'pending':
         return _MenuItemData(
           icon: Icons.access_time_rounded,
           label: 'Hồ sơ đang chờ duyệt',
-          subtitle: 'Admin sẽ phản hồi trong 24h',
+          subtitle: 'Admin phản hồi trong 24h · Chạm để liên hệ',
           iconColor: colors.brandSecondary,
-          onTap: () => context.push('/verify/pending'),
+          onTap: () => _showKycContactSheet(context),
         );
-      case VerifyStatus.rejected:
+      case 'approved':
+        return _MenuItemData(
+          icon: Icons.verified_user_rounded,
+          label: 'Đã xác thực danh tính',
+          subtitle: 'CCCD đã được duyệt',
+          iconColor: colors.success,
+          // Info only — no action.
+        );
+      case 'rejected':
         return _MenuItemData(
           icon: Icons.error_outline_rounded,
           label: 'Cần bổ sung hồ sơ',
-          subtitle: 'Admin yêu cầu chụp lại một số item',
+          subtitle: 'Admin yêu cầu chụp lại — chạm để gửi lại',
           iconColor: colors.error,
           onTap: () => context.push('/verify/rejected'),
         );
       default:
         return _MenuItemData(
           icon: Icons.verified_user_outlined,
-          label: 'Verify CCCD để đăng phòng',
-          subtitle: '4 bước · Trial 7 ngày miễn phí',
+          label: 'Xác thực CCCD để đăng phòng',
+          subtitle: '3 bước · Trial 7 ngày miễn phí',
           iconColor: AppColors.goldText,
           onTap: () async {
-            final ok = await showPaywallModal(context);
-            if (ok == true && context.mounted) {
-              context.push('/verify/cccd-front');
+            final route = await showPaywallModal(context);
+            if (route != null && context.mounted) {
+              context.push(route);
             }
           },
         );
     }
+  }
+
+  /// Subscription menu item — always shown for owners, separate from KYC.
+  /// Routes to the manage screen when there's a live paid plan, otherwise to
+  /// the plan picker.
+  _MenuItemData _subscriptionMenuItem(
+    BuildContext context,
+    UserModel user,
+    AppColorScheme colors,
+  ) {
+    final hasPaidPlan = user.isSubscriptionActive || user.isSubscriptionPastDue;
+    final planName = Plan.tierFromId(user.subscriptionPlanId)?.displayName;
+    final String subtitle;
+    if (hasPaidPlan) {
+      subtitle = 'Gói ${planName ?? '—'} · Nâng cấp, gia hạn, lịch sử';
+    } else if (user.isInTrial) {
+      subtitle = 'Đang dùng thử · Chọn gói để duy trì sau trial';
+    } else {
+      subtitle = 'Chưa có gói · Chọn gói phù hợp số phòng';
+    }
+    return _MenuItemData(
+      icon: Icons.workspace_premium_rounded,
+      label: 'Gói đăng ký',
+      subtitle: subtitle,
+      iconColor: colors.warning,
+      onTap: () => context.push(
+        hasPaidPlan ? '/verify/subscription-detail' : '/verify/select-plan',
+      ),
+    );
+  }
+
+  /// Bottom sheet shown when the user taps a pending-KYC item — lets them
+  /// reach the admin team by phone or email while the review is in progress.
+  void _showKycContactSheet(BuildContext context) {
+    final colors = context.colors;
+    showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: colors.bgSurfaceElevated,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(AppRadius.xl)),
+      ),
+      builder: (sheetCtx) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.all(AppSpacing.lg),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Liên hệ hỗ trợ',
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w800,
+                  color: colors.textPrimary,
+                ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                'Hồ sơ đang chờ admin duyệt. Cần hỗ trợ nhanh, hãy liên hệ:',
+                style: TextStyle(fontSize: 12, color: colors.textTertiary),
+              ),
+              const SizedBox(height: AppSpacing.sm),
+              ListTile(
+                contentPadding: EdgeInsets.zero,
+                leading: Icon(Icons.phone_outlined, color: colors.brand),
+                title: const Text('Gọi hỗ trợ'),
+                subtitle: const Text(AppConstants.supportPhone),
+                onTap: () async {
+                  Navigator.of(sheetCtx).pop();
+                  final uri =
+                      Uri(scheme: 'tel', path: AppConstants.supportPhone);
+                  if (await canLaunchUrl(uri)) {
+                    await launchUrl(uri);
+                  }
+                },
+              ),
+              ListTile(
+                contentPadding: EdgeInsets.zero,
+                leading:
+                    Icon(Icons.mail_outline, color: colors.brandSecondary),
+                title: const Text('Gửi email'),
+                subtitle: const Text(AppConstants.supportEmail),
+                onTap: () async {
+                  Navigator.of(sheetCtx).pop();
+                  final uri =
+                      Uri(scheme: 'mailto', path: AppConstants.supportEmail);
+                  if (await canLaunchUrl(uri)) {
+                    await launchUrl(uri);
+                  }
+                },
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 }
 

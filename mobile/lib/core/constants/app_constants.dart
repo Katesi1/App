@@ -5,9 +5,19 @@ class AppConstants {
   static const String refreshTokenKey = 'refresh_token';
   static const String userKey = 'user_data';
 
+  /// SharedPreferences key for the in-progress KYC/subscription draft.
+  /// Cleared on logout / account switch so one user's selected plan + KYC
+  /// images never leak into another account (see VerifyFlowController).
+  static const String verifyDraftKey = 'verify_flow_draft_v1';
+
   static const String appStoreUrl =
       'https://apps.apple.com/app/halong24h/id000000000';
   static const String appDownloadPage = 'https://halong24h.vn/download';
+
+  // Support contact — shown on the KYC pending screen + anywhere the user
+  // needs to reach the Halong24h team.
+  static const String supportEmail = 'halong24h.team@gmail.com';
+  static const String supportPhone = '0983692497';
 }
 
 // B2B app for homestay OWNER + SALE only. ADMIN exists on backend but cannot

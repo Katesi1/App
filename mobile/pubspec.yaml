@@ -110,6 +110,15 @@ dev_dependencies:
   riverpod_lint: ^2.6.5
   mocktail: ^1.0.4
 
+# Pin path_provider_foundation < 2.6.0. From 2.6.0 it pulls the `objective_c`
+# package, which ships a prebuilt dynamic `objective_c.framework` whose
+# signature is invalid on physical devices → install fails with
+# "0xe8008014 (The executable contains an invalid signature.)".
+# 2.5.1 has no objective_c dependency and satisfies path_provider's ^2.3.2.
+# Revisit once the upstream signing issue (dart-lang/native) is fixed.
+dependency_overrides:
+  path_provider_foundation: 2.5.1
+
 flutter:
   uses-material-design: true
   # Liệt kê tường minh để KHÔNG bundle splash_android12.png vào IPA — Apple

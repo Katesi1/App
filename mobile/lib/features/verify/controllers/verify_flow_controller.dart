@@ -6,6 +6,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:in_app_purchase/in_app_purchase.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../../../core/constants/app_constants.dart';
+import '../../auth/controllers/auth_controller.dart';
 import '../data/models/cccd_upload.dart';
 import '../data/models/ocr_result.dart';
 import '../data/models/payment_history_item.dart';
@@ -140,16 +142,29 @@ final verifyFlowControllerProvider =
   (ref) => VerifyFlowController(
     ref.read(verifyRepositoryProvider),
     ref.read(iapServiceProvider),
+    ref,
   ),
 );
 
 class VerifyFlowController extends StateNotifier<VerifyFlowState> {
   final VerifyRepository _repo;
   final IAPService _iap;
-  static const _draftKey = 'verify_flow_draft_v1';
+  final Ref _ref;
 
-  VerifyFlowController(this._repo, this._iap) : super(const VerifyFlowState()) {
+  VerifyFlowController(this._repo, this._iap, this._ref)
+      : super(const VerifyFlowState()) {
     _restoreDraft();
+    // Security: wipe the in-progress draft whenever the signed-in account
+    // changes (logout → null, or switch user) so one user's selected plan /
+    // KYC images never carry over into another account's session.
+    _ref.listen<String?>(
+      currentUserProvider.select((u) => u?.id),
+      (prev, next) {
+        if (prev != null && next != prev) {
+          clearDraft();
+        }
+      },
+    );
   }
 
   // ════════════════════════════════════════════════════════════
@@ -180,11 +195,22 @@ class VerifyFlowController extends StateNotifier<VerifyFlowState> {
   Future<void> _restoreDraft() async {
     try {
       final prefs = await SharedPreferences.getInstance();
-      final raw = prefs.getString(_draftKey);
+      final raw = prefs.getString(AppConstants.verifyDraftKey);
       if (raw == null || raw.isEmpty) {
         return;
       }
       final json = jsonDecode(raw) as Map<String, dynamic>;
+      // Security: only resume a draft that belongs to the current account.
+      // Guards the edge case where the previous user didn't log out cleanly
+      // (app killed) before this user signed in — never restore their plan.
+      final draftUserId = json['ownerUserId'] as String?;
+      final currentUserId = _ref.read(currentUserProvider)?.id;
+      if (draftUserId != null &&
+          currentUserId != null &&
+          draftUserId != currentUserId) {
+        await prefs.remove(AppConstants.verifyDraftKey);
+        return;
+      }
       state = VerifyFlowState.fromJson(json);
     } catch (_) {
       // Don't block the flow if parsing the old draft fails.
@@ -552,11 +578,30 @@ class VerifyFlowController extends StateNotifier<VerifyFlowState> {
     _persistDraft();
   }
 
+  /// Wipe the in-progress draft from memory AND disk. Called on logout /
+  /// account switch so a selected plan or KYC images never carry over to
+  /// another user. Unlike [resetFlow] this removes the key entirely.
+  Future<void> clearDraft() async {
+    state = const VerifyFlowState();
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.remove(AppConstants.verifyDraftKey);
+    } catch (_) {
+      // Best-effort: in-memory state is already cleared above.
+    }
+  }
+
   /// Persist draft to local storage so the flow can resume after app restart.
+  /// Stamped with the owner's user id so a draft is never restored into a
+  /// different account (see [_restoreDraft]).
   void _persistDraft() {
+    final ownerUserId = _ref.read(currentUserProvider)?.id;
     SharedPreferences.getInstance().then((prefs) {
-      final payload = jsonEncode(state.toJson());
-      prefs.setString(_draftKey, payload);
+      final payload = jsonEncode({
+        ...state.toJson(),
+        'ownerUserId': ownerUserId,
+      });
+      prefs.setString(AppConstants.verifyDraftKey, payload);
     });
   }
 }

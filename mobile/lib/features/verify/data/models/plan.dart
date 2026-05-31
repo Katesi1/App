@@ -61,6 +61,21 @@ class Plan extends Equatable {
         _ => Tier.rooms5,
       };
 
+  /// Public, **null-on-unknown** lookup of a tier from a backend plan id
+  /// (`rooms_5`, `starter`, `enterprise`, ...). Unlike [_tierFromId] (used in
+  /// parsing, which defaults to Starter), this returns null for null/unknown
+  /// ids so callers can render a placeholder ("—") for users who haven't
+  /// bought a plan yet.
+  static Tier? tierFromId(String? id) => switch (id) {
+        'rooms_1' || 'mini' => Tier.rooms1,
+        'rooms_5' || 'starter' => Tier.rooms5,
+        'rooms_10' || 'standard' => Tier.rooms10,
+        'rooms_20' || 'pro' || 'professional' => Tier.rooms20,
+        'rooms_50' || 'business' => Tier.rooms50,
+        'enterprise' => Tier.enterprise,
+        _ => null,
+      };
+
   Map<String, dynamic> toJson() => {
         'id': id,
         'tier': tier.name,

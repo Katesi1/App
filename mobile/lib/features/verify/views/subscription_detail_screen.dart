@@ -6,6 +6,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../../../core/theme/app_color_scheme.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../core/utils/app_store_compliance.dart';
+import '../../auth/controllers/auth_controller.dart';
 import '../controllers/verify_flow_controller.dart';
 import '../data/models/payment_session.dart';
 import '../data/models/plan.dart';
@@ -93,6 +94,13 @@ class _SubscriptionDetailScreenState
     final plan = state.selectedPlan;
     final total =
         plan == null ? 0 : PlanPriceCalculator.total(plan, state.billingCycle);
+    // Real subscription status from the backend (/kyc/status). Drives which
+    // actions to surface — a user with no live paid plan should only see the
+    // plan picker + restore, NOT "đổi gói / huỷ đăng ký".
+    final user = ref.watch(currentUserProvider);
+    final hasActiveSub =
+        (user?.isSubscriptionActive ?? false) ||
+            (user?.isSubscriptionPastDue ?? false);
 
     return Scaffold(
       appBar: AppBar(title: const Text('Chi tiết gói đăng ký')),
@@ -111,15 +119,21 @@ class _SubscriptionDetailScreenState
             ),
           ),
           const SizedBox(height: AppSpacing.md),
+          // Plan name + cycle come from the REAL backend subscription
+          // (/kyc/status), not the local picker draft — otherwise a leftover
+          // draft (e.g. Starter pre-selected in a past session) would show up
+          // as if the brand-new account already owns a plan. "—" when unbought.
           _DetailItem(
             label: 'Tên gói',
-            value: plan?.tier.displayName ?? 'Chưa chọn',
+            value: Plan.tierFromId(user?.subscriptionPlanId)?.displayName ?? '—',
           ),
           _DetailItem(
             label: 'Chu kỳ',
-            value: state.billingCycle == BillingCycle.yearly
-                ? 'Hàng năm'
-                : 'Hàng tháng',
+            value: switch (user?.subscriptionCycle) {
+              'monthly' => 'Hàng tháng',
+              'yearly' => 'Hàng năm',
+              _ => '—',
+            },
           ),
           // On iOS, the source of truth for price + renewal is Apple
           // (Settings > Apple ID > Subscriptions). We hide the VND amount to
@@ -152,7 +166,7 @@ class _SubscriptionDetailScreenState
             //  - Restore (new device)    → "Khôi phục đăng ký đã mua"
             //                              (REQUIRED by Apple — re-fires the
             //                              purchase stream with `restored` events)
-            if (plan == null) ...[
+            if (!hasActiveSub) ...[
               SizedBox(
                 height: 48,
                 child: FilledButton.icon(
@@ -178,19 +192,24 @@ class _SubscriptionDetailScreenState
               ),
               const SizedBox(height: AppSpacing.sm),
             ],
-            SizedBox(
-              height: 44,
-              child: OutlinedButton.icon(
-                onPressed: () async {
-                  final uri = Uri.parse(appleManageSubscriptionsUrl);
-                  await launchUrl(uri,
-                      mode: LaunchMode.externalApplication);
-                },
-                icon: const Icon(Icons.settings_outlined, size: 18),
-                label: const Text('Huỷ đăng ký / Đổi thẻ thanh toán'),
+            // Cancel / change-card only makes sense when there's a live
+            // subscription to manage. Hidden for new/trial users (nothing to
+            // cancel yet).
+            if (hasActiveSub) ...[
+              SizedBox(
+                height: 44,
+                child: OutlinedButton.icon(
+                  onPressed: () async {
+                    final uri = Uri.parse(appleManageSubscriptionsUrl);
+                    await launchUrl(uri,
+                        mode: LaunchMode.externalApplication);
+                  },
+                  icon: const Icon(Icons.settings_outlined, size: 18),
+                  label: const Text('Huỷ đăng ký / Đổi thẻ thanh toán'),
+                ),
               ),
-            ),
-            const SizedBox(height: AppSpacing.sm),
+              const SizedBox(height: AppSpacing.sm),
+            ],
             SizedBox(
               height: 44,
               child: OutlinedButton.icon(

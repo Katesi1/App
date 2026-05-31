@@ -4,7 +4,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:url_launcher/url_launcher.dart';
 
+import '../../../core/constants/app_constants.dart';
 import '../../../core/theme/app_color_scheme.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
@@ -95,7 +97,6 @@ class _PendingApprovalScreenState extends ConsumerState<PendingApprovalScreen>
   Widget build(BuildContext context) {
     final colors = context.colors;
     final state = ref.watch(verifyFlowControllerProvider);
-    final email = state.cccdFront?.ocrResult?.fullName ?? 'tuan@email.com';
     final paidAt = state.paymentSession != null
         ? VerifyFormat.time(DateTime.now())
         : '14:35';
@@ -193,8 +194,8 @@ class _PendingApprovalScreenState extends ConsumerState<PendingApprovalScreen>
             const SizedBox(height: AppSpacing.md),
             StatusStrip(
               icon: Icons.mail_outline,
-              label: 'Thông báo qua email',
-              subtitle: 'Sẽ gửi tới $email',
+              label: 'Liên hệ hỗ trợ qua email',
+              subtitle: AppConstants.supportEmail,
               variant: StatusStripVariant.info,
             ),
             const SizedBox(height: AppSpacing.lg),
@@ -204,9 +205,18 @@ class _PendingApprovalScreenState extends ConsumerState<PendingApprovalScreen>
                 Expanded(
                   child: SizedBox(
                     height: 48,
-                    child: OutlinedButton(
-                      onPressed: () => context.push('/profile/help'),
-                      child: const Text('Liên hệ HT'),
+                    child: OutlinedButton.icon(
+                      onPressed: () async {
+                        final uri = Uri(
+                          scheme: 'tel',
+                          path: AppConstants.supportPhone,
+                        );
+                        if (await canLaunchUrl(uri)) {
+                          await launchUrl(uri);
+                        }
+                      },
+                      icon: const Icon(Icons.phone_outlined, size: 16),
+                      label: const Text('Liên hệ HT'),
                     ),
                   ),
                 ),

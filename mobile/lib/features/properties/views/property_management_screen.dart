@@ -10,8 +10,6 @@ import '../../../shared/widgets/keep_alive_tab.dart';
 import '../../../shared/widgets/loading_widget.dart';
 import '../../auth/controllers/auth_controller.dart';
 import '../../properties/controllers/property_controller.dart';
-import '../../verify/controllers/verify_flow_controller.dart';
-import '../../verify/data/models/verify_enums.dart';
 import '../../verify/views/paywall_modal.dart';
 import '../widgets/property_management_card.dart';
 
@@ -337,39 +335,33 @@ class _PropertyManagementScreenState
   /// - Admin / Sale → bypass verify (no KYC required)
   Future<void> _onCreateProperty() async {
     final user = ref.read(currentUserProvider);
-    final verifyState = ref.read(verifyFlowControllerProvider);
 
+    // Gate on the SERVER truth (user.kycStatus), not the local verify draft —
+    // a pending owner must NOT be offered KYC again.
     final needsVerify =
-        (user?.isOwner ?? false) && verifyState.status != VerifyStatus.approved;
+        (user?.isOwner ?? false) && !(user?.isKycApproved ?? false);
 
     if (!needsVerify) {
       context.push('/properties/new');
       return;
     }
 
-    // Routing by status: pending → /verify/pending, rejected → /verify/rejected,
-    // otherwise → showPaywallModal → /verify/cccd-front (or resume current step).
-    if (verifyState.status == VerifyStatus.awaitingApproval) {
-      context.push('/verify/pending');
-      return;
-    }
-    if (verifyState.status == VerifyStatus.rejected) {
-      context.push('/verify/rejected');
-      return;
+    // Routing by server status: pending → /verify/pending,
+    // rejected → /verify/rejected, otherwise → paywall → /verify/cccd-front.
+    switch (user!.kycStatus) {
+      case 'pending':
+        context.push('/verify/pending');
+        return;
+      case 'rejected':
+        context.push('/verify/rejected');
+        return;
     }
 
-    final ok = await showPaywallModal(context);
-    if (ok == true && mounted) {
-      // Resume from last step if draft exists, otherwise start from CCCD front.
-      final step = verifyState.currentStep;
-      final route = switch (step) {
-        2 => '/verify/cccd-back',
-        3 => '/verify/selfie',
-        4 => '/verify/select-plan',
-        5 => '/verify/payment',
-        _ => '/verify/cccd-front',
-      };
-      if (mounted) context.push(route);
+    // The paywall returns the route that resumes at the step it offered
+    // ("Tiếp tục bước X"), so we just push whatever it gives back.
+    final route = await showPaywallModal(context);
+    if (route != null && mounted) {
+      context.push(route);
     }
   }
 }

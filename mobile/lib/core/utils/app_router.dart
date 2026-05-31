@@ -152,7 +152,13 @@ String? resolveRedirectPath({
   // Backend still returns 403 if a request slips through — this is a UX guard.
   if (user != null && user.needsKyc) {
     if (path != '/properties' && path.startsWith('/properties/')) {
-      return '/verify/cccd-front';
+      // Route to the screen matching the SERVER status — a pending owner must
+      // land on "chờ duyệt", NOT be sent back to re-do KYC.
+      return switch (user.kycStatus) {
+        'pending' => '/verify/pending',
+        'rejected' => '/verify/rejected',
+        _ => '/verify/cccd-front',
+      };
     }
   }
 

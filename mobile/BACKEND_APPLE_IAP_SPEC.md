@@ -549,6 +549,49 @@ async function submitKyc(req) {
 }
 ```
 
+### ⚠️ Enforce trạng thái KYC (BẮT BUỘC — backend tự gác, không dựa vào app)
+
+App đã mirror `kycStatus` để ẩn/chuyển hướng UI (pending → chỉ hiện "chờ duyệt",
+không cho KYC lại). Nhưng client có thể bị sửa → **backend PHẢI tự kiểm tra
+`kycStatus` hiện tại của user và trả lỗi rõ ràng** cho các API sau. App đã sẵn
+sàng bắt lỗi + hiển thị `message`.
+
+**1. `POST /kyc/submit`** — chặn submit trùng/không hợp lệ:
+
+| `kycStatus` hiện tại | Hành vi backend |
+|---|---|
+| `none` | ✅ Cho submit → set `pending` |
+| `rejected` | ✅ Cho submit lại (resubmit) → set `pending` |
+| `pending` | ❌ **409** · `code: KYC_ALREADY_PENDING` · "Hồ sơ đang chờ duyệt, không thể gửi lại." |
+| `approved` | ❌ **409** · `code: KYC_ALREADY_APPROVED` · "Tài khoản đã được xác thực." |
+
+**2. Upload CCCD/selfie** (`/kyc/cccd-front`, `/kyc/cccd-back`, `/kyc/selfie`):
+
+- `kycStatus = pending` hoặc `approved` → ❌ **403** · `code: KYC_LOCKED` ·
+  "Hồ sơ đang chờ duyệt / đã duyệt, không thể chỉnh sửa." (Chống ghi đè hồ sơ
+  đang chờ.) Khi `rejected` → cho upload lại bình thường.
+
+**3. Tạo / sửa property** (`POST /properties`, `PUT /properties/:id`, ...):
+
+- `kycStatus != approved` → ❌ **403** · `code: KYC_REQUIRED` ·
+  "Cần hoàn tất xác thực trước khi đăng/sửa phòng."
+
+**4. `GET /kyc/status` + `GET /auth/profile`**:
+
+- `kycStatus` luôn phản ánh đúng DB: `none | pending | approved | rejected`.
+- Chỉ admin approve/reject mới đổi `pending → approved | rejected`.
+- App poll field này để cập nhật UI (banner, route guard).
+
+**Error format thống nhất** (app đọc `message` để hiện snackbar; `code` là tùy chọn):
+
+```json
+{ "success": false, "message": "Hồ sơ đang chờ duyệt, không thể gửi lại.", "code": "KYC_ALREADY_PENDING" }
+```
+
+> Tóm tắt: status do **API quyết định + enforce**; app chỉ phản chiếu. Thiếu các
+> guard 1-3 ở backend thì người dùng sửa client vẫn có thể submit trùng hoặc
+> đăng phòng khi chưa duyệt.
+
 ### Sửa flow admin approve
 
 Khi admin duyệt:

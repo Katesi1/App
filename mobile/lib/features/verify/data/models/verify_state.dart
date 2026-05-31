@@ -80,14 +80,15 @@ class VerifyFlowState extends Equatable {
   bool get hasCompleteKyc =>
       cccdFront != null && cccdBack != null && selfie != null;
 
-  /// Step the user is currently at (1-4 for KYC, 5-7 for subscription).
+  /// Step within the KYC capture flow (1 = CCCD front, 2 = CCCD back,
+  /// 3 = selfie). KYC and subscription are DECOUPLED — plan + payment are a
+  /// separate flow that happens after admin approval, so they are NOT counted
+  /// here. The paywall (the only consumer) resumes this 3-step capture only;
+  /// it must never offer a non-existent "bước 5".
   int get currentStep {
     if (cccdFront == null) return 1;
     if (cccdBack == null) return 2;
-    if (selfie == null) return 3;
-    if (selectedPlan == null) return 4;
-    if (paymentStatus != PaymentStatus.paid) return 5;
-    return 6;
+    return 3;
   }
 
   VerifyFlowState copyWith({

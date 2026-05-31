@@ -1393,11 +1393,15 @@ class _SubscriptionBanner extends ConsumerWidget {
               child: ElevatedButton.icon(
                 onPressed: () {
                   Navigator.of(sheetCtx).maybePop();
-                  // Subscription detail screen handles every state: it offers
-                  // "Chọn gói + Mua qua App Store" (iOS, no active plan),
-                  // "Manage on App Store" (iOS, paid), or the legacy renew
-                  // flow (Android). The dashboard banner always lands there.
-                  context.push('/verify/subscription-detail');
+                  // Users without a live paid plan (trial / not subscribed /
+                  // cancelled) go straight to the plan picker so they can
+                  // CHOOSE a tier. Only an active/past-due subscriber lands on
+                  // the manage screen (đổi gói / huỷ / khôi phục).
+                  final hasPaidPlan =
+                      user.isSubscriptionActive || user.isSubscriptionPastDue;
+                  context.push(hasPaidPlan
+                      ? '/verify/subscription-detail'
+                      : '/verify/select-plan');
                 },
                 icon: const Icon(
                   Icons.workspace_premium_outlined,
@@ -1656,9 +1660,9 @@ class _VerifyCTABanner extends StatelessWidget {
             label: cta,
             onTap: () async {
               if (useModal) {
-                final ok = await showPaywallModal(context);
-                if (ok == true && context.mounted) {
-                  context.push(route);
+                final resumeRoute = await showPaywallModal(context);
+                if (resumeRoute != null && context.mounted) {
+                  context.push(resumeRoute);
                 }
               } else {
                 context.push(route);
