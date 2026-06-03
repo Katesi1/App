@@ -269,11 +269,33 @@ class VerifyFlowController extends StateNotifier<VerifyFlowState> {
   // ════════════════════════════════════════════════════════════
 
   /// Tạo payment session (mở QR / bank info / card form).
+  ///
+  /// Backend yêu cầu KYC submission phải tồn tại trước khi tạo payment
+  /// (`POST /kyc/submit` trước `POST /payments/initiate`). Nếu chưa có
+  /// [submissionId], tự động submit KYC để lấy ID, sau đó tạo payment.
   Future<PaymentSession> initiatePayment(PaymentMethod method) async {
     final plan = state.selectedPlan;
     if (plan == null) {
       throw StateError('Chưa chọn plan');
     }
+
+    if (state.submissionId == null) {
+      try {
+        final result = await _repo.submitForApproval();
+        state = state.copyWith(submissionId: result.submissionId);
+        _persistDraft();
+      } catch (_) {
+        // Có thể đã submit trước đó (409) — lấy submissionId từ /kyc/status.
+        try {
+          final snap = await _repo.getKycStatus();
+          if (snap.submissionId != null) {
+            state = state.copyWith(submissionId: snap.submissionId);
+            _persistDraft();
+          }
+        } catch (_) {}
+      }
+    }
+
     final total = PlanPriceCalculator.total(plan, state.billingCycle);
     final session = await _repo.initiatePayment(
       planId: plan.id,
@@ -303,20 +325,13 @@ class VerifyFlowController extends StateNotifier<VerifyFlowState> {
     return session;
   }
 
-  /// Poll trạng thái payment (Screen 5 gọi mỗi 3s).
-  ///
-  /// Khi paid → auto submit hồ sơ chờ admin duyệt.
+  /// Poll trạng thái payment (màn thanh toán gọi mỗi 3s).
   Future<PaymentStatus> checkPaymentStatus() async {
     final session = state.paymentSession;
     if (session == null) return PaymentStatus.pending;
 
     final status = await _repo.checkPaymentStatus(session.sessionId);
     state = state.copyWith(paymentStatus: status);
-
-    if (status == PaymentStatus.paid &&
-        state.status != VerifyStatus.awaitingApproval) {
-      await submitForApproval();
-    }
     _persistDraft();
     return status;
   }

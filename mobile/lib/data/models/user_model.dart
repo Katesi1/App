@@ -147,6 +147,56 @@ class UserModel {
     return diff < 0 ? 0 : diff;
   }
 
+  /// Tên gói hiển thị (Mini, Starter, ...).
+  String get subscriptionPlanLabel {
+    final id = subscriptionPlanId;
+    if (id == null || id.isEmpty) return 'Chưa có gói';
+    return switch (id) {
+      'rooms_1' || 'mini' => 'Mini',
+      'rooms_5' || 'starter' => 'Starter',
+      'rooms_10' || 'standard' => 'Standard',
+      'rooms_20' || 'pro' || 'professional' => 'Pro',
+      'rooms_50' || 'business' => 'Business',
+      'rooms_unlimited' || 'enterprise' => 'Enterprise',
+      _ => id,
+    };
+  }
+
+  /// Subtitle cho menu/card Mua gói trên profile & quản lý.
+  String get subscriptionMenuSubtitle {
+    if (isInTrial) {
+      final days = trialDaysLeft ?? 0;
+      return 'Trial $subscriptionPlanLabel · còn $days ngày';
+    }
+    if (isSubscriptionActive) {
+      return 'Đang dùng $subscriptionPlanLabel';
+    }
+    if (isSubscriptionPastDue) {
+      return 'Quá hạn thanh toán · $subscriptionPlanLabel';
+    }
+    if (isSubscriptionCancelled) {
+      return 'Gói đã huỷ · Mua lại để tiếp tục';
+    }
+    return 'Chọn gói phù hợp với số phòng';
+  }
+
+  /// Badge trailing trên card quản lý.
+  String get subscriptionTrailingLabel {
+    if (isInTrial) return 'Trial';
+    if (isSubscriptionActive) return subscriptionPlanLabel;
+    if (isSubscriptionPastDue) return 'Quá hạn';
+    if (isSubscriptionCancelled) return 'Đã huỷ';
+    return 'Chưa có';
+  }
+
+  /// Route màn hình quản lý/mua gói.
+  String get subscriptionManageRoute {
+    if (isSubscriptionActive || isInTrial || isSubscriptionPastDue) {
+      return '/verify/subscription-detail';
+    }
+    return '/verify/select-plan';
+  }
+
   UserModel copyWith({
     String? id,
     String? name,

@@ -17,7 +17,7 @@ if (keyPropertiesFile.exists()) {
 }
 
 android {
-    namespace = "com.halongtravel.halong24h"
+    namespace = "com.halong24h.app"
     compileSdk = flutter.compileSdkVersion
     ndkVersion = flutter.ndkVersion
 
@@ -45,11 +45,13 @@ android {
     }
 
     defaultConfig {
-        applicationId = "com.halongtravel.halong24h"
+        applicationId = "com.halong24h.app"
         // ML Kit text recognition + camera plugin yêu cầu API ≥ 21.
         // Set 24 để khớp với baseline của google_mlkit_commons mới.
         minSdk = maxOf(flutter.minSdkVersion, 24)
-        targetSdk = flutter.targetSdkVersion
+        // Flutter 3.35+ mặc định targetSdk=36 (Android 16 preview) — pin về 35
+        // để tránh Google Play hạn chế phân phối trên thiết bị chưa tương thích API 36.
+        targetSdk = 35
         versionCode = flutter.versionCode
         versionName = flutter.versionName
     }

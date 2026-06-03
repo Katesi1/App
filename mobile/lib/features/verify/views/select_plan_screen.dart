@@ -48,8 +48,10 @@ class _SelectPlanScreenState extends ConsumerState<SelectPlanScreen> {
     return Scaffold(
       backgroundColor: colors.bgCanvas,
       appBar: const VerifyAppBar(
-        overline: 'BƯỚC 5/7 · SUBSCRIPTION',
+        overline: 'BƯỚC 1/2 · MUA GÓI',
         title: 'Chọn gói phù hợp',
+        currentStep: 1,
+        totalSteps: 2,
       ),
       body: plansAsync.when(
         loading: () => const Center(child: CircularProgressIndicator()),

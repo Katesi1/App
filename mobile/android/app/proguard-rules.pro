@@ -34,7 +34,16 @@
 -keep class io.flutter.plugins.imagepicker.** { *; }
 
 # Prevent stripping of Flutter plugin registrant
--keep class com.halongtravel.halong24h.GeneratedPluginRegistrant { *; }
+-keep class com.halong24h.app.GeneratedPluginRegistrant { *; }
+
+# flutter_local_notifications
+-keep class com.dexterous.** { *; }
+
+# camera plugin
+-keep class io.flutter.plugins.camera.** { *; }
+
+# share_plus
+-keep class dev.fluttercommunity.plus.share.** { *; }
 
 # Google Play Core (deferred components — Flutter uses these internally)
 -dontwarn com.google.android.play.core.**

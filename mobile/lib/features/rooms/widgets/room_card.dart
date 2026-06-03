@@ -16,11 +16,16 @@ class RoomCard extends StatefulWidget {
   final VoidCallback? onTap;
   final int animationIndex;
 
+  /// Chỉ tab đang visible mới bật Hero — tránh trùng tag khi TabBarView
+  /// keep-alive nhiều tab cùng chứa một phòng.
+  final bool enableHero;
+
   const RoomCard({
     super.key,
     required this.room,
     this.onTap,
     this.animationIndex = 0,
+    this.enableHero = true,
   });
 
   @override
@@ -68,24 +73,7 @@ class _RoomCardState extends State<RoomCard> {
               // ── Image area ────────────────────────────────────────
               Stack(
                 children: [
-                  Hero(
-                    tag: 'room-cover-${room.id}',
-                    child: SizedBox(
-                      height: 120,
-                      width: double.infinity,
-                      child: room.coverImageUrl != null
-                          ? CachedNetworkImage(
-                              imageUrl: room.coverImageUrl!,
-                              fit: BoxFit.cover,
-                              memCacheWidth: 400,
-                              placeholder: (_, __) =>
-                                  _imagePlaceholder(context),
-                              errorWidget: (_, __, ___) =>
-                                  _imagePlaceholder(context),
-                            )
-                          : _imagePlaceholder(context),
-                    ),
-                  ),
+                  _buildCoverImage(context, room),
                   // Status badge top-right
                   Positioned(
                     top: 10,
@@ -214,6 +202,29 @@ class _RoomCardState extends State<RoomCard> {
               ),
             ))
         .toList();
+  }
+
+  Widget _buildCoverImage(BuildContext context, RoomModel room) {
+    final image = SizedBox(
+      height: 120,
+      width: double.infinity,
+      child: room.coverImageUrl != null
+          ? CachedNetworkImage(
+              imageUrl: room.coverImageUrl!,
+              fit: BoxFit.cover,
+              memCacheWidth: 400,
+              placeholder: (_, __) => _imagePlaceholder(context),
+              errorWidget: (_, __, ___) => _imagePlaceholder(context),
+            )
+          : _imagePlaceholder(context),
+    );
+
+    if (!widget.enableHero) return image;
+
+    return Hero(
+      tag: 'room-cover-${room.id}',
+      child: image,
+    );
   }
 
   Widget _imagePlaceholder(BuildContext context) {

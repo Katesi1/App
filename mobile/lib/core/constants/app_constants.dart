@@ -13,6 +13,24 @@ class AppConstants {
   static const String appStoreUrl =
       'https://apps.apple.com/app/halong24h/id000000000';
   static const String appDownloadPage = 'https://halong24h.vn/download';
+
+  /// QR chuyển khoản ngân hàng tĩnh (fallback khi không có internet).
+  static const String bankingQrAsset = 'assets/images/QR_banking.jpg';
+
+  // ── Tài khoản nhận tiền (VietQR) ──────────────────────────────────────────
+  static const String bankCode = 'ACB';
+  static const String bankAccountNumber = '21169431';
+  static const String bankAccountName = 'NGUYEN VU NAM';
+  static const String bankDisplayName = 'ACB (Á Châu)';
+
+  /// Tạo URL VietQR động — QR encode sẵn [amount] (VND) + [content] (nội dung CK).
+  /// Khi khách quét bằng app ngân hàng, số tiền + nội dung tự điền sẵn.
+  static String vietQrUrl({required int amount, required String content}) {
+    final encodedContent = Uri.encodeComponent(content);
+    final encodedName = Uri.encodeComponent(bankAccountName);
+    return 'https://img.vietqr.io/image/$bankCode-$bankAccountNumber-qr_only.png'
+        '?amount=$amount&addInfo=$encodedContent&accountName=$encodedName';
+  }
 }
 
 enum UserRole { admin, owner, sale, customer }

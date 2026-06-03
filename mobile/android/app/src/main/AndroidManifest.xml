@@ -1,4 +1,5 @@
-<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
     <!-- Network -->
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
@@ -7,11 +8,12 @@
     <uses-permission android:name="android.permission.CAMERA" />
     <uses-feature android:name="android.hardware.camera" android:required="false" />
     <uses-feature android:name="android.hardware.camera.autofocus" android:required="false" />
+    <!-- Override dependency (camera plugin) adding camera.any as required=true -->
+    <uses-feature android:name="android.hardware.camera.any" android:required="false" tools:replace="android:required" />
 
     <!-- Gallery / image picker -->
-    <!-- Android 13+ (API 33+): READ_MEDIA_IMAGES thay thế READ_EXTERNAL_STORAGE -->
-    <uses-permission android:name="android.permission.READ_MEDIA_IMAGES" />
-    <!-- Android 9–12 (API 28–32) -->
+    <!-- image_picker ^1.1+ dùng system photo picker trên Android 13+ (API 33+),
+         không cần READ_MEDIA_IMAGES. READ_EXTERNAL_STORAGE chỉ cần cho Android ≤ 12. -->
     <uses-permission
         android:name="android.permission.READ_EXTERNAL_STORAGE"
         android:maxSdkVersion="32" />

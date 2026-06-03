@@ -273,6 +273,19 @@ class AdminScreen extends ConsumerWidget {
                     onTap: () => context.push('/admin/role-permissions'),
                   ),
 
+                  if (user?.isOwner ?? false) ...[
+                    const SizedBox(height: 10),
+                    _MenuCard(
+                      icon: Icons.card_membership_rounded,
+                      iconBg: AppColors.goldBg,
+                      iconColor: AppColors.goldText,
+                      title: 'Mua gói',
+                      subtitle: user!.subscriptionMenuSubtitle,
+                      trailing: user.subscriptionTrailingLabel,
+                      onTap: () => context.push(user.subscriptionManageRoute),
+                    ),
+                  ],
+
                   if (isAdmin) ...[
                     const SizedBox(height: 10),
                     _MenuCard(

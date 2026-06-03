@@ -69,15 +69,22 @@ class VerifyFlowState extends Equatable {
   bool get hasCompleteKyc =>
       cccdFront != null && cccdBack != null && selfie != null;
 
-  /// Step số đang reach (1-4 cho KYC, 5-7 cho subscription).
-  int get currentStep {
+  /// Step KYC (1–4): CCCD trước → sau → selfie → submit.
+  int get kycCurrentStep {
     if (cccdFront == null) return 1;
     if (cccdBack == null) return 2;
     if (selfie == null) return 3;
-    if (selectedPlan == null) return 4;
-    if (paymentStatus != PaymentStatus.paid) return 5;
-    return 6;
+    return 4;
   }
+
+  /// Step mua gói (1–2): chọn plan → thanh toán.
+  int get subscriptionCurrentStep {
+    if (selectedPlan == null) return 1;
+    return 2;
+  }
+
+  /// Resume paywall / property CTA — chỉ KYC, không gộp subscription.
+  int get currentStep => kycCurrentStep;
 
   VerifyFlowState copyWith({
     CCCDUpload? cccdFront,

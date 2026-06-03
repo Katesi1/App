@@ -9,6 +9,7 @@ import '../../../core/theme/app_color_scheme.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../shared/widgets/loading_widget.dart';
+import '../../auth/controllers/auth_controller.dart';
 import '../controllers/verify_flow_controller.dart';
 import 'selfie_scanner_screen.dart';
 import 'widgets/camera_frame_overlay.dart';
@@ -41,9 +42,12 @@ class _SelfieCaptureScreenState extends ConsumerState<SelfieCaptureScreen> {
     setState(() => _uploading = true);
     try {
       await ref.read(verifyFlowControllerProvider.notifier).uploadSelfie(file);
+      await ref
+          .read(verifyFlowControllerProvider.notifier)
+          .submitForApproval();
+      await ref.read(authProvider.notifier).refreshProfile();
       if (!mounted) return;
-      // Push (không pushReplacement) để user back về retake selfie nếu cần.
-      context.push('/verify/select-plan');
+      context.pushReplacement('/verify/pending');
     } catch (e) {
       if (mounted) {
         final msg = e.toString().replaceAll('Exception: ', '');

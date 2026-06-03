@@ -110,14 +110,25 @@ class PaymentMethodTile extends StatelessWidget {
                               borderRadius: BorderRadius.circular(4),
                               border: Border.all(color: colors.borderDefault),
                             ),
-                            child: Text(
-                              'Đang phát triển',
-                              style: TextStyle(
-                                fontSize: 9,
-                                fontWeight: FontWeight.w700,
-                                letterSpacing: 0.2,
-                                color: colors.textTertiary,
-                              ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(
+                                  Icons.lock_outline,
+                                  size: 10,
+                                  color: colors.textTertiary,
+                                ),
+                                const SizedBox(width: 4),
+                                Text(
+                                  'Sắp ra mắt',
+                                  style: TextStyle(
+                                    fontSize: 9,
+                                    fontWeight: FontWeight.w700,
+                                    letterSpacing: 0.2,
+                                    color: colors.textTertiary,
+                                  ),
+                                ),
+                              ],
                             ),
                           ),
                         ],

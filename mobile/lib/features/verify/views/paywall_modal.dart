@@ -96,7 +96,7 @@ class _PaywallModalState extends ConsumerState<PaywallModal> {
           ),
           const SizedBox(height: 6),
           Text(
-            'Để bắt đầu nhận booking, bạn cần verify CCCD và mua gói subscription.',
+            'Để bắt đầu nhận booking, bạn cần xác thực CCCD và mua gói đăng ký.',
             textAlign: TextAlign.center,
             style: TextStyle(
               fontSize: 13,
@@ -119,7 +119,7 @@ class _PaywallModalState extends ConsumerState<PaywallModal> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'QUY TRÌNH 4 BƯỚC',
+                  'QUY TRÌNH XÁC THỰC CCCD',
                   style: TextStyle(
                     fontSize: 10,
                     fontWeight: FontWeight.w700,
@@ -199,12 +199,12 @@ class _PaywallModalState extends ConsumerState<PaywallModal> {
     );
   }
 
-  /// 4 bước verify flow — title + subtitle.
+  /// 4 bước KYC — tách riêng khỏi mua gói.
   static const List<(String, String)> _steps = [
-    ('Chụp CCCD + Selfie', 'Xác minh danh tính cá nhân'),
-    ('Thông tin homestay', 'Tên, địa chỉ, số phòng dự kiến'),
-    ('Chọn gói + Thanh toán', '3 tier · Trial 7 ngày miễn phí'),
-    ('Chờ admin duyệt', 'Trong vòng 24 giờ'),
+    ('Chụp CCCD mặt trước', 'Quét QR hoặc chụp ảnh rõ nét'),
+    ('Chụp CCCD mặt sau', 'Đọc mã QR trên thẻ'),
+    ('Selfie xác minh', 'So khớp khuôn mặt với CCCD'),
+    ('Chờ admin duyệt', 'Phản hồi trong vòng 24 giờ'),
   ];
 }
 

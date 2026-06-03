@@ -1,9 +1,11 @@
 import 'dart:async';
 
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../../../../core/constants/app_constants.dart';
 import '../../../../core/theme/app_color_scheme.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../data/models/payment_session.dart';
@@ -269,18 +271,16 @@ class _BankTransferDialogState extends State<BankTransferDialog> {
     final bank = widget.session.bankInfo;
     final expired = _remaining.inSeconds <= 0;
 
-    if (bank == null) {
-      return AlertDialog(
-        title: const Text('Chuyển khoản ngân hàng'),
-        content: const Text('Không nhận được thông tin tài khoản từ máy chủ.'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).maybePop(),
-            child: const Text('Đóng'),
-          ),
-        ],
-      );
-    }
+    // Nội dung CK: ưu tiên từ bankInfo, fallback dùng sessionId để đối soát.
+    final transferContent = bank?.content.isNotEmpty == true
+        ? bank!.content
+        : widget.session.sessionId;
+
+    // VietQR động — encode sẵn số tiền + nội dung, khách quét là tự điền.
+    final qrUrl = AppConstants.vietQrUrl(
+      amount: widget.session.totalAmount,
+      content: transferContent,
+    );
 
     return Dialog(
       backgroundColor: colors.bgSurfaceElevated,
@@ -306,19 +306,59 @@ class _BankTransferDialogState extends State<BankTransferDialog> {
               ],
             ),
             const SizedBox(height: 12),
-            if (bank.vietQrPayload != null && bank.vietQrPayload!.isNotEmpty)
-              Padding(
-                padding: const EdgeInsets.only(bottom: 12),
-                child: PaymentQrView(payload: bank.vietQrPayload, size: 200),
+            // VietQR động — số tiền + nội dung đã được encode vào QR.
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: colors.bgSurface,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: colors.borderDefault),
               ),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(8),
+                child: CachedNetworkImage(
+                  imageUrl: qrUrl,
+                  width: 200,
+                  height: 200,
+                  fit: BoxFit.contain,
+                  placeholder: (_, __) => const SizedBox(
+                    width: 200,
+                    height: 200,
+                    child: Center(child: CircularProgressIndicator(strokeWidth: 2)),
+                  ),
+                  errorWidget: (_, __, ___) => Image.asset(
+                    AppConstants.bankingQrAsset,
+                    width: 200,
+                    height: 200,
+                    fit: BoxFit.contain,
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Quét QR — số tiền tự điền sẵn',
+              style: TextStyle(
+                fontSize: 11,
+                fontWeight: FontWeight.w600,
+                color: colors.textSecondary,
+              ),
+            ),
+            const SizedBox(height: 12),
+            // Thông tin tài khoản — từ backend hoặc fallback constants.
             _row(context,
-                label: 'Ngân hàng', value: bank.bankName, copyable: false),
-            _row(context, label: 'Số tài khoản', value: bank.accountNumber),
+                label: 'Ngân hàng',
+                value: bank?.bankName ?? AppConstants.bankDisplayName,
+                copyable: false),
+            _row(context,
+                label: 'Số tài khoản',
+                value: bank?.accountNumber ?? AppConstants.bankAccountNumber),
             _row(context,
                 label: 'Tên người nhận',
-                value: bank.accountName,
+                value: bank?.accountName ?? AppConstants.bankAccountName,
                 copyable: false),
-            _row(context, label: 'Nội dung CK', value: bank.content),
+            // Nội dung CK + số tiền — luôn hiển thị.
+            _row(context, label: 'Nội dung CK', value: transferContent),
             _row(
               context,
               label: 'Số tiền',
@@ -354,7 +394,7 @@ class _BankTransferDialogState extends State<BankTransferDialog> {
                         ),
                         const SizedBox(height: 2),
                         Text(
-                          'Vui lòng giữ nguyên nội dung CK để hệ thống nhận diện đúng giao dịch.',
+                          'Vui lòng nhập đúng nội dung CK để hệ thống nhận diện đúng giao dịch.',
                           style: TextStyle(
                             fontSize: 10,
                             fontWeight: FontWeight.w500,

@@ -357,12 +357,10 @@ class _PropertyManagementScreenState
     final ok = await showPaywallModal(context);
     if (ok == true && mounted) {
       // Resume từ step cuối nếu có draft, ngược lại bắt đầu từ CCCD front.
-      final step = verifyState.currentStep;
+      final step = verifyState.kycCurrentStep;
       final route = switch (step) {
         2 => '/verify/cccd-back',
         3 => '/verify/selfie',
-        4 => '/verify/select-plan',
-        5 => '/verify/payment',
         _ => '/verify/cccd-front',
       };
       if (mounted) context.push(route);

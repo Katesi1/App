@@ -56,22 +56,11 @@ class _SubscriptionDetailScreenState
   }
 
   void _openSessionDialog(PaymentSession session, PaymentMethod method) {
-    switch (method) {
-      case PaymentMethod.vnpayQR:
-        showDialog<void>(
-          context: context,
-          barrierDismissible: false,
-          builder: (_) => VNPayQRDialog(session: session),
-        );
-        break;
-      case PaymentMethod.bankTransfer:
-        showDialog<void>(
-          context: context,
-          builder: (_) => BankTransferDialog(session: session),
-        );
-        break;
-      case PaymentMethod.card:
-        break;
+    if (method == PaymentMethod.bankTransfer) {
+      showDialog<void>(
+        context: context,
+        builder: (_) => BankTransferDialog(session: session),
+      );
     }
     // Refresh history sau khi user đóng dialog (assumption: webhook đã hoặc
     // sẽ cập nhật status). Không poll ở đây để giữ logic đơn giản.
@@ -241,17 +230,17 @@ class _RenewMethodSheet extends StatelessWidget {
           ),
           const SizedBox(height: AppSpacing.md),
           _MethodOption(
-            icon: Icons.qr_code_2,
-            title: 'VNPay QR',
-            subtitle: 'Quét QR bằng app ngân hàng · Tức thời',
-            onTap: () => Navigator.of(context).pop(PaymentMethod.vnpayQR),
+            icon: Icons.account_balance,
+            title: 'Chuyển khoản ngân hàng',
+            subtitle: 'Quét QR + STK · Đối soát 5–30 phút',
+            onTap: () => Navigator.of(context).pop(PaymentMethod.bankTransfer),
           ),
           const SizedBox(height: 8),
           _MethodOption(
-            icon: Icons.account_balance,
-            title: 'Chuyển khoản',
-            subtitle: 'STK + nội dung CK · 5–30 phút',
-            onTap: () => Navigator.of(context).pop(PaymentMethod.bankTransfer),
+            icon: Icons.credit_card,
+            title: 'Thẻ tín dụng / Ghi nợ',
+            subtitle: 'Visa, Mastercard, JCB',
+            locked: true,
           ),
         ],
       ),
@@ -263,65 +252,87 @@ class _MethodOption extends StatelessWidget {
   final IconData icon;
   final String title;
   final String subtitle;
-  final VoidCallback onTap;
+  final VoidCallback? onTap;
+  final bool locked;
 
   const _MethodOption({
     required this.icon,
     required this.title,
     required this.subtitle,
-    required this.onTap,
+    this.onTap,
+    this.locked = false,
   });
 
   @override
   Widget build(BuildContext context) {
     final colors = context.colors;
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(12),
-      child: Container(
-        padding: const EdgeInsets.all(12),
-        decoration: BoxDecoration(
-          color: colors.bgSurface,
-          border: Border.all(color: colors.borderDefault),
-          borderRadius: BorderRadius.circular(12),
-        ),
-        child: Row(
-          children: [
-            Container(
-              width: 36,
-              height: 36,
-              decoration: BoxDecoration(
-                color: colors.bgSurfaceContainer,
-                borderRadius: BorderRadius.circular(8),
+    return Opacity(
+      opacity: locked ? 0.55 : 1,
+      child: InkWell(
+        onTap: locked ? null : onTap,
+        borderRadius: BorderRadius.circular(12),
+        child: Container(
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            color: colors.bgSurface,
+            border: Border.all(color: colors.borderDefault),
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: Row(
+            children: [
+              Container(
+                width: 36,
+                height: 36,
+                decoration: BoxDecoration(
+                  color: colors.bgSurfaceContainer,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Icon(icon, size: 18, color: colors.brandLight),
               ),
-              child: Icon(icon, size: 18, color: colors.brandLight),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    title,
-                    style: TextStyle(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w800,
-                      color: colors.textPrimary,
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Flexible(
+                          child: Text(
+                            title,
+                            style: TextStyle(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w800,
+                              color: colors.textPrimary,
+                            ),
+                          ),
+                        ),
+                        if (locked) ...[
+                          const SizedBox(width: 6),
+                          Icon(
+                            Icons.lock_outline,
+                            size: 14,
+                            color: colors.textTertiary,
+                          ),
+                        ],
+                      ],
                     ),
-                  ),
-                  Text(
-                    subtitle,
-                    style: TextStyle(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w500,
-                      color: colors.textTertiary,
+                    Text(
+                      locked
+                          ? 'Sắp ra mắt trong bản cập nhật tới'
+                          : subtitle,
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w500,
+                        color: colors.textTertiary,
+                      ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
-            ),
-            Icon(Icons.chevron_right, color: colors.textTertiary),
-          ],
+              if (!locked)
+                Icon(Icons.chevron_right, color: colors.textTertiary),
+            ],
+          ),
         ),
       ),
     );

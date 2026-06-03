@@ -795,12 +795,15 @@ class _RoomListScreenState extends ConsumerState<RoomListScreen>
             ),
             data: (rooms) => TabBarView(
               controller: _tabController,
-              children: _tabs.map((tab) {
+              children: _tabs.asMap().entries.map((entry) {
+                final tabIndex = entry.key;
+                final tab = entry.value;
                 final filtered = _filterByTab(rooms, tab.typeValues);
                 return _RoomTabContent(
                   rooms: filtered,
                   tabLabel: tab.label,
                   tabIcon: tab.icon,
+                  enableHero: _tabController.index == tabIndex,
                 );
               }).toList(),
             ),
@@ -817,11 +820,13 @@ class _RoomTabContent extends StatefulWidget {
   final List<RoomModel> rooms;
   final String tabLabel;
   final IconData tabIcon;
+  final bool enableHero;
 
   const _RoomTabContent({
     required this.rooms,
     required this.tabLabel,
     required this.tabIcon,
+    required this.enableHero,
   });
 
   @override
@@ -852,6 +857,7 @@ class _RoomTabContentState extends State<_RoomTabContent>
       itemBuilder: (_, i) => RoomCard(
         room: widget.rooms[i],
         animationIndex: i,
+        enableHero: widget.enableHero,
         onTap: () => context.push('/rooms/${widget.rooms[i].id}'),
       ),
     );

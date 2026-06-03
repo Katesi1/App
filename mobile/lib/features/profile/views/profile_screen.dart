@@ -7,11 +7,10 @@ import '../../../core/theme/app_color_scheme.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../core/utils/helpers.dart';
+import '../../../data/models/user_model.dart';
 import '../../../features/auth/controllers/auth_controller.dart';
 import '../../../shared/providers/theme_provider.dart';
-import '../../verify/controllers/verify_flow_controller.dart';
-import '../../verify/data/models/verify_enums.dart';
-import '../../verify/views/paywall_modal.dart';
+import '../../../shared/widgets/loading_widget.dart';
 
 // gradient.brandHero stop "jade-mid" theo spec section 3.7 — chưa có token sẵn
 const _jadeMidLight = Color(0xFF1B7E94);
@@ -26,7 +25,6 @@ class ProfileScreen extends ConsumerWidget {
     final themeMode = ref.watch(themeProvider);
     final isDark = themeMode == ThemeMode.dark;
     final topPad = MediaQuery.of(context).padding.top;
-    final verifyState = ref.watch(verifyFlowControllerProvider);
     final showVerifySection = user?.isOwner ?? false;
 
     return Scaffold(
@@ -67,6 +65,13 @@ class ProfileScreen extends ConsumerWidget {
                         iconColor: colors.brand,
                         onTap: () => context.push('/profile/change-password'),
                       ),
+                      _MenuItemData(
+                        icon: Icons.person_remove_outlined,
+                        label: 'Xoá tài khoản',
+                        subtitle: 'Xoá vĩnh viễn dữ liệu của bạn',
+                        iconColor: colors.error,
+                        onTap: () => context.push('/profile/delete-account'),
+                      ),
                     ],
                   ),
                 ],
@@ -90,8 +95,8 @@ class ProfileScreen extends ConsumerWidget {
                     _MenuCard(
                       isDark: isDark,
                       items: [
-                        _verifyMenuItem(
-                            context, ref, verifyState.status, colors),
+                        _kycMenuItem(context, user, colors),
+                        _subscriptionMenuItem(context, user, colors),
                       ],
                     ),
                   ],
@@ -190,11 +195,6 @@ class ProfileScreen extends ConsumerWidget {
                         iconColor: colors.textSecondary,
                         onTap: () => context.push('/profile/terms'),
                       ),
-                      // ⚠️ APP STORE BLOCKER — Trước khi submit App Store,
-                      // bắt buộc add lại entry "Xoá tài khoản" ở đây hoặc
-                      // somewhere accessible (Apple Guideline 5.1.1(v)).
-                      // Route '/profile/delete-account' vẫn còn — có thể
-                      // link từ Privacy Policy page hoặc add back menu.
                     ],
                   ),
                 ],
@@ -305,58 +305,88 @@ class ProfileScreen extends ConsumerWidget {
     }
   }
 
-  /// Build KYC menu item theo verify status hiện tại của owner.
-  ///
-  /// 4 trạng thái khác nhau → label + icon + route khác nhau:
-  /// - `approved`: "Gói + Trial" (xanh) → /verify/approved
-  /// - `awaitingApproval`: "Đang chờ duyệt" (vàng) → /verify/pending
-  /// - `rejected`: "Cần bổ sung" (đỏ) → /verify/rejected
-  /// - draft / chưa start: "Verify CCCD" (gold) → showPaywallModal
-  _MenuItemData _verifyMenuItem(
+  /// KYC — source of truth: `user.kycStatus` từ `/auth/profile`.
+  _MenuItemData _kycMenuItem(
     BuildContext context,
-    WidgetRef ref,
-    VerifyStatus status,
+    UserModel? user,
     AppColorScheme colors,
   ) {
-    switch (status) {
-      case VerifyStatus.approved:
+    switch (user?.kycStatus ?? 'none') {
+      case 'approved':
         return _MenuItemData(
-          icon: Icons.workspace_premium_rounded,
-          label: 'Gói đăng ký + Trial',
-          subtitle: 'Đã verify · Trial 7 ngày đang chạy',
+          icon: Icons.verified_rounded,
+          label: 'Xác thực CCCD',
+          subtitle: 'Đã xác minh danh tính',
           iconColor: colors.success,
-          onTap: () => context.push('/verify/approved'),
+          onTap: () => AppSnackBar.info(
+            context,
+            'CCCD của bạn đã được xác minh',
+          ),
         );
-      case VerifyStatus.awaitingApproval:
+      case 'pending':
         return _MenuItemData(
           icon: Icons.access_time_rounded,
-          label: 'Hồ sơ đang chờ duyệt',
-          subtitle: 'Admin sẽ phản hồi trong 24h',
+          label: 'Xác thực CCCD',
+          subtitle: 'Hồ sơ đang chờ admin duyệt',
           iconColor: colors.brandSecondary,
           onTap: () => context.push('/verify/pending'),
         );
-      case VerifyStatus.rejected:
+      case 'rejected':
         return _MenuItemData(
           icon: Icons.error_outline_rounded,
-          label: 'Cần bổ sung hồ sơ',
-          subtitle: 'Admin yêu cầu chụp lại một số item',
+          label: 'Xác thực CCCD',
+          subtitle: 'Cần bổ sung hồ sơ · chụp lại',
           iconColor: colors.error,
           onTap: () => context.push('/verify/rejected'),
         );
       default:
         return _MenuItemData(
           icon: Icons.verified_user_outlined,
-          label: 'Verify CCCD để đăng phòng',
-          subtitle: '4 bước · Trial 7 ngày miễn phí',
-          iconColor: AppColors.goldText,
-          onTap: () async {
-            final ok = await showPaywallModal(context);
-            if (ok == true && context.mounted) {
-              context.push('/verify/cccd-front');
-            }
-          },
+          label: 'Xác thực CCCD',
+          subtitle: 'Xác minh danh tính để đăng phòng',
+          iconColor: colors.brand,
+          onTap: () => context.push('/verify/cccd-front'),
         );
     }
+  }
+
+  /// Mua gói — tách riêng KYC, route theo subscription trên profile.
+  _MenuItemData _subscriptionMenuItem(
+    BuildContext context,
+    UserModel? user,
+    AppColorScheme colors,
+  ) {
+    if (user == null) {
+      return _MenuItemData(
+        icon: Icons.shopping_cart_outlined,
+        label: 'Mua gói',
+        subtitle: 'Chọn gói phù hợp với số phòng',
+        iconColor: AppColors.goldText,
+        onTap: () => context.push('/verify/select-plan'),
+      );
+    }
+
+    final iconColor = user.isSubscriptionPastDue
+        ? colors.warning
+        : user.isSubscriptionCancelled
+            ? colors.error
+            : user.isSubscriptionActive || user.isInTrial
+                ? colors.success
+                : AppColors.goldText;
+
+    final icon = user.isSubscriptionPastDue
+        ? Icons.warning_amber_rounded
+        : user.isSubscriptionActive || user.isInTrial
+            ? Icons.workspace_premium_rounded
+            : Icons.shopping_cart_outlined;
+
+    return _MenuItemData(
+      icon: icon,
+      label: 'Mua gói',
+      subtitle: user.subscriptionMenuSubtitle,
+      iconColor: iconColor,
+      onTap: () => context.push(user.subscriptionManageRoute),
+    );
   }
 }
 
