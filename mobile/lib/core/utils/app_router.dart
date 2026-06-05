@@ -26,6 +26,8 @@ import '../../features/customer/views/search_room_screen.dart';
 import '../../features/customer/views/my_bookings_screen.dart';
 import '../../features/customer/views/account_screen.dart';
 import '../../features/bookings/views/booking_list_screen.dart';
+import '../../features/bookings/views/booking_detail_screen.dart';
+import '../../features/bookings/views/guest_flow_list_screen.dart';
 import '../../features/bookings/views/hold_room_screen.dart';
 import '../../features/dashboard/views/dashboard_screen.dart';
 import '../../features/properties/views/property_amenities_screen.dart';
@@ -188,12 +190,12 @@ String? resolveRedirectPath({
   if (user != null && !user.isAdmin) {
     final isUserFormRoute = path == '/admin/users/new' ||
         RegExp(r'^/admin/users/[^/]+/edit$').hasMatch(path);
-    final isTrialRoute =
-        RegExp(r'^/admin/users/[^/]+/trial$').hasMatch(path);
+    final isTrialRoute = RegExp(r'^/admin/users/[^/]+/trial$').hasMatch(path);
     const adminOnlyPrefixes = [
       '/admin/abuse-reports',
       '/admin/moderation-audit',
       '/admin/kyc',
+      '/admin/role-permissions',
     ];
     final isAdminOnly = isUserFormRoute ||
         isTrialRoute ||
@@ -456,6 +458,31 @@ final routerProvider = Provider<GoRouter>((ref) {
           key: state.pageKey,
           child: const BookingListScreen(),
         ),
+        routes: [
+          GoRoute(
+            path: 'check-in',
+            pageBuilder: (_, state) => horizontalPage(
+              key: state.pageKey,
+              child: const CheckInListScreen(),
+            ),
+          ),
+          GoRoute(
+            path: 'check-out',
+            pageBuilder: (_, state) => horizontalPage(
+              key: state.pageKey,
+              child: const CheckOutListScreen(),
+            ),
+          ),
+          GoRoute(
+            path: ':id',
+            pageBuilder: (_, state) => horizontalPage(
+              key: state.pageKey,
+              child: BookingDetailScreen(
+                id: state.pathParameters['id']!,
+              ),
+            ),
+          ),
+        ],
       ),
 
       // ── Reports ────────────────────────────────────────────────────
@@ -636,7 +663,9 @@ final routerProvider = Provider<GoRouter>((ref) {
         path: '/verify/select-plan',
         pageBuilder: (_, state) => slideUpPage(
           key: state.pageKey,
-          child: const SelectPlanScreen(),
+          child: SelectPlanScreen(
+            isUpgrade: state.uri.queryParameters['mode'] == 'upgrade',
+          ),
         ),
       ),
       GoRoute(

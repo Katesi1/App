@@ -4,6 +4,7 @@ import '../../../../core/constants/api_constants.dart';
 import '../../../../core/network/api_client.dart';
 import '../../../../core/network/api_response.dart';
 import '../../../../core/storage/secure_storage.dart';
+import '../../../../data/repositories/auth_repository.dart';
 import '../../../../data/models/user_model.dart';
 import '../models/staff_invite.dart';
 
@@ -24,6 +25,7 @@ class AcceptInviteFailure extends AcceptInviteOutcome {
 
 class StaffRepository {
   final Dio _dio = ApiClient.instance;
+  final AuthRepository _authRepo = AuthRepository();
 
   /// OWNER tạo invite + BE gửi email cho nhân viên.
   Future<ApiResponse<StaffInvite>> createInvite(String email) async {
@@ -150,7 +152,8 @@ class StaffRepository {
     });
   }
 
-  Future<AcceptInviteOutcome> _accept({required Map<String, dynamic> body}) async {
+  Future<AcceptInviteOutcome> _accept(
+      {required Map<String, dynamic> body}) async {
     try {
       final response = await _dio.post(
         ApiConstants.staffInviteAccept,
@@ -164,17 +167,25 @@ class StaffRepository {
       }
       final access = payload['accessToken'] as String?;
       final refresh = payload['refreshToken'] as String?;
-      final userMap = payload['user'];
       if (access == null ||
           refresh == null ||
-          userMap is! Map<String, dynamic>) {
-        return const AcceptInviteFailure('Thiếu token hoặc user từ máy chủ');
+          access.isEmpty ||
+          refresh.isEmpty) {
+        return const AcceptInviteFailure('Thiếu token từ máy chủ');
       }
+
       await SecureStorage.saveAccessToken(access);
       await SecureStorage.saveRefreshToken(refresh);
-      final user = UserModel.fromJson(userMap);
-      await SecureStorage.saveUserData(user.toJsonString());
-      return AcceptInviteSuccess(user);
+
+      final profile = await _authRepo.getProfile();
+      if (!profile.success || profile.data == null) {
+        return AcceptInviteFailure(
+          profile.message.isNotEmpty
+              ? profile.message
+              : 'Không lấy được thông tin người dùng sau accept invite',
+        );
+      }
+      return AcceptInviteSuccess(profile.data!);
     } on DioException catch (e) {
       return AcceptInviteFailure(parseDioError(e));
     } catch (e) {

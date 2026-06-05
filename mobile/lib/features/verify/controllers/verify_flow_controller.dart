@@ -325,7 +325,7 @@ class VerifyFlowController extends StateNotifier<VerifyFlowState> {
     return session;
   }
 
-  /// Poll trạng thái payment (màn thanh toán gọi mỗi 3s).
+  /// Poll trạng thái payment (tiered interval, TTL theo `expiresAt`).
   Future<PaymentStatus> checkPaymentStatus() async {
     final session = state.paymentSession;
     if (session == null) return PaymentStatus.pending;

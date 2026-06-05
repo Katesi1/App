@@ -5,10 +5,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:url_launcher/url_launcher.dart';
 
-import '../../../../core/constants/app_constants.dart';
 import '../../../../core/theme/app_color_scheme.dart';
 import '../../../../core/theme/app_colors.dart';
+import '../../../../core/utils/viet_qr_url.dart';
 import '../../data/models/payment_session.dart';
+import '../../utils/payment_countdown_format.dart';
 import 'payment_qr_view.dart';
 import 'verify_format.dart';
 
@@ -59,10 +60,10 @@ class _VNPayQRDialogState extends State<VNPayQRDialog> {
   Widget build(BuildContext context) {
     final colors = context.colors;
     final expired = _remaining.inSeconds <= 0;
-    final hasQr = (widget.session.qrCode != null &&
-            widget.session.qrCode!.isNotEmpty) ||
-        (widget.session.qrImageBase64 != null &&
-            widget.session.qrImageBase64!.isNotEmpty);
+    final hasQr =
+        (widget.session.qrCode != null && widget.session.qrCode!.isNotEmpty) ||
+            (widget.session.qrImageBase64 != null &&
+                widget.session.qrImageBase64!.isNotEmpty);
     final canOpenBankApp =
         (widget.session.payUrl != null && widget.session.payUrl!.isNotEmpty) ||
             (widget.session.redirectUrl != null &&
@@ -186,9 +187,7 @@ class _VNPayQRDialogState extends State<VNPayQRDialog> {
                   onPressed: expired ? null : _openBankApp,
                   icon: const Icon(Icons.open_in_new, size: 18),
                   label: Text(
-                    useRedirectMode
-                        ? 'Mở cổng VNPay'
-                        : 'Mở app ngân hàng',
+                    useRedirectMode ? 'Mở cổng VNPay' : 'Mở app ngân hàng',
                     style: const TextStyle(
                       fontSize: 14,
                       fontWeight: FontWeight.w700,
@@ -218,11 +217,16 @@ class _VNPayQRDialogState extends State<VNPayQRDialog> {
   }
 }
 
-/// Bank transfer dialog — VietQR + STK + nội dung CK + nút copy từng field.
+/// Bank transfer dialog — VietQR + STK + nội dung CK (từ BE `bankInfo`).
 class BankTransferDialog extends StatefulWidget {
   final PaymentSession session;
+  final VoidCallback? onWaitAndClose;
 
-  const BankTransferDialog({super.key, required this.session});
+  const BankTransferDialog({
+    super.key,
+    required this.session,
+    this.onWaitAndClose,
+  });
 
   @override
   State<BankTransferDialog> createState() => _BankTransferDialogState();
@@ -271,13 +275,55 @@ class _BankTransferDialogState extends State<BankTransferDialog> {
     final bank = widget.session.bankInfo;
     final expired = _remaining.inSeconds <= 0;
 
-    // Nội dung CK: ưu tiên từ bankInfo, fallback dùng sessionId để đối soát.
-    final transferContent = bank?.content.isNotEmpty == true
-        ? bank!.content
-        : widget.session.sessionId;
+    if (bank == null || !bank.isComplete) {
+      return Dialog(
+        backgroundColor: colors.bgSurfaceElevated,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        child: Padding(
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(Icons.error_outline, color: colors.error, size: 32),
+              const SizedBox(height: 12),
+              Text(
+                'Thiếu thông tin tài khoản từ hệ thống',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w700,
+                  color: colors.textPrimary,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'Vui lòng thử lại hoặc liên hệ hỗ trợ.',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 12,
+                  color: colors.textSecondary,
+                ),
+              ),
+              const SizedBox(height: 16),
+              SizedBox(
+                width: double.infinity,
+                height: 44,
+                child: OutlinedButton(
+                  onPressed: () => Navigator.of(context).maybePop(),
+                  child: const Text('Đóng'),
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
 
-    // VietQR động — encode sẵn số tiền + nội dung, khách quét là tự điền.
-    final qrUrl = AppConstants.vietQrUrl(
+    final transferContent = bank.content;
+    final qrUrl = VietQrUrl.build(
+      bankCode: bank.bankName,
+      accountNumber: bank.accountNumber,
+      accountName: bank.accountName,
       amount: widget.session.totalAmount,
       content: transferContent,
     );
@@ -324,13 +370,31 @@ class _BankTransferDialogState extends State<BankTransferDialog> {
                   placeholder: (_, __) => const SizedBox(
                     width: 200,
                     height: 200,
-                    child: Center(child: CircularProgressIndicator(strokeWidth: 2)),
+                    child: Center(
+                        child: CircularProgressIndicator(strokeWidth: 2)),
                   ),
-                  errorWidget: (_, __, ___) => Image.asset(
-                    AppConstants.bankingQrAsset,
+                  errorWidget: (_, __, ___) => SizedBox(
                     width: 200,
                     height: 200,
-                    fit: BoxFit.contain,
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          Icons.qr_code_2,
+                          size: 48,
+                          color: colors.textTertiary,
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          'Không tải được QR',
+                          style: TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w600,
+                            color: colors.textTertiary,
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                 ),
               ),
@@ -345,19 +409,26 @@ class _BankTransferDialogState extends State<BankTransferDialog> {
               ),
             ),
             const SizedBox(height: 12),
-            // Thông tin tài khoản — từ backend hoặc fallback constants.
+            if (bank.bankLogoUrl != null) ...[
+              ClipRRect(
+                borderRadius: BorderRadius.circular(6),
+                child: CachedNetworkImage(
+                  imageUrl: bank.bankLogoUrl!,
+                  width: 32,
+                  height: 32,
+                  fit: BoxFit.contain,
+                  errorWidget: (_, __, ___) => const SizedBox.shrink(),
+                ),
+              ),
+              const SizedBox(height: 8),
+            ],
             _row(context,
-                label: 'Ngân hàng',
-                value: bank?.bankName ?? AppConstants.bankDisplayName,
-                copyable: false),
-            _row(context,
-                label: 'Số tài khoản',
-                value: bank?.accountNumber ?? AppConstants.bankAccountNumber),
+                label: 'Ngân hàng', value: bank.bankName, copyable: false),
+            _row(context, label: 'Số tài khoản', value: bank.accountNumber),
             _row(context,
                 label: 'Tên người nhận',
-                value: bank?.accountName ?? AppConstants.bankAccountName,
+                value: bank.accountName,
                 copyable: false),
-            // Nội dung CK + số tiền — luôn hiển thị.
             _row(context, label: 'Nội dung CK', value: transferContent),
             _row(
               context,
@@ -368,37 +439,62 @@ class _BankTransferDialogState extends State<BankTransferDialog> {
               valueWeight: FontWeight.w800,
             ),
             const SizedBox(height: 10),
+            Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton.icon(
+                    onPressed: expired
+                        ? null
+                        : () => _copy('Số tài khoản', bank.accountNumber),
+                    icon: const Icon(Icons.content_copy, size: 16),
+                    label: const Text('Copy STK'),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: OutlinedButton.icon(
+                    onPressed: expired
+                        ? null
+                        : () => _copy('Nội dung CK', transferContent),
+                    icon: const Icon(Icons.content_copy, size: 16),
+                    label: const Text('Copy nội dung'),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 10),
             Container(
               padding: const EdgeInsets.all(10),
               decoration: BoxDecoration(
-                color: colors.bgSurfaceContainer,
+                color: colors.brand.withValues(alpha: 0.08),
                 borderRadius: BorderRadius.circular(10),
+                border: Border.all(color: colors.brand.withValues(alpha: 0.2)),
               ),
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Icon(Icons.info_outline,
-                      size: 14, color: colors.textSecondary),
+                  Icon(Icons.schedule, size: 14, color: colors.brand),
                   const SizedBox(width: 6),
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          'Đối soát có thể mất 5–30 phút.',
+                          'Đối soát thủ công có thể mất 1–3 giờ.',
                           style: TextStyle(
                             fontSize: 11,
                             fontWeight: FontWeight.w700,
-                            color: colors.textSecondary,
+                            color: colors.textPrimary,
                           ),
                         ),
                         const SizedBox(height: 2),
                         Text(
-                          'Vui lòng nhập đúng nội dung CK để hệ thống nhận diện đúng giao dịch.',
+                          'Bạn có thể đóng app — sẽ nhận thông báo khi '
+                          'xác nhận thành công. Nhập đúng nội dung CK.',
                           style: TextStyle(
                             fontSize: 10,
                             fontWeight: FontWeight.w500,
-                            color: colors.textTertiary,
+                            color: colors.textSecondary,
                             height: 1.4,
                           ),
                         ),
@@ -412,7 +508,7 @@ class _BankTransferDialogState extends State<BankTransferDialog> {
             Text(
               expired
                   ? 'Phiên đã hết hạn — vui lòng tạo phiên mới'
-                  : 'Phiên hết hạn sau ${_fmt(_remaining)}',
+                  : 'Phiên hết hạn sau ${formatPaymentCountdown(_remaining)}',
               style: TextStyle(
                 fontSize: 10,
                 fontWeight: FontWeight.w600,
@@ -420,6 +516,21 @@ class _BankTransferDialogState extends State<BankTransferDialog> {
               ),
             ),
             const SizedBox(height: 10),
+            SizedBox(
+              width: double.infinity,
+              height: 44,
+              child: FilledButton.icon(
+                onPressed: expired
+                    ? null
+                    : () {
+                        Navigator.of(context).maybePop();
+                        widget.onWaitAndClose?.call();
+                      },
+                icon: const Icon(Icons.notifications_active_outlined, size: 18),
+                label: const Text('Đóng và đợi'),
+              ),
+            ),
+            const SizedBox(height: 6),
             SizedBox(
               width: double.infinity,
               height: 44,
@@ -485,12 +596,6 @@ class _BankTransferDialogState extends State<BankTransferDialog> {
         ],
       ),
     );
-  }
-
-  String _fmt(Duration d) {
-    final m = d.inMinutes.toString().padLeft(2, '0');
-    final s = (d.inSeconds % 60).toString().padLeft(2, '0');
-    return '$m:$s';
   }
 }
 

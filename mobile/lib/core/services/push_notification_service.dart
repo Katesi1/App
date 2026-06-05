@@ -45,6 +45,10 @@ class PushNotificationService {
   /// `context.go(deepLink)`). Set 1 lần ở widget root.
   void Function(Map<String, dynamic> data)? onNotificationTap;
 
+  /// Foreground data payload (vd payment paid) — set tạm bởi màn đang chờ
+  /// đối soát, clear khi dispose.
+  void Function(Map<String, dynamic> data)? onForegroundData;
+
   /// Gọi 1 lần lúc app khởi động (sau khi `Firebase.initializeApp`).
   /// **KHÔNG** request permission ở đây — chỉ setup listeners. Permission xin
   /// sau khi user login để UX không hỏi quyền ngay launch.
@@ -53,8 +57,7 @@ class PushNotificationService {
     FirebaseMessaging.onBackgroundMessage(firebaseMessagingBackgroundHandler);
 
     // Local notification plugin — dùng để hiện banner khi app foreground.
-    const androidInit =
-        AndroidInitializationSettings('@mipmap/ic_launcher');
+    const androidInit = AndroidInitializationSettings('@mipmap/ic_launcher');
     const iosInit = DarwinInitializationSettings(
       requestAlertPermission: false,
       requestBadgePermission: false,
@@ -69,8 +72,8 @@ class PushNotificationService {
     );
 
     // Tạo Android channel (Android 8+).
-    final androidPlugin = _localNotifications
-        .resolvePlatformSpecificImplementation<
+    final androidPlugin =
+        _localNotifications.resolvePlatformSpecificImplementation<
             AndroidFlutterLocalNotificationsPlugin>();
     await androidPlugin?.createNotificationChannel(
       const AndroidNotificationChannel(
@@ -85,8 +88,7 @@ class PushNotificationService {
     _foregroundSub = FirebaseMessaging.onMessage.listen(_onForegroundMessage);
 
     // Tap notification (background → foreground).
-    _openedAppSub =
-        FirebaseMessaging.onMessageOpenedApp.listen(_onOpenedApp);
+    _openedAppSub = FirebaseMessaging.onMessageOpenedApp.listen(_onOpenedApp);
 
     // Cold start: app mở từ tap notification.
     final initialMessage = await _fcm.getInitialMessage();
@@ -168,6 +170,10 @@ class PushNotificationService {
   }
 
   void _onForegroundMessage(RemoteMessage message) {
+    if (message.data.isNotEmpty) {
+      onForegroundData?.call(message.data);
+    }
+
     final notification = message.notification;
     if (notification == null) return;
 

@@ -262,16 +262,17 @@ class AdminScreen extends ConsumerWidget {
                     onTap: () => context.push('/admin/owner-calendar'),
                   ),
 
-                  const SizedBox(height: 10),
-
-                  _MenuCard(
-                    icon: Icons.tune_rounded,
-                    iconBg: AppColors.jade50,
-                    iconColor: AppColors.jade700,
-                    title: 'Phân quyền vai trò',
-                    subtitle: 'Cấu hình quyền truy cập cho từng vai trò',
-                    onTap: () => context.push('/admin/role-permissions'),
-                  ),
+                  if (isAdmin) ...[
+                    const SizedBox(height: 10),
+                    _MenuCard(
+                      icon: Icons.tune_rounded,
+                      iconBg: AppColors.jade50,
+                      iconColor: AppColors.jade700,
+                      title: 'Phân quyền vai trò',
+                      subtitle: 'Cấu hình quyền truy cập cho từng vai trò',
+                      onTap: () => context.push('/admin/role-permissions'),
+                    ),
+                  ],
 
                   if (user?.isOwner ?? false) ...[
                     const SizedBox(height: 10),
@@ -414,9 +415,11 @@ class AdminScreen extends ConsumerWidget {
                                 ),
                               _UserRow(
                                 user: recent[i],
-                                onTap: () => context.push(
-                                  '/admin/users/${recent[i].id}/edit',
-                                ),
+                                onTap: isAdmin
+                                    ? () => context.push(
+                                          '/admin/users/${recent[i].id}/edit',
+                                        )
+                                    : null,
                               ),
                             ],
                           ],
@@ -723,9 +726,9 @@ class _QuickAction extends StatelessWidget {
 // ─── User Row ────────────────────────────────────────────────────────────────
 class _UserRow extends StatelessWidget {
   final UserModel user;
-  final VoidCallback onTap;
+  final VoidCallback? onTap;
 
-  const _UserRow({required this.user, required this.onTap});
+  const _UserRow({required this.user, this.onTap});
 
   @override
   Widget build(BuildContext context) {

@@ -2,12 +2,17 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../core/services/push_notification_service.dart';
 import '../../../core/theme/app_color_scheme.dart';
 import '../../../core/theme/app_spacing.dart';
+import '../../../shared/widgets/status_strip.dart';
+import '../../auth/controllers/auth_controller.dart';
 import '../controllers/verify_flow_controller.dart';
 import '../data/models/payment_session.dart';
 import '../data/models/plan.dart';
 import '../data/models/verify_enums.dart';
+import '../utils/payment_awaiting_handler.dart';
+import '../utils/payment_status_poller.dart';
 import 'widgets/payment_dialogs.dart';
 import 'widgets/verify_format.dart';
 
@@ -20,8 +25,36 @@ class SubscriptionDetailScreen extends ConsumerStatefulWidget {
 }
 
 class _SubscriptionDetailScreenState
-    extends ConsumerState<SubscriptionDetailScreen> {
+    extends ConsumerState<SubscriptionDetailScreen>
+    with WidgetsBindingObserver {
   bool _renewing = false;
+  bool _awaitingReconcile = false;
+  PaymentStatusPoller? _poller;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    _stopPolling(clearFcm: true);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.paused ||
+        state == AppLifecycleState.inactive) {
+      _poller?.pause();
+      return;
+    }
+    if (state == AppLifecycleState.resumed && _poller?.isRunning == true) {
+      _poller?.resume();
+    }
+  }
 
   Future<void> _handleRenew() async {
     final method = await showModalBottomSheet<PaymentMethod>(
@@ -51,7 +84,9 @@ class _SubscriptionDetailScreenState
         ),
       );
     } finally {
-      if (mounted) setState(() => _renewing = false);
+      if (mounted && !_awaitingReconcile) {
+        setState(() => _renewing = false);
+      }
     }
   }
 
@@ -59,33 +94,119 @@ class _SubscriptionDetailScreenState
     if (method == PaymentMethod.bankTransfer) {
       showDialog<void>(
         context: context,
-        builder: (_) => BankTransferDialog(session: session),
+        builder: (_) => BankTransferDialog(
+          session: session,
+          onWaitAndClose: () {
+            if (!mounted) return;
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: const Text(
+                  'Đã ghi nhận. Bạn sẽ nhận thông báo khi thanh toán '
+                  'được xác nhận.',
+                ),
+                backgroundColor: context.colors.brand,
+              ),
+            );
+          },
+        ),
       );
+      setState(() => _awaitingReconcile = true);
+      _startPolling(session.expiresAt);
     }
-    // Refresh history sau khi user đóng dialog (assumption: webhook đã hoặc
-    // sẽ cập nhật status). Không poll ở đây để giữ logic đơn giản.
-    Future<void>.delayed(const Duration(seconds: 2), () {
-      if (mounted) {
+  }
+
+  void _startPolling(DateTime expiresAt) {
+    _stopPolling(clearFcm: false);
+    PushNotificationService.instance.onForegroundData = (data) {
+      if (!isPaymentPaidPush(data)) return;
+      _poller?.checkNow();
+    };
+
+    _poller = PaymentStatusPoller(
+      expiresAt: expiresAt,
+      onPoll: _pollOnce,
+      onExpired: () {
+        if (!mounted) return;
+        setState(() {
+          _renewing = false;
+          _awaitingReconcile = false;
+        });
+        _stopPolling(clearFcm: true);
+      },
+    );
+    _poller!.start();
+  }
+
+  Future<void> _pollOnce() async {
+    try {
+      final status = await ref
+          .read(verifyFlowControllerProvider.notifier)
+          .checkPaymentStatus();
+      if (!mounted) return;
+      final handled = await handlePaymentStatusUpdate(
+        status: status,
+        context: context,
+        ref: ref,
+        onPollingStopped: () => _stopPolling(clearFcm: true),
+        setProcessing: (v) => setState(() {
+          _renewing = v;
+          _awaitingReconcile = v;
+        }),
+        successRoute: '/verify/subscription-detail',
+        popDialog: true,
+      );
+      if (handled && status == PaymentStatus.paid && mounted) {
         ref.invalidate(paymentHistoryProvider);
-        // Reload danh sách full pagination nếu user đang mở /verify/payment-history
         ref.invalidate(paymentHistoryListProvider);
       }
-    });
+    } catch (_) {}
+  }
+
+  void _stopPolling({required bool clearFcm}) {
+    _poller?.stop();
+    _poller = null;
+    if (clearFcm) {
+      PushNotificationService.instance.onForegroundData = null;
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     final colors = context.colors;
     final state = ref.watch(verifyFlowControllerProvider);
+    final user = ref.watch(currentUserProvider);
     final plan = state.selectedPlan;
+    final planLabel =
+        plan?.tier.displayName ?? user?.subscriptionPlanLabel ?? 'Chưa có';
+    final cycleLabel = _cycleLabel(state.billingCycle, user?.subscriptionCycle);
     final total =
         plan == null ? 0 : PlanPriceCalculator.total(plan, state.billingCycle);
+    final canRenew = user != null &&
+        (user.isInTrial ||
+            user.isSubscriptionActive ||
+            user.isSubscriptionPastDue);
+    final planActionLabel = user?.subscriptionPlanActionLabel ?? 'Mua gói';
+    final planActionRoute =
+        user?.subscriptionPlanPickerRoute ?? '/verify/select-plan';
+    final planActionIcon = user?.hasEverPurchasedSubscription == true
+        ? Icons.upgrade
+        : Icons.shopping_cart_outlined;
 
     return Scaffold(
       appBar: AppBar(title: const Text('Chi tiết gói đăng ký')),
       body: ListView(
         padding: const EdgeInsets.all(AppSpacing.md),
         children: [
+          if (_awaitingReconcile) ...[
+            const StatusStrip(
+              icon: Icons.schedule,
+              label: 'Đang chờ đối soát thủ công',
+              subtitle: 'Có thể mất 1–3 giờ. Bạn có thể đóng app — sẽ nhận '
+                  'thông báo khi xác nhận thành công.',
+              variant: StatusStripVariant.brand,
+            ),
+            const SizedBox(height: AppSpacing.md),
+          ],
           Container(
             padding: const EdgeInsets.all(AppSpacing.md),
             decoration: BoxDecoration(
@@ -100,47 +221,57 @@ class _SubscriptionDetailScreenState
           const SizedBox(height: AppSpacing.md),
           _DetailItem(
             label: 'Tên gói',
-            value: plan?.tier.displayName ?? 'Chưa chọn',
+            value: planLabel,
           ),
           _DetailItem(
             label: 'Chu kỳ',
-            value: state.billingCycle == BillingCycle.yearly
-                ? 'Hàng năm'
-                : 'Hàng tháng',
+            value: cycleLabel,
           ),
-          _DetailItem(
-            label: 'Chi phí',
-            value: VerifyFormat.priceVND(total),
-          ),
-          if (state.trialEndsAt != null)
+          if (plan != null)
+            _DetailItem(
+              label: 'Chi phí',
+              value: VerifyFormat.priceVND(total),
+            ),
+          if (user?.trialEndsAt != null)
             _DetailItem(
               label: 'Trial đến',
-              value: VerifyFormat.dateVN(state.trialEndsAt!),
+              value: VerifyFormat.dateVN(user!.trialEndsAt!),
             ),
-          if (state.chargeStartsAt != null)
+          if (user?.nextChargeAt != null)
             _DetailItem(
-              label: 'Bắt đầu thu phí',
-              value: VerifyFormat.dateVN(state.chargeStartsAt!),
+              label: 'Thu phí tiếp',
+              value: VerifyFormat.dateVN(user!.nextChargeAt!),
             ),
           const SizedBox(height: AppSpacing.lg),
           SizedBox(
             height: 48,
             child: FilledButton.icon(
-              onPressed: _renewing || plan == null ? null : _handleRenew,
-              icon: _renewing
-                  ? const SizedBox(
-                      width: 14,
-                      height: 14,
-                      child: CircularProgressIndicator(strokeWidth: 2),
-                    )
-                  : const Icon(Icons.autorenew, size: 18),
-              label: Text(
-                _renewing
-                    ? 'Đang tạo phiên...'
-                    : 'Gia hạn ngay (${VerifyFormat.priceVND(total)})',
-              ),
+              onPressed: () => context.push(planActionRoute),
+              icon: Icon(planActionIcon, size: 18),
+              label: Text(planActionLabel),
             ),
           ),
+          if (canRenew) ...[
+            const SizedBox(height: AppSpacing.sm),
+            SizedBox(
+              height: 48,
+              child: FilledButton.icon(
+                onPressed: _renewing || plan == null ? null : _handleRenew,
+                icon: _renewing
+                    ? const SizedBox(
+                        width: 14,
+                        height: 14,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : const Icon(Icons.autorenew, size: 18),
+                label: Text(
+                  _renewing
+                      ? 'Đang tạo phiên...'
+                      : 'Gia hạn ngay (${VerifyFormat.priceVND(total)})',
+                ),
+              ),
+            ),
+          ],
           const SizedBox(height: AppSpacing.sm),
           SizedBox(
             height: 44,
@@ -153,6 +284,12 @@ class _SubscriptionDetailScreenState
         ],
       ),
     );
+  }
+
+  String _cycleLabel(BillingCycle draft, String? userCycle) {
+    if (userCycle == 'monthly') return 'Hàng tháng';
+    if (userCycle == 'yearly') return 'Hàng năm';
+    return draft == BillingCycle.yearly ? 'Hàng năm' : 'Hàng tháng';
   }
 }
 
@@ -232,7 +369,7 @@ class _RenewMethodSheet extends StatelessWidget {
           _MethodOption(
             icon: Icons.account_balance,
             title: 'Chuyển khoản ngân hàng',
-            subtitle: 'Quét QR + STK · Đối soát 5–30 phút',
+            subtitle: 'Quét QR + STK · Đối soát thủ công 1–3 giờ',
             onTap: () => Navigator.of(context).pop(PaymentMethod.bankTransfer),
           ),
           const SizedBox(height: 8),
@@ -317,9 +454,7 @@ class _MethodOption extends StatelessWidget {
                       ],
                     ),
                     Text(
-                      locked
-                          ? 'Sắp ra mắt trong bản cập nhật tới'
-                          : subtitle,
+                      locked ? 'Sắp ra mắt trong bản cập nhật tới' : subtitle,
                       style: TextStyle(
                         fontSize: 11,
                         fontWeight: FontWeight.w500,

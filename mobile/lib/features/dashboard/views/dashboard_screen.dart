@@ -107,9 +107,7 @@ class DashboardScreen extends ConsumerWidget {
                   ),
 
                 // ── Cảnh báo SALE chưa gán owner ─────────────────────
-                if (user != null &&
-                    user.isSale &&
-                    !user.isSaleMembershipActive)
+                if (user != null && user.isSale && !user.isSaleMembershipActive)
                   Consumer(
                     builder: (context, ref, _) {
                       final dismissed =
@@ -286,14 +284,14 @@ class DashboardScreen extends ConsumerWidget {
                               icon: Icons.login_rounded,
                               label: 'Check-in',
                               color: colors.brandLight,
-                              onTap: () {},
+                              onTap: () => context.push('/bookings/check-in'),
                             ),
                             const SizedBox(width: 10),
                             _QuickAction(
                               icon: Icons.logout_rounded,
                               label: 'Check-out',
                               color: colors.brandSecondary,
-                              onTap: () {},
+                              onTap: () => context.push('/bookings/check-out'),
                             ),
                             if (user?.canManageProperty ?? false) ...[
                               const SizedBox(width: 10),
@@ -464,7 +462,7 @@ class _DashboardRecentBookingsSectionState
                   price: (b.depositAmount != null && b.depositAmount! > 0)
                       ? '${AppHelpers.formatPrice(b.depositAmount!)}đ'
                       : '--',
-                  onTap: () => context.push('/bookings'),
+                  onTap: () => context.push('/bookings/${b.id}'),
                 ),
               );
             }),
@@ -1235,8 +1233,7 @@ class _SubscriptionBanner extends ConsumerWidget {
 
     // Trial variant cho phép dismiss (positive). Past-due / cancelled không.
     final isTrial = user.isInTrial;
-    final dismissed =
-        isTrial && ref.watch(trialBannerDismissedProvider);
+    final dismissed = isTrial && ref.watch(trialBannerDismissedProvider);
     if (dismissed) return const SizedBox.shrink();
 
     final (

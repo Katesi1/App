@@ -53,6 +53,12 @@ class Plan extends Equatable {
         _ => Tier.rooms5,
       };
 
+  /// Map `subscriptionPlanId` từ profile → tier (pre-select khi nâng cấp).
+  static Tier? tierFromPlanId(String? planId) {
+    if (planId == null || planId.isEmpty) return null;
+    return _tierFromId(planId);
+  }
+
   Map<String, dynamic> toJson() => {
         'id': id,
         'tier': tier.name,

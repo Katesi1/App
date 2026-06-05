@@ -115,7 +115,7 @@ class _SelfieScannerScreenState extends State<SelfieScannerScreen>
         enableLandmarks: false,
         enableContours: false,
         enableTracking: false,
-        performanceMode: FaceDetectorMode.fast,
+        performanceMode: FaceDetectorMode.accurate,
         minFaceSize: 0.2,
       ),
     );
@@ -160,7 +160,7 @@ class _SelfieScannerScreenState extends State<SelfieScannerScreen>
           enableLandmarks: false,
           enableContours: false,
           enableTracking: false,
-          performanceMode: FaceDetectorMode.fast,
+          performanceMode: FaceDetectorMode.accurate,
           minFaceSize: 0.2,
         ),
       );
@@ -372,14 +372,19 @@ class _SelfieScannerScreenState extends State<SelfieScannerScreen>
     if (Platform.isIOS && format != InputImageFormat.bgra8888) return null;
     if (image.planes.isEmpty) return null;
 
-    final plane = image.planes.first;
+    final buffer = WriteBuffer();
+    for (final plane in image.planes) {
+      buffer.putUint8List(plane.bytes);
+    }
+    final bytes = buffer.done().buffer.asUint8List();
+
     return InputImage.fromBytes(
-      bytes: plane.bytes,
+      bytes: bytes,
       metadata: InputImageMetadata(
         size: Size(image.width.toDouble(), image.height.toDouble()),
         rotation: rotation,
         format: format,
-        bytesPerRow: plane.bytesPerRow,
+        bytesPerRow: image.planes.first.bytesPerRow,
       ),
     );
   }

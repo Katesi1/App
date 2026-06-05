@@ -104,22 +104,12 @@ class AuthRepository {
           message: 'Thiếu access/refresh token từ máy chủ',
         );
       }
-      final userMap = _extractUser(payload);
-      if (userMap == null) {
-        return ApiResponse(
-          success: false,
-          message: 'Thiếu thông tin người dùng từ máy chủ',
-        );
-      }
 
-      await SecureStorage.saveAccessToken(tokens.$1);
-      await SecureStorage.saveRefreshToken(tokens.$2);
-
-      final user = UserModel.fromJson(userMap);
-      await SecureStorage.saveUserData(user.toJsonString());
-
-      return ApiResponse(
-          success: true, data: user, message: 'Đăng ký thành công');
+      return _completeAuthSession(
+        accessToken: tokens.$1,
+        refreshToken: tokens.$2,
+        successMessage: 'Đăng ký thành công',
+      );
     } on DioException catch (e) {
       return ApiResponse(success: false, message: parseDioError(e));
     } catch (e) {
@@ -157,22 +147,12 @@ class AuthRepository {
           message: 'Thiếu access/refresh token từ máy chủ',
         );
       }
-      final userMap = _extractUser(payload);
-      if (userMap == null) {
-        return ApiResponse(
-          success: false,
-          message: 'Thiếu thông tin người dùng từ máy chủ',
-        );
-      }
 
-      await SecureStorage.saveAccessToken(tokens.$1);
-      await SecureStorage.saveRefreshToken(tokens.$2);
-
-      final user = UserModel.fromJson(userMap);
-      await SecureStorage.saveUserData(user.toJsonString());
-
-      return ApiResponse(
-          success: true, data: user, message: 'Đăng nhập thành công');
+      return _completeAuthSession(
+        accessToken: tokens.$1,
+        refreshToken: tokens.$2,
+        successMessage: 'Đăng nhập thành công',
+      );
     } on DioException catch (e) {
       return ApiResponse(success: false, message: parseDioError(e));
     } catch (e) {
@@ -256,8 +236,7 @@ class AuthRepository {
 
       final idToken = credential.identityToken;
       if (idToken == null || idToken.isEmpty) {
-        return const GoogleSignInFailure(
-            'Không lấy được token từ Apple');
+        return const GoogleSignInFailure('Không lấy được token từ Apple');
       }
 
       final fullName = [
@@ -342,8 +321,7 @@ class AuthRepository {
             'sub': '',
           };
       if (profileMap is! Map<String, dynamic>) {
-        return const GoogleSignInFailure(
-            'Phản hồi role picker thiếu profile');
+        return const GoogleSignInFailure('Phản hồi role picker thiếu profile');
       }
       // Thêm idToken vào outcome để FE gọi lại endpoint sau role picker.
       return GoogleSignInNeedsRole(
@@ -359,22 +337,23 @@ class AuthRepository {
 
     final tokens = _extractTokens(payload);
     if (tokens == null || tokens.$1.isEmpty || tokens.$2.isEmpty) {
-      return const GoogleSignInFailure(
-          'Thiếu access/refresh token từ máy chủ');
-    }
-    final userMap = _extractUser(payload);
-    if (userMap == null) {
-      return const GoogleSignInFailure(
-          'Thiếu thông tin người dùng từ máy chủ');
+      return const GoogleSignInFailure('Thiếu access/refresh token từ máy chủ');
     }
 
-    await SecureStorage.saveAccessToken(tokens.$1);
-    await SecureStorage.saveRefreshToken(tokens.$2);
+    final profileResult = await _completeAuthSession(
+      accessToken: tokens.$1,
+      refreshToken: tokens.$2,
+      successMessage: '',
+    );
+    if (!profileResult.success || profileResult.data == null) {
+      return GoogleSignInFailure(
+        profileResult.message.isNotEmpty
+            ? profileResult.message
+            : 'Không lấy được thông tin người dùng sau đăng nhập Apple',
+      );
+    }
 
-    final user = UserModel.fromJson(userMap);
-    await SecureStorage.saveUserData(user.toJsonString());
-
-    return GoogleSignInSuccess(user);
+    return GoogleSignInSuccess(profileResult.data!);
   }
 
   /// Sau khi user chọn role trên RolePickerScreen, gọi lại `/auth/google` với
@@ -426,25 +405,26 @@ class AuthRepository {
       );
     }
 
-    // Case: success — có tokens + user.
+    // Case: success — có tokens, user lấy qua GET /auth/profile.
     final tokens = _extractTokens(payload);
     if (tokens == null || tokens.$1.isEmpty || tokens.$2.isEmpty) {
-      return const GoogleSignInFailure(
-          'Thiếu access/refresh token từ máy chủ');
-    }
-    final userMap = _extractUser(payload);
-    if (userMap == null) {
-      return const GoogleSignInFailure(
-          'Thiếu thông tin người dùng từ máy chủ');
+      return const GoogleSignInFailure('Thiếu access/refresh token từ máy chủ');
     }
 
-    await SecureStorage.saveAccessToken(tokens.$1);
-    await SecureStorage.saveRefreshToken(tokens.$2);
+    final profileResult = await _completeAuthSession(
+      accessToken: tokens.$1,
+      refreshToken: tokens.$2,
+      successMessage: '',
+    );
+    if (!profileResult.success || profileResult.data == null) {
+      return GoogleSignInFailure(
+        profileResult.message.isNotEmpty
+            ? profileResult.message
+            : 'Không lấy được thông tin người dùng sau đăng nhập Google',
+      );
+    }
 
-    final user = UserModel.fromJson(userMap);
-    await SecureStorage.saveUserData(user.toJsonString());
-
-    return GoogleSignInSuccess(user);
+    return GoogleSignInSuccess(profileResult.data!);
   }
 
   /// GET /auth/profile — đồng bộ user sau khi mở app / làm mới phiên.
@@ -602,12 +582,29 @@ class AuthRepository {
     return (access, refresh);
   }
 
-  Map<String, dynamic>? _extractUser(Map<String, dynamic> payload) {
-    final user = payload['user'];
-    if (user is Map<String, dynamic>) {
-      return user;
+  /// BE auth endpoints chỉ trả tokens — user lấy qua GET /auth/profile.
+  Future<ApiResponse<UserModel>> _completeAuthSession({
+    required String accessToken,
+    required String refreshToken,
+    required String successMessage,
+  }) async {
+    await SecureStorage.saveAccessToken(accessToken);
+    await SecureStorage.saveRefreshToken(refreshToken);
+
+    final profile = await getProfile();
+    if (profile.success && profile.data != null) {
+      return ApiResponse(
+        success: true,
+        data: profile.data,
+        message: successMessage,
+      );
     }
-    return null;
+    return ApiResponse(
+      success: false,
+      message: profile.message.isNotEmpty
+          ? profile.message
+          : 'Không lấy được thông tin người dùng từ máy chủ',
+    );
   }
 
   String? _extractMessage(dynamic body) {

@@ -1,19 +1,18 @@
-import 'dart:async';
-
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
-
+import '../../../core/monitoring/analytics_service.dart';
+import '../../../core/services/push_notification_service.dart';
 import '../../../core/theme/app_color_scheme.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
-import '../../../core/monitoring/analytics_service.dart';
 import '../../../shared/widgets/status_strip.dart';
-import '../../auth/controllers/auth_controller.dart';
 import '../controllers/verify_flow_controller.dart';
+import '../data/models/payment_session.dart';
 import '../data/models/plan.dart';
 import '../data/models/verify_enums.dart';
+import '../utils/payment_awaiting_handler.dart';
+import '../utils/payment_status_poller.dart';
 import 'widgets/order_summary_card.dart';
 import 'widgets/payment_dialogs.dart';
 import 'widgets/payment_method_tile.dart';
@@ -21,9 +20,8 @@ import 'widgets/verify_app_bar.dart';
 import 'widgets/verify_format.dart';
 
 /// Phương thức thanh toán hiển thị trên màn thanh toán.
-/// - Chuyển khoản: active (QR tĩnh + STK)
+/// - Chuyển khoản: active (VietQR từ BE `bankInfo`)
 /// - Thẻ tín dụng/ghi nợ: khóa — sắp ra mắt
-/// VNPay QR đã loại bỏ.
 const _kAvailableMethods = <PaymentMethod>[
   PaymentMethod.bankTransfer,
 ];
@@ -33,14 +31,7 @@ const _kDisplayedMethods = <PaymentMethod>[
   PaymentMethod.card,
 ];
 
-/// Screen 5 — Thanh toán.
-///
-/// Flow:
-/// 1. User select method → tap CTA
-/// 2. Controller create payment session (mock: 800ms)
-/// 3. Show method-specific dialog (QR / bank info / card form mock)
-/// 4. Poll status mỗi 3s, max 5 phút (100 lần)
-/// 5. Khi paid → refresh profile → màn chi tiết gói
+/// Screen 5 — Thanh toán (manual bank-transfer reconcile, TTL 24h).
 class PaymentScreen extends ConsumerStatefulWidget {
   const PaymentScreen({super.key});
 
@@ -48,16 +39,53 @@ class PaymentScreen extends ConsumerStatefulWidget {
   ConsumerState<PaymentScreen> createState() => _PaymentScreenState();
 }
 
-class _PaymentScreenState extends ConsumerState<PaymentScreen> {
+class _PaymentScreenState extends ConsumerState<PaymentScreen>
+    with WidgetsBindingObserver {
   PaymentMethod _selected = PaymentMethod.bankTransfer;
   bool _processing = false;
-  Timer? _pollTimer;
-  int _pollCount = 0;
+  bool _awaitingReconcile = false;
+  PaymentStatusPoller? _poller;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    WidgetsBinding.instance
+        .addPostFrameCallback((_) => _resumePendingSession());
+  }
 
   @override
   void dispose() {
-    _pollTimer?.cancel();
+    WidgetsBinding.instance.removeObserver(this);
+    _stopPolling(clearFcm: true);
     super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.paused ||
+        state == AppLifecycleState.inactive) {
+      _poller?.pause();
+      return;
+    }
+    if (state == AppLifecycleState.resumed && _poller?.isRunning == true) {
+      _poller?.resume();
+    }
+  }
+
+  void _resumePendingSession() {
+    final verifyState = ref.read(verifyFlowControllerProvider);
+    final session = verifyState.paymentSession;
+    if (session == null) return;
+    if (verifyState.paymentStatus == PaymentStatus.paid) return;
+    if (DateTime.now().isAfter(session.expiresAt)) return;
+    if (verifyState.paymentStatus != PaymentStatus.pending) return;
+
+    setState(() {
+      _processing = true;
+      _awaitingReconcile = true;
+    });
+    _startPolling(session.expiresAt);
   }
 
   Future<void> _handlePay() async {
@@ -76,15 +104,11 @@ class _PaymentScreenState extends ConsumerState<PaymentScreen> {
 
       if (!mounted) return;
 
-      // Chỉ còn chuyển khoản ngân hàng.
       if (_selected == PaymentMethod.bankTransfer) {
-        showDialog<void>(
-          context: context,
-          barrierDismissible: true,
-          builder: (_) => BankTransferDialog(session: session),
-        );
+        _showBankTransferDialog(session);
       }
-      _startPolling();
+      setState(() => _awaitingReconcile = true);
+      _startPolling(session.expiresAt);
     } catch (e) {
       if (!mounted) return;
       final msg = e.toString().replaceAll('Exception: ', '');
@@ -92,55 +116,86 @@ class _PaymentScreenState extends ConsumerState<PaymentScreen> {
       AnalyticsService.logEvent('verify_payment_session_failed', params: {
         'method': _selected.name,
       });
-      setState(() => _processing = false);
+      setState(() {
+        _processing = false;
+        _awaitingReconcile = false;
+      });
     }
   }
 
-  /// Bank transfer: 600 polls × 3s = 30 phút đối soát Casso/Sepay.
-  static const _maxPollCount = 600;
-
-  void _startPolling() {
-    _pollTimer?.cancel();
-    _pollCount = 0;
-    _pollTimer = Timer.periodic(const Duration(seconds: 3), (timer) async {
-      _pollCount++;
-      if (_pollCount > _maxPollCount) {
-        timer.cancel();
-        if (mounted) {
-          setState(() => _processing = false);
+  void _showBankTransferDialog(PaymentSession session) {
+    showDialog<void>(
+      context: context,
+      barrierDismissible: true,
+      builder: (_) => BankTransferDialog(
+        session: session,
+        onWaitAndClose: () {
+          if (!mounted) return;
           _showInfo(
-            'Vẫn đang đối soát chuyển khoản. Bạn có thể đóng app — '
-            'hệ thống sẽ tự xác nhận khi nhận được tiền.',
+            'Đã ghi nhận. Bạn sẽ nhận thông báo khi thanh toán được xác nhận.',
           );
-        }
-        return;
-      }
-      try {
-        final status = await ref
-            .read(verifyFlowControllerProvider.notifier)
-            .checkPaymentStatus();
-        if (status == PaymentStatus.paid) {
-          timer.cancel();
-          if (!mounted) return;
-          // Đóng dialog đang mở (nếu có)
-          if (Navigator.of(context, rootNavigator: true).canPop()) {
-            Navigator.of(context, rootNavigator: true).pop();
-          }
-          await ref.read(authProvider.notifier).refreshProfile();
-          if (!mounted) return;
-          context.pushReplacement('/verify/subscription-detail');
-        } else if (status == PaymentStatus.failed ||
-            status == PaymentStatus.expired) {
-          timer.cancel();
-          if (mounted) {
-            setState(() => _processing = false);
-            _showError('Thanh toán thất bại');
-          }
-        }
-      } catch (_) {
-        // silent retry — exponential backoff không cần thiết với mock
-      }
-    });
+        },
+      ),
+    );
+  }
+
+  void _startPolling(DateTime expiresAt) {
+    _stopPolling(clearFcm: false);
+    _wireFcmListener();
+
+    _poller = PaymentStatusPoller(
+      expiresAt: expiresAt,
+      onPoll: _pollOnce,
+      onExpired: () {
+        if (!mounted) return;
+        setState(() {
+          _processing = false;
+          _awaitingReconcile = false;
+        });
+        _stopPolling(clearFcm: true);
+        _showInfo(
+          'Phiên thanh toán đã hết hạn. Vui lòng tạo phiên mới nếu chưa '
+          'chuyển khoản.',
+        );
+      },
+    );
+    _poller!.start();
+  }
+
+  Future<void> _pollOnce() async {
+    try {
+      final status = await ref
+          .read(verifyFlowControllerProvider.notifier)
+          .checkPaymentStatus();
+      if (!mounted) return;
+      await handlePaymentStatusUpdate(
+        status: status,
+        context: context,
+        ref: ref,
+        onPollingStopped: () => _stopPolling(clearFcm: true),
+        setProcessing: (v) => setState(() {
+          _processing = v;
+          _awaitingReconcile = v;
+        }),
+      );
+    } catch (_) {
+      // silent retry — poller schedule tiếp
+    }
+  }
+
+  void _wireFcmListener() {
+    PushNotificationService.instance.onForegroundData = (data) {
+      if (!isPaymentPaidPush(data)) return;
+      _poller?.checkNow();
+    };
+  }
+
+  void _stopPolling({required bool clearFcm}) {
+    _poller?.stop();
+    _poller = null;
+    if (clearFcm) {
+      PushNotificationService.instance.onForegroundData = null;
+    }
   }
 
   void _showInfo(String msg) {
@@ -201,6 +256,16 @@ class _PaymentScreenState extends ConsumerState<PaymentScreen> {
               120,
             ),
             children: [
+              if (_awaitingReconcile) ...[
+                StatusStrip(
+                  icon: Icons.schedule,
+                  label: 'Đang chờ đối soát thủ công',
+                  subtitle: 'Có thể mất 1–3 giờ. Bạn có thể đóng app — sẽ nhận '
+                      'thông báo khi xác nhận thành công.',
+                  variant: StatusStripVariant.brand,
+                ),
+                const SizedBox(height: AppSpacing.md),
+              ],
               OrderSummaryCard(
                 plan: plan,
                 cycle: state.billingCycle,
@@ -239,8 +304,8 @@ class _PaymentScreenState extends ConsumerState<PaymentScreen> {
               const StatusStrip(
                 icon: Icons.lock_outline,
                 label: 'Hoàn tiền 100% trong 14 ngày',
-                subtitle:
-                    'Nếu không hài lòng, yêu cầu hoàn tiền trong vòng 14 ngày kể từ thanh toán.',
+                subtitle: 'Nếu không hài lòng, yêu cầu hoàn tiền trong vòng 14 '
+                    'ngày kể từ thanh toán.',
                 variant: StatusStripVariant.brand,
               ),
             ],
@@ -269,12 +334,14 @@ class _PaymentScreenState extends ConsumerState<PaymentScreen> {
                           width: 16,
                           height: 16,
                           child: CircularProgressIndicator(
-                              strokeWidth: 2, color: AppColors.darkBg),
+                            strokeWidth: 2,
+                            color: AppColors.darkBg,
+                          ),
                         )
                       : const Icon(Icons.lock_outline, size: 18),
                   label: Text(
                     _processing
-                        ? 'Đang xử lý...'
+                        ? 'Đang chờ đối soát...'
                         : 'Thanh toán an toàn ${VerifyFormat.priceVND(total)}',
                   ),
                 ),

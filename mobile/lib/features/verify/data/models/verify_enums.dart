@@ -72,7 +72,7 @@ extension PaymentMethodX on PaymentMethod {
       case PaymentMethod.vnpayQR:
         return 'Quét QR bằng app ngân hàng · Tức thời';
       case PaymentMethod.bankTransfer:
-        return 'STK + nội dung CK · 5-30 phút';
+        return 'STK + nội dung CK · Đối soát 1–3 giờ';
       case PaymentMethod.card:
         return 'Visa, Mastercard, JCB · Tức thời';
     }

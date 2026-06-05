@@ -64,8 +64,7 @@ class UserModel {
   /// Defensive fromJson — bao quanh `_$UserModelFromJson` để xử lý các field
   /// required-but-null từ BE cũ (id/name/phone đôi khi missing trong response
   /// fallback). KHÔNG sửa generated file.
-  factory UserModel.fromJson(Map<String, dynamic> json) =>
-      _$UserModelFromJson({
+  factory UserModel.fromJson(Map<String, dynamic> json) => _$UserModelFromJson({
         ...json,
         'id': json['id'] ?? '',
         'name': json['name'] ?? '',
@@ -109,8 +108,7 @@ class UserModel {
     return hasOwner ? 'active' : 'unassigned';
   }
 
-  bool get isSaleMembershipActive =>
-      !isSale || saleMembershipState == 'active';
+  bool get isSaleMembershipActive => !isSale || saleMembershipState == 'active';
   bool get isSaleMembershipInvited => saleMembershipState == 'invited';
   bool get isSaleMembershipSuspended => saleMembershipState == 'suspended';
   bool get isSaleMembershipUnassigned => saleMembershipState == 'unassigned';
@@ -191,11 +189,23 @@ class UserModel {
 
   /// Route màn hình quản lý/mua gói.
   String get subscriptionManageRoute {
-    if (isSubscriptionActive || isInTrial || isSubscriptionPastDue) {
+    if (hasEverPurchasedSubscription) {
       return '/verify/subscription-detail';
     }
     return '/verify/select-plan';
   }
+
+  /// Đã từng có subscription (trial/active/past_due/cancelled).
+  bool get hasEverPurchasedSubscription => subscriptionStatus != 'none';
+
+  /// Nút mua lần đầu vs nâng cấp gói hiện có.
+  String get subscriptionPlanActionLabel =>
+      hasEverPurchasedSubscription ? 'Nâng cấp gói' : 'Mua gói';
+
+  /// Route chọn gói — upgrade mode khi đã từng mua.
+  String get subscriptionPlanPickerRoute => hasEverPurchasedSubscription
+      ? '/verify/select-plan?mode=upgrade'
+      : '/verify/select-plan';
 
   UserModel copyWith({
     String? id,

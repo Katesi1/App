@@ -266,8 +266,8 @@ class _OwnerCalendarScreenState extends ConsumerState<OwnerCalendarScreen> {
                   onTap: onRetry,
                   borderRadius: BorderRadius.circular(20),
                   child: Padding(
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 14, vertical: 8),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [

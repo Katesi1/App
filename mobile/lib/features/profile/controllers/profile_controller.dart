@@ -29,8 +29,13 @@ class ProfileActionsNotifier extends StateNotifier<AsyncValue<void>> {
     state = const AsyncValue.loading();
     final result = await _userRepo.updateUser(userId, data);
     if (result.success && result.data != null) {
-      await _authRepo.saveUserLocal(result.data!);
-      _ref.read(authProvider.notifier).replaceUser(result.data!);
+      final refreshed = await _authRepo.getProfile();
+      if (refreshed.success && refreshed.data != null) {
+        _ref.read(authProvider.notifier).replaceUser(refreshed.data!);
+      } else {
+        await _authRepo.saveUserLocal(result.data!);
+        _ref.read(authProvider.notifier).replaceUser(result.data!);
+      }
       state = const AsyncValue.data(null);
       return true;
     }

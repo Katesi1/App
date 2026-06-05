@@ -186,8 +186,7 @@ class _BookingCalendarScreenState extends ConsumerState<BookingCalendarScreen> {
                       ).animate(animation);
                       return FadeTransition(
                         opacity: animation,
-                        child: SlideTransition(
-                            position: offset, child: child),
+                        child: SlideTransition(position: offset, child: child),
                       );
                     },
                     child: CalendarGridWidget(

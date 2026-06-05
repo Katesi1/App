@@ -6,6 +6,7 @@ import 'package:go_router/go_router.dart';
 import '../../../core/theme/app_color_scheme.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
+import '../../auth/controllers/auth_controller.dart';
 import '../controllers/verify_flow_controller.dart';
 import '../data/models/plan.dart';
 import '../data/models/verify_enums.dart';
@@ -21,7 +22,9 @@ import 'widgets/verify_format.dart';
 /// Toggle Monthly/Yearly áp dụng cho 5 tier có giá cố định; Enterprise
 /// bypass toggle, tap → /profile/help liên hệ.
 class SelectPlanScreen extends ConsumerStatefulWidget {
-  const SelectPlanScreen({super.key});
+  final bool isUpgrade;
+
+  const SelectPlanScreen({super.key, this.isUpgrade = false});
 
   @override
   ConsumerState<SelectPlanScreen> createState() => _SelectPlanScreenState();
@@ -34,22 +37,31 @@ class _SelectPlanScreenState extends ConsumerState<SelectPlanScreen> {
   @override
   void initState() {
     super.initState();
-    final state = ref.read(verifyFlowControllerProvider);
-    _cycle = state.billingCycle;
-    // Default Starter (5 phòng) — tier phổ biến nhất cho homestay nhỏ.
-    _selected = state.selectedPlan?.tier ?? Tier.rooms5;
+    final verifyState = ref.read(verifyFlowControllerProvider);
+    final user = ref.read(currentUserProvider);
+    _cycle = _initialCycle(verifyState.billingCycle, user?.subscriptionCycle);
+    _selected = verifyState.selectedPlan?.tier ??
+        Plan.tierFromPlanId(user?.subscriptionPlanId) ??
+        Tier.rooms5;
+  }
+
+  BillingCycle _initialCycle(BillingCycle draft, String? userCycle) {
+    if (userCycle == 'monthly') return BillingCycle.monthly;
+    if (userCycle == 'yearly') return BillingCycle.yearly;
+    return draft;
   }
 
   @override
   Widget build(BuildContext context) {
     final colors = context.colors;
     final plansAsync = ref.watch(verifyPlansProvider);
+    final isUpgrade = widget.isUpgrade;
 
     return Scaffold(
       backgroundColor: colors.bgCanvas,
-      appBar: const VerifyAppBar(
-        overline: 'BƯỚC 1/2 · MUA GÓI',
-        title: 'Chọn gói phù hợp',
+      appBar: VerifyAppBar(
+        overline: isUpgrade ? 'NÂNG CẤP GÓI' : 'BƯỚC 1/2 · MUA GÓI',
+        title: isUpgrade ? 'Chọn gói mới' : 'Chọn gói phù hợp',
         currentStep: 1,
         totalSteps: 2,
       ),
@@ -57,8 +69,7 @@ class _SelectPlanScreenState extends ConsumerState<SelectPlanScreen> {
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (e, _) => Center(child: Text('Lỗi: $e')),
         data: (plans) {
-          final selectedPlan =
-              PlanPriceCalculator.planFor(_selected!, plans);
+          final selectedPlan = PlanPriceCalculator.planFor(_selected!, plans);
           if (selectedPlan == null) {
             return const Center(child: CircularProgressIndicator());
           }
@@ -104,6 +115,7 @@ class _SelectPlanScreenState extends ConsumerState<SelectPlanScreen> {
                 child: _CTABar(
                   planName: selectedPlan.tier.displayName,
                   total: total,
+                  label: isUpgrade ? 'Nâng cấp' : 'Tiếp tục',
                   onTap: () {
                     ref
                         .read(verifyFlowControllerProvider.notifier)
@@ -277,11 +289,13 @@ class _TrialBanner extends StatelessWidget {
 class _CTABar extends StatelessWidget {
   final String planName;
   final int total;
+  final String label;
   final VoidCallback onTap;
 
   const _CTABar({
     required this.planName,
     required this.total,
+    required this.label,
     required this.onTap,
   });
 
@@ -307,7 +321,7 @@ class _CTABar extends StatelessWidget {
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               Text(
-                'Chọn $planName · ${VerifyFormat.priceVND(total)}',
+                '$label $planName · ${VerifyFormat.priceVND(total)}',
                 style: const TextStyle(
                   fontSize: 14,
                   fontWeight: FontWeight.w700,

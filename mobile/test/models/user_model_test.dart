@@ -222,6 +222,37 @@ void main() {
         expect(admin.canMutateManagementData, true);
       });
     });
+
+    group('subscription plan actions', () {
+      test('never purchased shows Mua gói', () {
+        const user = UserModel(
+          id: '1',
+          name: 'Owner',
+          phone: '0900000001',
+          role: 1,
+          subscriptionStatus: 'none',
+        );
+        expect(user.hasEverPurchasedSubscription, false);
+        expect(user.subscriptionPlanActionLabel, 'Mua gói');
+        expect(user.subscriptionManageRoute, '/verify/select-plan');
+      });
+
+      test('trial shows Nâng cấp gói and detail route', () {
+        const user = UserModel(
+          id: '1',
+          name: 'Owner',
+          phone: '0900000001',
+          role: 1,
+          subscriptionStatus: 'trial',
+          subscriptionPlanId: 'rooms_5',
+        );
+        expect(user.hasEverPurchasedSubscription, true);
+        expect(user.subscriptionPlanActionLabel, 'Nâng cấp gói');
+        expect(user.subscriptionPlanPickerRoute,
+            '/verify/select-plan?mode=upgrade');
+        expect(user.subscriptionManageRoute, '/verify/subscription-detail');
+      });
+    });
   });
 }
 

@@ -62,6 +62,13 @@ class BankInfo extends Equatable {
       ? null
       : 'https://api.vietqr.io/img/$bankBin.png';
 
+  /// Đủ field để hiển thị dialog chuyển khoản + sinh VietQR.
+  bool get isComplete =>
+      bankName.isNotEmpty &&
+      accountNumber.isNotEmpty &&
+      accountName.isNotEmpty &&
+      content.isNotEmpty;
+
   @override
   List<Object?> get props => [
         bankName,

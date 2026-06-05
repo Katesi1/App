@@ -378,11 +378,13 @@ class ProfileScreen extends ConsumerWidget {
         ? Icons.warning_amber_rounded
         : user.isSubscriptionActive || user.isInTrial
             ? Icons.workspace_premium_rounded
-            : Icons.shopping_cart_outlined;
+            : user.hasEverPurchasedSubscription
+                ? Icons.upgrade
+                : Icons.shopping_cart_outlined;
 
     return _MenuItemData(
       icon: icon,
-      label: 'Mua gói',
+      label: user.subscriptionPlanActionLabel,
       subtitle: user.subscriptionMenuSubtitle,
       iconColor: iconColor,
       onTap: () => context.push(user.subscriptionManageRoute),

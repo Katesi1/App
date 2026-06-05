@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../data/models/booking_model.dart';
 import '../../../data/repositories/booking_repository.dart';
+import '../utils/guest_flow_filter.dart';
 import '../../calendar/controllers/calendar_controller.dart';
 import '../../dashboard/controllers/dashboard_controller.dart';
 import '../../reports/controllers/report_controller.dart';
@@ -40,8 +41,16 @@ final bookingDetailProvider =
     FutureProvider.family<BookingModel, String>((ref, id) async {
   final repo = ref.watch(bookingRepositoryProvider);
   final result = await repo.getBookingDetail(id);
-  if (result.success) return result.data ?? (throw Exception('Dữ liệu trả về trống'));
+  if (result.success)
+    return result.data ?? (throw Exception('Dữ liệu trả về trống'));
   throw Exception(result.message);
+});
+
+// ─── Check-in / check-out sắp tới (lọc từ danh sách booking) ─────────────────
+final guestFlowBookingsProvider = FutureProvider.autoDispose
+    .family<List<BookingModel>, GuestFlowType>((ref, type) async {
+  final bookings = await ref.watch(bookingListProvider(null).future);
+  return GuestFlowFilter.filter(bookings, type);
 });
 
 // ─── List provider (optional propertyId filter) ───────────────────────────────
@@ -52,7 +61,8 @@ final bookingListProvider = FutureProvider.autoDispose
   ref.onDispose(timer.cancel);
   final repo = ref.watch(bookingRepositoryProvider);
   final result = await repo.getBookings(propertyId: propertyId);
-  if (result.success) return result.data ?? (throw Exception('Dữ liệu trả về trống'));
+  if (result.success)
+    return result.data ?? (throw Exception('Dữ liệu trả về trống'));
   throw Exception(result.message);
 });
 
@@ -63,7 +73,8 @@ final calendarProvider =
   final repo = ref.watch(bookingRepositoryProvider);
   final result =
       await repo.getCalendar(params.propertyId, params.year, params.month);
-  if (result.success) return result.data ?? (throw Exception('Dữ liệu trả về trống'));
+  if (result.success)
+    return result.data ?? (throw Exception('Dữ liệu trả về trống'));
   throw Exception(result.message);
 });
 

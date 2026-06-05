@@ -61,8 +61,8 @@ class _BookingListScreenState extends ConsumerState<BookingListScreen> {
         _searchQuery = '';
         _searchCtrl.clear();
       } else {
-        Future.delayed(
-            const Duration(milliseconds: 80), () => _searchFocusNode.requestFocus());
+        Future.delayed(const Duration(milliseconds: 80),
+            () => _searchFocusNode.requestFocus());
       }
     });
   }
@@ -76,8 +76,7 @@ class _BookingListScreenState extends ConsumerState<BookingListScreen> {
       result = result.where((b) {
         final name = (b.customerName ?? '').toLowerCase();
         final phone = b.customerPhone ?? '';
-        final propName =
-            ((b.property?['name'] ?? '') as String).toLowerCase();
+        final propName = ((b.property?['name'] ?? '') as String).toLowerCase();
         return name.contains(q) || phone.contains(q) || propName.contains(q);
       }).toList();
     }
@@ -182,8 +181,7 @@ class _BookingListScreenState extends ConsumerState<BookingListScreen> {
                                   'Theo dõi và xử lý đặt phòng',
                                   style: GoogleFonts.beVietnamPro(
                                     fontSize: 12,
-                                    color:
-                                        Colors.white.withValues(alpha: 0.65),
+                                    color: Colors.white.withValues(alpha: 0.65),
                                   ),
                                 ),
                               ],
@@ -203,8 +201,7 @@ class _BookingListScreenState extends ConsumerState<BookingListScreen> {
                                   : Colors.white.withValues(alpha: 0.12),
                               shape: BoxShape.circle,
                               border: Border.all(
-                                  color:
-                                      Colors.white.withValues(alpha: 0.18)),
+                                  color: Colors.white.withValues(alpha: 0.18)),
                             ),
                             child: Icon(
                               _isSearching
@@ -228,8 +225,7 @@ class _BookingListScreenState extends ConsumerState<BookingListScreen> {
                         height: 44,
                         decoration: BoxDecoration(
                           color: Colors.white.withValues(alpha: 0.15),
-                          borderRadius:
-                              BorderRadius.circular(AppRadius.lg),
+                          borderRadius: BorderRadius.circular(AppRadius.lg),
                           border: Border.all(
                               color: Colors.white.withValues(alpha: 0.25)),
                         ),

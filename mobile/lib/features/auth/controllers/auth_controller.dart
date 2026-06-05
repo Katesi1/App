@@ -271,8 +271,12 @@ class AuthNotifier extends StateNotifier<AuthState> {
     final userId = state.user?.id;
     if (userId == null) return (false, 'Không tìm thấy người dùng');
     final result = await _repo.updateProfile(userId, data);
-    if (result.success && result.data != null) {
-      state = state.copyWith(user: result.data);
+    if (result.success) {
+      final refreshed = await refreshProfile();
+      if (!refreshed.$1 && result.data != null) {
+        state = state.copyWith(user: result.data);
+      }
+      return (true, result.message);
     }
     return (result.success, result.message);
   }
