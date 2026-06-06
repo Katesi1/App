@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
@@ -8,7 +9,6 @@ import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 import '../../../core/theme/app_colors.dart';
-import '../../../shared/providers/view_mode_provider.dart';
 import '../controllers/auth_controller.dart';
 
 class SplashScreen extends ConsumerStatefulWidget {
@@ -51,7 +51,7 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
     Future.delayed(const Duration(milliseconds: 1800), () {
       if (mounted) {
         setState(() => _minDelayDone = true);
-        _tryNavigate();
+        unawaited(_tryNavigate());
       }
     });
   }
@@ -64,7 +64,7 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
     super.dispose();
   }
 
-  void _tryNavigate() {
+  Future<void> _tryNavigate() async {
     if (_navigated || !_minDelayDone) return;
     if (!mounted) return;
     final authState = ref.read(authProvider);
@@ -79,23 +79,29 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
       return;
     }
 
-    final bool isCustomerMode;
     if (user.isCustomer) {
-      isCustomerMode = true;
-    } else if (user.isManagement) {
-      isCustomerMode = ref.read(viewModeProvider) == ViewMode.customer;
-    } else {
-      isCustomerMode = false;
+      await ref.read(authProvider.notifier).logout();
+      if (!mounted) return;
+      context.go('/login');
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'App dành cho chủ homestay và nhân viên. '
+            'Khách lưu trú không đăng nhập được trên app này.',
+          ),
+        ),
+      );
+      return;
     }
 
-    context.go(isCustomerMode ? '/home' : '/dashboard');
+    context.go('/dashboard');
   }
 
   @override
   Widget build(BuildContext context) {
     // Lắng nghe authProvider xong thì navigate
     ref.listen<AuthState>(authProvider, (_, next) {
-      if (!next.isLoading) _tryNavigate();
+      if (!next.isLoading) unawaited(_tryNavigate());
     });
 
     final size = MediaQuery.of(context).size;

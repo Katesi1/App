@@ -196,7 +196,7 @@ class _PendingApprovalScreenState extends ConsumerState<PendingApprovalScreen> {
                         side: BorderSide(color: colors.borderDefault),
                         foregroundColor: colors.textBrand,
                       ),
-                      onPressed: () => context.go('/home'),
+                      onPressed: () => context.go('/dashboard'),
                       child: const Text('Về trang chủ'),
                     ),
                   ),

@@ -292,6 +292,70 @@ class DetailSkeleton extends StatelessWidget {
       );
 }
 
+// ─── Report Screen Skeleton ───────────────────────────────────────────────────
+class ReportScreenSkeleton extends StatelessWidget {
+  const ReportScreenSkeleton({super.key});
+
+  @override
+  Widget build(BuildContext context) => _shimmerWrap(
+        context: context,
+        child: ListView(
+          padding: const EdgeInsets.fromLTRB(16, 12, 16, 80),
+          children: [
+            _ShimmerBox(width: double.infinity, height: 36, radius: 100),
+            const SizedBox(height: AppSpacing.md),
+            Row(
+              children: [
+                Expanded(
+                  child: _ShimmerBox(
+                    width: double.infinity,
+                    height: 96,
+                    radius: 14,
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: _ShimmerBox(
+                    width: double.infinity,
+                    height: 96,
+                    radius: 14,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 10),
+            Row(
+              children: [
+                Expanded(
+                  child: _ShimmerBox(
+                    width: double.infinity,
+                    height: 96,
+                    radius: 14,
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: _ShimmerBox(
+                    width: double.infinity,
+                    height: 96,
+                    radius: 14,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: AppSpacing.md),
+            _ShimmerBox(width: double.infinity, height: 220, radius: 14),
+            const SizedBox(height: AppSpacing.md),
+            _ShimmerBox(width: double.infinity, height: 160, radius: 14),
+            const SizedBox(height: AppSpacing.md),
+            _ShimmerBox(width: 140, height: 12),
+            const SizedBox(height: 8),
+            _ShimmerBox(width: double.infinity, height: 180, radius: 14),
+          ],
+        ),
+      );
+}
+
 // ─── Skeleton List Helper ─────────────────────────────────────────────────────
 class SkeletonList extends StatelessWidget {
   final Widget skeleton;

@@ -54,12 +54,11 @@ class VerifyAppBar extends StatelessWidget implements PreferredSizeWidget {
                     onTap: onBack ??
                         () {
                           // Verify flow thường được vào qua pushReplacement
-                          // → stack có thể rỗng. Fallback /home (router auto
-                          // redirect /dashboard nếu management user).
+                          // → stack có thể rỗng. Fallback /dashboard.
                           if (context.canPop()) {
                             context.pop();
                           } else {
-                            context.go('/home');
+                            context.go('/dashboard');
                           }
                         },
                   ),

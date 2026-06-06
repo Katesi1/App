@@ -725,15 +725,15 @@ const _faqCategories = <_FaqCategory>[
     items: [
       _FaqItem(
         question: 'Tôi là chủ homestay, làm sao để bắt đầu?',
-        answer: 'Đăng ký tài khoản với vai trò "Nhân viên", sau đó liên hệ '
-            'admin để được cấp quyền quản lý homestay. Bạn sẽ có thể '
-            'thêm phòng, quản lý booking và xem báo cáo.',
+        answer: 'Đăng ký tài khoản với vai trò chủ homestay, hoàn thành xác '
+            'minh CCCD và chọn gói subscription. Sau đó thêm phòng, mời '
+            'nhân viên sale và bắt đầu giữ booking cho khách.',
       ),
       _FaqItem(
-        question: 'Làm sao để chuyển đổi giữa chế độ quản lý và khách?',
-        answer: 'Tại trang tài khoản, nhấn "Chuyển sang quản lý" hoặc '
-            '"Xem như khách" để chuyển đổi. Chế độ khách giúp bạn trải '
-            'nghiệm ứng dụng như một khách hàng thông thường.',
+        question: 'Nhân viên sale làm gì trên app?',
+        answer: 'Sale xem lịch phòng, giữ phòng (HOLD) cho khách liên hệ '
+            'ngoài app, rồi xác nhận booking khi khách chốt. Khách không '
+            'tự đặt phòng trên app này.',
       ),
       _FaqItem(
         question: 'Làm sao để xác nhận booking?',

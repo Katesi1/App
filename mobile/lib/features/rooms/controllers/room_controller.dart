@@ -18,7 +18,7 @@ final roomListProvider =
   throw Exception(result.message);
 });
 
-// Provider lấy TẤT CẢ phòng active (dùng cho danh sách phòng — mọi role)
+// Danh sách tab "Phòng" — toàn bộ căn active trên hệ thống (mọi role đều thấy)
 final allRoomsProvider =
     FutureProvider.autoDispose<List<RoomModel>>((ref) async {
   final link = ref.keepAlive();
@@ -26,7 +26,9 @@ final allRoomsProvider =
   ref.onDispose(timer.cancel);
   final repo = ref.watch(roomRepositoryProvider);
   final result = await repo.getAllPublicRooms();
-  if (result.success) return result.data ?? (throw Exception('Dữ liệu trả về trống'));
+  if (result.success) {
+    return result.data ?? (throw Exception('Dữ liệu trả về trống'));
+  }
   throw Exception(result.message);
 });
 

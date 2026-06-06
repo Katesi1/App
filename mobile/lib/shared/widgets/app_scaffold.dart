@@ -161,45 +161,11 @@ class _BottomNavState extends ConsumerState<_BottomNav> {
     route: '/admin',
   );
 
-  static const _customerNavItems = <_NavItem>[
-    _NavItem(
-      icon: Icons.home_outlined,
-      activeIcon: Icons.home_rounded,
-      label: 'Trang chủ',
-      route: '/home',
-    ),
-    _NavItem(
-      icon: Icons.search_outlined,
-      activeIcon: Icons.search_rounded,
-      label: 'Tìm phòng',
-      route: '/search',
-    ),
-    _NavItem(
-      icon: Icons.book_outlined,
-      activeIcon: Icons.book_rounded,
-      label: 'Booking',
-      route: '/my-bookings',
-    ),
-    _NavItem(
-      icon: Icons.person_outline_rounded,
-      activeIcon: Icons.person_rounded,
-      label: 'Tài khoản',
-      route: '/account',
-    ),
-  ];
-
-  List<_NavItem> _getNavItems(UserModel? user, bool isCustomerMode) {
+  List<_NavItem> _getNavItems(UserModel? user) {
     if (user == null) return _staffNavItems;
-
-    // Chế độ khách (CUSTOMER thuần hoặc ADMIN/STAFF toggle)
-    if (isCustomerMode) return _customerNavItems;
-
-    // ADMIN + OWNER: staff tabs + quản lý tab
     if (user.isAdmin || user.isOwner) {
       return [..._staffNavItems, _adminExtraItem];
     }
-
-    // SALE: chỉ staff tabs
     return _staffNavItems;
   }
 
@@ -220,8 +186,7 @@ class _BottomNavState extends ConsumerState<_BottomNav> {
   @override
   Widget build(BuildContext context) {
     final user = ref.watch(currentUserProvider);
-    final isCustomerMode = ref.watch(isCustomerModeProvider);
-    final navItems = _getNavItems(user, isCustomerMode);
+    final navItems = _getNavItems(user);
 
     // Clamp index to valid range
     if (_current >= navItems.length) {

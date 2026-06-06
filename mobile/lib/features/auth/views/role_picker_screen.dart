@@ -67,8 +67,7 @@ class _RolePickerScreenState extends ConsumerState<RolePickerScreen> {
 
     switch (outcome) {
       case GoogleSignInSuccess():
-        // Auth state đã update → router tự redirect /home (CUSTOMER)
-        // hoặc /dashboard (OWNER → tiếp đó vào KYC nếu chưa làm).
+        // Auth state đã update → router redirect /dashboard
         return;
       case GoogleSignInFailure(:final message):
         setState(() {
@@ -148,26 +147,16 @@ class _RolePickerScreenState extends ConsumerState<RolePickerScreen> {
               _GoogleAvatar(profile: profile),
               const SizedBox(height: AppSpacing.xl),
               _RoleOption(
-                icon: Icons.travel_explore_rounded,
-                title: 'Tôi là khách đặt phòng',
-                subtitle:
-                    'Tìm và đặt homestay tại Hạ Long & các điểm du lịch.',
-                color: AppColors.teal,
-                isLoading: _submittingRole == UserRole.customer,
-                disabled: _isLoading && _submittingRole != UserRole.customer,
-                onTap: () => _onPickRole(UserRole.customer),
-              ).animate(delay: 100.ms).fadeIn().slideY(begin: 0.1),
-              const SizedBox(height: AppSpacing.md),
-              _RoleOption(
                 icon: Icons.home_work_rounded,
                 title: 'Tôi là chủ homestay',
                 subtitle:
-                    'Đăng phòng, quản lý booking & doanh thu (cần xác minh CCCD).',
+                    'Quản lý phòng, giữ booking cho khách & theo dõi doanh thu '
+                    '(cần xác minh CCCD).',
                 color: AppColors.ocean,
                 isLoading: _submittingRole == UserRole.owner,
                 disabled: _isLoading && _submittingRole != UserRole.owner,
                 onTap: () => _onPickRole(UserRole.owner),
-              ).animate(delay: 200.ms).fadeIn().slideY(begin: 0.1),
+              ).animate(delay: 100.ms).fadeIn().slideY(begin: 0.1),
               const Spacer(),
               Text(
                 'Là nhân viên? Đợi chủ homestay gửi email mời, '

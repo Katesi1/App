@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import '../../../core/monitoring/analytics_service.dart';
 import '../../../core/services/push_notification_service.dart';
 import '../../../core/theme/app_color_scheme.dart';
@@ -11,6 +12,7 @@ import '../controllers/verify_flow_controller.dart';
 import '../data/models/payment_session.dart';
 import '../data/models/plan.dart';
 import '../data/models/verify_enums.dart';
+import '../utils/payment_close_confirm.dart';
 import '../utils/payment_awaiting_handler.dart';
 import '../utils/payment_status_poller.dart';
 import 'widgets/order_summary_card.dart';
@@ -126,7 +128,7 @@ class _PaymentScreenState extends ConsumerState<PaymentScreen>
   void _showBankTransferDialog(PaymentSession session) {
     showDialog<void>(
       context: context,
-      barrierDismissible: true,
+      barrierDismissible: false,
       builder: (_) => BankTransferDialog(
         session: session,
         onWaitAndClose: () {
@@ -217,6 +219,45 @@ class _PaymentScreenState extends ConsumerState<PaymentScreen>
     );
   }
 
+  bool _hasPendingPayment() {
+    final verifyState = ref.read(verifyFlowControllerProvider);
+    final session = verifyState.paymentSession;
+    if (session == null) return false;
+    if (verifyState.paymentStatus == PaymentStatus.paid) return false;
+    if (DateTime.now().isAfter(session.expiresAt)) return false;
+    return verifyState.paymentStatus == PaymentStatus.pending ||
+        _awaitingReconcile;
+  }
+
+  Future<void> _handleBack() async {
+    if (!_hasPendingPayment()) {
+      if (context.canPop()) {
+        context.pop();
+      } else {
+        context.go('/dashboard');
+      }
+      return;
+    }
+
+    final confirmed = await confirmClosePendingPayment(
+      context,
+      isBankTransfer: true,
+    );
+    if (!confirmed || !mounted) return;
+
+    _stopPolling(clearFcm: true);
+    setState(() {
+      _processing = false;
+      _awaitingReconcile = false;
+    });
+
+    if (context.canPop()) {
+      context.pop();
+    } else {
+      context.go('/dashboard');
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final colors = context.colors;
@@ -238,117 +279,127 @@ class _PaymentScreenState extends ConsumerState<PaymentScreen>
 
     final total = PlanPriceCalculator.total(plan, state.billingCycle);
 
-    return Scaffold(
-      backgroundColor: colors.bgCanvas,
-      appBar: const VerifyAppBar(
-        overline: 'BƯỚC 2/2 · MUA GÓI',
-        title: 'Thanh toán',
-        currentStep: 2,
-        totalSteps: 2,
-      ),
-      body: Stack(
-        children: [
-          ListView(
-            padding: const EdgeInsets.fromLTRB(
-              AppSpacing.md,
-              AppSpacing.md,
-              AppSpacing.md,
-              120,
-            ),
-            children: [
-              if (_awaitingReconcile) ...[
-                StatusStrip(
-                  icon: Icons.schedule,
-                  label: 'Đang chờ đối soát thủ công',
-                  subtitle: 'Có thể mất 1–3 giờ. Bạn có thể đóng app — sẽ nhận '
-                      'thông báo khi xác nhận thành công.',
+    return PopScope(
+      canPop: !_hasPendingPayment(),
+      onPopInvokedWithResult: (didPop, _) {
+        if (didPop) return;
+        _handleBack();
+      },
+      child: Scaffold(
+        backgroundColor: colors.bgCanvas,
+        appBar: VerifyAppBar(
+          overline: 'BƯỚC 2/2 · MUA GÓI',
+          title: 'Thanh toán',
+          currentStep: 2,
+          totalSteps: 2,
+          onBack: _handleBack,
+        ),
+        body: Stack(
+          children: [
+            ListView(
+              padding: const EdgeInsets.fromLTRB(
+                AppSpacing.md,
+                AppSpacing.md,
+                AppSpacing.md,
+                120,
+              ),
+              children: [
+                if (_awaitingReconcile) ...[
+                  StatusStrip(
+                    icon: Icons.schedule,
+                    label: 'Đang chờ đối soát thủ công',
+                    subtitle:
+                        'Có thể mất 1–3 giờ. Bạn có thể đóng app — sẽ nhận '
+                        'thông báo khi xác nhận thành công.',
+                    variant: StatusStripVariant.brand,
+                  ),
+                  const SizedBox(height: AppSpacing.md),
+                ],
+                OrderSummaryCard(
+                  plan: plan,
+                  cycle: state.billingCycle,
+                ).animate().fadeIn(duration: 320.ms),
+                const SizedBox(height: AppSpacing.md),
+                Text(
+                  'PHƯƠNG THỨC THANH TOÁN',
+                  style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: 0.3,
+                    color: colors.textTertiary,
+                  ),
+                ),
+                const SizedBox(height: 10),
+                ..._kDisplayedMethods.asMap().entries.map((e) {
+                  final method = e.value;
+                  final isAvailable = _kAvailableMethods.contains(method);
+                  return Padding(
+                    padding: const EdgeInsets.only(bottom: 8),
+                    child: PaymentMethodTile(
+                      method: method,
+                      isSelected: _selected == method,
+                      isComingSoon: !isAvailable,
+                      onTap: () {
+                        if (!isAvailable) return;
+                        setState(() => _selected = method);
+                      },
+                    )
+                        .animate(delay: (60 * e.key).ms)
+                        .fadeIn(duration: 240.ms)
+                        .slideY(begin: 0.05, end: 0),
+                  );
+                }),
+                const SizedBox(height: AppSpacing.md),
+                const StatusStrip(
+                  icon: Icons.lock_outline,
+                  label: 'Hoàn tiền 100% trong 14 ngày',
+                  subtitle:
+                      'Nếu không hài lòng, yêu cầu hoàn tiền trong vòng 14 '
+                      'ngày kể từ thanh toán.',
                   variant: StatusStripVariant.brand,
                 ),
-                const SizedBox(height: AppSpacing.md),
               ],
-              OrderSummaryCard(
-                plan: plan,
-                cycle: state.billingCycle,
-              ).animate().fadeIn(duration: 320.ms),
-              const SizedBox(height: AppSpacing.md),
-              Text(
-                'PHƯƠNG THỨC THANH TOÁN',
-                style: TextStyle(
-                  fontSize: 11,
-                  fontWeight: FontWeight.w700,
-                  letterSpacing: 0.3,
-                  color: colors.textTertiary,
+            ),
+            Positioned(
+              left: 0,
+              right: 0,
+              bottom: 0,
+              child: Container(
+                padding: EdgeInsets.fromLTRB(
+                  AppSpacing.md,
+                  AppSpacing.sm,
+                  AppSpacing.md,
+                  MediaQuery.of(context).padding.bottom + AppSpacing.sm,
                 ),
-              ),
-              const SizedBox(height: 10),
-              ..._kDisplayedMethods.asMap().entries.map((e) {
-                final method = e.value;
-                final isAvailable = _kAvailableMethods.contains(method);
-                return Padding(
-                  padding: const EdgeInsets.only(bottom: 8),
-                  child: PaymentMethodTile(
-                    method: method,
-                    isSelected: _selected == method,
-                    isComingSoon: !isAvailable,
-                    onTap: () {
-                      if (!isAvailable) return;
-                      setState(() => _selected = method);
-                    },
-                  )
-                      .animate(delay: (60 * e.key).ms)
-                      .fadeIn(duration: 240.ms)
-                      .slideY(begin: 0.05, end: 0),
-                );
-              }),
-              const SizedBox(height: AppSpacing.md),
-              const StatusStrip(
-                icon: Icons.lock_outline,
-                label: 'Hoàn tiền 100% trong 14 ngày',
-                subtitle: 'Nếu không hài lòng, yêu cầu hoàn tiền trong vòng 14 '
-                    'ngày kể từ thanh toán.',
-                variant: StatusStripVariant.brand,
-              ),
-            ],
-          ),
-          Positioned(
-            left: 0,
-            right: 0,
-            bottom: 0,
-            child: Container(
-              padding: EdgeInsets.fromLTRB(
-                AppSpacing.md,
-                AppSpacing.sm,
-                AppSpacing.md,
-                MediaQuery.of(context).padding.bottom + AppSpacing.sm,
-              ),
-              decoration: BoxDecoration(
-                color: colors.bgSurface,
-                border: Border(top: BorderSide(color: colors.borderDefault)),
-              ),
-              child: SizedBox(
-                height: 52,
-                child: FilledButton.icon(
-                  onPressed: _processing ? null : _handlePay,
-                  icon: _processing
-                      ? const SizedBox(
-                          width: 16,
-                          height: 16,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2,
-                            color: AppColors.darkBg,
-                          ),
-                        )
-                      : const Icon(Icons.lock_outline, size: 18),
-                  label: Text(
-                    _processing
-                        ? 'Đang chờ đối soát...'
-                        : 'Thanh toán an toàn ${VerifyFormat.priceVND(total)}',
+                decoration: BoxDecoration(
+                  color: colors.bgSurface,
+                  border: Border(top: BorderSide(color: colors.borderDefault)),
+                ),
+                child: SizedBox(
+                  height: 52,
+                  child: FilledButton.icon(
+                    onPressed: _processing ? null : _handlePay,
+                    icon: _processing
+                        ? const SizedBox(
+                            width: 16,
+                            height: 16,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              color: AppColors.darkBg,
+                            ),
+                          )
+                        : const Icon(Icons.lock_outline, size: 18),
+                    label: Text(
+                      _processing
+                          ? 'Đang chờ đối soát...'
+                          : 'Thanh toán an toàn ${VerifyFormat.priceVND(total)}',
+                    ),
                   ),
                 ),
               ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }

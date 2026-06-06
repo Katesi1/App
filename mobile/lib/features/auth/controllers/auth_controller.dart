@@ -7,7 +7,6 @@ import '../../../core/services/push_notification_service.dart';
 import '../../../core/storage/secure_storage.dart';
 import '../../../data/models/user_model.dart';
 import '../../../data/repositories/auth_repository.dart';
-import '../../../shared/providers/view_mode_provider.dart';
 import '../../bookings/controllers/booking_controller.dart';
 import '../../calendar/controllers/calendar_controller.dart';
 import '../../dashboard/controllers/dashboard_controller.dart';
@@ -322,16 +321,4 @@ final authProvider = StateNotifierProvider<AuthNotifier, AuthState>((ref) {
 
 final currentUserProvider = Provider<UserModel?>((ref) {
   return ref.watch(authProvider).user;
-});
-
-/// User đang ở chế độ khách hàng?
-/// - CUSTOMER role → luôn true
-/// - ADMIN/STAFF → true nếu viewMode == customer
-final isCustomerModeProvider = Provider<bool>((ref) {
-  final user = ref.watch(currentUserProvider);
-  if (user == null) return false;
-  if (user.isCustomer) return true;
-  // ADMIN/STAFF: xem viewMode toggle
-  final viewMode = ref.watch(viewModeProvider);
-  return viewMode == ViewMode.customer;
 });

@@ -21,10 +21,6 @@ import '../../features/staff/views/invite_accept_screen.dart';
 import '../../features/staff/views/staff_management_screen.dart';
 import '../../features/bookings/views/booking_calendar_screen.dart';
 import '../../features/bookings/views/owner_calendar_screen.dart';
-import '../../features/customer/views/customer_home_screen.dart';
-import '../../features/customer/views/search_room_screen.dart';
-import '../../features/customer/views/my_bookings_screen.dart';
-import '../../features/customer/views/account_screen.dart';
 import '../../features/bookings/views/booking_list_screen.dart';
 import '../../features/bookings/views/booking_detail_screen.dart';
 import '../../features/bookings/views/guest_flow_list_screen.dart';
@@ -70,28 +66,23 @@ import '../../features/verify/views/select_plan_screen.dart';
 import '../../features/verify/views/subscription_detail_screen.dart';
 import '../../features/verify/views/selfie_capture_screen.dart';
 import '../../features/verify/views/trial_active_screen.dart';
-import '../../shared/providers/view_mode_provider.dart';
 import 'app_transitions.dart';
 
 class _RouterRefreshNotifier extends ChangeNotifier {
   _RouterRefreshNotifier(Ref ref) {
     ref.listen<AuthState>(authProvider, (_, __) => notifyListeners());
-    ref.listen<ViewMode>(viewModeProvider, (_, __) => notifyListeners());
   }
 }
 
 String? resolveRedirectPath({
   required AuthState authState,
-  required ViewMode viewMode,
   required String path,
 }) {
   final isLoggedIn = authState.isLoggedIn;
   final isLoading = authState.isLoading;
 
-  // Đang check token -> giữ nguyên trang hiện tại
   if (isLoading) return null;
 
-  // Các trang public (không cần login)
   const publicPaths = [
     '/splash',
     '/login',
@@ -102,60 +93,25 @@ String? resolveRedirectPath({
   ];
   final isPublic = publicPaths.contains(path);
 
-  // Chưa login -> redirect về login
   if (!isLoggedIn && !isPublic) return '/login';
 
   if (!isLoggedIn) return null;
 
   final user = authState.user;
-  final bool isCustomerMode;
-  if (user != null && user.isCustomer) {
-    isCustomerMode = true;
-  } else if (user != null && user.isManagement) {
-    isCustomerMode = viewMode == ViewMode.customer;
-  } else {
-    isCustomerMode = false;
-  }
 
-  // Redirect khỏi trang public
-  if (isPublic) {
-    return isCustomerMode ? '/home' : '/dashboard';
-  }
+  // App B2B — không hỗ trợ role CUSTOMER
+  if (user != null && user.isCustomer) return '/login';
 
-  // Route guard
-  // /profile accessible cho cả 2 mode -> không nằm trong list nào
-  const customerPaths = [
+  // Legacy customer routes (đã gỡ UI) → dashboard
+  const legacyCustomerPaths = [
     '/home',
     '/search',
     '/my-bookings',
     '/account',
   ];
-  const managementPaths = [
-    '/dashboard',
-    '/rooms',
-    '/calendar',
-    '/properties',
-    '/admin',
-    '/bookings',
-    '/reports',
-    '/staff',
-  ];
+  if (legacyCustomerPaths.contains(path)) return '/dashboard';
 
-  // Đang ở mode khách -> chặn route quản lý
-  if (isCustomerMode) {
-    final isManagementRoute = managementPaths.any(
-      (p) => path == p || path.startsWith('$p/'),
-    );
-    if (isManagementRoute) return '/home';
-  }
-
-  // Đang ở mode quản lý -> chặn route khách
-  if (!isCustomerMode && user != null && user.isManagement) {
-    final isCustomerRoute = customerPaths.contains(path);
-    if (isCustomerRoute) return '/dashboard';
-  }
-
-  // Chỉ ADMIN và OWNER vào route admin
+  if (isPublic) return '/dashboard';
   if (user != null && !(user.isAdmin || user.isOwner)) {
     if (path.startsWith('/admin')) return '/dashboard';
   }
@@ -225,7 +181,6 @@ final routerProvider = Provider<GoRouter>((ref) {
     redirect: (context, state) {
       return resolveRedirectPath(
         authState: ref.read(authProvider),
-        viewMode: ref.read(viewModeProvider),
         path: state.matchedLocation,
       );
     },
@@ -261,36 +216,6 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/staff/manage',
         builder: (_, __) => const StaffManagementScreen(),
-      ),
-
-      // ── Customer routes ────────────────────────────────────────────
-      GoRoute(
-        path: '/home',
-        pageBuilder: (_, state) => horizontalPage(
-          key: state.pageKey,
-          child: const CustomerHomeScreen(),
-        ),
-      ),
-      GoRoute(
-        path: '/search',
-        pageBuilder: (_, state) => horizontalPage(
-          key: state.pageKey,
-          child: const SearchRoomScreen(),
-        ),
-      ),
-      GoRoute(
-        path: '/my-bookings',
-        pageBuilder: (_, state) => horizontalPage(
-          key: state.pageKey,
-          child: const MyBookingsScreen(),
-        ),
-      ),
-      GoRoute(
-        path: '/account',
-        pageBuilder: (_, state) => horizontalPage(
-          key: state.pageKey,
-          child: const AccountScreen(),
-        ),
       ),
 
       // ── Notifications ────────────────────────────────────────────────

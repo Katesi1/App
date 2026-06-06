@@ -9,6 +9,7 @@ import '../../../../core/theme/app_color_scheme.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/utils/viet_qr_url.dart';
 import '../../data/models/payment_session.dart';
+import '../../utils/payment_close_confirm.dart';
 import '../../utils/payment_countdown_format.dart';
 import 'payment_qr_view.dart';
 import 'verify_format.dart';
@@ -74,140 +75,152 @@ class _VNPayQRDialogState extends State<VNPayQRDialog> {
     // branch redirect: hiển thị CTA mở payUrl thay vì placeholder QR rỗng.
     final useRedirectMode = !hasQr && canOpenBankApp;
 
-    return Dialog(
-      backgroundColor: colors.bgSurfaceElevated,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(20, 20, 20, 16),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Row(
-              children: [
-                Icon(
-                  useRedirectMode ? Icons.open_in_browser : Icons.qr_code_2,
-                  size: 18,
-                  color: colors.textBrand,
-                ),
-                const SizedBox(width: 6),
-                Text(
-                  useRedirectMode
-                      ? 'Thanh toán qua VNPay'
-                      : 'Quét QR bằng app ngân hàng',
-                  style: TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w800,
-                    color: colors.textPrimary,
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 14),
-            if (useRedirectMode)
-              _RedirectIllustration(disabled: expired)
-            else
-              PaymentQrView(
-                payload: widget.session.qrCode,
-                imageBase64: widget.session.qrImageBase64,
-                size: 220,
-              ),
-            const SizedBox(height: 14),
-            Text(
-              VerifyFormat.priceVND(widget.session.totalAmount),
-              style: TextStyle(
-                fontSize: 22,
-                fontWeight: FontWeight.w800,
-                color: colors.textBrand,
-              ),
-            ),
-            const SizedBox(height: 4),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-              decoration: BoxDecoration(
-                color: expired ? AppColors.coral50 : colors.bgSurfaceContainer,
-                borderRadius: BorderRadius.circular(999),
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
+    return PaymentDialogPopScope(
+      child: Dialog(
+        backgroundColor: colors.bgSurfaceElevated,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(20, 20, 20, 16),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Row(
                 children: [
                   Icon(
-                    expired ? Icons.error_outline : Icons.timer_outlined,
-                    size: 12,
-                    color: expired ? AppColors.coral700 : colors.textSecondary,
+                    useRedirectMode ? Icons.open_in_browser : Icons.qr_code_2,
+                    size: 18,
+                    color: colors.textBrand,
                   ),
-                  const SizedBox(width: 4),
+                  const SizedBox(width: 6),
                   Text(
-                    expired
-                        ? 'Phiên đã hết hạn — tạo lại từ đầu'
-                        : 'Hết hạn sau ${_fmt(_remaining)}',
+                    useRedirectMode
+                        ? 'Thanh toán qua VNPay'
+                        : 'Quét QR bằng app ngân hàng',
                     style: TextStyle(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w700,
+                      fontSize: 14,
+                      fontWeight: FontWeight.w800,
+                      color: colors.textPrimary,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 14),
+              if (useRedirectMode)
+                _RedirectIllustration(disabled: expired)
+              else
+                PaymentQrView(
+                  payload: widget.session.qrCode,
+                  imageBase64: widget.session.qrImageBase64,
+                  size: 220,
+                ),
+              const SizedBox(height: 14),
+              Text(
+                VerifyFormat.priceVND(widget.session.totalAmount),
+                style: TextStyle(
+                  fontSize: 22,
+                  fontWeight: FontWeight.w800,
+                  color: colors.textBrand,
+                ),
+              ),
+              const SizedBox(height: 4),
+              Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                decoration: BoxDecoration(
+                  color:
+                      expired ? AppColors.coral50 : colors.bgSurfaceContainer,
+                  borderRadius: BorderRadius.circular(999),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      expired ? Icons.error_outline : Icons.timer_outlined,
+                      size: 12,
                       color:
                           expired ? AppColors.coral700 : colors.textSecondary,
                     ),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 12),
-            Container(
-              padding: const EdgeInsets.all(10),
-              decoration: BoxDecoration(
-                color: colors.bgSurfaceContainer,
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: Row(
-                children: [
-                  Icon(Icons.info_outline,
-                      size: 14, color: colors.textSecondary),
-                  const SizedBox(width: 6),
-                  Expanded(
-                    child: Text(
-                      useRedirectMode
-                          ? 'Bạn sẽ được chuyển sang cổng VNPay để chọn ngân hàng và xác nhận thanh toán.'
-                          : 'Sau khi thanh toán xong, app sẽ tự xác nhận trong vài giây.',
+                    const SizedBox(width: 4),
+                    Text(
+                      expired
+                          ? 'Phiên đã hết hạn — tạo lại từ đầu'
+                          : 'Hết hạn sau ${_fmt(_remaining)}',
                       style: TextStyle(
                         fontSize: 11,
-                        fontWeight: FontWeight.w500,
-                        color: colors.textSecondary,
-                        height: 1.4,
+                        fontWeight: FontWeight.w700,
+                        color:
+                            expired ? AppColors.coral700 : colors.textSecondary,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 12),
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: colors.bgSurfaceContainer,
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Row(
+                  children: [
+                    Icon(Icons.info_outline,
+                        size: 14, color: colors.textSecondary),
+                    const SizedBox(width: 6),
+                    Expanded(
+                      child: Text(
+                        useRedirectMode
+                            ? 'Bạn sẽ được chuyển sang cổng VNPay để chọn ngân hàng và xác nhận thanh toán.'
+                            : 'Sau khi thanh toán xong, app sẽ tự xác nhận trong vài giây.',
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w500,
+                          color: colors.textSecondary,
+                          height: 1.4,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 14),
+              if (canOpenBankApp)
+                SizedBox(
+                  width: double.infinity,
+                  height: 48,
+                  child: FilledButton.icon(
+                    onPressed: expired ? null : _openBankApp,
+                    icon: const Icon(Icons.open_in_new, size: 18),
+                    label: Text(
+                      useRedirectMode ? 'Mở cổng VNPay' : 'Mở app ngân hàng',
+                      style: const TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w700,
                       ),
                     ),
                   ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 14),
-            if (canOpenBankApp)
+                ),
+              if (canOpenBankApp) const SizedBox(height: 6),
               SizedBox(
                 width: double.infinity,
-                height: 48,
-                child: FilledButton.icon(
-                  onPressed: expired ? null : _openBankApp,
-                  icon: const Icon(Icons.open_in_new, size: 18),
-                  label: Text(
-                    useRedirectMode ? 'Mở cổng VNPay' : 'Mở app ngân hàng',
-                    style: const TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
+                height: 44,
+                child: OutlinedButton(
+                  onPressed: () => _confirmClose(context),
+                  child: const Text('Đóng'),
                 ),
               ),
-            if (canOpenBankApp) const SizedBox(height: 6),
-            SizedBox(
-              width: double.infinity,
-              height: 44,
-              child: OutlinedButton(
-                onPressed: () => Navigator.of(context).maybePop(),
-                child: const Text('Đóng'),
-              ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
+  }
+
+  Future<void> _confirmClose(BuildContext context) async {
+    final confirmed = await confirmClosePendingPayment(context);
+    if (confirmed && context.mounted) {
+      Navigator.of(context).pop();
+    }
   }
 
   String _fmt(Duration d) {
@@ -328,221 +341,236 @@ class _BankTransferDialogState extends State<BankTransferDialog> {
       content: transferContent,
     );
 
-    return Dialog(
-      backgroundColor: colors.bgSurfaceElevated,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-      child: SingleChildScrollView(
-        padding: const EdgeInsets.fromLTRB(20, 20, 20, 16),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Row(
-              children: [
-                Icon(Icons.account_balance,
-                    size: 18, color: colors.brandSecondary),
-                const SizedBox(width: 6),
-                Text(
-                  'Chuyển khoản ngân hàng',
-                  style: TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w800,
-                    color: colors.textPrimary,
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 12),
-            // VietQR động — số tiền + nội dung đã được encode vào QR.
-            Container(
-              padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                color: colors.bgSurface,
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: colors.borderDefault),
-              ),
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(8),
-                child: CachedNetworkImage(
-                  imageUrl: qrUrl,
-                  width: 200,
-                  height: 200,
-                  fit: BoxFit.contain,
-                  placeholder: (_, __) => const SizedBox(
-                    width: 200,
-                    height: 200,
-                    child: Center(
-                        child: CircularProgressIndicator(strokeWidth: 2)),
-                  ),
-                  errorWidget: (_, __, ___) => SizedBox(
-                    width: 200,
-                    height: 200,
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(
-                          Icons.qr_code_2,
-                          size: 48,
-                          color: colors.textTertiary,
-                        ),
-                        const SizedBox(height: 8),
-                        Text(
-                          'Không tải được QR',
-                          style: TextStyle(
-                            fontSize: 11,
-                            fontWeight: FontWeight.w600,
-                            color: colors.textTertiary,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              'Quét QR — số tiền tự điền sẵn',
-              style: TextStyle(
-                fontSize: 11,
-                fontWeight: FontWeight.w600,
-                color: colors.textSecondary,
-              ),
-            ),
-            const SizedBox(height: 12),
-            if (bank.bankLogoUrl != null) ...[
-              ClipRRect(
-                borderRadius: BorderRadius.circular(6),
-                child: CachedNetworkImage(
-                  imageUrl: bank.bankLogoUrl!,
-                  width: 32,
-                  height: 32,
-                  fit: BoxFit.contain,
-                  errorWidget: (_, __, ___) => const SizedBox.shrink(),
-                ),
-              ),
-              const SizedBox(height: 8),
-            ],
-            _row(context,
-                label: 'Ngân hàng', value: bank.bankName, copyable: false),
-            _row(context, label: 'Số tài khoản', value: bank.accountNumber),
-            _row(context,
-                label: 'Tên người nhận',
-                value: bank.accountName,
-                copyable: false),
-            _row(context, label: 'Nội dung CK', value: transferContent),
-            _row(
-              context,
-              label: 'Số tiền',
-              value: VerifyFormat.priceVND(widget.session.totalAmount),
-              copyable: false,
-              valueColor: colors.textBrand,
-              valueWeight: FontWeight.w800,
-            ),
-            const SizedBox(height: 10),
-            Row(
-              children: [
-                Expanded(
-                  child: OutlinedButton.icon(
-                    onPressed: expired
-                        ? null
-                        : () => _copy('Số tài khoản', bank.accountNumber),
-                    icon: const Icon(Icons.content_copy, size: 16),
-                    label: const Text('Copy STK'),
-                  ),
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: OutlinedButton.icon(
-                    onPressed: expired
-                        ? null
-                        : () => _copy('Nội dung CK', transferContent),
-                    icon: const Icon(Icons.content_copy, size: 16),
-                    label: const Text('Copy nội dung'),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 10),
-            Container(
-              padding: const EdgeInsets.all(10),
-              decoration: BoxDecoration(
-                color: colors.brand.withValues(alpha: 0.08),
-                borderRadius: BorderRadius.circular(10),
-                border: Border.all(color: colors.brand.withValues(alpha: 0.2)),
-              ),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
+    return PaymentDialogPopScope(
+      isBankTransfer: true,
+      child: Dialog(
+        backgroundColor: colors.bgSurfaceElevated,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.fromLTRB(20, 20, 20, 16),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Row(
                 children: [
-                  Icon(Icons.schedule, size: 14, color: colors.brand),
+                  Icon(Icons.account_balance,
+                      size: 18, color: colors.brandSecondary),
                   const SizedBox(width: 6),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Đối soát thủ công có thể mất 1–3 giờ.',
-                          style: TextStyle(
-                            fontSize: 11,
-                            fontWeight: FontWeight.w700,
-                            color: colors.textPrimary,
-                          ),
-                        ),
-                        const SizedBox(height: 2),
-                        Text(
-                          'Bạn có thể đóng app — sẽ nhận thông báo khi '
-                          'xác nhận thành công. Nhập đúng nội dung CK.',
-                          style: TextStyle(
-                            fontSize: 10,
-                            fontWeight: FontWeight.w500,
-                            color: colors.textSecondary,
-                            height: 1.4,
-                          ),
-                        ),
-                      ],
+                  Text(
+                    'Chuyển khoản ngân hàng',
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w800,
+                      color: colors.textPrimary,
                     ),
                   ),
                 ],
               ),
-            ),
-            const SizedBox(height: 10),
-            Text(
-              expired
-                  ? 'Phiên đã hết hạn — vui lòng tạo phiên mới'
-                  : 'Phiên hết hạn sau ${formatPaymentCountdown(_remaining)}',
-              style: TextStyle(
-                fontSize: 10,
-                fontWeight: FontWeight.w600,
-                color: expired ? AppColors.coral700 : colors.textTertiary,
+              const SizedBox(height: 12),
+              // VietQR động — số tiền + nội dung đã được encode vào QR.
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: colors.bgSurface,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: colors.borderDefault),
+                ),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(8),
+                  child: CachedNetworkImage(
+                    imageUrl: qrUrl,
+                    width: 200,
+                    height: 200,
+                    fit: BoxFit.contain,
+                    placeholder: (_, __) => const SizedBox(
+                      width: 200,
+                      height: 200,
+                      child: Center(
+                          child: CircularProgressIndicator(strokeWidth: 2)),
+                    ),
+                    errorWidget: (_, __, ___) => SizedBox(
+                      width: 200,
+                      height: 200,
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(
+                            Icons.qr_code_2,
+                            size: 48,
+                            color: colors.textTertiary,
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            'Không tải được QR',
+                            style: TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w600,
+                              color: colors.textTertiary,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
               ),
-            ),
-            const SizedBox(height: 10),
-            SizedBox(
-              width: double.infinity,
-              height: 44,
-              child: FilledButton.icon(
-                onPressed: expired
-                    ? null
-                    : () {
-                        Navigator.of(context).maybePop();
-                        widget.onWaitAndClose?.call();
-                      },
-                icon: const Icon(Icons.notifications_active_outlined, size: 18),
-                label: const Text('Đóng và đợi'),
+              const SizedBox(height: 8),
+              Text(
+                'Quét QR — số tiền tự điền sẵn',
+                style: TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w600,
+                  color: colors.textSecondary,
+                ),
               ),
-            ),
-            const SizedBox(height: 6),
-            SizedBox(
-              width: double.infinity,
-              height: 44,
-              child: OutlinedButton(
-                onPressed: () => Navigator.of(context).maybePop(),
-                child: const Text('Đóng'),
+              const SizedBox(height: 12),
+              if (bank.bankLogoUrl != null) ...[
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(6),
+                  child: CachedNetworkImage(
+                    imageUrl: bank.bankLogoUrl!,
+                    width: 32,
+                    height: 32,
+                    fit: BoxFit.contain,
+                    errorWidget: (_, __, ___) => const SizedBox.shrink(),
+                  ),
+                ),
+                const SizedBox(height: 8),
+              ],
+              _row(context,
+                  label: 'Ngân hàng', value: bank.bankName, copyable: false),
+              _row(context, label: 'Số tài khoản', value: bank.accountNumber),
+              _row(context,
+                  label: 'Tên người nhận',
+                  value: bank.accountName,
+                  copyable: false),
+              _row(context, label: 'Nội dung CK', value: transferContent),
+              _row(
+                context,
+                label: 'Số tiền',
+                value: VerifyFormat.priceVND(widget.session.totalAmount),
+                copyable: false,
+                valueColor: colors.textBrand,
+                valueWeight: FontWeight.w800,
               ),
-            ),
-          ],
+              const SizedBox(height: 10),
+              Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton.icon(
+                      onPressed: expired
+                          ? null
+                          : () => _copy('Số tài khoản', bank.accountNumber),
+                      icon: const Icon(Icons.content_copy, size: 16),
+                      label: const Text('Copy STK'),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: OutlinedButton.icon(
+                      onPressed: expired
+                          ? null
+                          : () => _copy('Nội dung CK', transferContent),
+                      icon: const Icon(Icons.content_copy, size: 16),
+                      label: const Text('Copy nội dung'),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 10),
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: colors.brand.withValues(alpha: 0.08),
+                  borderRadius: BorderRadius.circular(10),
+                  border:
+                      Border.all(color: colors.brand.withValues(alpha: 0.2)),
+                ),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Icon(Icons.schedule, size: 14, color: colors.brand),
+                    const SizedBox(width: 6),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Đối soát thủ công có thể mất 1–3 giờ.',
+                            style: TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w700,
+                              color: colors.textPrimary,
+                            ),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            'Bạn có thể đóng app — sẽ nhận thông báo khi '
+                            'xác nhận thành công. Nhập đúng nội dung CK.',
+                            style: TextStyle(
+                              fontSize: 10,
+                              fontWeight: FontWeight.w500,
+                              color: colors.textSecondary,
+                              height: 1.4,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 10),
+              Text(
+                expired
+                    ? 'Phiên đã hết hạn — vui lòng tạo phiên mới'
+                    : 'Phiên hết hạn sau ${formatPaymentCountdown(_remaining)}',
+                style: TextStyle(
+                  fontSize: 10,
+                  fontWeight: FontWeight.w600,
+                  color: expired ? AppColors.coral700 : colors.textTertiary,
+                ),
+              ),
+              const SizedBox(height: 10),
+              SizedBox(
+                width: double.infinity,
+                height: 44,
+                child: FilledButton.icon(
+                  onPressed: expired
+                      ? null
+                      : () {
+                          Navigator.of(context).maybePop();
+                          widget.onWaitAndClose?.call();
+                        },
+                  icon:
+                      const Icon(Icons.notifications_active_outlined, size: 18),
+                  label: const Text('Đóng và đợi'),
+                ),
+              ),
+              const SizedBox(height: 6),
+              SizedBox(
+                width: double.infinity,
+                height: 44,
+                child: OutlinedButton(
+                  onPressed: () => _confirmClose(context),
+                  child: const Text('Đóng'),
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
+  }
+
+  Future<void> _confirmClose(BuildContext context) async {
+    final confirmed = await confirmClosePendingPayment(
+      context,
+      isBankTransfer: true,
+    );
+    if (confirmed && context.mounted) {
+      Navigator.of(context).pop();
+    }
   }
 
   Widget _row(

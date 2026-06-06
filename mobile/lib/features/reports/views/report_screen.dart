@@ -41,101 +41,242 @@ class ReportScreen extends ConsumerWidget {
         children: [
           _Header(period: params.period),
           Expanded(
-            child: reportAsync.when(
-              loading: () => const LoadingWidget(),
-              error: (e, _) => ErrorStateWidget(
-                message: e.toString().replaceAll('Exception: ', ''),
-                onRetry: () => ref.invalidate(reportDataProvider(params)),
-              ),
-              data: (report) => RefreshIndicator(
-                color: colors.brand,
-                onRefresh: () async =>
-                    ref.invalidate(reportDataProvider(params)),
-                child: ListView(
-                  padding: const EdgeInsets.fromLTRB(16, 12, 16, 80),
-                  children: [
-                    // ── Period selector ─────────────────────────────
-                    _PeriodSelector(
-                      current: params.period,
-                      onChanged: (p) {
-                        ref.read(selectedReportParamsProvider.notifier).state =
-                            params.copyWith(period: p);
-                      },
-                    ),
-                    const SizedBox(height: AppSpacing.md),
-
-                    // ── 4 KPI cards (revenue first, with delta) ─────
-                    _KpiGrid(report: report),
-                    const SizedBox(height: AppSpacing.md),
-
-                    // ── Revenue trend chart ─────────────────────────
-                    RevenueTrendChart(points: report.revenueByDay),
-                    const SizedBox(height: AppSpacing.md),
-
-                    // ── Day-of-week occupancy heatmap ───────────────
-                    DayOfWeekChart(data: report.dayOfWeekOccupancy),
-                    const SizedBox(height: AppSpacing.md),
-
-                    // ── Length of stay histogram ────────────────────
-                    LengthOfStayChart(distribution: report.lengthOfStay),
-                    const SizedBox(height: AppSpacing.md),
-
-                    // ── Status donut ─────────────────────────────────
-                    _SectionTitle(title: 'TRẠNG THÁI BOOKING'),
-                    const SizedBox(height: 8),
-                    StatusDonutChart(
-                      holdCount: report.holdCount,
-                      confirmedCount: report.confirmedCount,
-                      completedCount: report.completedCount,
-                      cancelledCount: report.cancelledCount,
-                    ),
-                    const SizedBox(height: AppSpacing.md),
-
-                    // ── Top rooms ───────────────────────────────────
-                    if (report.topRooms.isNotEmpty) ...[
-                      _SectionTitle(title: 'TOP PHÒNG DOANH THU'),
-                      const SizedBox(height: 8),
-                      _TopRoomsList(rooms: report.topRooms),
-                      const SizedBox(height: AppSpacing.md),
-                    ],
-
-                    // ── Đánh giá khách ──────────────────────────────
-                    _SectionTitle(title: 'ĐÁNH GIÁ KHÁCH'),
-                    const SizedBox(height: 8),
-                    PropertyRatingsSection(
-                      ratings: report.propertyRatings,
-                      reviews: report.recentReviews,
-                      overallAvgRating: report.overallAvgRating,
-                      overallTotalReviews: report.overallTotalReviews,
-                      overallDistribution: report.overallDistribution,
-                    ),
-                    // ── Criteria breakdown 6 tiêu chí ───────────────
-                    if (!report.overallBreakdown.isEmpty) ...[
-                      const SizedBox(height: 12),
-                      CriteriaBreakdownCard(breakdown: report.overallBreakdown),
-                    ],
-                    const SizedBox(height: AppSpacing.md),
-
-                    // ── Recent bookings (giữ nguyên) ────────────────
-                    _SectionTitle(title: 'BOOKING GẦN ĐÂY'),
-                    const SizedBox(height: 8),
-                    if (report.recentBookings.isEmpty)
-                      const EmptyStateWidget(
-                        icon: Icons.book_outlined,
-                        message: 'Chưa có booking nào',
-                      )
-                    else
-                      _PaginatedRecentBookings(
-                        key: ValueKey(report.recentBookings.length),
-                        bookings: report.recentBookings,
-                      ),
-                  ],
-                ),
-              ),
+            child: _buildBody(
+              context,
+              ref,
+              colors,
+              params,
+              reportAsync,
             ),
           ),
         ],
       ),
+    );
+  }
+
+  Widget _buildBody(
+    BuildContext context,
+    WidgetRef ref,
+    AppColorScheme colors,
+    ReportParams params,
+    AsyncValue<ReportData> reportAsync,
+  ) {
+    if (reportAsync.isLoading && !reportAsync.hasValue) {
+      return const ReportScreenSkeleton();
+    }
+
+    if (reportAsync.hasError && !reportAsync.hasValue) {
+      return ErrorStateWidget(
+        message: reportAsync.error.toString().replaceAll('Exception: ', ''),
+        onRetry: () => ref.invalidate(reportDataProvider(params)),
+      );
+    }
+
+    final report = reportAsync.value!;
+
+    return Stack(
+      children: [
+        RefreshIndicator(
+          color: colors.brand,
+          onRefresh: () async => ref.invalidate(reportDataProvider(params)),
+          child: ListView(
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 80),
+            children: [
+              _PeriodSelector(
+                current: params.period,
+                onChanged: (p) {
+                  ref.read(selectedReportParamsProvider.notifier).state =
+                      params.copyWith(period: p);
+                },
+              ),
+              const SizedBox(height: AppSpacing.md),
+              _SummaryStrip(period: params.period),
+              const SizedBox(height: AppSpacing.md),
+              _ReportSection(
+                title: 'Chỉ số chính',
+                subtitle: 'So sánh % với kỳ trước cùng độ dài',
+                child: _KpiGrid(report: report),
+              ),
+              const SizedBox(height: AppSpacing.md),
+              _ReportSection(
+                title: 'Xu hướng',
+                subtitle: 'Doanh thu, lấp đầy và booking theo ngày',
+                child: RevenueTrendChart(points: report.revenueByDay),
+              ),
+              const SizedBox(height: AppSpacing.md),
+              _ReportSection(
+                title: 'Phân tích lưu trú',
+                subtitle: 'Ngày trong tuần và độ dài lưu trú khách',
+                child: Column(
+                  children: [
+                    DayOfWeekChart(data: report.dayOfWeekOccupancy),
+                    const SizedBox(height: AppSpacing.md),
+                    LengthOfStayChart(distribution: report.lengthOfStay),
+                  ],
+                ),
+              ),
+              const SizedBox(height: AppSpacing.md),
+              _ReportSection(
+                title: 'Trạng thái booking',
+                subtitle: 'Hold · Xác nhận · Hoàn thành · Huỷ',
+                child: StatusDonutChart(
+                  holdCount: report.holdCount,
+                  confirmedCount: report.confirmedCount,
+                  completedCount: report.completedCount,
+                  cancelledCount: report.cancelledCount,
+                ),
+              ),
+              if (report.topRooms.isNotEmpty) ...[
+                const SizedBox(height: AppSpacing.md),
+                _ReportSection(
+                  title: 'Top phòng doanh thu',
+                  subtitle: 'Xếp hạng theo doanh thu trong kỳ',
+                  child: _TopRoomsList(rooms: report.topRooms),
+                ),
+              ],
+              const SizedBox(height: AppSpacing.md),
+              _ReportSection(
+                title: 'Đánh giá khách',
+                subtitle: 'Điểm trung bình và phản hồi gần đây',
+                child: PropertyRatingsSection(
+                  ratings: report.propertyRatings,
+                  reviews: report.recentReviews,
+                  overallAvgRating: report.overallAvgRating,
+                  overallTotalReviews: report.overallTotalReviews,
+                  overallDistribution: report.overallDistribution,
+                ),
+              ),
+              if (!report.overallBreakdown.isEmpty) ...[
+                const SizedBox(height: AppSpacing.sm),
+                CriteriaBreakdownCard(breakdown: report.overallBreakdown),
+              ],
+              const SizedBox(height: AppSpacing.md),
+              _ReportSection(
+                title: 'Booking gần đây',
+                subtitle: 'Danh sách mới nhất trong kỳ đã chọn',
+                child: report.recentBookings.isEmpty
+                    ? const EmptyStateWidget(
+                        icon: Icons.book_outlined,
+                        message: 'Chưa có booking nào',
+                      )
+                    : _PaginatedRecentBookings(
+                        key: ValueKey(report.recentBookings.length),
+                        bookings: report.recentBookings,
+                      ),
+              ),
+            ],
+          ),
+        ),
+        if (reportAsync.isLoading)
+          Positioned(
+            top: 0,
+            left: 0,
+            right: 0,
+            child: LinearProgressIndicator(
+              minHeight: 2,
+              color: colors.brand,
+              backgroundColor: colors.borderSubtle,
+            ),
+          ),
+      ],
+    );
+  }
+}
+
+// ─── Summary strip ─────────────────────────────────────────────────────────
+
+class _SummaryStrip extends StatelessWidget {
+  final ReportPeriod period;
+
+  const _SummaryStrip({required this.period});
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.colors;
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      decoration: BoxDecoration(
+        color: colors.bgSurfaceContainer,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: colors.borderDefault),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(Icons.insights_outlined, size: 18, color: colors.brandLight),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Tổng quan ${period.label.toLowerCase()}',
+                  style: GoogleFonts.beVietnamPro(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w700,
+                    color: colors.textPrimary,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  'Doanh thu từ booking xác nhận & hoàn thành. '
+                  'Mũi tên so với kỳ trước.',
+                  style: GoogleFonts.beVietnamPro(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w500,
+                    color: colors.textTertiary,
+                    height: 1.35,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    ).animate().fadeIn(duration: 260.ms);
+  }
+}
+
+// ─── Section wrapper ─────────────────────────────────────────────────────────
+
+class _ReportSection extends StatelessWidget {
+  final String title;
+  final String subtitle;
+  final Widget child;
+
+  const _ReportSection({
+    required this.title,
+    required this.subtitle,
+    required this.child,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.colors;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          title,
+          style: GoogleFonts.beVietnamPro(
+            fontSize: 15,
+            fontWeight: FontWeight.w800,
+            color: colors.textPrimary,
+          ),
+        ),
+        const SizedBox(height: 2),
+        Text(
+          subtitle,
+          style: GoogleFonts.beVietnamPro(
+            fontSize: 11,
+            fontWeight: FontWeight.w500,
+            color: colors.textTertiary,
+          ),
+        ),
+        const SizedBox(height: 10),
+        child,
+      ],
     );
   }
 }
@@ -233,8 +374,7 @@ class _Header extends ConsumerWidget {
                     gradient: const LinearGradient(
                         colors: [AppColors.jade500, AppColors.gold500]),
                     border: Border.all(
-                        color: Colors.white.withValues(alpha: 0.3),
-                        width: 1.5),
+                        color: Colors.white.withValues(alpha: 0.3), width: 1.5),
                   ),
                   child: Center(
                     child: Text(
@@ -280,8 +420,7 @@ class _PeriodSelector extends StatelessWidget {
             onTap: () => onChanged(p),
             child: AnimatedContainer(
               duration: const Duration(milliseconds: 180),
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
               decoration: BoxDecoration(
                 color: selected ? colors.brand : colors.bgSurfaceContainer,
                 borderRadius: BorderRadius.circular(100),
@@ -330,7 +469,10 @@ class _KpiGrid extends StatelessWidget {
                   report.revenue,
                   report.previousPeriod.revenue,
                 ),
-              ),
+              )
+                  .animate(delay: 0.ms)
+                  .fadeIn(duration: 260.ms)
+                  .slideY(begin: 0.06, end: 0, duration: 260.ms),
             ),
             const SizedBox(width: 10),
             Expanded(
@@ -343,7 +485,10 @@ class _KpiGrid extends StatelessWidget {
                   report.occupancyRate,
                   report.previousPeriod.occupancy,
                 ),
-              ),
+              )
+                  .animate(delay: 70.ms)
+                  .fadeIn(duration: 260.ms)
+                  .slideY(begin: 0.06, end: 0, duration: 260.ms),
             ),
           ],
         ),
@@ -361,7 +506,10 @@ class _KpiGrid extends StatelessWidget {
                   report.adr,
                   report.previousPeriod.adr,
                 ),
-              ),
+              )
+                  .animate(delay: 140.ms)
+                  .fadeIn(duration: 260.ms)
+                  .slideY(begin: 0.06, end: 0, duration: 260.ms),
             ),
             const SizedBox(width: 10),
             Expanded(
@@ -374,7 +522,10 @@ class _KpiGrid extends StatelessWidget {
                   report.totalBookings,
                   report.previousPeriod.bookings,
                 ),
-              ),
+              )
+                  .animate(delay: 210.ms)
+                  .fadeIn(duration: 260.ms)
+                  .slideY(begin: 0.06, end: 0, duration: 260.ms),
             ),
           ],
         ),
@@ -606,29 +757,6 @@ class _TopRoomRow extends StatelessWidget {
   }
 }
 
-// ─── Section title ────────────────────────────────────────────────────────
-
-class _SectionTitle extends StatelessWidget {
-  final String title;
-  const _SectionTitle({required this.title});
-
-  @override
-  Widget build(BuildContext context) {
-    final colors = context.colors;
-    return Text(
-      title,
-      style: GoogleFonts.beVietnamPro(
-        fontSize: 11,
-        fontWeight: FontWeight.w700,
-        letterSpacing: 1.2,
-        color: colors.textTertiary,
-      ),
-    );
-  }
-}
-
-// ─── Recent bookings (giữ nguyên logic cũ) ────────────────────────────────
-
 class _PaginatedRecentBookings extends StatefulWidget {
   final List<BookingModel> bookings;
   const _PaginatedRecentBookings({super.key, required this.bookings});
@@ -652,12 +780,16 @@ class _PaginatedRecentBookingsState extends State<_PaginatedRecentBookings> {
 
     return Column(
       children: [
-        ...pageItems.asMap().entries.map((e) => Padding(
-              padding: const EdgeInsets.only(bottom: 10),
-              child: _BookingRow(booking: e.value)
-                  .animate(delay: (e.key * 40).ms)
-                  .fadeIn(duration: 240.ms),
-            )),
+        ...pageItems.asMap().entries.map((e) {
+          final animated = Padding(
+            padding: const EdgeInsets.only(bottom: 10),
+            child: _BookingRow(booking: e.value),
+          );
+          if (e.key >= 5) return animated;
+          return animated
+              .animate(delay: (e.key * 50).ms)
+              .fadeIn(duration: 240.ms);
+        }),
         if (totalPages > 1) ...[
           const SizedBox(height: 8),
           AppPaginationBar(
