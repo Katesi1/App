@@ -13,10 +13,10 @@ class AdminTrialRepositoryImpl implements AdminTrialRepository {
   @override
   Future<TrialSnapshot> fetchSubscription(String userId) async {
     try {
-      final res =
-          await _dio.get(ApiConstants.adminUserSubscription(userId));
+      final res = await _dio.get(ApiConstants.adminUserSubscription(userId));
       final data = res.data['data'] as Map<String, dynamic>?;
-      if (data == null) throw Exception('Không lấy được thông tin subscription');
+      if (data == null)
+        throw Exception('Không lấy được thông tin subscription');
       // Backend có thể trả user object lồng bên trong hoặc flat
       final merged = <String, dynamic>{...data};
       return TrialSnapshot.fromJson(merged);

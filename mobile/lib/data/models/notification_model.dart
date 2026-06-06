@@ -6,12 +6,24 @@ enum NotificationType {
   system,
 }
 
+/// Loại hiển thị trong inbox `/notifications` (khách/chủ homestay).
+const inboxNotificationTypes = <NotificationType>[
+  NotificationType.booking,
+  NotificationType.payment,
+];
+
 extension NotificationTypeX on NotificationType {
   String get label => switch (this) {
         NotificationType.booking => 'Booking',
         NotificationType.payment => 'Thanh toán',
         NotificationType.system => 'Hệ thống',
       };
+
+  /// Inbox `/notifications` — chỉ booking + payment (khách/chủ homestay).
+  /// `system` thuộc **Lịch sử hệ thống** admin (`/admin/moderation-audit`).
+  bool get isInboxType =>
+      this == NotificationType.booking || this == NotificationType.payment;
+
 }
 
 class NotificationModel extends Equatable {

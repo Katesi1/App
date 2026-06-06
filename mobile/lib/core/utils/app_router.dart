@@ -3,10 +3,12 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../features/admin/views/admin_screen.dart';
 import '../../features/admin/views/admin_trial_screen.dart';
+import '../../features/admin/views/abuse_report_detail_screen.dart';
 import '../../features/admin/views/abuse_reports_screen.dart';
 import '../../features/admin/views/kyc_approval_detail_screen.dart';
 import '../../features/admin/views/kyc_approval_list_screen.dart';
 import '../../features/admin/views/moderation_audit_screen.dart';
+import '../../data/models/notification_model.dart';
 import '../../features/admin/views/role_permission_screen.dart';
 import '../../features/properties/views/property_management_screen.dart';
 import '../../features/admin/views/user_form_screen.dart';
@@ -46,6 +48,7 @@ import '../../features/profile/views/feedback_report_screen.dart';
 import '../../features/profile/views/force_update_screen.dart';
 import '../../features/profile/views/help_screen.dart';
 import '../../features/profile/views/my_tickets_screen.dart';
+import '../../features/profile/views/support_ticket_detail_screen.dart';
 import '../../features/profile/views/notification_preferences_screen.dart';
 import '../../features/profile/views/personal_info_screen.dart';
 import '../../features/profile/views/privacy_policy_screen.dart';
@@ -77,6 +80,7 @@ class _RouterRefreshNotifier extends ChangeNotifier {
 String? resolveRedirectPath({
   required AuthState authState,
   required String path,
+  Map<String, String> queryParameters = const {},
 }) {
   final isLoggedIn = authState.isLoggedIn;
   final isLoading = authState.isLoading;
@@ -112,6 +116,14 @@ String? resolveRedirectPath({
   if (legacyCustomerPaths.contains(path)) return '/dashboard';
 
   if (isPublic) return '/dashboard';
+
+  // `type=system` không thuộc inbox — admin → lịch sử hệ thống.
+  if (path == '/notifications' &&
+      queryParameters['type']?.toLowerCase() == 'system') {
+    if (user?.isAdmin ?? false) return '/admin/moderation-audit';
+    return '/notifications';
+  }
+
   if (user != null && !(user.isAdmin || user.isOwner)) {
     if (path.startsWith('/admin')) return '/dashboard';
   }
@@ -182,6 +194,7 @@ final routerProvider = Provider<GoRouter>((ref) {
       return resolveRedirectPath(
         authState: ref.read(authProvider),
         path: state.matchedLocation,
+        queryParameters: state.uri.queryParameters,
       );
     },
     routes: [
@@ -223,7 +236,11 @@ final routerProvider = Provider<GoRouter>((ref) {
         path: '/notifications',
         pageBuilder: (_, state) => slideUpPage(
           key: state.pageKey,
-          child: const NotificationScreen(),
+          child: NotificationScreen(
+            initialType: _inboxNotificationTypeFromQuery(
+              state.uri.queryParameters['type'],
+            ),
+          ),
         ),
         routes: [
           GoRoute(
@@ -308,6 +325,17 @@ final routerProvider = Provider<GoRouter>((ref) {
               key: state.pageKey,
               child: const MyTicketsScreen(),
             ),
+            routes: [
+              GoRoute(
+                path: ':id',
+                pageBuilder: (_, state) => slideUpPage(
+                  key: state.pageKey,
+                  child: SupportTicketDetailScreen(
+                    ticketId: state.pathParameters['id']!,
+                  ),
+                ),
+              ),
+            ],
           ),
           GoRoute(
             path: 'delete-account',
@@ -659,6 +687,17 @@ final routerProvider = Provider<GoRouter>((ref) {
           key: state.pageKey,
           child: const AbuseReportsScreen(),
         ),
+        routes: [
+          GoRoute(
+            path: ':id',
+            pageBuilder: (_, state) => slideUpPage(
+              key: state.pageKey,
+              child: AbuseReportDetailScreen(
+                reportId: state.pathParameters['id']!,
+              ),
+            ),
+          ),
+        ],
       ),
       GoRoute(
         path: '/admin/moderation-audit',
@@ -746,6 +785,14 @@ final routerProvider = Provider<GoRouter>((ref) {
     ),
   );
 });
+
+NotificationType? _inboxNotificationTypeFromQuery(String? value) {
+  if (value == null || value.isEmpty) return null;
+  for (final t in inboxNotificationTypes) {
+    if (t.name == value.toLowerCase()) return t;
+  }
+  return null;
+}
 
 /// Fallback khi mở `/reviews/:id/write` mà thiếu `bookingId` query param —
 /// route hợp lệ nhưng thiếu data, không nên crash.

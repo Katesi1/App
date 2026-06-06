@@ -17,9 +17,12 @@ import '../data/models/payment_session.dart';
 import '../data/models/plan.dart';
 import '../data/models/verify_enums.dart';
 import '../data/models/verify_state.dart';
+import '../data/models/payment_quote.dart';
 import '../utils/payment_close_confirm.dart';
 import '../utils/payment_awaiting_handler.dart';
+import '../utils/payment_error_handler.dart';
 import '../utils/payment_status_poller.dart';
+import '../utils/subscription_renew_validator.dart';
 import 'widgets/payment_dialogs.dart';
 import 'widgets/status_timeline.dart';
 import 'widgets/subscription_hero_card.dart';
@@ -76,6 +79,25 @@ class _SubscriptionDetailScreenState
   }
 
   Future<void> _handleRenew() async {
+    final user = ref.read(currentUserProvider);
+    if (user == null) return;
+
+    final ctx = _resolveRenewContext(user);
+    final validation = SubscriptionRenewValidator.validate(
+      user: user,
+      plan: ctx.plan,
+      quote: ctx.quote,
+      quoteLoading: ctx.quoteLoading,
+      quoteError: ctx.quoteError,
+    );
+
+    if (!validation.canTap) {
+      if (validation.blockMessage != null) {
+        showRenewBlockedMessage(context, validation.blockMessage!);
+      }
+      return;
+    }
+
     final method = await showModalBottomSheet<PaymentMethod>(
       context: context,
       backgroundColor: context.colors.bgSurfaceElevated,
@@ -86,29 +108,98 @@ class _SubscriptionDetailScreenState
     );
     if (method == null || !mounted) return;
 
+    final quote = ctx.quote;
+    final plan = ctx.plan;
+    if (quote == null || plan == null) {
+      showRenewBlockedMessage(
+        context,
+        'Chưa có báo giá gia hạn. Vui lòng đợi vài giây rồi thử lại.',
+      );
+      return;
+    }
+
     setState(() => _renewing = true);
+    final notifier = ref.read(verifyFlowControllerProvider.notifier);
     try {
-      final session = await ref
-          .read(verifyFlowControllerProvider.notifier)
-          .initiateRenewal(method);
+      final PaymentSession session;
+      if (validation.path == RenewPaymentPath.initiateSamePlan) {
+        notifier.selectPlan(plan, ctx.cycle, quote: quote);
+        session = await notifier.initiatePayment(method);
+      } else {
+        session = await notifier.initiateRenewal(method);
+      }
       if (!mounted) return;
       _openSessionDialog(session, method);
+    } on VerifyApiException catch (e) {
+      if (!mounted) return;
+      if (e.isNoActiveSubscription && user.isInTrial) {
+        try {
+          notifier.selectPlan(plan, ctx.cycle, quote: quote);
+          final session = await notifier.initiatePayment(method);
+          if (!mounted) return;
+          _openSessionDialog(session, method);
+          return;
+        } on VerifyApiException catch (retry) {
+          showPaymentApiError(context, retry);
+        }
+      } else {
+        showPaymentApiError(context, e);
+      }
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            'Tạo phiên gia hạn thất bại: '
-            '${e.toString().replaceAll('Exception: ', '')}',
-          ),
-          backgroundColor: context.colors.error,
-        ),
+      showRenewBlockedMessage(
+        context,
+        'Tạo phiên gia hạn thất bại. Vui lòng thử lại sau.',
       );
     } finally {
       if (mounted && !_awaitingReconcile) {
         setState(() => _renewing = false);
       }
     }
+  }
+
+  ({
+    Plan? plan,
+    BillingCycle cycle,
+    PaymentQuote? quote,
+    bool quoteLoading,
+    Object? quoteError,
+  }) _resolveRenewContext(UserModel user) {
+    final state = ref.read(verifyFlowControllerProvider);
+    final plansAsync = ref.read(verifyPlansProvider);
+    final tier = Plan.tierFromPlanId(user.subscriptionPlanId);
+    final catalogPlan = plansAsync.maybeWhen(
+      data: (plans) =>
+          tier != null ? PlanPriceCalculator.planFor(tier, plans) : null,
+      orElse: () => null,
+    );
+    final plan = catalogPlan ?? state.selectedPlan;
+    final cycle = _resolveCycle(state, user.subscriptionCycle);
+
+    PaymentQuote? quote;
+    var quoteLoading = false;
+    Object? quoteError;
+    if (user.subscriptionPlanId != null &&
+        user.subscriptionPlanId!.isNotEmpty &&
+        plan != null) {
+      final params = (
+        planId: user.subscriptionPlanId!,
+        cycle: cycle,
+        rooms: plan.rooms,
+      );
+      final quoteAsync = ref.read(paymentQuoteProvider(params));
+      quote = quoteAsync.whenOrNull(data: (q) => q);
+      quoteLoading = quoteAsync.isLoading;
+      quoteError = quoteAsync.whenOrNull(error: (e, _) => e);
+    }
+
+    return (
+      plan: plan,
+      cycle: cycle,
+      quote: quote,
+      quoteLoading: quoteLoading,
+      quoteError: quoteError,
+    );
   }
 
   void _openSessionDialog(PaymentSession session, PaymentMethod method) {
@@ -130,6 +221,7 @@ class _SubscriptionDetailScreenState
               ),
             );
           },
+          onCancelSession: _cancelPaymentSession,
         ),
       );
       setState(() => _awaitingReconcile = true);
@@ -192,6 +284,30 @@ class _SubscriptionDetailScreenState
     }
   }
 
+  Future<void> _cancelPaymentSession() async {
+    try {
+      await ref.read(verifyFlowControllerProvider.notifier).cancelPayment();
+      if (!mounted) return;
+      _stopPolling(clearFcm: true);
+      setState(() {
+        _renewing = false;
+        _awaitingReconcile = false;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'Huỷ phiên thất bại: '
+            '${e.toString().replaceAll('Exception: ', '')}',
+          ),
+          backgroundColor: context.colors.error,
+        ),
+      );
+      rethrow;
+    }
+  }
+
   Future<void> _handleBackWhilePending() async {
     if (!_awaitingReconcile) {
       if (context.canPop()) context.pop();
@@ -204,11 +320,12 @@ class _SubscriptionDetailScreenState
     );
     if (!confirmed || !mounted) return;
 
-    _stopPolling(clearFcm: true);
-    setState(() {
-      _renewing = false;
-      _awaitingReconcile = false;
-    });
+    try {
+      await _cancelPaymentSession();
+    } catch (_) {
+      return;
+    }
+    if (!mounted) return;
     if (context.canPop()) context.pop();
   }
 
@@ -348,17 +465,47 @@ class _SubscriptionDetailScreenState
     );
     final plan = catalogPlan ?? state.selectedPlan;
     final cycle = _resolveCycle(state, user.subscriptionCycle);
-    final total = plan == null ? 0 : PlanPriceCalculator.total(plan, cycle);
-    final canRenew = user.isInTrial ||
-        user.isSubscriptionActive ||
-        user.isSubscriptionPastDue;
+
+    PaymentQuoteParams? renewParams;
+    if (user.subscriptionPlanId != null &&
+        user.subscriptionPlanId!.isNotEmpty &&
+        plan != null) {
+      renewParams = (
+        planId: user.subscriptionPlanId!,
+        cycle: cycle,
+        rooms: plan.rooms,
+      );
+    }
+    final renewQuoteAsync = renewParams != null
+        ? ref.watch(paymentQuoteProvider(renewParams))
+        : null;
+    final renewPriceLabel = renewQuoteAsync?.when(
+          data: (q) => VerifyFormat.priceVND(q.totalAmount),
+          loading: () => '...',
+          error: (_, __) => '—',
+        ) ??
+        '—';
+    final displayCost = renewQuoteAsync?.when(
+          data: (q) => VerifyFormat.priceVND(q.totalAmount),
+          loading: () => '—',
+          error: (_, __) => plan?.hasFixedPrice == true ? '—' : 'Liên hệ',
+        ) ??
+        (plan?.hasFixedPrice == true ? '—' : 'Liên hệ');
+
+    final renewValidation = SubscriptionRenewValidator.validate(
+      user: user,
+      plan: plan,
+      quote: renewQuoteAsync?.whenOrNull(data: (q) => q),
+      quoteLoading: renewQuoteAsync?.isLoading ?? false,
+      quoteError: renewQuoteAsync?.whenOrNull(error: (e, _) => e),
+    );
     final planActionLabel = user.subscriptionPlanActionLabel;
     final planActionRoute = user.subscriptionPlanPickerRoute;
     final planActionIcon = user.hasEverPurchasedSubscription
         ? Icons.upgrade
         : Icons.shopping_cart_outlined;
     final timeline = _timelineSteps(user);
-    final metrics = _buildMetrics(user, plan, cycle, total);
+    final metrics = _buildMetrics(user, plan, cycle, displayCost);
 
     return PopScope(
       canPop: !_awaitingReconcile,
@@ -392,11 +539,23 @@ class _SubscriptionDetailScreenState
                   ),
                   const SizedBox(height: AppSpacing.md),
                 ],
+                if (user.hasPendingDowngrade &&
+                    user.pendingEffectiveAt != null) ...[
+                  StatusStrip(
+                    icon: Icons.trending_down,
+                    label: 'Đã đặt lịch hạ gói',
+                    subtitle:
+                        'Gói ${user.pendingPlanLabel} áp dụng từ '
+                        '${VerifyFormat.dateVN(user.pendingEffectiveAt!)}',
+                    variant: StatusStripVariant.brand,
+                  ),
+                  const SizedBox(height: AppSpacing.md),
+                ],
                 SubscriptionHeroCard(
                   user: user,
                   plan: plan,
                   billingCycle: cycle,
-                  totalPrice: total,
+                  costLabel: displayCost,
                 ),
                 const SizedBox(height: AppSpacing.md),
                 _sectionEntrance(
@@ -438,10 +597,10 @@ class _SubscriptionDetailScreenState
                     planActionLabel: planActionLabel,
                     planActionRoute: planActionRoute,
                     planActionIcon: planActionIcon,
-                    canRenew: canRenew,
+                    renewValidation: renewValidation,
                     renewing: _renewing,
                     plan: plan,
-                    total: total,
+                    renewPriceLabel: renewPriceLabel,
                     onRenew: _handleRenew,
                   ),
                 ),
@@ -469,7 +628,7 @@ class _SubscriptionDetailScreenState
     UserModel user,
     Plan? plan,
     BillingCycle cycle,
-    int total,
+    String costLabel,
   ) {
     final items = <({IconData icon, Color color, String label, String value})>[
       (
@@ -481,12 +640,22 @@ class _SubscriptionDetailScreenState
       (
         icon: Icons.payments_outlined,
         color: AppColors.jade300,
-        label: 'Chi phí',
-        value: plan == null
-            ? '—'
-            : (plan.hasFixedPrice ? VerifyFormat.priceVND(total) : 'Liên hệ'),
+        label: 'Chi phí / kỳ',
+        value: costLabel,
       ),
     ];
+
+    if (user.currentPeriodEnd != null) {
+      final days = user.periodDaysLeft ?? 0;
+      items.add((
+        icon: Icons.event_outlined,
+        color: AppColors.jade300,
+        label: 'Hết hạn kỳ',
+        value: days > 0
+            ? 'Còn $days ngày · ${VerifyFormat.dateVN(user.currentPeriodEnd!)}'
+            : VerifyFormat.dateVN(user.currentPeriodEnd!),
+      ));
+    }
 
     if (user.trialEndsAt != null) {
       items.add((
@@ -641,20 +810,20 @@ class _ActionsSection extends StatelessWidget {
   final String planActionLabel;
   final String planActionRoute;
   final IconData planActionIcon;
-  final bool canRenew;
+  final RenewValidation renewValidation;
   final bool renewing;
   final Plan? plan;
-  final int total;
+  final String renewPriceLabel;
   final VoidCallback onRenew;
 
   const _ActionsSection({
     required this.planActionLabel,
     required this.planActionRoute,
     required this.planActionIcon,
-    required this.canRenew,
+    required this.renewValidation,
     required this.renewing,
     required this.plan,
-    required this.total,
+    required this.renewPriceLabel,
     required this.onRenew,
   });
 
@@ -681,12 +850,14 @@ class _ActionsSection extends StatelessWidget {
             label: Text(planActionLabel),
           ),
         ),
-        if (canRenew) ...[
+        if (renewValidation.showRenewButton) ...[
           const SizedBox(height: AppSpacing.sm),
           SizedBox(
             height: 48,
             child: FilledButton.tonalIcon(
-              onPressed: renewing || plan == null ? null : onRenew,
+              onPressed: renewing || !renewValidation.canTap || plan == null
+                  ? null
+                  : onRenew,
               icon: renewing
                   ? SizedBox(
                       width: 14,
@@ -700,10 +871,22 @@ class _ActionsSection extends StatelessWidget {
               label: Text(
                 renewing
                     ? 'Đang tạo phiên...'
-                    : 'Gia hạn ngay (${VerifyFormat.priceVND(total)})',
+                    : 'Gia hạn ngay ($renewPriceLabel)',
               ),
             ),
           ),
+          if (renewValidation.disabledHint != null) ...[
+            const SizedBox(height: 6),
+            Text(
+              renewValidation.disabledHint!,
+              style: TextStyle(
+                fontSize: 11,
+                fontWeight: FontWeight.w500,
+                color: colors.textTertiary,
+                height: 1.35,
+              ),
+            ),
+          ],
         ],
         const SizedBox(height: AppSpacing.sm),
         SizedBox(

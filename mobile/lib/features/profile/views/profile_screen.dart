@@ -163,7 +163,7 @@ class ProfileScreen extends ConsumerWidget {
                       _MenuItemData(
                         icon: Icons.notifications_active_outlined,
                         label: 'Tùy chọn thông báo',
-                        subtitle: 'Booking, thanh toán, hệ thống',
+                        subtitle: 'Booking và thanh toán',
                         iconColor: colors.brand,
                         onTap: () => context.push('/profile/notifications'),
                       ),
@@ -187,6 +187,20 @@ class ProfileScreen extends ConsumerWidget {
                         subtitle: 'Chính sách bảo vệ dữ liệu',
                         iconColor: colors.textSecondary,
                         onTap: () => context.push('/profile/privacy'),
+                      ),
+                      _MenuItemData(
+                        icon: Icons.verified_user_outlined,
+                        label: 'Quyền đồng ý dữ liệu',
+                        subtitle: 'KYC (khóa server) & marketing',
+                        iconColor: colors.brand,
+                        onTap: () => context.push('/profile/consent'),
+                      ),
+                      _MenuItemData(
+                        icon: Icons.download_outlined,
+                        label: 'Yêu cầu dữ liệu cá nhân',
+                        subtitle: 'Xuất bản sao dữ liệu tài khoản',
+                        iconColor: colors.brandSecondary,
+                        onTap: () => context.push('/profile/data-request'),
                       ),
                       _MenuItemData(
                         icon: Icons.gavel_outlined,

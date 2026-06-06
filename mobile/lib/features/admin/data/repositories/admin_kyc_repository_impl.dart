@@ -40,8 +40,8 @@ class AdminKycRepositoryImpl implements AdminKycRepository {
       },
     );
     final dataBlock = res.data['data'] as Map<String, dynamic>?;
-    final items = ((dataBlock?['items'] as List?) ?? [])
-        .cast<Map<String, dynamic>>();
+    final items =
+        ((dataBlock?['items'] as List?) ?? []).cast<Map<String, dynamic>>();
     return items.map(_listItemToSubmission).toList();
   }
 
@@ -79,7 +79,6 @@ class AdminKycRepositoryImpl implements AdminKycRepository {
       throw Exception(parseDioError(e));
     }
   }
-
 
   @override
   Future<KYCSubmission> reject(

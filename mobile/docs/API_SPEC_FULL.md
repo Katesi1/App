@@ -3,7 +3,7 @@
 > Tài liệu chính thức cho team FE Web (Next.js admin/host) và App Mobile (Android/iOS).
 > Bao gồm tất cả endpoint, schema response, business rule, WebSocket guide và integration checklist.
 >
-> **Cập nhật**: 2026-06-05 (v1.7 — **BREAKING**: auth response không còn trả `user`, xem §2.3) · **BE base**: NestJS 11 · **DB**: PostgreSQL + Prisma · **Auth**: JWT · **Real-time**: Socket.IO
+> **Cập nhật**: 2026-06-05 (v1.8 — thêm §2A Authorization rules đầy đủ cho FE) · **BE base**: NestJS 11 · **DB**: PostgreSQL + Prisma · **Auth**: JWT · **Real-time**: Socket.IO
 
 ---
 
@@ -11,6 +11,7 @@
 
 1. [Quy ước chung](#1-quy-ước-chung)
 2. [Auth & RBAC](#2-auth--rbac)
+2A. [**Phân quyền & Authorization — ĐỌC TRƯỚC KHI WIRE**](#2a-phân-quyền--authorization--quy-tắc-tổng)
 3. [Users](#3-users)
 4. [Properties](#4-properties)
 5. [Bookings](#5-bookings)
@@ -280,6 +281,11 @@ state.setUser(user.data);
     "subscriptionFrozenReason": null,
     "trialEndsAt": "2026-06-12T15:32:13.062Z",
     "nextChargeAt": "2026-06-12T15:32:13.062Z",
+    "currentPeriodStart": "2026-06-06T00:00:00.000Z",
+    "currentPeriodEnd": "2026-07-06T00:00:00.000Z",
+    "pendingPlanId": null,
+    "pendingCycle": null,
+    "pendingEffectiveAt": null,
     "permissions": [],
     "createdAt": "2026-06-05T15:21:20.741Z",
     "updatedAt": "2026-06-05T15:39:23.505Z"
@@ -310,6 +316,283 @@ Với ADMIN/OWNER/CUSTOMER → `permissions: []` (mảng rỗng, KHÔNG phải `
 ### 2.7 Device anti-spam
 
 Backend chặn quá 3 account tạo cùng 1 device trong 24h (dựa trên `User-Agent` + IP). App nên gắn UA ổn định.
+
+---
+
+## 2A. Phân quyền & Authorization — Quy tắc tổng
+
+> **Đọc kỹ section này trước khi gọi bất kỳ endpoint nào.** FE đôi khi gặp 401/403 không hiểu vì sao — câu trả lời đa số nằm ở đây.
+
+### 2A.1 Ba lớp guard BE chạy theo thứ tự
+
+Mọi request đi qua 3 lớp kiểm tra:
+
+| # | Guard | Check gì | Fail → Status |
+|---|---|---|---|
+| 1 | `JwtAuthGuard` | Có token Bearer hợp lệ không, user còn active không, chưa bị banned không | **401 Unauthorized** |
+| 2 | `RolesGuard` | Role user có trong whitelist `@Roles(...)` không | **403 Forbidden** |
+| 3 | `PermissionGuard` | SALE có row `UserPermission` tương ứng với `@Permission(module, action)` không | **403 Forbidden** |
+
+Ngoài 3 lớp guard, **trong service** còn check thêm:
+- KYC required (cho OWNER thao tác property/booking)
+- Subscription active required (block khi past_due/frozen)
+- Ownership scope (OWNER A không xem được data của OWNER B)
+- Resource state (vd: booking đang HOLD mới confirm được)
+
+### 2A.2 Khi nào status 401 vs 403
+
+| HTTP | Ý nghĩa | Khi nào FE thấy |
+|---|---|---|
+| **401** | Token sai/hết hạn/account disabled | Token hết hạn 15 phút → tự refresh. User bị admin ban → logout hẳn |
+| **403** | Token OK, nhưng role/permission không cho phép | OWNER cố vào `/users` → bị chặn, hiển thị toast "Bạn không có quyền" |
+| **404** | Resource không tồn tại HOẶC tồn tại nhưng không thuộc về caller | OWNER A xem property của OWNER B → trả 404 (giả vờ không có, tránh leak) |
+
+FE flow xử lý 401 (đã document §1.7):
+- Tự gọi `/auth/refresh` → retry request gốc
+- Refresh fail → logout về login
+
+FE flow xử lý 403:
+- Không retry — không có cách auto-fix
+- Toast `message` từ response BE (đã dịch theo locale)
+
+### 2A.3 Bảng tổng — Role nào vào endpoint nào
+
+#### A. Public endpoints (không cần login)
+
+| Endpoint | Mục đích |
+|---|---|
+| `POST /auth/register, /login, /google, /apple, /refresh, /forgot-password, /reset-password` | Auth flow |
+| `GET /properties/public` | Khách tìm cơ sở |
+| `GET /properties/share/:id` | Trang share link |
+| `GET /calendar/public-grid` | Khách xem lịch trống |
+| `GET /calendar/admin-contact` | Khách xem SĐT admin |
+| `GET /billing/plans` | Khách xem giá gói |
+| `GET /app/version` | Mobile force-update check |
+| `POST /leads` (rate limit 10/phút/IP) | Form contact public |
+| `GET /staff/invites/verify/:token` | Verify invite link |
+| `POST /staff/invites/accept` | Accept invite tạo SALE |
+| `POST /payments/bank-webhook` | Webhook Sepay/Casso (auth qua secret header) |
+| `GET /partner/*` (qua `X-Partner-Key`) | Đối tác OTA |
+
+#### B. Authenticated (bất kỳ role nào)
+
+| Endpoint | Mục đích |
+|---|---|
+| `GET /auth/profile, POST /auth/logout, POST /auth/change-password` | Profile self-service |
+| `PUT /users/:id` (chỉ chính mình, ADMIN sửa được người khác) | Update profile |
+| `DELETE /users/me` | Self-delete GDPR |
+| `GET /properties/:id` (cơ sở approved) | Xem detail |
+| `POST /devices, DELETE /devices/:token, GET /devices` | FCM token management |
+| `GET /notifications, /unread-count, PATCH /:id/read, /read-all` | Inbox |
+| `POST /uploads` (rate 30/phút) | Upload file |
+
+#### C. CUSTOMER only
+
+| Endpoint | Mục đích |
+|---|---|
+| `POST /bookings/customer-hold` | Đặt phòng 24h |
+| `GET /bookings/my-bookings` | Lịch sử đặt |
+| `PATCH /bookings/:id/customer-cancel` | Huỷ HOLD của mình |
+| `POST /properties/:id/reviews` | Review sau khi COMPLETED |
+
+#### D. OWNER + SALE (manager)
+
+| Endpoint | Mục đích |
+|---|---|
+| `GET, POST, PATCH, DELETE /properties` | CRUD cơ sở của team |
+| `POST /properties/:id/images, /:id/prices` | Upload ảnh, set giá |
+| `GET /bookings` | List booking team |
+| `POST /bookings/hold` | Staff hold 30 phút |
+| `PATCH /bookings/:id/confirm, /paid, /cancel, PUT /:id` | Quản lý booking |
+| `GET /calendar/grid, /properties` | Lịch nội bộ |
+| `POST /calendar/lock, /sold, /bulk, DELETE /calendar/lock` | Khoá ngày |
+| `GET /dashboard/stats, /reports` | KPI |
+| `GET /leads` | List lead của team |
+| `POST /payments/initiate, /renew` (OWNER only) | Mua gói |
+| `GET /payments/active, POST /payments/:id/cancel` (OWNER only) | Rehydrate / huỷ session pending |
+| `GET /subscriptions/me` | Xem gói team |
+
+> SALE còn cần row `UserPermission` cho từng module — xem §2A.4.
+
+#### E. OWNER only (không SALE)
+
+| Endpoint | Mục đích |
+|---|---|
+| `POST /kyc/upload-cccd-front, /-back, /-selfie, /submit, /:id/resubmit` | KYC định danh |
+| `GET /kyc/status` | Xem trạng thái KYC |
+| `POST /staff/invites, GET /staff/invites, DELETE /staff/invites/:id` | Mời SALE |
+| `GET /staff, DELETE /staff/:userId` | Quản lý team |
+| `POST /users/my-staff, DELETE /users/my-staff/:id` | Thêm/gỡ SALE đã có account |
+| `POST /properties/:id/reviews/:reviewId/reply` | Reply review (ADMIN cũng được) |
+
+#### F. ADMIN only (toàn quyền hệ thống)
+
+| Endpoint | Mục đích |
+|---|---|
+| `GET /users (toàn hệ), POST /users` | Quản trị user |
+| `POST /users/:id/ban, /unban, /revoke-sessions, /reset-password` | Moderation |
+| `PATCH /users/:id/role, /:id/kyc-bypass` | Đổi role, cấp bypass |
+| `DELETE /users/:id` | Xoá user |
+| `POST /properties/:id/approve, /reject, /suspend` | Moderation cơ sở |
+| `GET /admin/kyc/queue, /count-pending` | Queue KYC |
+| `POST /admin/kyc/submissions/:id/approve, /reject` | Duyệt KYC |
+| `GET /admin/subscriptions, /count-overdue, /sum-paid` | Báo cáo subscription |
+| `GET /admin/users/:id/subscription` | Snapshot |
+| `POST /admin/users/:id/trial, DELETE /trial` | Cấp/thu hồi trial |
+| `PATCH /admin/users/:id/subscription/price` | Set giá custom |
+| `POST /admin/users/:id/subscription/mark-paid, /freeze, /unfreeze` | Quản lý gói |
+| `GET /admin/payments, POST /admin/payments/:id/mark-paid` | Manual reconcile bank |
+| `GET /admin/disputes, /count-active, /:id` | Quản lý dispute |
+| `POST /admin/disputes/:id/investigate, /resolve, /reject` | Xét xử |
+| `GET /admin/reviews, /count-flagged, /:reviewId` | Moderation review |
+| `DELETE /admin/reviews/:reviewId, POST /restore` | Ẩn/khôi phục |
+| `GET /admin/audit-log` | Nhật ký kiểm toán |
+| `GET /admin/emails/templates, POST /admin/emails/test` | Email template |
+| `POST /admin/app-version` | Set version mobile |
+| `GET, PUT /permissions/:userId` | Cấu hình quyền SALE |
+| Tất cả endpoint của các role khác | ADMIN bypass (xem các property bất kỳ, gỡ booking bất kỳ, v.v.) |
+
+### 2A.4 Permission cho SALE — Lớp thứ 4
+
+OWNER có thể giới hạn SALE qua bảng `UserPermission` (đã có UI hoặc qua `PUT /permissions/:userId`).
+
+4 module có thể cấu hình:
+- `properties` — CRUD cơ sở
+- `bookings` — CRUD booking
+- `calendar` — Khoá/mở ngày
+- `reviews` — Reply / quản lý review
+
+Mỗi module có 4 action: `canCreate, canRead, canUpdate, canDelete`.
+
+**Mặc định khi accept invite** (BE tự seed):
+
+| Module | canCreate | canRead | canUpdate | canDelete |
+|---|:---:|:---:|:---:|:---:|
+| properties | ❌ | ✅ | ❌ | ❌ |
+| bookings | ✅ | ✅ | ✅ | ❌ |
+| calendar | ✅ | ✅ | ✅ | ✅ |
+| reviews | ❌ | ✅ | ✅ | ❌ |
+
+OWNER có thể nâng/giảm quyền sau qua `PUT /permissions/:userId`.
+
+> SALE thiếu permission cụ thể → endpoint trả **403 Forbidden** với message rõ.
+
+### 2A.5 Điều kiện business — Bị block ngoài role/permission
+
+Ngoài 3 lớp guard, BE còn từ chối request trong service nếu:
+
+#### KYC required
+
+| Điều kiện | Áp dụng cho |
+|---|---|
+| User role=OWNER, `kycStatus !== "approved"`, `kycBypass=false` | Tạo/sửa property, mời SALE |
+| → Trả 403 với `msg.kyc.propertyRequiresKyc` |  |
+
+ADMIN có thể cấp `kycBypass=true` qua `PATCH /users/:id/kyc-bypass` để skip KYC.
+
+#### Subscription active required
+
+| Điều kiện | Áp dụng cho |
+|---|---|
+| `subscriptionStatus IN ('past_due', 'expired', 'frozen', 'cancelled')` | Mời SALE mới, tạo property mới (có thể vẫn xem/sửa cũ) |
+| `subscriptionStatus = 'frozen'` | Hầu hết thao tác business — admin can thiệp |
+
+OWNER xem được subscription detail qua `GET /subscriptions/me` → FE hiển thị banner "Gia hạn ngay" để user mua lại.
+
+#### Account banned
+
+| Điều kiện | Áp dụng cho |
+|---|---|
+| `User.bannedAt != null` hoặc `isActive=false` | Tất cả endpoint — login fail, refresh token bị xoá |
+| → Trả 401 với `msg.auth.accountDisabled` |  |
+
+#### Ownership scope (silent 404)
+
+OWNER A không thấy được property/booking/lead của OWNER B → BE trả 404 (thay vì 403) để KHÔNG leak sự tồn tại của data đó.
+
+SALE thấy được data của OWNER mình (qua `ownerId`).
+
+ADMIN bypass tất cả ownership check.
+
+#### Resource state
+
+Một số action chỉ hợp lệ ở state nhất định:
+
+| Action | State yêu cầu | Trả lỗi nếu sai |
+|---|---|---|
+| `PATCH /bookings/:id/confirm` | Booking đang HOLD | 400 `onlyConfirmHold` |
+| `PATCH /bookings/:id/customer-cancel` | Booking đang HOLD và thuộc customer | 400 `onlyCancelHold` hoặc `notYourBooking` |
+| `POST /properties/:id/reviews` | Có booking COMPLETED tương ứng và chưa review | 400 `bookingNotCompleted` hoặc 409 `alreadyReviewed` |
+| `POST /admin/disputes/:id/resolve` | Dispute đang pending/investigating | 400 `alreadyClosed` |
+| `POST /admin/subscriptions/.../mark-paid` | Trong 10 giây vừa rồi chưa có mark-paid khác | 409 `markPaidDuplicate` (chống double-click) |
+| `POST /admin/users/:id/trial` | User KHÔNG đang ACTIVE và KHÔNG đang FROZEN | 409 `alreadyActive` hoặc `cannotGrantTrialFrozen` |
+
+### 2A.6 Special case — Endpoint cho phép nhiều role nhưng behavior khác nhau
+
+#### `GET /properties`
+
+| Role | Hành vi |
+|---|---|
+| ADMIN | Xem tất cả property toàn hệ thống. Cần `?includeInactive=true` để thấy inactive |
+| OWNER | Tự động thấy property của mình kể cả pending/rejected/suspended (KHÔNG cần `?includeInactive`) |
+| SALE | Tự động thấy property của OWNER mình kể cả pending/rejected/suspended |
+
+#### `GET /staff/invites`, `GET /staff`
+
+| Role | Hành vi |
+|---|---|
+| OWNER | Chỉ thấy invite/staff của mình |
+| ADMIN | Thấy tất cả. Có thể filter theo `?ownerId=` |
+
+#### `POST /staff/invites`
+
+| Role | Hành vi |
+|---|---|
+| OWNER | Tự tạo invite cho team mình |
+| ADMIN | Tạo invite **thay mặt** OWNER — phải truyền `ownerId` trong body |
+
+#### `POST /disputes`
+
+ACL:
+- OWNER/SALE của property
+- CUSTOMER của booking
+- ADMIN luôn được
+
+Khác → 403.
+
+#### `GET /admin/audit-log`
+
+ADMIN only. Nhưng audit log **tự ghi** khi admin thực hiện action — FE/client KHÔNG được gọi endpoint POST log (không tồn tại).
+
+### 2A.7 Bypass đặc biệt
+
+| Role | Bypass |
+|---|---|
+| ADMIN | Bypass tất cả check ownership. Tham gia conversation chat bất kỳ để moderate. Xem inactive property/banned user/hidden review |
+| `User.kycBypass=true` | OWNER skip KYC requirement. Chỉ ADMIN cấp được |
+
+### 2A.8 Các status mã chống nhầm lẫn
+
+| Status | Có nghĩa | Lý do thường gặp |
+|---|---|---|
+| 401 | Unauthorized | Token sai/hết hạn, account disabled, account banned |
+| 403 | Forbidden | Role không cho phép, hoặc SALE thiếu permission, hoặc KYC chưa approved, hoặc subscription frozen |
+| 404 | Not found | Resource không tồn tại HOẶC tồn tại nhưng không thuộc về caller (silent) |
+| 409 | Conflict | Race condition, duplicate, hoặc state transition không hợp lệ |
+| 410 | Gone | Token đã dùng / đã expired (vd: staff invite token) |
+| 429 | Rate limited | Quá quota — đợi và retry |
+| 422 | Validation | Input không hợp lệ (giống 400, nhưng nhiều BE/lib dùng 422 riêng) |
+
+### 2A.9 Checklist FE khi wire 1 endpoint mới
+
+Trước khi wire 1 endpoint, hỏi 4 câu:
+
+1. **Endpoint này public hay cần auth?** → xem cột "Auth" trong bảng endpoint
+2. **Role nào được vào?** → xem `@Roles(...)` hoặc tra trong §2A.3
+3. **Có cần permission cho SALE không?** → xem `@Permission(module, action)` — nếu có thì SALE phải có row UserPermission
+4. **Có business rule khác không?** → KYC approved? Subscription active? Resource state?
+
+Nếu FE thấy 403 → check 4 điểm trên, thường ra ngay nguyên nhân.
 
 ---
 
@@ -490,6 +773,11 @@ Status: `0=HOLD, 1=CONFIRMED, 2=CANCELLED, 3=COMPLETED`
 
 Body optional: `{ amount? }`. Nếu bỏ trống → BE dùng `totalAmount` hoặc `depositAmount`. Nếu booking đang HOLD → tự chuyển sang CONFIRMED + clear `holdExpireAt`.
 
+> **Phân biệt luồng thanh toán** (FE đa nền tảng phải wire đúng):
+> - `PATCH /bookings/:id/paid` — **OWNER/SALE ghi nhận tiền cọc/tiền phòng của KHÁCH** (chuyển khoản tay, tiền mặt, thanh toán offline). Chỉ ảnh hưởng `Booking.paymentStatus`.
+> - `POST /payments/initiate` (§10.2) — **OWNER mua/gia hạn gói subscription của hệ thống Halong24h** (VietQR). Tạo `PaymentSession`, không liên quan booking khách.
+> - 2 endpoint này không thay thế nhau. Dùng đúng theo use case.
+
 ---
 
 ## 6. Calendar
@@ -501,13 +789,21 @@ Base path: `/calendar`.
 | Method | Path | Auth | Mô tả |
 |---|---|---|---|
 | `GET` | `/calendar/properties?type&ownerId` | Bearer | List properties cho calendar |
-| `GET` | `/calendar/public-grid?startDate&endDate&propertyId&type` | Public | Master calendar không cần auth |
-| `GET` | `/calendar/grid?startDate&endDate&propertyId&type` | Bearer | Same nhưng kèm note (tên khách) |
-| `POST` | `/calendar/lock` | Bearer | `{ propertyId, date, status? }` |
-| `DELETE` | `/calendar/lock` | Bearer | `{ propertyId, date }` |
-| `PATCH` | `/calendar/sold` | Bearer | `{ propertyId, date }` |
+| `GET` | `/calendar/public-grid?startDate&endDate&propertyId?&propertyIds?&type?` | Public | Master calendar không cần auth |
+| `GET` | `/calendar/grid?startDate&endDate&propertyId?&propertyIds?&type?` | Bearer | Same nhưng kèm note (tên khách) |
+| `POST` | `/calendar/lock` | Bearer | `{ propertyId, date, status? }` → `{ message, data: null }` |
+| `DELETE` | `/calendar/lock` | Bearer | `{ propertyId, date }` → `{ message, data: null }` |
+| `PATCH` | `/calendar/sold` | Bearer | `{ propertyId, date }` → `{ message, data: null }` |
 | `POST` | `/calendar/bulk` | Bearer | `{ mode: "lock"\|"unlock", items: [{propertyId, date}] }` (≤100 items) |
 | `GET` | `/calendar/admin-contact` | Public | Phone/email admin để khách liên hệ |
+
+**Query params (grid / public-grid):**
+
+- `startDate`, `endDate` (YYYY-MM-DD, required)
+- `propertyId` (UUID, optional) — chọn 1 property
+- `propertyIds` (optional) — chọn nhiều property cùng lúc. Chấp nhận **CSV** (`?propertyIds=uuid1,uuid2`) **hoặc** array repeat (`?propertyIds=uuid1&propertyIds=uuid2`)
+- `type` (optional, number) — filter theo loại property
+- Nếu không truyền `propertyId` và `propertyIds` → trả tất cả properties của user (grid) hoặc tất cả properties đang hoạt động (public-grid)
 
 ### 6.2 Grid response
 
@@ -583,6 +879,170 @@ Status string: `available | hold | booked | locked`.
   "createdAt": "...", "updatedAt": "..."
 }
 ```
+
+---
+
+## 7A. Dashboard & Reports
+
+Endpoints KPI cho Owner/Sale/Admin. Auth: Bearer. Roles: ADMIN, OWNER, SALE.
+
+### 7A.1 Endpoints
+
+| Method | Path | Mô tả |
+|---|---|---|
+| `GET` | `/dashboard/stats` | KPI realtime tổng quan hôm nay (occupancy, doanh thu hôm nay/tháng, checkout today) |
+| `GET` | `/reports?period&from&to&month?&year?` | Báo cáo mở rộng theo kỳ — KPI, trend, top rooms, ratings, reviews |
+
+**Scope dữ liệu:**
+- **OWNER**: chỉ property của mình
+- **SALE**: theo `ownerId` được gán (auto-resolve qua `getEffectiveOwnerId`)
+- **ADMIN**: toàn hệ thống
+
+### 7A.2 GET /reports — Query params
+
+| Param | Bắt buộc | Giá trị | Ghi chú |
+|---|---|---|---|
+| `period` | optional | `today` \| `week` \| `month` \| `year` \| `custom` | Mặc định `month`. Timezone server (Asia/Ho_Chi_Minh) |
+| `from` | **bắt buộc khi `period=custom`** | `YYYY-MM-DD` | Ngày bắt đầu (inclusive) |
+| `to` | **bắt buộc khi `period=custom`** | `YYYY-MM-DD` | Ngày kết thúc (inclusive) |
+| `month` | legacy optional | 1–12 | Tương thích API cũ |
+| `year` | legacy optional | YYYY | Tương thích API cũ |
+
+**Định nghĩa kỳ:**
+
+| `period` | Khoảng |
+|---|---|
+| `today` | 00:00 → 24:00 hôm nay |
+| `week` | Tuần hiện tại, **Monday-based** (T2 00:00 → T2 tuần sau 00:00) |
+| `month` | Tháng dương lịch hiện tại |
+| `year` | Năm dương lịch hiện tại |
+| `custom` | `[from 00:00, to 23:59]` inclusive |
+
+**`previousPeriod`** = kỳ ngay trước cùng độ dài. `custom` N ngày → N ngày trước `from`.
+
+### 7A.3 Validation 400 (mới v1.10)
+
+| Rule | i18n key | Message vi |
+|---|---|---|
+| `period=custom` thiếu `from` hoặc `to` | `dashboard.missingDateRange` | "Vui lòng cung cấp from và to khi dùng period=custom" |
+| `from >= to` hoặc date parse fail | `dashboard.invalidDateRange` | "Ngày from phải trước ngày to" |
+| `to` ở tương lai (sau cuối ngày hôm nay) | `dashboard.toInFuture` | "Ngày to không được ở tương lai" |
+| `period` không thuộc 5 giá trị hợp lệ | `dashboard.invalidPeriod` | "Giá trị period không hợp lệ (today \| week \| month \| year \| custom)" |
+
+### 7A.4 Response data shape
+
+```jsonc
+{
+  "success": true,
+  "message": "Lấy dữ liệu báo cáo thành công",
+  "data": {
+    // ─── KPI (4 ô đầu) ───
+    "revenue": 15000000,            // VND tổng kỳ
+    "adr": 850000,                  // Average Daily Rate
+    "occupancyRate": 72.5,          // 0..100 (%) — top-level scale
+    "totalBookings": 42,
+
+    // ─── Donut (status counts trong kỳ) ───
+    "holdCount": 3,                 // status=0
+    "confirmedCount": 10,           // status=1
+    "cancelledCount": 4,            // status=2
+    "completedCount": 25,           // status=3
+
+    // ─── So sánh kỳ trước ───
+    "previousPeriod": {
+      "revenue": 12000000,
+      "bookings": 38,
+      "occupancy": 65.0,            // 0..100
+      "adr": 800000
+    },
+
+    // ─── Chart xu hướng (1 điểm/ngày) ───
+    "revenueByDay": [
+      {
+        "date": "2026-06-01",
+        "revenue": 500000,
+        "bookings": 2,
+        "occupancy": 0.75           // 0..1 — chart scale
+      }
+    ],
+
+    // ─── Top phòng (top 5 theo revenue) ───
+    "topRooms": [
+      {
+        "roomId": "uuid",
+        "name": "Phòng 101",
+        "coverImage": "https://...",
+        "revenue": 3000000,
+        "bookings": 8,
+        "occupancy": 0.8            // 0..1
+      }
+    ],
+
+    // ─── Phân tích lưu trú ───
+    "dayOfWeekOccupancy": {
+      "values": [0.6, 0.7, 0.65, 0.8, 0.9, 0.95, 0.85]  // index 0=T2, 6=CN, 0..1
+    },
+    "lengthOfStay": {
+      "oneNight": 10,
+      "twoToThree": 20,
+      "fourToSeven": 8,
+      "eightPlus": 2
+    },
+
+    // ─── Booking gần đây (10 bản, sort createdAt desc) ───
+    "recentBookings": [
+      {
+        "id": "uuid",
+        "propertyId": "uuid",
+        "checkinDate": "2026-06-10",
+        "checkoutDate": "2026-06-12",
+        "status": 1,
+        "customerName": "Nguyễn A",
+        "guestCount": 2,
+        "property": { "id": "uuid", "name": "Homestay X", "code": "HS001" },
+        "sale": { "id": "uuid", "name": "Sale name" }
+      }
+    ],
+
+    // ─── Reviews ───
+    "ratingSummary": {
+      "avgRating": 4.4,               // weighted avg across all properties
+      "totalReviews": 25,
+      "totalProperties": 3,
+      "distribution": { "5": 15, "4": 7, "3": 3, "2": 0, "1": 0 },
+      "breakdown": {
+        "cleanliness": 4.5, "location": 4.3, "amenities": 4.2,
+        "service": 4.6, "value": 4.1, "accuracy": 4.4
+      }
+    },
+    "propertyRatings": [ /* per-property breakdown, sort by avgRating desc */ ],
+    "recentReviews": [ /* 5 review mới nhất */ ],
+
+    // ─── Legacy / backward-compat ───
+    "totalRooms": 10,
+    "activeRooms": 8,
+    "totalDeposit": 15000000,        // = revenue (deprecated, FE nên dùng `revenue`)
+    "thisMonthBookings": 42,
+    "roomsWithCover": 8,
+    "roomsWithPrice": 7
+  }
+}
+```
+
+**Scale convention** (CRITICAL — FE đa nền tảng dễ nhầm):
+- `occupancyRate` top-level + `previousPeriod.occupancy` = **0..100** (đã ×100, FE chỉ append `%`)
+- `revenueByDay[].occupancy` + `topRooms[].occupancy` + `dayOfWeekOccupancy.values[]` = **0..1** (FE ×100 khi plot)
+
+**Nguồn doanh thu**: aggregate `Booking.depositAmount` của booking `status ∈ {CONFIRMED, COMPLETED}` overlapping kỳ. Revenue mỗi ngày = chia đều `depositAmount / số đêm`.
+
+### 7A.5 Endpoints CHƯA wire (roadmap)
+
+FE hiện gom hết vào `GET /reports`. Các path sau đã reserve nhưng **không cần implement** cho release này:
+
+- `GET /reports/occupancy`
+- `GET /reports/adr`
+- `GET /reports/revpar`
+- `POST /reports/export?format=csv|xlsx`
 
 ---
 
@@ -666,6 +1126,37 @@ Base path: `/kyc`. Role: OWNER.
 
 Status string: `none | pending | approved | rejected`.
 
+**Response `GET /kyc/status`** (v1.7):
+
+```jsonc
+{
+  "status": "draft | kycSubmitted | paymentPending | awaitingApproval | approved | rejected | refunded",
+  "submissionId": "uuid | null",
+  "rejectReason": "string | null",
+  "rejectedItems": ["cccdFront", "selfie"],
+  "approvedAt": "ISO | null",
+  "trialEndsAt": "ISO | null",
+  "uploads": { "cccdFront": true, "cccdBack": true, "selfie": false },
+  "latestPayment": {                       // null nếu user chưa từng tạo session
+    "sessionId": "uuid",
+    "status": "pending | paid | expired | failed | refunded",
+    "totalAmount": 10000,
+    "planId": "starter_test",
+    "planLabel": "Starter Test · Tháng",
+    "expiresAt": "ISO",
+    "qrExpiresAt": "ISO",
+    "createdAt": "ISO"
+  },
+  "subscriptionStatus": "none | trial | active | past_due | cancelled | frozen",
+  "subscriptionPlanId": "string | null",
+  "subscriptionCycle": "monthly | yearly | null",
+  "subscriptionProvider": "string | null",
+  "subscriptionExpiresAt": "ISO | null"
+}
+```
+
+Field `latestPayment` cho phép FE rehydrate paywall/modal QR mà không cần persist `sessionId` ở client. Nếu cần full bank info / qrCode → gọi tiếp `GET /payments/active`.
+
 ### 9.2 Admin KYC
 
 Base path: `/admin/kyc`. Role: ADMIN.
@@ -693,17 +1184,173 @@ Base path: `/admin/kyc`. Role: ADMIN.
 
 Base path: `/payments`. Role: OWNER.
 
-| Method | Path | Body |
+| Method | Path | Body / Note |
 |---|---|---|
-| `POST` | `/payments/initiate` | `{ planId, cycle, method, rooms, totalAmount }` → trả session với `paymentUrl/qrCode` |
-| `POST` | `/payments/renew` | `{ method }` |
-| `GET` | `/payments/history?limit&cursor` | — |
-| `GET` | `/payments/:sessionId/status` | — |
+| `POST` | `/payments/quote` | `{ planId, cycle, rooms? }` → **read-only**, trả `kind` + `breakdown` + `totalAmount`. FE nên gọi trước khi mở màn thanh toán thay vì tự tính. |
+| `POST` | `/payments/initiate` | `{ planId, cycle, method, rooms, totalAmount }` → tạo session. BE tự branch theo trạng thái user: subscription / renew / upgrade / downgrade (xem §10.2.1). |
+| `POST` | `/payments/renew` | `{ method }` — gia hạn cùng gói hiện tại (stack 1 kỳ). |
+| `GET` | `/payments/active` | Trả session `pending` mới nhất của user (rehydrate UI khi reload). `data = null` nếu không có. |
+| `GET` | `/payments/history?limit&cursor` | — Mỗi item có `kind` (`subscription | renew | upgrade | refund`). |
+| `GET` | `/payments/:sessionId/status` | Poll trạng thái session |
+| `POST` | `/payments/:sessionId/cancel` | User huỷ session `pending`. Chỉ cho phép khi `status=pending`, ngược lại 409 `cannotCancel`. Đồng thời revert KycSubmission `payment_pending → kyc_submitted` |
 | `POST` | `/payments/:sessionId/refund` | — |
+
+### 10.2.1 Branching trong `POST /payments/initiate`
+
+BE tự nhận diện loại giao dịch — FE chỉ gửi `planId + cycle + rooms + totalAmount` như cũ. Logic:
+
+| Trạng thái user | Điều kiện | `kind` trả về | Charge | Side-effect khi paid |
+|---|---|---|---|---|
+| Chưa có subscription (`none`) | Cần KYC submission `kyc_submitted` | `subscription` | Full 1 kỳ | KYC → `awaiting_approval`, user kycStatus → `pending` |
+| Active/trial/past_due, cùng `planId + cycle` | — | `renew` | Full 1 kỳ | `currentPeriodEnd = max(now, currentPeriodEnd) + 1 cycle` |
+| Active/trial/past_due, tier mới **cao hơn** | `tier(new) > tier(current)` | `upgrade` | **Prorate** (xem §10.2.2) | Đổi plan ngay, giữ nguyên `currentPeriodEnd` |
+| Active/trial/past_due, tier mới **thấp hơn** | `tier(new) < tier(current)` | — | — | **409 `downgradeScheduled`** + `effectiveAt` + `pendingPlanId`; ghi `User.pendingPlanId/Cycle/EffectiveAt` |
+| Active/trial/past_due, cùng tier, **khác cycle** | — | `renew` | Full 1 kỳ theo cycle mới | Stack 1 kỳ mới từ `currentPeriodEnd`, cycle cập nhật |
+| `frozen` | — | — | — | **409 `subscriptionFrozen`** |
+
+**Tier order** (thấp → cao):
+`starter_test < rooms_1 < rooms_5 < rooms_10 < rooms_20 < rooms_50 < enterprise`
+
+### 10.2.2 Công thức prorate (upgrade)
+
+```
+totalDays     = oldCycle == yearly ? 365 : 30
+remainingDays = max(0, ceil((currentPeriodEnd - now) / 1d))   // clamp 0..totalDays
+oldSubtotal   = subtotal(currentPlan, currentCycle, currentRooms, override)
+newSubtotal   = subtotal(newPlan, newCycle, newRooms, override)
+oldCredit     = round(oldSubtotal × remainingDays / totalDays)
+due           = max(0, newSubtotal - oldCredit)
+vat           = round(due × newPlan.vatPct / 100)
+totalAmount   = due + vat
+```
+
+`subtotal(plan, cycle, rooms, override)`:
+- Nếu `override != null` → `subtotal = override` (giá tuyệt đối/kỳ chưa VAT).
+- Else: `months = cycle == yearly ? 12 : 1`; `base = max(plan.pricePerRoom × rooms, plan.minCharge) × months`; `subtotal = round(base × (1 - yearlyDiscount nếu yearly))`.
+
+### 10.2.3 Quote API
+
+`POST /payments/quote` body:
+```json
+{ "planId": "rooms_10", "cycle": "monthly", "rooms": 10 }
+```
+
+Response (200):
+```json
+{
+  "success": true,
+  "message": "...",
+  "data": {
+    "kind": "upgrade",
+    "planId": "rooms_10",
+    "cycle": "monthly",
+    "rooms": 10,
+    "totalAmount": 769450,
+    "breakdown": {
+      "listPrice": 999000,
+      "creditApplied": 299500,
+      "vat": 69950,
+      "remainingDays": 15,
+      "totalDays": 30,
+      "currentPlanId": "rooms_5",
+      "periodExtension": null
+    }
+  }
+}
+```
+
+`breakdown.periodExtension`:
+- `subscription` / `renew` → `{ "months": 1 }` hoặc `{ "months": 12 }`
+- `upgrade` → `null` (giữ period)
+- `downgrade` → `null` + thêm `effectiveAt` + `pendingPlanId` top-level data
+
+Quote **không** tạo session, không ghi DB. FE có thể gọi mỗi khi user đổi plan/cycle để re-render order summary. Khi user confirm, FE gọi `POST /payments/initiate` với `totalAmount` lấy từ quote — BE vẫn tính lại và validate ±1%.
+
+### 10.2.4 Mở rộng response của `initiate` / `renew`
+
+Session response (trên hai endpoint này) trả thêm so với spec cũ:
+
+```jsonc
+{
+  // ... fields cũ (sessionId, totalAmount, qrCode, bankInfo, expiresAt, ...)
+  "kind": "renew",                    // 'subscription' | 'renew' | 'upgrade'
+  "planId": "rooms_5",
+  "cycle": "monthly",
+  "breakdown": {
+    "listPrice": 599000,
+    "creditApplied": 0,                // > 0 chỉ trong upgrade
+    "vat": 59900,
+    "remainingDays": null,             // upgrade only
+    "totalDays": null,                 // upgrade only
+    "periodExtension": { "months": 1 } // upgrade → null
+  }
+}
+```
+
+### 10.2.5 Error codes (subscription billing)
+
+| Code | HTTP | Khi |
+|---|---|---|
+| `amountMismatch` | 400 | `totalAmount` FE gửi ≠ BE tính (±1%) |
+| `planNotFound` | 404 | `planId` không tồn tại / `active = false` |
+| `noActiveSubscription` | 409 | `POST /payments/renew` khi `subscriptionStatus = none` |
+| `subscriptionFrozen` | 409 | Mọi initiate/renew/quote khi `subscriptionStatus = frozen` |
+| `downgradeScheduled` | 409 | `POST /payments/initiate` với tier thấp hơn. Body kèm `effectiveAt` + `pendingPlanId` |
+| `cannotDowngradeInTrial` | 409 | (reserved) Trial chưa hết mà muốn hạ gói |
+| `markPaidDuplicate` | 409 | Đã paid trước đó |
 
 Method values: `bank_transfer` (chỉ hỗ trợ duy nhất — VNPay và Apple IAP đã loại bỏ ở v1.4).
 
-**Session expiry**: VietQR session expire sau **24 giờ** (v1.6). Đủ thời gian cho admin manual đối soát ở phase hiện tại (chưa setup Sepay webhook). Sau khi switch sang auto webhook có thể giảm còn 15-30 phút.
+**Plan IDs hợp lệ** (`BillingPlan.id`):
+
+| planId | name | monthlyPrice (minCharge) | maxRooms | Ghi chú |
+|---|---|---:|---:|---|
+| `starter_test` | Starter Test | 10,000 | 1 | Gói thử/QA/App review. `vatPct=0`, `yearlyDiscountPct=0` |
+| `rooms_1` | Mini | 199,000 | 1 | |
+| `rooms_5` | Starter | 599,000 | 5 | |
+| `rooms_10` | Standard | 999,000 | 10 | |
+| `rooms_20` | Pro | 1,799,000 | 20 | |
+| `rooms_50` | Business | 3,999,000 | 50 | |
+| `enterprise` | Enterprise | 0 | ∞ | Custom price qua `User.subscriptionPriceOverride` |
+
+Công thức `totalAmount` mặc định: `max(pricePerRoom × rooms, minCharge) × months × (1 - yearlyDiscount) × (1 + vatPct/100)`. Khi `User.subscriptionPriceOverride` được set → override toàn bộ. FE phải gửi `totalAmount` khớp (tolerance 1%), sai → 400 `amountMismatch`.
+
+**Response shape** (`initiate` / `renew` / `active`):
+
+```jsonc
+{
+  "sessionId": "uuid",
+  "status": "pending",
+  "totalAmount": 10000,
+  "method": "bank_transfer",
+  "qrCode": "<EMV VietQR payload>",
+  "bankInfo": { "bankName", "accountNumber", "accountName", "bankBin", "content", "vietQrPayload" },
+  "redirectUrl": null,
+  "payUrl": null,
+  "expiresAt": "2026-06-07T10:00:00Z",       // 24h sau createdAt — session expiry cho cron + webhook
+  "qrExpiresAt": "2026-06-06T10:15:00Z",     // 15 phút sau createdAt — countdown QR trên UI
+  "reconcileWindowHours": 24,                  // info để FE label "Đối soát trong tối đa 24h"
+  "createdAt": "2026-06-06T10:00:00Z",
+  "planId": "starter_test",
+  "planLabel": "Starter Test · Tháng",
+  "cycle": "monthly",
+  "rooms": 1
+}
+```
+
+**Hai mốc thời gian** (v1.7):
+
+| Hằng số | Giá trị | Mục đích |
+|---|---:|---|
+| `QR_EXPIRY_MINUTES` | 15 | QR code hết hạn để hiển thị countdown. Hết hạn → FE nên cho tạo session mới (gọi cancel + initiate lại). |
+| `SESSION_EXPIRY_MINUTES_BANK` | 1440 (24h) | Session sống đủ lâu để webhook Sepay/Casso hoặc admin `mark-paid` xác nhận. Cron `expirePendingSessions` chạy mỗi 5 phút chuyển `pending → expired` khi quá `expiresAt`, đồng thời revert KycSubmission về `kyc_submitted` để user initiate lại được. |
+
+**Hành vi khi initiate lần 2 trên cùng submission**: BE tự `updateMany` mọi session `pending` cũ của submission đó về `expired`. FE không cần gọi cancel trước.
+
+**Quan hệ với KYC submission**:
+- `POST /payments/initiate` thành công → `KycSubmission.status = payment_pending`.
+- `POST /payments/:id/cancel` hoặc cron auto-expire → revert về `kyc_submitted`.
+- Webhook / admin mark-paid → `paid` → `KycSubmission.status = awaiting_approval`.
 
 ### 10.3 Admin manual reconcile (v1.6)
 
@@ -786,8 +1433,46 @@ ADMIN dùng `?ownerId=` để filter theo OWNER cụ thể, không truyền → 
 
 | Method | Path | Body |
 |---|---|---|
-| `GET` | `/staff/invites/verify/:token` | — (token đầy đủ 64 chars hoặc short `HL-XXXXXX`) |
+| `GET` | `/staff/invites/verify/:token` | — |
 | `POST` | `/staff/invites/accept` | `{ token, method: "google"\|"password", idToken?, name?, password?, phone? }` |
+
+**Token format** (FE gửi 1 trong 2 dạng — BE tự nhận dạng):
+- **Full token** (64 chars hex) — dùng khi click link trong email (`/staff/accept?token=<64chars>`)
+- **Short code** `HL-XXXXXX` — dùng khi nhập tay (OWNER share cho nhân viên qua chat/SMS)
+
+**Response `/staff/invites/accept`** — giống `/auth/login`, **CHỈ trả tokens** (FE tự gọi `/auth/profile` sau):
+
+```jsonc
+{
+  "success": true,
+  "message": "Tham gia thành công",
+  "data": {
+    "accessToken": "eyJhbGciOiJIUzI1NiIs...",
+    "refreshToken": "eyJhbGciOiJIUzI1NiIs..."
+  }
+}
+```
+
+**Response `/staff/invites/verify/:token`** — trả info đủ để render trang accept (KHÔNG có tokens):
+
+```jsonc
+{
+  "success": true,
+  "message": "ok",
+  "data": {
+    "email": "sale@example.com",
+    "owner": {
+      "name": "Nguyễn Văn A",
+      "avatar": "https://...",
+      "homestayName": "Halong Bay Villa"
+    },
+    "expiresAt": "2026-06-13T10:00:00.000Z",
+    "status": "pending"
+  }
+}
+```
+
+Lỗi có thể gặp: `404 inviteNotFound`, `410 inviteAlreadyAccepted | inviteCancelled | inviteExpired`.
 
 ### 11.3 Status invite
 
@@ -1147,6 +1832,7 @@ CONVERSATION_MEMBER_ROLE = 'owner' | 'sale' | 'customer' | 'admin'
 - [ ] `/admin/emails/templates` + `/test`
 - [ ] `/admin/reviews` + restore + count-flagged
 - [ ] `/conversations/*` + Socket.IO `/chat` namespace
+- [ ] `/uploads` POST/DELETE — generic file upload cho chat attachment + dispute evidence (xem §23)
 
 #### Bỏ mock cũ
 - [ ] Bỏ logic FE ghi audit log từ client — BE tự ghi
@@ -1166,6 +1852,7 @@ CONVERSATION_MEMBER_ROLE = 'owner' | 'sale' | 'customer' | 'admin'
 - [ ] Force-update check ở splash (`GET /app/version`)
 - [ ] Countdown timer cho booking HOLD (`holdRemainingSeconds`)
 - [ ] Multipart upload cho KYC (compress < 5MB)
+- [ ] Generic `/uploads` POST/DELETE cho chat attachment + dispute evidence (xem §23)
 - [ ] Chrome Custom Tab cho payment URL + deeplink return
 
 #### Chat
@@ -1213,6 +1900,57 @@ CONVERSATION_MEMBER_ROLE = 'owner' | 'sale' | 'customer' | 'admin'
 ---
 
 ## 21. Changelog & Bug fixes
+
+### v1.10 — 2026-06-06 (Reports validation + spec sync cho FE đa nền tảng)
+
+Đồng bộ spec với code sau khi FE mobile wire xong tab Báo cáo và ghép thêm KYC/Apple IAP.
+
+| Thay đổi | Chi tiết |
+|---|---|
+| Thêm §7A **Dashboard & Reports** | Document đầy đủ `GET /dashboard/stats` + `GET /reports` (period, custom range, response shape) — gỡ rời khỏi §1 enum table |
+| `GET /reports` validation 400 mới | `dashboard.toInFuture` (to ở tương lai), `dashboard.invalidPeriod` (period không hợp lệ). i18n en+vi đã sync |
+| `GET /reports` response — clarify scale convention | `occupancyRate` + `previousPeriod.occupancy` = **0..100**; `revenueByDay[].occupancy` + `topRooms[].occupancy` + `dayOfWeekOccupancy.values[]` = **0..1** |
+| `LoginDataDto` — xóa field `user: UserDto` (Swagger schema fix) | Swagger UI giờ hiển thị đúng response auth chỉ có `accessToken` + `refreshToken`. Khớp với contract v1.7 |
+| §5.4 + §10.2 — phân biệt `PATCH /bookings/:id/paid` (deposit khách) vs `POST /payments/initiate` (subscription owner) | FE đa nền tảng tránh wire nhầm flow |
+| §6.1 Calendar — document `propertyIds` plural | Public/grid hỗ trợ CSV (`?propertyIds=u1,u2`) hoặc array repeat |
+| §11.2 Staff invites — thêm response shape `verify` + `accept` | `accept` chỉ tokens (khớp [[feedback-auth-response-shape]]), `verify` có nested `owner.{name,avatar,homestayName}` |
+| §20.1 + §20.2 — thêm `/uploads` vào FE checklist | Tránh team bỏ sót khi tích hợp chat / dispute evidence |
+
+**Breaking?** Không. Chỉ thêm validation + cập nhật doc + xóa field DTO chưa từng được populate ở runtime.
+
+### v1.9 — 2026-06-06 (Payment session lifecycle + Starter Test plan)
+
+Khắc phục bug "loading mãi ở trang chờ đối soát" khi user đóng/mở lại app sau khi initiate session, và bổ sung plan thử nghiệm cho QA / App Store review.
+
+| Thay đổi | Chi tiết |
+|---|---|
+| Thêm plan `starter_test` (10,000đ/tháng, 1 phòng, VAT 0%) | Reseed DB hoặc tạo thủ công qua admin |
+| `POST /payments/:sessionId/cancel` | User huỷ session pending. Revert `KycSubmission.payment_pending → kyc_submitted` |
+| `GET /payments/active` | Lấy session pending mới nhất (rehydrate sau khi đóng modal) |
+| `GET /kyc/status` thêm field `latestPayment` | FE không cần persist sessionId ở client |
+| Tách 2 mốc thời gian: `QR_EXPIRY_MINUTES=15` + `SESSION_EXPIRY_MINUTES_BANK=1440` | Response thêm `qrExpiresAt`, `reconcileWindowHours` |
+| Cron `expirePendingSessions` (mỗi 5 phút) revert KYC submission khi expire | Fix bug pre-existing: `@Cron` decorator gắn nhầm trên `adminListSessions` |
+| i18n keys mới (en/vi) | `payment.cancelSuccess`, `payment.cannotCancel`, `payment.activeSuccess` |
+
+**Breaking?** Không — tất cả trường mới đều additive. Hành vi `expiresAt = 24h` không đổi. FE cũ vẫn chạy được, chỉ là không có nút huỷ + không rehydrate được modal sau khi đóng.
+
+### v1.8 — 2026-06-05 (Authorization rules)
+
+Thêm §2A — section đầy đủ giải thích phân quyền cho cả Web và Mobile.
+
+| Section | Nội dung |
+|---|---|
+| §2A.1 | 3 lớp guard BE chạy theo thứ tự (JwtAuthGuard, RolesGuard, PermissionGuard) |
+| §2A.2 | Khi nào 401 vs 403 vs 404 — FE biết retry vs report |
+| §2A.3 | Bảng tổng — Role nào vào endpoint nào (Public/Auth/CUSTOMER/OWNER+SALE/OWNER/ADMIN) |
+| §2A.4 | Permission cho SALE — 4 module × 4 action |
+| §2A.5 | Điều kiện business ngoài role: KYC required, Subscription active, Banned, Ownership, Resource state |
+| §2A.6 | Special case — endpoint cho phép nhiều role nhưng behavior khác (vd: GET /properties, /staff/invites) |
+| §2A.7 | Bypass đặc biệt: ADMIN, kycBypass |
+| §2A.8 | Đối chiếu status mã 401/403/404/409/410/422/429 chống nhầm |
+| §2A.9 | Checklist FE — 4 câu hỏi trước khi wire 1 endpoint |
+
+FE web đang gặp 403 không hiểu lý do → đọc §2A.5 thường ra ngay.
 
 ### v1.7 — 2026-06-05 (BREAKING: tách auth response và profile)
 
@@ -1760,6 +2498,183 @@ ChatService `sendMessage` đã tự gọi `markAttached`. FE chỉ cần:
 
 ---
 
-> **Phiên bản tài liệu**: v1.7 — 2026-06-05 (BREAKING auth response). Mọi thay đổi schema/endpoint vui lòng cập nhật file này và thông báo team FE qua channel chung.
+> **Phiên bản tài liệu**: v1.8 — 2026-06-05 (Authorization rules). Mọi thay đổi schema/endpoint vui lòng cập nhật file này và thông báo team FE qua channel chung.
 >
-> **Lưu ý cho FE Web + Mobile**: trước khi wire bất kỳ endpoint nào, đọc §2.3 và §2.4 để hiểu pattern auth chuẩn (tách login và profile thành 2 request riêng).
+> **Lưu ý cho FE Web + Mobile**: trước khi wire bất kỳ endpoint nào, đọc:
+> - **§2.3 + §2.4** — pattern auth chuẩn (tách login và profile)
+> - **§2A — Phân quyền & Authorization** — quy tắc đầy đủ ai được vào endpoint nào, vì sao 401/403/404, business rules ngoài role
+>
+> 90% câu hỏi "tại sao lại bị 403" của FE đều trả lời được trong §2A.
+
+---
+
+## 24. Mobile Profile Endpoints (Support / Feedback / Data Export / Consents / Notification Prefs)
+
+> Bổ sung 2026-06-06 cho team Mobile (iOS + Android). Tất cả yêu cầu Bearer token, trừ `/feedback` (vẫn cần auth, nhưng rate-limit 10/giờ/user).
+
+### 24.1 Support Tickets — `/support/tickets`
+
+**Enums**
+- `category`: `account | payment | technical | other`
+- `status`: `open | in_progress | resolved | closed`
+
+#### POST `/support/tickets`
+Body:
+```json
+{
+  "subject": "Không đăng nhập được",
+  "category": "account",
+  "description": "Mô tả chi tiết tối thiểu 10 ký tự",
+  "attachments": ["https://res.cloudinary.com/.../a.jpg"]
+}
+```
+Validate: `subject ≥ 5`, `description ≥ 10`, `attachments ≤ 5 URLs`.
+Response:
+```json
+{
+  "success": true,
+  "message": "Tạo yêu cầu hỗ trợ thành công",
+  "data": {
+    "id": "uuid",
+    "userId": "uuid",
+    "code": "HT-482193",
+    "subject": "...",
+    "category": "account",
+    "description": "...",
+    "status": "open",
+    "attachments": [],
+    "createdAt": "2026-06-06T07:00:00.000Z",
+    "updatedAt": "2026-06-06T07:00:00.000Z"
+  }
+}
+```
+
+#### GET `/support/tickets?status&page&limit`
+Trả ticket của user hiện tại (ADMIN xem tất cả). Pagination Shape A:
+```json
+{ "items": [/* ticket */], "total": 12, "page": 1, "limit": 20, "totalPages": 1 }
+```
+
+#### GET `/support/tickets/:id`
+Trả ticket + `messages[]` (sorted asc by createdAt). 403 nếu không phải owner / không phải ADMIN.
+
+#### POST `/support/tickets/:id/reply`
+Body: `{ "message": "...", "attachments"?: ["url"] }`
+Tạo message mới. `fromAdmin=true` nếu caller là ADMIN. ADMIN reply trên ticket `open` → auto bump status sang `in_progress`.
+
+---
+
+### 24.2 Feedback — `POST /feedback`
+Rate-limit: 10 requests/giờ/user.
+Body:
+```json
+{
+  "category": "bug",            // bug | feature | support | other
+  "message": "Mô tả ≥ 10 ký tự",
+  "contact": "user@example.com", // optional
+  "deviceInfo": "iPhone 15 / iOS 18.0", // optional
+  "attachments": ["https://..."]        // optional, ≤ 5 URLs
+}
+```
+Response: `{ success, message, data: { id: "uuid" } }`
+
+---
+
+### 24.3 Data Export (GDPR) — `/users/me/data-export`
+
+Item shape:
+```json
+{
+  "id": "uuid",
+  "status": "pending",          // pending | processing | ready | expired
+  "requestedAt": "2026-06-06T07:00:00.000Z",
+  "downloadUrl": null,
+  "expiresAt": null
+}
+```
+
+#### POST `/users/me/data-export`
+Tạo yêu cầu mới. Nếu đã có yêu cầu pending/processing → trả lại yêu cầu cũ (không tạo mới).
+Response: `{ success, message, data: <item> }`
+
+#### GET `/users/me/data-export`
+Trả danh sách yêu cầu của user, newest first. Nếu item ready quá `expiresAt` → auto-flip sang `expired` ngay tại response.
+Response: `{ success, message, data: { items: [<item>] } }`
+
+---
+
+### 24.4 Consents — `/users/me/consents`
+
+#### GET `/users/me/consents`
+Tạo record mặc định nếu chưa có. Response:
+```json
+{
+  "success": true,
+  "message": "Lấy thông tin đồng ý thành công",
+  "data": { "kyc": true, "marketing": false, "updatedAt": "2026-06-06T..." }
+}
+```
+
+#### PUT `/users/me/consents`
+Body: `{ "marketing": true }` (chỉ duy nhất field này).
+> `kyc` là server-locked — ignore mọi nỗ lực sửa từ client.
+
+Response giống GET.
+
+---
+
+### 24.5 Notification Preferences — `/users/me/notification-preferences`
+
+Shape:
+```json
+{
+  "booking": true,
+  "payment": true,
+  "system": true,
+  "quietHours": false,
+  "quietFrom": "22:00",   // HH:MM (24h)
+  "quietTo": "07:00",
+  "updatedAt": "2026-06-06T..."
+}
+```
+
+#### GET `/users/me/notification-preferences`
+Tạo record mặc định nếu chưa có. Trả shape ở trên.
+
+#### PUT `/users/me/notification-preferences`
+Body: tất cả fields đều optional (partial update). `quietFrom`/`quietTo` validate regex `^([01]\d|2[0-3]):[0-5]\d$`. Trả shape mới.
+
+---
+
+### 24.6 Confirmed Existing — Permissions
+
+#### GET `/permissions/:userId` (ADMIN only)
+Response:
+```json
+{
+  "success": true,
+  "message": "Permissions retrieved successfully",
+  "data": {
+    "user": { "id": "uuid", "name": "Nguyễn A", "role": 1 },
+    "permissions": [
+      { "module": "properties", "canCreate": false, "canRead": true, "canUpdate": false, "canDelete": false },
+      { "module": "bookings",   "canCreate": false, "canRead": true, "canUpdate": false, "canDelete": false },
+      { "module": "calendar",   "canCreate": false, "canRead": true, "canUpdate": false, "canDelete": false },
+      { "module": "reviews",    "canCreate": false, "canRead": true, "canUpdate": false, "canDelete": false }
+    ]
+  }
+}
+```
+Module whitelist: `properties | bookings | calendar | reviews`.
+
+#### PUT `/permissions/:userId` (ADMIN only)
+Body:
+```json
+{
+  "permissions": [
+    { "module": "properties", "canCreate": true, "canRead": true, "canUpdate": true, "canDelete": false },
+    { "module": "bookings",   "canCreate": true, "canRead": true, "canUpdate": true, "canDelete": false }
+  ]
+}
+```
+Bulk upsert. Mỗi field CRUD optional (giữ giá trị cũ nếu không gửi). Response trả `{ userId, permissions: [...] }`.

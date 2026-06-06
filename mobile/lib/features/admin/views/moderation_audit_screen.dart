@@ -4,6 +4,8 @@ import '../../../core/theme/app_color_scheme.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
 
+/// Lịch sử hệ thống — moderation, báo cáo vi phạm, audit admin.
+/// UI demo, chờ `GET /admin/audit-log`.
 class ModerationAuditScreen extends StatelessWidget {
   const ModerationAuditScreen({super.key});
 
@@ -81,7 +83,7 @@ class ModerationAuditScreen extends StatelessWidget {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            'Lịch sử Moderation',
+                            'Lịch sử hệ thống',
                             style: GoogleFonts.beVietnamPro(
                               fontSize: 20,
                               fontWeight: FontWeight.w700,
@@ -89,7 +91,7 @@ class ModerationAuditScreen extends StatelessWidget {
                             ),
                           ),
                           Text(
-                            'Nhật ký hành động kiểm duyệt',
+                            'Báo cáo vi phạm, moderation và audit admin',
                             style: GoogleFonts.beVietnamPro(
                               fontSize: 12,
                               color: Colors.white.withValues(alpha: 0.65),
@@ -107,15 +109,40 @@ class ModerationAuditScreen extends StatelessWidget {
             child: ListView(
               padding: const EdgeInsets.all(AppSpacing.md),
               children: const [
+                _SummaryNote(),
+                SizedBox(height: AppSpacing.sm),
                 _AuditTile(
-                  action: 'Khóa user_172',
-                  reason: 'Spam lặp lại',
+                  category: 'Báo cáo',
+                  action: 'user_172 tố cáo tin đăng spam phòng giả',
+                  detail: 'Đối tượng: room_548 · Mức: Cao',
+                  at: '06/06/2026 14:30',
+                  by: 'Hệ thống',
+                ),
+                _AuditTile(
+                  category: 'Xử lý',
+                  action: 'admin_01 ẩn bài đăng room_548',
+                  detail: 'Lý do: Sai sự thật · Từ report_001',
                   at: '06/05/2026 21:15',
                   by: 'admin_01',
                 ),
                 _AuditTile(
-                  action: 'Ẩn bài đăng room_548',
-                  reason: 'Sai sự thật',
+                  category: 'Moderation',
+                  action: 'Khóa user_999',
+                  detail: 'Lý do: Spam tin nhắn lặp lại',
+                  at: '05/05/2026 18:40',
+                  by: 'admin_01',
+                ),
+                _AuditTile(
+                  category: 'Báo cáo',
+                  action: 'user_816 tố cáo nội dung không phù hợp',
+                  detail: 'Đối tượng: room_312 · Mức: Trung bình',
+                  at: '05/05/2026 09:15',
+                  by: 'Hệ thống',
+                ),
+                _AuditTile(
+                  category: 'Xử lý',
+                  action: 'moderator_03 bỏ qua report_004',
+                  detail: 'Không đủ căn cứ xác minh',
                   at: '05/05/2026 10:20',
                   by: 'moderator_03',
                 ),
@@ -128,15 +155,38 @@ class ModerationAuditScreen extends StatelessWidget {
   }
 }
 
+class _SummaryNote extends StatelessWidget {
+  const _SummaryNote();
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.colors;
+    return Container(
+      padding: const EdgeInsets.all(AppSpacing.md),
+      decoration: BoxDecoration(
+        color: colors.bgSurfaceContainer,
+        borderRadius: BorderRadius.circular(AppRadius.lg),
+      ),
+      child: Text(
+        'Ghi lại ai báo cáo vi phạm, admin xử lý thế nào, và các hành động '
+        'moderation khác. Khác với Thông báo (booking/thanh toán cho chủ & sale).',
+        style: TextStyle(color: colors.textSecondary, height: 1.4),
+      ),
+    );
+  }
+}
+
 class _AuditTile extends StatelessWidget {
+  final String category;
   final String action;
-  final String reason;
+  final String detail;
   final String at;
   final String by;
 
   const _AuditTile({
+    required this.category,
     required this.action,
-    required this.reason,
+    required this.detail,
     required this.at,
     required this.by,
   });
@@ -144,24 +194,63 @@ class _AuditTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = context.colors;
+    final badgeColor = switch (category) {
+      'Báo cáo' => colors.error,
+      'Xử lý' => colors.success,
+      _ => colors.brand,
+    };
+
     return Container(
       margin: const EdgeInsets.only(bottom: AppSpacing.sm),
+      padding: const EdgeInsets.all(AppSpacing.md),
       decoration: BoxDecoration(
         color: colors.bgSurface,
         borderRadius: BorderRadius.circular(AppRadius.lg),
         border: Border.all(color: colors.borderDefault),
       ),
-      child: ListTile(
-        title: Text(
-          action,
-          style: TextStyle(
-            color: colors.textPrimary,
-            fontWeight: FontWeight.w600,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                decoration: BoxDecoration(
+                  color: badgeColor.withValues(alpha: 0.14),
+                  borderRadius: BorderRadius.circular(AppRadius.full),
+                ),
+                child: Text(
+                  category,
+                  style: TextStyle(
+                    color: badgeColor,
+                    fontSize: 11,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
+              const Spacer(),
+              Text(
+                at,
+                style: TextStyle(fontSize: 11, color: colors.textTertiary),
+              ),
+            ],
           ),
-        ),
-        subtitle: Text('Lý do: $reason\nThực hiện bởi: $by · $at'),
-        isThreeLine: true,
-        trailing: Icon(Icons.history_toggle_off_outlined, color: colors.brand),
+          const SizedBox(height: 8),
+          Text(
+            action,
+            style: TextStyle(
+              color: colors.textPrimary,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(detail, style: TextStyle(color: colors.textSecondary)),
+          const SizedBox(height: 6),
+          Text(
+            'Bởi: $by',
+            style: TextStyle(fontSize: 12, color: colors.textTertiary),
+          ),
+        ],
       ),
     );
   }

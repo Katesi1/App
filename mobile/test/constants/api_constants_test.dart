@@ -39,6 +39,35 @@ void main() {
         '/users/550e8400-e29b-41d4-a716-446655440000',
       );
     });
+
+    test('userMeDataExport',
+        () => expect(ApiConstants.userMeDataExport, '/users/me/data-export'));
+    test('userMeConsents',
+        () => expect(ApiConstants.userMeConsents, '/users/me/consents'));
+    test('userMeNotificationPreferences', () => expect(
+          ApiConstants.userMeNotificationPreferences,
+          '/users/me/notification-preferences',
+        ));
+  });
+
+  group('ApiConstants — Support & feedback', () {
+    test('supportTickets',
+        () => expect(ApiConstants.supportTickets, '/support/tickets'));
+    test('feedback', () => expect(ApiConstants.feedback, '/feedback'));
+
+    test('supportTicketDetail builds correct URL', () {
+      expect(
+        ApiConstants.supportTicketDetail('tk01'),
+        '/support/tickets/tk01',
+      );
+    });
+
+    test('supportTicketReply builds correct URL', () {
+      expect(
+        ApiConstants.supportTicketReply('tk01'),
+        '/support/tickets/tk01/reply',
+      );
+    });
   });
 
   group('ApiConstants — Properties', () {

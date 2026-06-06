@@ -1,8 +1,12 @@
 import 'dart:io';
 
+import 'package:dio/dio.dart';
+
+import '../../../../core/network/api_response.dart';
 import '../models/cccd_upload.dart';
 import '../models/ocr_result.dart';
 import '../models/payment_history_item.dart';
+import '../models/payment_quote.dart';
 import '../models/payment_session.dart';
 import '../models/plan.dart';
 import '../models/selfie_upload.dart';
@@ -82,6 +86,11 @@ abstract class VerifyRepository {
   Future<KycStatusSnapshot> getKycStatus();
 
   Future<List<Plan>> fetchPlans();
+  Future<PaymentQuote> fetchPaymentQuote({
+    required String planId,
+    required BillingCycle billingCycle,
+    required int rooms,
+  });
   Future<PaymentSession> initiatePayment({
     required String planId,
     required BillingCycle billingCycle,
@@ -90,6 +99,7 @@ abstract class VerifyRepository {
     required int totalAmount,
   });
   Future<PaymentStatus> checkPaymentStatus(String sessionId);
+  Future<void> cancelPayment(String sessionId);
 
   Future<SubmissionResult> submitForApproval();
   Future<ApprovalResult> checkApprovalStatus(String submissionId);
@@ -104,4 +114,88 @@ abstract class VerifyRepository {
   Future<PaymentSession> renewSubscription({
     required PaymentMethod method,
   });
+}
+
+/// Lỗi nghiệp vụ KYC/payment — có thể kèm `code` từ BE (409 downgrade, frozen…).
+class VerifyApiException implements Exception {
+  final String message;
+  final String? code;
+  final DateTime? effectiveAt;
+  final String? pendingPlanId;
+
+  const VerifyApiException(
+    this.message, {
+    this.code,
+    this.effectiveAt,
+    this.pendingPlanId,
+  });
+
+  factory VerifyApiException.fromDio(DioException e) {
+    final status = e.response?.statusCode;
+    final data = e.response?.data;
+    if (data is Map) {
+      return VerifyApiException(
+        data['message']?.toString() ?? parseDioError(e),
+        code: data['code'] as String?,
+        effectiveAt: _parseApiDate(data['effectiveAt']),
+        pendingPlanId: data['pendingPlanId'] as String?,
+      );
+    }
+    if (status == 404) {
+      return const VerifyApiException(
+        'Chức năng báo giá chưa có trên máy chủ.',
+        code: 'quoteNotFound',
+      );
+    }
+    return VerifyApiException(parseDioError(e));
+  }
+
+  bool get isDowngradeScheduled => code == 'downgradeScheduled';
+  bool get isSubscriptionFrozen => code == 'subscriptionFrozen';
+  bool get isNoActiveSubscription => code == 'noActiveSubscription';
+  bool get isAmountMismatch => code == 'amountMismatch';
+
+  /// Message hiển thị cho user — ưu tiên tiếng Việt.
+  String get vietnameseMessage {
+    switch (code) {
+      case 'amountMismatch':
+        return 'Số tiền không khớp với máy chủ. Vui lòng tải lại báo giá '
+            'và thử lại.';
+      case 'noActiveSubscription':
+        return 'Bạn chưa có gói subscription đang hoạt động để gia hạn '
+            'qua API gia hạn. Nếu đang dùng trial, app sẽ tự chuyển sang '
+            'thanh toán gói hiện tại.';
+      case 'subscriptionFrozen':
+        return 'Tài khoản đang bị đóng băng. Vui lòng liên hệ hỗ trợ.';
+      case 'downgradeScheduled':
+        if (effectiveAt != null) {
+          return 'Đã đặt lịch hạ gói. Gói mới sẽ áp dụng từ ngày '
+              '${effectiveAt!.day.toString().padLeft(2, '0')}/'
+              '${effectiveAt!.month.toString().padLeft(2, '0')}/'
+              '${effectiveAt!.year}.';
+        }
+        return 'Đã đặt lịch hạ gói. Gói mới sẽ áp dụng từ kỳ tiếp theo.';
+      case 'planNotFound':
+        return 'Gói không tồn tại hoặc đã ngừng bán.';
+    }
+
+    final lower = message.toLowerCase();
+    if (lower.contains('do not have an active') ||
+        lower.contains('no active subscription') ||
+        lower.contains('not have an active')) {
+      return 'Chưa có gói đang hoạt động để gia hạn. '
+          'Nếu bạn đang trong trial, vui lòng thử lại — hệ thống sẽ '
+          'tạo phiên thanh toán gói hiện tại.';
+    }
+
+    return message;
+  }
+
+  @override
+  String toString() => vietnameseMessage;
+}
+
+DateTime? _parseApiDate(dynamic raw) {
+  if (raw == null || raw is! String || raw.isEmpty) return null;
+  return DateTime.tryParse(raw);
 }

@@ -188,8 +188,7 @@ class _RoleTabBar extends ConsumerWidget {
           final total = groups.fold<int>(
             0,
             (sum, g) =>
-                sum +
-                g.subGroups.fold(0, (s, sg) => s + sg.entries.length),
+                sum + g.subGroups.fold(0, (s, sg) => s + sg.entries.length),
           );
           final enabled = groups.fold<int>(
             0,
@@ -313,8 +312,7 @@ class _RoleHeaderCard extends StatelessWidget {
 
     final total = groups.fold<int>(
       0,
-      (sum, g) =>
-          sum + g.subGroups.fold(0, (s, sg) => s + sg.entries.length),
+      (sum, g) => sum + g.subGroups.fold(0, (s, sg) => s + sg.entries.length),
     );
     final enabled = groups.fold<int>(
       0,
@@ -369,8 +367,7 @@ class _RoleHeaderCard extends StatelessWidget {
                       ),
                       decoration: BoxDecoration(
                         color: accent.withValues(alpha: 0.12),
-                        borderRadius:
-                            BorderRadius.circular(AppRadius.full),
+                        borderRadius: BorderRadius.circular(AppRadius.full),
                       ),
                       child: Text(
                         '$enabled/$total',
@@ -442,8 +439,8 @@ class _GroupTileState extends ConsumerState<_GroupTile> {
     final allEnabled = group.allEnabled;
     final anyEnabled = group.anyEnabled;
 
-    final totalEntries = group.subGroups
-        .fold<int>(0, (sum, sg) => sum + sg.entries.length);
+    final totalEntries =
+        group.subGroups.fold<int>(0, (sum, sg) => sum + sg.entries.length);
     final enabledEntries = group.subGroups.fold<int>(
       0,
       (sum, sg) => sum + sg.entries.where((e) => e.enabled).length,
@@ -469,9 +466,8 @@ class _GroupTileState extends ConsumerState<_GroupTile> {
             onTap: () => setState(() => _expanded = !_expanded),
             borderRadius: BorderRadius.vertical(
               top: const Radius.circular(AppRadius.lg),
-              bottom: _expanded
-                  ? Radius.zero
-                  : const Radius.circular(AppRadius.lg),
+              bottom:
+                  _expanded ? Radius.zero : const Radius.circular(AppRadius.lg),
             ),
             child: Padding(
               padding: const EdgeInsets.symmetric(
@@ -543,7 +539,6 @@ class _GroupTileState extends ConsumerState<_GroupTile> {
               ),
             ),
           ),
-
           if (_expanded) ...[
             Divider(height: 1, color: colors.borderDefault),
             for (final sub in group.subGroups)
@@ -673,7 +668,6 @@ class _SubGroupTileState extends ConsumerState<_SubGroupTile> {
             ),
           ),
         ),
-
         if (_expanded)
           for (final entry in sub.entries)
             _EntryRow(
@@ -683,7 +677,6 @@ class _SubGroupTileState extends ConsumerState<_SubGroupTile> {
               role: widget.role,
               isLastInSub: entry == sub.entries.last,
             ),
-
         if (!widget.isLast)
           Divider(
             height: 1,
@@ -783,8 +776,7 @@ class _GroupSwitch extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = context.colors;
-    final effectiveColor =
-        indeterminate ? AppColors.warning : colors.brand;
+    final effectiveColor = indeterminate ? AppColors.warning : colors.brand;
 
     return GestureDetector(
       onTap: () => onChanged(!value),
@@ -804,8 +796,7 @@ class _GroupSwitch extends StatelessWidget {
             AnimatedAlign(
               duration: const Duration(milliseconds: 200),
               curve: Curves.easeInOut,
-              alignment:
-                  value ? Alignment.centerRight : Alignment.centerLeft,
+              alignment: value ? Alignment.centerRight : Alignment.centerLeft,
               child: Container(
                 width: 18,
                 height: 18,
@@ -906,9 +897,7 @@ class _BottomBar extends ConsumerWidget {
             flex: 2,
             child: FilledButton.icon(
               onPressed: () async {
-                await ref
-                    .read(rolePermissionsProvider(role).notifier)
-                    .save();
+                await ref.read(rolePermissionsProvider(role).notifier).save();
                 if (context.mounted) {
                   AppSnackBar.success(context, 'Đã lưu phân quyền');
                 }
@@ -984,19 +973,19 @@ IconData _groupIcon(String groupId) => switch (groupId) {
   return switch (op) {
     'view' => (icon: Icons.visibility_rounded, color: AppColors.jade500),
     'create' => (
-      icon: Icons.add_circle_outline_rounded,
-      color: AppColors.success
-    ),
+        icon: Icons.add_circle_outline_rounded,
+        color: AppColors.success
+      ),
     'update' => (icon: Icons.edit_rounded, color: AppColors.warning),
     'delete' => (
-      icon: Icons.remove_circle_outline_rounded,
-      color: AppColors.error
-    ),
+        icon: Icons.remove_circle_outline_rounded,
+        color: AppColors.error
+      ),
     'hold' => (icon: Icons.lock_clock_rounded, color: AppColors.jade300),
     'confirm' => (
-      icon: Icons.check_circle_outline_rounded,
-      color: AppColors.success
-    ),
+        icon: Icons.check_circle_outline_rounded,
+        color: AppColors.success
+      ),
     'cancel' => (icon: Icons.cancel_outlined, color: AppColors.error),
     'lock' => (icon: Icons.lock_outline_rounded, color: AppColors.warning),
     _ => (icon: Icons.circle_outlined, color: AppColors.slate400),

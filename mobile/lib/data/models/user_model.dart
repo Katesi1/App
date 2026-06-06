@@ -38,6 +38,11 @@ class UserModel {
   final String? subscriptionCycle; // monthly | yearly
   final DateTime? trialEndsAt;
   final DateTime? nextChargeAt;
+  final DateTime? currentPeriodStart;
+  final DateTime? currentPeriodEnd;
+  final String? pendingPlanId;
+  final String? pendingCycle;
+  final DateTime? pendingEffectiveAt;
 
   const UserModel({
     required this.id,
@@ -59,6 +64,11 @@ class UserModel {
     this.subscriptionCycle,
     this.trialEndsAt,
     this.nextChargeAt,
+    this.currentPeriodStart,
+    this.currentPeriodEnd,
+    this.pendingPlanId,
+    this.pendingCycle,
+    this.pendingEffectiveAt,
   });
 
   /// Defensive fromJson — bao quanh `_$UserModelFromJson` để xử lý các field
@@ -137,6 +147,8 @@ class UserModel {
   bool get isSubscriptionActive => subscriptionStatus == 'active';
   bool get isSubscriptionPastDue => subscriptionStatus == 'past_due';
   bool get isSubscriptionCancelled => subscriptionStatus == 'cancelled';
+  bool get isSubscriptionFrozen => subscriptionStatus == 'frozen';
+  bool get isSubscriptionExpired => subscriptionStatus == 'expired';
 
   /// Số ngày còn lại của trial (null nếu không trong trial). Làm tròn xuống.
   int? get trialDaysLeft {
@@ -146,18 +158,33 @@ class UserModel {
   }
 
   /// Tên gói hiển thị (Mini, Starter, ...).
-  String get subscriptionPlanLabel {
-    final id = subscriptionPlanId;
-    if (id == null || id.isEmpty) return 'Chưa có gói';
-    return switch (id) {
+  String get subscriptionPlanLabel => planLabelFor(subscriptionPlanId);
+
+  /// Label gói từ planId — dùng cho pending downgrade banner.
+  static String planLabelFor(String? planId) {
+    if (planId == null || planId.isEmpty) return 'Chưa có gói';
+    return switch (planId) {
       'rooms_1' || 'mini' => 'Mini',
       'rooms_5' || 'starter' => 'Starter',
       'rooms_10' || 'standard' => 'Standard',
       'rooms_20' || 'pro' || 'professional' => 'Pro',
       'rooms_50' || 'business' => 'Business',
       'rooms_unlimited' || 'enterprise' => 'Enterprise',
-      _ => id,
+      'starter_test' => 'Starter Test',
+      _ => planId,
     };
+  }
+
+  String get pendingPlanLabel => planLabelFor(pendingPlanId);
+
+  bool get hasPendingDowngrade =>
+      pendingPlanId != null && pendingPlanId!.isNotEmpty;
+
+  /// Số ngày còn lại của kỳ hiện tại (từ `currentPeriodEnd`). Null nếu không có.
+  int? get periodDaysLeft {
+    if (currentPeriodEnd == null) return null;
+    final diff = currentPeriodEnd!.difference(DateTime.now()).inDays;
+    return diff < 0 ? 0 : diff;
   }
 
   /// Subtitle cho menu/card Mua gói trên profile & quản lý.
@@ -227,6 +254,11 @@ class UserModel {
     String? subscriptionCycle,
     DateTime? trialEndsAt,
     DateTime? nextChargeAt,
+    DateTime? currentPeriodStart,
+    DateTime? currentPeriodEnd,
+    String? pendingPlanId,
+    String? pendingCycle,
+    DateTime? pendingEffectiveAt,
   }) =>
       UserModel(
         id: id ?? this.id,
@@ -248,5 +280,10 @@ class UserModel {
         subscriptionCycle: subscriptionCycle ?? this.subscriptionCycle,
         trialEndsAt: trialEndsAt ?? this.trialEndsAt,
         nextChargeAt: nextChargeAt ?? this.nextChargeAt,
+        currentPeriodStart: currentPeriodStart ?? this.currentPeriodStart,
+        currentPeriodEnd: currentPeriodEnd ?? this.currentPeriodEnd,
+        pendingPlanId: pendingPlanId ?? this.pendingPlanId,
+        pendingCycle: pendingCycle ?? this.pendingCycle,
+        pendingEffectiveAt: pendingEffectiveAt ?? this.pendingEffectiveAt,
       );
 }

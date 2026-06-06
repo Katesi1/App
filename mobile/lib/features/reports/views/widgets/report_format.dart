@@ -58,14 +58,17 @@ class ReportFormat {
   /// Icon cho delta — arrow up / down / dash.
   static IconData deltaIcon(double? delta) {
     if (delta == null || delta == 0) return Icons.remove;
-    return delta > 0 ? Icons.arrow_upward_rounded : Icons.arrow_downward_rounded;
+    return delta > 0
+        ? Icons.arrow_upward_rounded
+        : Icons.arrow_downward_rounded;
   }
 
   /// Format delta % thành "↑ 12.3%" / "↓ 5.0%" / "—".
   static String deltaLabel(double? delta) {
     if (delta == null) return '—';
     final abs = delta.abs().toStringAsFixed(1);
-    final stripped = abs.endsWith('.0') ? abs.substring(0, abs.length - 2) : abs;
+    final stripped =
+        abs.endsWith('.0') ? abs.substring(0, abs.length - 2) : abs;
     return '$stripped%';
   }
 }

@@ -20,5 +20,6 @@ abstract class AdminTrialRepository {
 }
 
 final adminTrialRepositoryProvider = Provider<AdminTrialRepository>(
-  (ref) => throw UnimplementedError('adminTrialRepositoryProvider not overridden'),
+  (ref) =>
+      throw UnimplementedError('adminTrialRepositoryProvider not overridden'),
 );

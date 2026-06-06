@@ -42,8 +42,7 @@ class _AdminTrialScreenState extends ConsumerState<AdminTrialScreen> {
   @override
   Widget build(BuildContext context) {
     final colors = context.colors;
-    final snapshotAsync =
-        ref.watch(trialSnapshotProvider(widget.userId));
+    final snapshotAsync = ref.watch(trialSnapshotProvider(widget.userId));
     final actionState = ref.watch(adminTrialNotifierProvider);
     final isBusy = actionState is AsyncLoading;
 
@@ -86,10 +85,8 @@ class _AdminTrialScreenState extends ConsumerState<AdminTrialScreen> {
   }
 
   Future<void> _handleGrant(TrialSnapshot snapshot) async {
-    final planToSend =
-        snapshot.hasPlan ? snapshot.planId : _planId;
-    if (!snapshot.hasPlan &&
-        (planToSend == null || planToSend.isEmpty)) {
+    final planToSend = snapshot.hasPlan ? snapshot.planId : _planId;
+    if (!snapshot.hasPlan && (planToSend == null || planToSend.isEmpty)) {
       AppSnackBar.error(context, 'Vui lòng chọn gói plan cho tài khoản mới');
       return;
     }
@@ -100,9 +97,8 @@ class _AdminTrialScreenState extends ConsumerState<AdminTrialScreen> {
           planId: planToSend,
           cycle: _cycle,
           rooms: _rooms,
-          reason: _reasonCtrl.text.trim().isEmpty
-              ? null
-              : _reasonCtrl.text.trim(),
+          reason:
+              _reasonCtrl.text.trim().isEmpty ? null : _reasonCtrl.text.trim(),
         );
 
     if (!mounted) return;
@@ -211,8 +207,8 @@ class _Header extends StatelessWidget {
                   decoration: BoxDecoration(
                     color: Colors.white.withValues(alpha: 0.12),
                     shape: BoxShape.circle,
-                    border: Border.all(
-                        color: Colors.white.withValues(alpha: 0.18)),
+                    border:
+                        Border.all(color: Colors.white.withValues(alpha: 0.18)),
                   ),
                   child: const Icon(Icons.arrow_back_rounded,
                       color: Colors.white, size: 18),
@@ -247,8 +243,8 @@ class _Header extends StatelessWidget {
                 decoration: BoxDecoration(
                   color: Colors.white.withValues(alpha: 0.15),
                   borderRadius: BorderRadius.circular(20),
-                  border: Border.all(
-                      color: Colors.white.withValues(alpha: 0.3)),
+                  border:
+                      Border.all(color: Colors.white.withValues(alpha: 0.3)),
                 ),
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
@@ -328,9 +324,7 @@ class _Body extends StatelessWidget {
           // ── Grant / Extend Trial form ────────────────────────────
           _SectionTitle(
             icon: Icons.card_giftcard_rounded,
-            label: snapshot.hasActiveTrial
-                ? 'Gia hạn Trial'
-                : 'Cấp Free Trial',
+            label: snapshot.hasActiveTrial ? 'Gia hạn Trial' : 'Cấp Free Trial',
             color: colors.brand,
           ),
           const SizedBox(height: AppSpacing.sm),
@@ -372,21 +366,18 @@ class _Body extends StatelessWidget {
                           horizontal: 12, vertical: 12),
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(10),
-                        borderSide:
-                            BorderSide(color: colors.borderDefault),
+                        borderSide: BorderSide(color: colors.borderDefault),
                       ),
                       enabledBorder: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(10),
-                        borderSide:
-                            BorderSide(color: colors.borderDefault),
+                        borderSide: BorderSide(color: colors.borderDefault),
                       ),
                     ),
                     items: const [
                       DropdownMenuItem(
                           value: 'starter', child: Text('Starter')),
                       DropdownMenuItem(
-                          value: 'professional',
-                          child: Text('Professional')),
+                          value: 'professional', child: Text('Professional')),
                       DropdownMenuItem(
                           value: 'enterprise', child: Text('Enterprise')),
                     ],
@@ -444,13 +435,11 @@ class _Body extends StatelessWidget {
                         horizontal: 12, vertical: 12),
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(10),
-                      borderSide:
-                          BorderSide(color: colors.borderDefault),
+                      borderSide: BorderSide(color: colors.borderDefault),
                     ),
                     enabledBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(10),
-                      borderSide:
-                          BorderSide(color: colors.borderDefault),
+                      borderSide: BorderSide(color: colors.borderDefault),
                     ),
                   ),
                 ),
@@ -637,8 +626,8 @@ class _SnapshotCard extends StatelessWidget {
               const Spacer(),
               if (snapshot.planId != null)
                 Container(
-                  padding: const EdgeInsets.symmetric(
-                      horizontal: 10, vertical: 4),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                   decoration: BoxDecoration(
                     color: colors.brand.withValues(alpha: 0.08),
                     borderRadius: BorderRadius.circular(20),
@@ -781,8 +770,8 @@ class _RevokeDialog extends StatelessWidget {
             backgroundColor: colors.error,
             foregroundColor: Colors.white,
             elevation: 0,
-            shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(8)),
+            shape:
+                RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
           ),
           child: Text(
             'Thu hồi',
@@ -883,14 +872,11 @@ class _DayChip extends StatelessWidget {
         duration: const Duration(milliseconds: 200),
         padding: const EdgeInsets.symmetric(vertical: 10),
         decoration: BoxDecoration(
-          color: selected
-              ? colors.brand
-              : colors.brand.withValues(alpha: 0.08),
+          color: selected ? colors.brand : colors.brand.withValues(alpha: 0.08),
           borderRadius: BorderRadius.circular(10),
           border: Border.all(
-            color: selected
-                ? colors.brand
-                : colors.brand.withValues(alpha: 0.2),
+            color:
+                selected ? colors.brand : colors.brand.withValues(alpha: 0.2),
           ),
         ),
         child: Column(
@@ -943,8 +929,7 @@ class _ToggleChip extends StatelessWidget {
           color: selected ? colors.brand : Colors.transparent,
           borderRadius: BorderRadius.circular(10),
           border: Border.all(
-            color:
-                selected ? colors.brand : colors.borderDefault,
+            color: selected ? colors.brand : colors.borderDefault,
           ),
         ),
         child: Center(

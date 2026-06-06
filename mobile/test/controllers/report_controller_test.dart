@@ -42,8 +42,8 @@ void main() {
       addTearDown(container.dispose);
       container.read(selectedReportParamsProvider.notifier).state =
           const ReportParams(period: ReportPeriod.year);
-      expect(
-          container.read(selectedReportParamsProvider).period, ReportPeriod.year);
+      expect(container.read(selectedReportParamsProvider).period,
+          ReportPeriod.year);
     });
 
     test('can be updated to custom period with from/to', () {
@@ -140,27 +140,20 @@ void main() {
       expect(capturedFrom, DateTime(2026, 1, 1));
     });
 
-    test('sends apiValue when custom period missing from/to', () async {
-      String? capturedPeriod;
-      final fakeRepo =
-          _CapturingFakeRepo((period) => capturedPeriod = period);
-      final container = ProviderContainer(
-        overrides: [
-          reportRepositoryProvider.overrideWithValue(fakeRepo),
-        ],
-      );
+    test('throws when custom period missing from/to', () async {
+      const params = ReportParams(period: ReportPeriod.custom);
+      final container = ProviderContainer();
       addTearDown(container.dispose);
 
-      // custom without from/to → useCustom=false → period = p.period.apiValue = 'custom'
-      const params = ReportParams(period: ReportPeriod.custom);
-      await container.read(reportDataProvider(params).future);
-      expect(capturedPeriod, 'custom');
+      expect(
+        () => container.read(reportDataProvider(params).future),
+        throwsA(isA<Exception>()),
+      );
     });
 
     test('null params uses month default', () async {
       String? capturedPeriod;
-      final fakeRepo =
-          _CapturingFakeRepo((period) => capturedPeriod = period);
+      final fakeRepo = _CapturingFakeRepo((period) => capturedPeriod = period);
       final container = ProviderContainer(
         overrides: [
           reportRepositoryProvider.overrideWithValue(fakeRepo),

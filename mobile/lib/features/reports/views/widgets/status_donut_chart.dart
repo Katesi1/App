@@ -22,7 +22,8 @@ class StatusDonutChart extends StatelessWidget {
     required this.cancelledCount,
   });
 
-  int get _total => holdCount + confirmedCount + completedCount + cancelledCount;
+  int get _total =>
+      holdCount + confirmedCount + completedCount + cancelledCount;
 
   @override
   Widget build(BuildContext context) {

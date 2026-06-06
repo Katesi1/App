@@ -7,6 +7,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../data/models/cccd_upload.dart';
 import '../data/models/ocr_result.dart';
 import '../data/models/payment_history_item.dart';
+import '../data/models/payment_quote.dart';
 import '../data/models/payment_session.dart';
 import '../data/models/plan.dart';
 import '../data/models/selfie_upload.dart';
@@ -15,12 +16,49 @@ import '../data/models/verify_state.dart';
 import '../data/repositories/verify_repository.dart';
 import '../data/repositories/verify_repository_impl.dart';
 
+export '../data/repositories/verify_repository.dart' show VerifyApiException;
+
 final verifyRepositoryProvider = Provider<VerifyRepository>(
   (ref) => VerifyRepositoryImpl(),
 );
 
 final verifyPlansProvider = FutureProvider<List<Plan>>((ref) async {
   return ref.read(verifyRepositoryProvider).fetchPlans();
+});
+
+/// Params cho `POST /payments/quote` — auto-refetch khi đổi plan/cycle.
+typedef PaymentQuoteParams = ({String planId, BillingCycle cycle, int rooms});
+
+final paymentQuoteProvider = FutureProvider.autoDispose
+    .family<PaymentQuote, PaymentQuoteParams>((ref, params) async {
+  final repo = ref.read(verifyRepositoryProvider);
+
+  Plan? catalogPlan;
+  try {
+    final plans = await ref.read(verifyPlansProvider.future);
+    catalogPlan = plans.where((p) => p.id == params.planId).firstOrNull;
+  } catch (_) {}
+
+  try {
+    return await repo.fetchPaymentQuote(
+      planId: params.planId,
+      billingCycle: params.cycle,
+      rooms: params.rooms,
+    );
+  } on VerifyApiException catch (e) {
+    if (e.isSubscriptionFrozen) rethrow;
+    if (catalogPlan != null && catalogPlan.hasFixedPrice) {
+      return PaymentQuote.fromCatalog(catalogPlan, params.cycle);
+    }
+    rethrow;
+  } catch (_) {
+    if (catalogPlan != null && catalogPlan.hasFixedPrice) {
+      return PaymentQuote.fromCatalog(catalogPlan, params.cycle);
+    }
+    throw const VerifyApiException(
+      'Không tải được báo giá. Kiểm tra kết nối và thử lại.',
+    );
+  }
 });
 
 final paymentHistoryProvider =
@@ -250,12 +288,19 @@ class VerifyFlowController extends StateNotifier<VerifyFlowState> {
   /// Pick plan + cycle. `expectedRooms` auto-derive từ `plan.rooms` (giữ
   /// trong state cho payment + admin queue). Enterprise: rooms = -1 → giữ
   /// nguyên giá trị cũ (không override).
-  void selectPlan(Plan plan, BillingCycle cycle) {
+  void selectPlan(Plan plan, BillingCycle cycle, {PaymentQuote? quote}) {
     state = state.copyWith(
       selectedPlan: plan,
       billingCycle: cycle,
+      paymentQuote: quote,
       expectedRooms: plan.rooms > 0 ? plan.rooms : state.expectedRooms,
+      clearPaymentQuote: quote == null,
     );
+    _persistDraft();
+  }
+
+  void setPaymentQuote(PaymentQuote quote) {
+    state = state.copyWith(paymentQuote: quote);
     _persistDraft();
   }
 
@@ -267,6 +312,37 @@ class VerifyFlowController extends StateNotifier<VerifyFlowState> {
   // ════════════════════════════════════════════════════════════
   // Payment — Step 6
   // ════════════════════════════════════════════════════════════
+
+  int _quoteRooms(Plan plan) => plan.rooms > 0 ? plan.rooms : 1;
+
+  /// Luôn lấy báo giá mới từ BE trước khi thanh toán — không dùng catalog
+  /// fallback (`isCatalogFallback`) để gửi `totalAmount`.
+  Future<PaymentQuote> ensureFreshQuote() async {
+    final plan = state.selectedPlan;
+    if (plan == null) {
+      throw const VerifyApiException('Chưa chọn gói thanh toán.');
+    }
+    final quote = await _repo.fetchPaymentQuote(
+      planId: plan.id,
+      billingCycle: state.billingCycle,
+      rooms: _quoteRooms(plan),
+    );
+    state = state.copyWith(paymentQuote: quote);
+    _persistDraft();
+    return quote;
+  }
+
+  Future<PaymentSession> _createPaymentSession(
+    PaymentMethod method,
+    PaymentQuote quote,
+  ) =>
+      _repo.initiatePayment(
+        planId: quote.planId,
+        billingCycle: quote.cycle,
+        method: method,
+        rooms: quote.rooms,
+        totalAmount: quote.totalAmount,
+      );
 
   /// Tạo payment session (mở QR / bank info / card form).
   ///
@@ -296,16 +372,29 @@ class VerifyFlowController extends StateNotifier<VerifyFlowState> {
       }
     }
 
-    final total = PlanPriceCalculator.total(plan, state.billingCycle);
-    final session = await _repo.initiatePayment(
-      planId: plan.id,
-      billingCycle: state.billingCycle,
-      method: method,
-      rooms: plan.rooms,
-      totalAmount: total,
-    );
+    PaymentQuote quote;
+    try {
+      quote = await ensureFreshQuote();
+    } on VerifyApiException {
+      rethrow;
+    } catch (_) {
+      throw const VerifyApiException(
+        'Không lấy được báo giá từ máy chủ. Kiểm tra mạng và thử lại.',
+      );
+    }
+
+    PaymentSession session;
+    try {
+      session = await _createPaymentSession(method, quote);
+    } on VerifyApiException catch (e) {
+      if (!e.isAmountMismatch) rethrow;
+      quote = await ensureFreshQuote();
+      session = await _createPaymentSession(method, quote);
+    }
+
     state = state.copyWith(
       paymentSession: session,
+      paymentQuote: quote,
       paymentStatus: PaymentStatus.pending,
       status: VerifyStatus.paymentPending,
     );
@@ -334,6 +423,32 @@ class VerifyFlowController extends StateNotifier<VerifyFlowState> {
     state = state.copyWith(paymentStatus: status);
     _persistDraft();
     return status;
+  }
+
+  /// Huỷ phiên thanh toán pending — gọi khi user chọn "Đóng phiên".
+  /// "Đóng và đợi" không gọi method này.
+  Future<void> cancelPayment() async {
+    final session = state.paymentSession;
+    if (session == null) return;
+
+    try {
+      await _repo.cancelPayment(session.sessionId);
+    } on VerifyApiException {
+      // 409 cannotCancel — session đã paid/expired/...; sync status local.
+      try {
+        final status = await _repo.checkPaymentStatus(session.sessionId);
+        state = state.copyWith(paymentStatus: status);
+        _persistDraft();
+      } catch (_) {}
+      rethrow;
+    }
+
+    state = state.copyWith(clearPaymentSession: true);
+    try {
+      final snap = await _repo.getKycStatus();
+      state = state.copyWith(status: snap.status);
+    } catch (_) {}
+    _persistDraft();
   }
 
   // ════════════════════════════════════════════════════════════

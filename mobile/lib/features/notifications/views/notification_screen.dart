@@ -9,7 +9,9 @@ import '../../../shared/widgets/loading_widget.dart';
 import '../controllers/notification_controller.dart';
 
 class NotificationScreen extends ConsumerStatefulWidget {
-  const NotificationScreen({super.key});
+  final NotificationType? initialType;
+
+  const NotificationScreen({super.key, this.initialType});
 
   @override
   ConsumerState<NotificationScreen> createState() => _NotificationScreenState();
@@ -17,6 +19,14 @@ class NotificationScreen extends ConsumerStatefulWidget {
 
 class _NotificationScreenState extends ConsumerState<NotificationScreen> {
   NotificationType? _selectedType;
+
+  @override
+  void initState() {
+    super.initState();
+    final initial = widget.initialType;
+    _selectedType =
+        initial != null && initial.isInboxType ? initial : null;
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -54,17 +64,19 @@ class _NotificationScreenState extends ConsumerState<NotificationScreen> {
           Expanded(
             child: notificationsAsync.when(
               data: (notifications) {
+                final inbox = notifications
+                    .where((n) => n.type.isInboxType)
+                    .toList();
                 final filtered = _selectedType == null
-                    ? notifications
-                    : notifications
-                        .where((n) => n.type == _selectedType)
-                        .toList();
+                    ? inbox
+                    : inbox.where((n) => n.type == _selectedType).toList();
 
                 if (filtered.isEmpty) {
                   return const EmptyStateWidget(
                     icon: Icons.notifications_off_outlined,
                     message: 'Không có thông báo',
-                    subMessage: 'Bạn sẽ nhận thông báo khi có cập nhật mới',
+                    subMessage:
+                        'Cập nhật booking và thanh toán sẽ hiện tại đây',
                   );
                 }
 
@@ -129,7 +141,7 @@ class _FilterBar extends StatelessWidget {
             onTap: () => onChanged(null),
           ),
           const SizedBox(width: AppSpacing.xs),
-          ...NotificationType.values.map(
+          ...inboxNotificationTypes.map(
             (type) => Padding(
               padding: const EdgeInsets.only(left: AppSpacing.xs),
               child: _chip(

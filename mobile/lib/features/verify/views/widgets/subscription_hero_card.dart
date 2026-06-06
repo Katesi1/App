@@ -8,21 +8,21 @@ import '../../../../core/theme/app_spacing.dart';
 import '../../../../data/models/user_model.dart';
 import '../../data/models/plan.dart';
 import '../../data/models/verify_enums.dart';
-import 'verify_format.dart';
-
 /// Hero card tóm tắt gói subscription — gradient + status pill.
 class SubscriptionHeroCard extends StatelessWidget {
   final UserModel user;
   final Plan? plan;
   final BillingCycle billingCycle;
-  final int totalPrice;
+
+  /// Chi phí/kỳ do BE quote — đã format (vd `658.900đ`).
+  final String costLabel;
 
   const SubscriptionHeroCard({
     super.key,
     required this.user,
     required this.plan,
     required this.billingCycle,
-    required this.totalPrice,
+    required this.costLabel,
   });
 
   @override
@@ -146,7 +146,7 @@ class SubscriptionHeroCard extends StatelessWidget {
                 children: [
                   if (plan != null && plan!.hasFixedPrice) ...[
                     Text(
-                      VerifyFormat.priceShort(totalPrice),
+                      costLabel,
                       style: GoogleFonts.beVietnamPro(
                         fontSize: 28,
                         fontWeight: FontWeight.w800,

@@ -234,11 +234,13 @@ class _VNPayQRDialogState extends State<VNPayQRDialog> {
 class BankTransferDialog extends StatefulWidget {
   final PaymentSession session;
   final VoidCallback? onWaitAndClose;
+  final Future<void> Function()? onCancelSession;
 
   const BankTransferDialog({
     super.key,
     required this.session,
     this.onWaitAndClose,
+    this.onCancelSession,
   });
 
   @override
@@ -343,9 +345,10 @@ class _BankTransferDialogState extends State<BankTransferDialog> {
 
     return PaymentDialogPopScope(
       isBankTransfer: true,
+      onCancelSession: widget.onCancelSession,
       child: Dialog(
         backgroundColor: colors.bgSurfaceElevated,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
         child: SingleChildScrollView(
           padding: const EdgeInsets.fromLTRB(20, 20, 20, 16),
           child: Column(
@@ -353,49 +356,124 @@ class _BankTransferDialogState extends State<BankTransferDialog> {
             children: [
               Row(
                 children: [
-                  Icon(Icons.account_balance,
-                      size: 18, color: colors.brandSecondary),
-                  const SizedBox(width: 6),
-                  Text(
-                    'Chuyển khoản ngân hàng',
-                    style: TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w800,
-                      color: colors.textPrimary,
+                  Container(
+                    width: 40,
+                    height: 40,
+                    decoration: BoxDecoration(
+                      color: colors.brand.withValues(alpha: 0.12),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Icon(
+                      Icons.account_balance_rounded,
+                      size: 22,
+                      color: colors.brand,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Chuyển khoản ngân hàng',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w800,
+                            color: colors.textPrimary,
+                          ),
+                        ),
+                        Text(
+                          'Quét mã hoặc chuyển thủ công',
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: colors.textSecondary,
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                 ],
               ),
-              const SizedBox(height: 12),
-              // VietQR động — số tiền + nội dung đã được encode vào QR.
+              const SizedBox(height: 16),
               Container(
-                padding: const EdgeInsets.all(8),
+                width: double.infinity,
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 14,
+                ),
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [
+                      colors.brand.withValues(alpha: 0.14),
+                      colors.brandSecondary.withValues(alpha: 0.08),
+                    ],
+                  ),
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(
+                    color: colors.borderBrand.withValues(alpha: 0.35),
+                  ),
+                ),
+                child: Column(
+                  children: [
+                    Text(
+                      'Số tiền cần chuyển',
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w600,
+                        color: colors.textSecondary,
+                        letterSpacing: 0.3,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      VerifyFormat.priceVND(widget.session.totalAmount),
+                      style: TextStyle(
+                        fontSize: 22,
+                        fontWeight: FontWeight.w800,
+                        color: colors.textBrand,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 16),
+              Container(
+                padding: const EdgeInsets.all(14),
                 decoration: BoxDecoration(
                   color: colors.bgSurface,
-                  borderRadius: BorderRadius.circular(12),
+                  borderRadius: BorderRadius.circular(16),
                   border: Border.all(color: colors.borderDefault),
+                  boxShadow: [
+                    BoxShadow(
+                      color: colors.brand.withValues(alpha: 0.06),
+                      blurRadius: 16,
+                      offset: const Offset(0, 6),
+                    ),
+                  ],
                 ),
                 child: ClipRRect(
-                  borderRadius: BorderRadius.circular(8),
+                  borderRadius: BorderRadius.circular(10),
                   child: CachedNetworkImage(
                     imageUrl: qrUrl,
-                    width: 200,
-                    height: 200,
+                    width: 220,
+                    height: 220,
                     fit: BoxFit.contain,
+                    memCacheWidth: 440,
                     placeholder: (_, __) => const SizedBox(
-                      width: 200,
-                      height: 200,
+                      width: 220,
+                      height: 220,
                       child: Center(
-                          child: CircularProgressIndicator(strokeWidth: 2)),
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      ),
                     ),
                     errorWidget: (_, __, ___) => SizedBox(
-                      width: 200,
-                      height: 200,
+                      width: 220,
+                      height: 220,
                       child: Column(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
                           Icon(
-                            Icons.qr_code_2,
+                            Icons.qr_code_2_rounded,
                             size: 48,
                             color: colors.textTertiary,
                           ),
@@ -403,7 +481,7 @@ class _BankTransferDialogState extends State<BankTransferDialog> {
                           Text(
                             'Không tải được QR',
                             style: TextStyle(
-                              fontSize: 11,
+                              fontSize: 12,
                               fontWeight: FontWeight.w600,
                               color: colors.textTertiary,
                             ),
@@ -414,123 +492,125 @@ class _BankTransferDialogState extends State<BankTransferDialog> {
                   ),
                 ),
               ),
-              const SizedBox(height: 8),
-              Text(
-                'Quét QR — số tiền tự điền sẵn',
-                style: TextStyle(
-                  fontSize: 11,
-                  fontWeight: FontWeight.w600,
-                  color: colors.textSecondary,
+              const SizedBox(height: 14),
+              Container(
+                decoration: BoxDecoration(
+                  color: colors.bgSurface,
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(color: colors.borderDefault),
+                ),
+                child: Column(
+                  children: [
+                    _row(
+                      context,
+                      label: 'Ngân hàng',
+                      value: bank.bankName,
+                      copyable: false,
+                      leading: bank.bankLogoUrl != null
+                          ? ClipRRect(
+                              borderRadius: BorderRadius.circular(6),
+                              child: CachedNetworkImage(
+                                imageUrl: bank.bankLogoUrl!,
+                                width: 28,
+                                height: 28,
+                                fit: BoxFit.contain,
+                                memCacheWidth: 56,
+                                errorWidget: (_, __, ___) =>
+                                    const SizedBox.shrink(),
+                              ),
+                            )
+                          : null,
+                    ),
+                    Divider(height: 1, color: colors.borderSubtle),
+                    _row(
+                      context,
+                      label: 'Số tài khoản',
+                      value: bank.accountNumber,
+                      enabled: !expired,
+                    ),
+                    Divider(height: 1, color: colors.borderSubtle),
+                    _row(
+                      context,
+                      label: 'Tên người nhận',
+                      value: bank.accountName,
+                      copyable: false,
+                    ),
+                    Divider(height: 1, color: colors.borderSubtle),
+                    _row(
+                      context,
+                      label: 'Nội dung CK',
+                      value: transferContent,
+                      enabled: !expired,
+                    ),
+                  ],
                 ),
               ),
               const SizedBox(height: 12),
-              if (bank.bankLogoUrl != null) ...[
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(6),
-                  child: CachedNetworkImage(
-                    imageUrl: bank.bankLogoUrl!,
-                    width: 32,
-                    height: 32,
-                    fit: BoxFit.contain,
-                    errorWidget: (_, __, ___) => const SizedBox.shrink(),
-                  ),
-                ),
-                const SizedBox(height: 8),
-              ],
-              _row(context,
-                  label: 'Ngân hàng', value: bank.bankName, copyable: false),
-              _row(context, label: 'Số tài khoản', value: bank.accountNumber),
-              _row(context,
-                  label: 'Tên người nhận',
-                  value: bank.accountName,
-                  copyable: false),
-              _row(context, label: 'Nội dung CK', value: transferContent),
-              _row(
-                context,
-                label: 'Số tiền',
-                value: VerifyFormat.priceVND(widget.session.totalAmount),
-                copyable: false,
-                valueColor: colors.textBrand,
-                valueWeight: FontWeight.w800,
-              ),
-              const SizedBox(height: 10),
-              Row(
-                children: [
-                  Expanded(
-                    child: OutlinedButton.icon(
-                      onPressed: expired
-                          ? null
-                          : () => _copy('Số tài khoản', bank.accountNumber),
-                      icon: const Icon(Icons.content_copy, size: 16),
-                      label: const Text('Copy STK'),
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: OutlinedButton.icon(
-                      onPressed: expired
-                          ? null
-                          : () => _copy('Nội dung CK', transferContent),
-                      icon: const Icon(Icons.content_copy, size: 16),
-                      label: const Text('Copy nội dung'),
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 10),
               Container(
-                padding: const EdgeInsets.all(10),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 8,
+                ),
                 decoration: BoxDecoration(
-                  color: colors.brand.withValues(alpha: 0.08),
-                  borderRadius: BorderRadius.circular(10),
-                  border:
-                      Border.all(color: colors.brand.withValues(alpha: 0.2)),
+                  color: expired
+                      ? colors.errorBg
+                      : colors.bgSurfaceContainer,
+                  borderRadius: BorderRadius.circular(20),
                 ),
                 child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
                   children: [
-                    Icon(Icons.schedule, size: 14, color: colors.brand),
+                    Icon(
+                      expired ? Icons.timer_off_outlined : Icons.timer_outlined,
+                      size: 14,
+                      color: expired ? colors.error : colors.textSecondary,
+                    ),
                     const SizedBox(width: 6),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'Đối soát thủ công có thể mất 1–3 giờ.',
-                            style: TextStyle(
-                              fontSize: 11,
-                              fontWeight: FontWeight.w700,
-                              color: colors.textPrimary,
-                            ),
-                          ),
-                          const SizedBox(height: 2),
-                          Text(
-                            'Bạn có thể đóng app — sẽ nhận thông báo khi '
-                            'xác nhận thành công. Nhập đúng nội dung CK.',
-                            style: TextStyle(
-                              fontSize: 10,
-                              fontWeight: FontWeight.w500,
-                              color: colors.textSecondary,
-                              height: 1.4,
-                            ),
-                          ),
-                        ],
+                    Text(
+                      expired
+                          ? 'Phiên đã hết hạn — tạo phiên mới'
+                          : 'Hết hạn sau ${formatPaymentCountdown(_remaining)}',
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w700,
+                        color: expired ? colors.error : colors.textSecondary,
                       ),
                     ),
                   ],
                 ),
               ),
-              const SizedBox(height: 10),
-              Text(
-                expired
-                    ? 'Phiên đã hết hạn — vui lòng tạo phiên mới'
-                    : 'Phiên hết hạn sau ${formatPaymentCountdown(_remaining)}',
-                style: TextStyle(
-                  fontSize: 10,
-                  fontWeight: FontWeight.w600,
-                  color: expired ? AppColors.coral700 : colors.textTertiary,
+              const SizedBox(height: 12),
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: colors.info.withValues(alpha: 0.08),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                    color: colors.info.withValues(alpha: 0.2),
+                  ),
+                ),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Icon(Icons.info_outline_rounded,
+                        size: 16, color: colors.info),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        'Đối soát thủ công 1–3 giờ. Có thể đóng app — '
+                        'bạn sẽ nhận thông báo khi thanh toán được xác nhận.',
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w500,
+                          color: colors.textSecondary,
+                          height: 1.45,
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
               ),
+              const SizedBox(height: 14),
               const SizedBox(height: 10),
               SizedBox(
                 width: double.infinity,
@@ -552,8 +632,8 @@ class _BankTransferDialogState extends State<BankTransferDialog> {
                 width: double.infinity,
                 height: 44,
                 child: OutlinedButton(
-                  onPressed: () => _confirmClose(context),
-                  child: const Text('Đóng'),
+                  onPressed: () => _cancelSessionAndClose(context),
+                  child: const Text('Đóng phiên'),
                 ),
               ),
             ],
@@ -563,14 +643,20 @@ class _BankTransferDialogState extends State<BankTransferDialog> {
     );
   }
 
-  Future<void> _confirmClose(BuildContext context) async {
+  Future<void> _cancelSessionAndClose(BuildContext context) async {
     final confirmed = await confirmClosePendingPayment(
       context,
       isBankTransfer: true,
     );
-    if (confirmed && context.mounted) {
-      Navigator.of(context).pop();
+    if (!confirmed || !context.mounted) return;
+
+    try {
+      await widget.onCancelSession?.call();
+    } catch (_) {
+      // Đóng dialog dù API lỗi — màn payment xử lý snackbar nếu cần.
     }
+    if (!context.mounted) return;
+    Navigator.of(context).pop();
   }
 
   Widget _row(
@@ -578,50 +664,73 @@ class _BankTransferDialogState extends State<BankTransferDialog> {
     required String label,
     required String value,
     bool copyable = true,
+    bool enabled = true,
     Color? valueColor,
     FontWeight? valueWeight,
+    Widget? leading,
   }) {
     final colors = context.colors;
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 6),
+    final canCopy = copyable && enabled;
+
+    final content = Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          SizedBox(
-            width: 110,
-            child: Text(
-              label,
-              style: TextStyle(
-                fontSize: 11,
-                fontWeight: FontWeight.w600,
-                color: colors.textTertiary,
-              ),
-            ),
-          ),
+          if (leading != null) ...[
+            leading,
+            const SizedBox(width: 10),
+          ],
           Expanded(
-            child: Text(
-              value,
-              style: TextStyle(
-                fontSize: 13,
-                fontWeight: valueWeight ?? FontWeight.w700,
-                color: valueColor ?? colors.textPrimary,
-              ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  label.toUpperCase(),
+                  style: TextStyle(
+                    fontSize: 10,
+                    fontWeight: FontWeight.w600,
+                    color: colors.textTertiary,
+                    letterSpacing: 0.4,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  value,
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: valueWeight ?? FontWeight.w700,
+                    color: valueColor ?? colors.textPrimary,
+                    height: 1.3,
+                  ),
+                ),
+              ],
             ),
           ),
-          if (copyable)
-            InkWell(
-              onTap: () => _copy(label, value),
-              borderRadius: BorderRadius.circular(6),
-              child: Padding(
-                padding: const EdgeInsets.all(4),
-                child: Icon(
-                  Icons.content_copy,
-                  size: 16,
-                  color: colors.textSecondary,
-                ),
+          if (canCopy)
+            Container(
+              padding: const EdgeInsets.all(6),
+              decoration: BoxDecoration(
+                color: colors.brand.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Icon(
+                Icons.content_copy_rounded,
+                size: 16,
+                color: colors.brand,
               ),
             ),
         ],
+      ),
+    );
+
+    if (!canCopy) return content;
+
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: () => _copy(label, value),
+        child: content,
       ),
     );
   }

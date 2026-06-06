@@ -1,14 +1,26 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
+
 import '../../../core/theme/app_color_scheme.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
+import '../../../shared/widgets/loading_widget.dart';
+import '../controllers/abuse_report_controller.dart';
+import '../data/models/abuse_report.dart';
 
-class AbuseReportsScreen extends StatelessWidget {
+class AbuseReportsScreen extends ConsumerWidget {
   const AbuseReportsScreen({super.key});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final colors = context.colors;
+    final filter = ref.watch(abuseReportFilterProvider);
+    final listAsync = ref.watch(filteredAbuseReportsProvider);
+    final pendingCount =
+        ref.watch(pendingAbuseReportCountProvider).valueOrNull ?? 0;
+
     return Scaffold(
       body: Column(
         children: [
@@ -18,7 +30,7 @@ class AbuseReportsScreen extends StatelessWidget {
               top: MediaQuery.of(context).padding.top + 8,
               left: 20,
               right: 20,
-              bottom: 24,
+              bottom: 20,
             ),
             decoration: const BoxDecoration(
               gradient: LinearGradient(
@@ -89,7 +101,7 @@ class AbuseReportsScreen extends StatelessWidget {
                             ),
                           ),
                           Text(
-                            'Xử lý báo cáo từ cộng đồng',
+                            '$pendingCount báo cáo cần xử lý',
                             style: GoogleFonts.beVietnamPro(
                               fontSize: 12,
                               color: Colors.white.withValues(alpha: 0.65),
@@ -103,28 +115,107 @@ class AbuseReportsScreen extends StatelessWidget {
               ],
             ),
           ),
+          _FilterTabs(
+            current: filter,
+            onChanged: (f) =>
+                ref.read(abuseReportFilterProvider.notifier).state = f,
+          ),
           Expanded(
-            child: ListView(
-              padding: const EdgeInsets.all(AppSpacing.md),
-              children: const [
-                _SummaryCard(),
-                SizedBox(height: AppSpacing.md),
-                _ReportTile(
-                  title: 'Tin đăng spam phòng giả',
-                  reporter: 'user_172',
-                  level: 'Cao',
-                  category: 'Spam',
-                ),
-                _ReportTile(
-                  title: 'Nội dung không phù hợp',
-                  reporter: 'user_816',
-                  level: 'Trung bình',
-                  category: 'Nội dung',
-                ),
-              ],
+            child: listAsync.when(
+              loading: () => const LoadingWidget(),
+              error: (e, _) => Center(child: Text('Lỗi: $e')),
+              data: (list) {
+                if (list.isEmpty) {
+                  return Center(
+                    child: Text(
+                      'Không có báo cáo',
+                      style: TextStyle(color: colors.textSecondary),
+                    ),
+                  );
+                }
+                return RefreshIndicator(
+                  color: colors.brand,
+                  onRefresh: () async => ref.invalidate(abuseReportsProvider),
+                  child: ListView.separated(
+                    padding: const EdgeInsets.all(AppSpacing.md),
+                    itemCount: list.length + 1,
+                    separatorBuilder: (_, __) => const SizedBox(height: 10),
+                    itemBuilder: (_, i) {
+                      if (i == 0) {
+                        return const _SummaryCard();
+                      }
+                      final report = list[i - 1];
+                      return _ReportTile(
+                        report: report,
+                        onTap: () =>
+                            context.push('/admin/abuse-reports/${report.id}'),
+                      );
+                    },
+                  ),
+                );
+              },
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _FilterTabs extends StatelessWidget {
+  final AbuseReportFilter current;
+  final ValueChanged<AbuseReportFilter> onChanged;
+
+  const _FilterTabs({required this.current, required this.onChanged});
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.colors;
+    const tabs = [
+      (AbuseReportFilter.pending, 'Chờ xử lý'),
+      (AbuseReportFilter.all, 'Tất cả'),
+      (AbuseReportFilter.resolved, 'Đã xử lý'),
+      (AbuseReportFilter.dismissed, 'Bỏ qua'),
+    ];
+
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.md,
+        vertical: AppSpacing.sm,
+      ),
+      child: Row(
+        children: tabs.map((t) {
+          final active = current == t.$1;
+          return Padding(
+            padding: const EdgeInsets.only(right: AppSpacing.xs),
+            child: GestureDetector(
+              onTap: () => onChanged(t.$1),
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 200),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 14,
+                  vertical: 8,
+                ),
+                decoration: BoxDecoration(
+                  color: active ? colors.brand : colors.bgSurfaceContainer,
+                  borderRadius: BorderRadius.circular(AppRadius.full),
+                  border: Border.all(
+                    color: active ? colors.brand : colors.borderDefault,
+                  ),
+                ),
+                child: Text(
+                  t.$2,
+                  style: GoogleFonts.beVietnamPro(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    color: active ? colors.textOnPrimary : colors.textPrimary,
+                  ),
+                ),
+              ),
+            ),
+          );
+        }).toList(),
       ),
     );
   }
@@ -143,71 +234,93 @@ class _SummaryCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(AppRadius.lg),
       ),
       child: const Text(
-        'Hàng đợi này tổng hợp báo cáo vi phạm từ cộng đồng. '
-        'Ưu tiên xử lý các ticket mức Cao để giảm rủi ro vận hành.',
+        'Chạm vào từng báo cáo để xem chi tiết và xử lý. '
+        'Hành động moderation sẽ được ghi vào lịch sử hệ thống.',
       ),
     );
   }
 }
 
 class _ReportTile extends StatelessWidget {
-  final String title;
-  final String reporter;
-  final String level;
-  final String category;
+  final AbuseReport report;
+  final VoidCallback onTap;
 
-  const _ReportTile({
-    required this.title,
-    required this.reporter,
-    required this.level,
-    required this.category,
-  });
+  const _ReportTile({required this.report, required this.onTap});
 
   @override
   Widget build(BuildContext context) {
     final colors = context.colors;
-    final isHigh = level == 'Cao';
-    return Container(
-      margin: const EdgeInsets.only(bottom: AppSpacing.sm),
-      padding: const EdgeInsets.all(AppSpacing.md),
-      decoration: BoxDecoration(
-        color: colors.bgSurface,
+    final isHigh = report.level == AbuseReportLevel.high;
+
+    return Material(
+      color: colors.bgSurface,
+      borderRadius: BorderRadius.circular(AppRadius.lg),
+      child: InkWell(
+        onTap: onTap,
         borderRadius: BorderRadius.circular(AppRadius.lg),
-        border: Border.all(color: colors.borderDefault),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            title,
-            style: TextStyle(
-              color: colors.textPrimary,
-              fontWeight: FontWeight.w600,
-            ),
+        child: Container(
+          padding: const EdgeInsets.all(AppSpacing.md),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(AppRadius.lg),
+            border: Border.all(color: colors.borderDefault),
           ),
-          const SizedBox(height: 6),
-          Text(
-            'Reporter: $reporter · Danh mục: $category',
-            style: TextStyle(color: colors.textSecondary),
-          ),
-          const SizedBox(height: 8),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-            decoration: BoxDecoration(
-              color: (isHigh ? colors.error : colors.warning)
-                  .withValues(alpha: 0.16),
-              borderRadius: BorderRadius.circular(AppRadius.full),
-            ),
-            child: Text(
-              'Mức độ: $level',
-              style: TextStyle(
-                color: isHigh ? colors.error : colors.warning,
-                fontSize: 11,
-                fontWeight: FontWeight.w700,
+          child: Row(
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      report.title,
+                      style: TextStyle(
+                        color: colors.textPrimary,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      '${report.reporterName} · ${report.category.label}',
+                      style: TextStyle(color: colors.textSecondary),
+                    ),
+                    const SizedBox(height: 8),
+                    Row(
+                      children: [
+                        _badge(
+                          'Mức: ${report.level.label}',
+                          isHigh ? colors.error : colors.warning,
+                        ),
+                        const SizedBox(width: 6),
+                        _badge(
+                          report.status.label,
+                          colors.textSecondary,
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
               ),
-            ),
+              Icon(Icons.chevron_right_rounded, color: colors.textSecondary),
+            ],
           ),
-        ],
+        ),
+      ),
+    );
+  }
+
+  Widget _badge(String text, Color color) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.16),
+        borderRadius: BorderRadius.circular(AppRadius.full),
+      ),
+      child: Text(
+        text,
+        style: TextStyle(
+          color: color,
+          fontSize: 11,
+          fontWeight: FontWeight.w700,
+        ),
       ),
     );
   }

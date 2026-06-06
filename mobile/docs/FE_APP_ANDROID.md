@@ -3,7 +3,8 @@
 > **Mục đích**: Giúp team Backend hiểu app Flutter mobile đang gọi API nào, ở màn hình/luồng nào, gửi/nhận field gì.  
 > **Đối tượng đọc**: Dev BE, QA integration.  
 > **Tham chiếu BE**: `docs/API_SPEC_FULL.md` (spec đầy đủ từ phía server), `REPORT_FE_ANDROID_2026-06-06.md` (feedback BE).  
-> **Cập nhật**: 2026-06-06 · App version `1.1.3+12` · Base URL production: `https://api.halong24h.com`
+> **Cập nhật**: 2026-06-06 · App version `1.1.3+12` · Base URL production: `https://api.halong24h.com`  
+> **Changelog gần nhất**: Tách **Thông báo** (booking/thanh toán) vs **Lịch sử hệ thống** admin (báo cáo vi phạm, moderation, audit); inbox không hiển thị `type=system`.
 
 ---
 
@@ -27,13 +28,22 @@
 
 > **Quyết định sản phẩm (2026-06-06)**: App mobile này là **PMS B2B** — dành cho **chủ homestay (OWNER)** và **nhân viên sale (SALE)** vận hành phòng. **Khách lưu trú không đặt phòng trên app này.**
 
+### Thông báo vs Lịch sử hệ thống (quan trọng)
+
+| Kênh | Route | Đối tượng | Nội dung |
+|---|---|---|---|
+| **Thông báo** | `/notifications` | OWNER, SALE (vận hành) | Booking (xác nhận, huỷ, lịch…), thanh toán (hóa đơn, subscription…) — liên quan **khách & chủ homestay** |
+| **Lịch sử hệ thống** | `/admin/moderation-audit` | ADMIN | Ai báo cáo vi phạm, admin xử lý thế nào, khóa user, ẩn tin… — **moderation & audit** |
+
+FE inbox **chỉ** hiển thị `type ∈ {booking, payment}`. `type=system` từ BE **không** vào inbox — ghi vào audit / lịch sử hệ thống (hoặc redirect admin từ `/notifications?type=system`).
+
 ### Ai dùng app?
 
 | Role | Dùng app? | Việc chính |
 |---|---|---|
 | **OWNER** | Có | Quản lý cơ sở, phòng, giá, lịch; KYC + subscription; mời SALE |
 | **SALE** | Có | Xem phòng được gán → **giữ/lock phòng** cho khách (offline/direct) → confirm booking |
-| **ADMIN** | Có | Duyệt KYC, quản lý user, trial |
+| **ADMIN** | Có | Duyệt KYC, quản lý user, trial, xử lý báo cáo vi phạm |
 | **CUSTOMER (khách lưu trú)** | **Không** | Khách nhận phòng qua kênh ngoài app (SALE giữ hộ, OTA, walk-in…). App riêng cho khách (nếu có) là product khác |
 
 ### Luồng booking B2B (core workflow)
@@ -193,7 +203,7 @@ Getter trên `UserModel`: `isAdmin`, `isOwner`, `isSale`, `isCustomer`, `isManag
 | SALE membership không active | Chỉ được `/dashboard`, `/profile`, `/profile/help`, `/notifications` |
 | SALE | Chặn `/properties/new` (tạo cơ sở mới) |
 | OWNER `needsKyc` | Chặn mutate `/properties/:id/*` → redirect `/verify/cccd-front`. Cho phép `/properties` (list). **Roadmap**: cho read-only `GET /properties/:id` khi chưa KYC |
-| Admin-only | `/admin/users/*`, `/admin/kyc/*`, `/admin/trial`, abuse-reports, moderation-audit, role-permissions |
+| Admin-only | `/admin/users/*`, `/admin/kyc/*`, `/admin/trial`, `/admin/abuse-reports/*`, `/admin/moderation-audit`, `/admin/role-permissions` |
 | Legacy customer routes | `/home`, `/search`, `/my-bookings`, `/account` — **out of scope B2B**, sẽ gỡ |
 
 ### 4.4 Bottom navigation (B2B — mode quản lý)
@@ -303,7 +313,7 @@ Query: `startDate`, `endDate` (YYYY-MM-DD), optional `propertyId`, `type`.
 
 Dashboard FE parse các field: `totalRooms`, `activeRooms`, `emptyRooms`, `occupiedRooms`, `checkoutToday`, `totalBookings`, `thisMonthBookings`, `monthlyRevenue`, `todayRevenue`, `globalTotalRooms`, `globalEmptyRooms`.
 
-Reports query: `period`, `from`, `to` (ưu tiên) hoặc legacy `month`, `year`. FE parse thêm `recentBookings` → `BookingModel`.
+Reports query: xem **§6.8** — spec đầy đủ cho BE (`period`, `from`, `to`, response schema).
 
 ### KYC (OWNER verify)
 
@@ -349,6 +359,16 @@ Phân biệt **`qrExpiresAt`** (15 phút — countdown QR) vs **`expiresAt`** (2
 | POST | `/admin/users/:id/trial` | `admin_trial_repository_impl.dart` | Grant trial |
 | DELETE | `/admin/users/:id/trial` | `admin_trial_repository_impl.dart` | Revoke trial |
 
+### Admin — Báo cáo vi phạm (mock, chờ BE)
+
+| Method | Path | Repository | Màn hình |
+|---|---|---|---|
+| — | *(chưa có trên BE)* | `mock_abuse_report_repository.dart` | `/admin/abuse-reports` (list, 4 tab) |
+| — | *(chưa có trên BE)* | `mock_abuse_report_repository.dart` | `/admin/abuse-reports/:id` (detail + actions) |
+
+**Actions FE đã có (mock):** `investigate`, `dismiss`, `resolve` (+ tuỳ chọn ẩn nội dung / khóa user theo `targetType`).  
+**Khi BE expose API** (gợi ý): `GET /admin/abuse-reports`, `GET /admin/abuse-reports/:id`, `POST .../investigate|dismiss|resolve`. Mỗi action moderation thực tế (ban, hide property…) nên push `NotificationType.system` + ghi audit log server-side (spec §14).
+
 ### Staff invites
 
 | Method | Path | Repository | Màn hình |
@@ -380,10 +400,12 @@ Create review body: `{ bookingId, cleanliness, location, amenities, service, val
 
 | Method | Path | Repository | Màn hình / Service |
 |---|---|---|---|
-| GET | `/notifications` | `notification_repository.dart` | `/notifications` |
+| GET | `/notifications` | `notification_repository.dart` | `/notifications` (inbox: **Booking + Thanh toán** — ẩn `type=system`) |
 | GET | `/notifications/unread-count` | `notification_repository.dart` | Badge AppBar |
 | PATCH | `/notifications/:id/read` | `notification_repository.dart` | Notification detail |
 | PATCH | `/notifications/read-all` | `notification_repository.dart` | Mark all |
+
+**Deep link:** `/notifications?type=booking|payment` — filter inbox. `/notifications?type=system` → ADMIN redirect `/admin/moderation-audit`.
 | POST | `/devices` | `device_repository.dart` | `push_notification_service.dart` (sau login) |
 | DELETE | `/devices/:token` | `device_repository.dart` | Trước logout |
 
@@ -481,11 +503,13 @@ Apple tương tự qua `POST /auth/apple` với `{ idToken, role?, email?, name?
 | `/profile/edit` | `PUT /users/:id` + refresh `GET /auth/profile` |
 | `/profile/change-password` | `POST /auth/change-password` |
 | `/profile/delete-account` | `DELETE /users/me` body optional `{ reason }` |
-| `/profile/help`, `/privacy`, `/terms`, `/consent` | Static UI — **không API** |
-| `/profile/feedback` | Analytics local — **chưa POST BE** |
-| `/profile/tickets` | Mock data — **chưa API** |
-| `/profile/notifications` | Local prefs — **chưa API** |
-| `/profile/data-request` | Static / placeholder |
+| `/profile/help`, `/privacy`, `/terms` | Static UI |
+| `/profile/consent` | `GET/PUT /users/me/consents` — KYC server-locked |
+| `/profile/feedback` | `POST /feedback` (rate-limit 10/giờ/user) |
+| `/profile/tickets` | `GET/POST /support/tickets` |
+| `/profile/tickets/:id` | `GET /support/tickets/:id`, `POST .../reply` |
+| `/profile/notifications` | `GET/PUT /users/me/notification-preferences` |
+| `/profile/data-request` | `GET/POST /users/me/data-export` |
 
 ---
 
@@ -610,11 +634,361 @@ Actions trên từng ngày:
 
 ### 6.8 Reports (`features/reports/`)
 
-| Route | API |
-|---|---|
-| `/reports` | `GET /reports?period=...&from=...&to=...` |
+> **Mục đích tài liệu này:** BE implement **một endpoint** `GET /reports`. FE đã wire sẵn — gửi section này cho team API.
 
-FE expect trong `data`: revenue aggregates, chart series, `recentBookings[]` (parse thành `BookingModel`).
+#### Route & code FE
+
+| Route app | API | Repository | File |
+|---|---|---|---|
+| `/reports` | `GET /reports` | `report_repository.dart` | `features/reports/views/report_screen.dart` |
+
+**UI chọn kỳ:** Chip cố định dưới header. **Tuỳ chỉnh** → mở bottom sheet `report_date_range_sheet.dart` **ngay trên trang báo cáo** (không chuyển màn/tab riêng); báo cáo kỳ hiện tại vẫn hiển thị phía sau. Huỷ sheet → giữ nguyên kỳ đang xem. Áp dụng → đổi `period=custom` + `from`/`to`. Banner pill Từ/Đến trên list khi đang xem kỳ tuỳ chỉnh.
+
+**Auth:** `Authorization: Bearer <accessToken>` (bắt buộc).
+
+**Response envelope (chuẩn toàn app):**
+
+```json
+{
+  "success": true,
+  "data": { ... },
+  "message": "..."
+}
+```
+
+Lỗi: `{ "success": false, "message": "..." }` — FE hiển thị `message` trên màn báo cáo.
+
+---
+
+#### Query parameters
+
+| Param | Bắt buộc | Giá trị | Ghi chú |
+|---|---|---|---|
+| `period` | Khuyến nghị | `today` \| `week` \| `month` \| `year` \| `custom` | Mặc định `month` nếu không truyền |
+| `from` | **Bắt buộc khi `period=custom`** | `YYYY-MM-DD` | Ngày bắt đầu (inclusive) |
+| `to` | **Bắt buộc khi `period=custom`** | `YYYY-MM-DD` | Ngày kết thúc (inclusive) |
+| `month` | Legacy (optional) | `1`–`12` | Chỉ dùng tương thích API cũ |
+| `year` | Legacy (optional) | `2026` | Chỉ dùng tương thích API cù |
+
+**Ví dụ request FE thực tế gửi:**
+
+```
+GET /reports?period=month
+GET /reports?period=today
+GET /reports?period=week
+GET /reports?period=year
+GET /reports?period=custom&from=2026-06-01&to=2026-06-30
+```
+
+**Format ngày:** `YYYY-MM-DD` (FE format qua `report_repository.dart`, không có giờ/timezone trong query).
+
+---
+
+#### Semantics từng `period` (BE cần thống nhất 1 chuẩn)
+
+| `period` | Khoảng thời gian gợi ý | Timezone |
+|---|---|---|
+| `today` | 00:00:00 → 23:59:59 **hôm nay** | `Asia/Ho_Chi_Minh` |
+| `week` | Tuần hiện tại (BE chốt: T2–CN hoặc CN–T7, document rõ) | VN |
+| `month` | Tháng dương lịch hiện tại | VN |
+| `year` | Năm dương lịch hiện tại | VN |
+| `custom` | `[from 00:00, to 23:59]` inclusive | VN |
+
+**`previousPeriod` (bắt buộc cho KPI delta):** kỳ ngay trước **cùng độ dài** với kỳ đang xem.
+
+| Kỳ đang xem | Kỳ so sánh gợi ý |
+|---|---|
+| `today` | Hôm qua |
+| `week` | Tuần trước |
+| `month` | Tháng trước |
+| `year` | Năm trước |
+| `custom` `[from, to]` N ngày | N ngày ngay trước `from` |
+
+FE tính % delta: `(current - previous) / previous * 100`. Nếu `previous = 0` → FE hiển thị `—` (không crash).
+
+---
+
+#### Validation BE (trả `400`)
+
+| Rule | Message gợi ý |
+|---|---|
+| `period=custom` mà thiếu `from` hoặc `to` | `from và to bắt buộc khi period=custom` |
+| `from > to` | `from phải ≤ to` |
+| `to` sau hôm nay (VN) | `to không được ở tương lai` |
+| `period` không hợp lệ | `period không hợp lệ` |
+
+---
+
+#### Phạm vi dữ liệu theo role
+
+| Role | Scope |
+|---|---|
+| **OWNER** | Chỉ property thuộc owner đăng nhập |
+| **SALE** | Chỉ property thuộc `ownerId` mà sale được gán |
+| **ADMIN** | Toàn hệ thống (hoặc theo policy nội bộ BE) |
+
+**Nguồn doanh thu (FE hiển thị trên UI):** booking **đã xác nhận + hoàn thành** trong kỳ (không tính HOLD huỷ). BE document rõ rule aggregate để khớp dashboard.
+
+---
+
+#### Response `data` — schema đầy đủ FE đang parse
+
+File model: `features/reports/data/report_models.dart`  
+Repository parse thêm: `recentBookings[]` → `BookingModel` (`data/repositories/report_repository.dart`).
+
+##### KPI cards (4 ô đầu màn hình)
+
+| Field | Type | UI | Ghi chú |
+|---|---|---|---|
+| `revenue` | int | Doanh thu | VND, tổng kỳ |
+| `occupancyRate` | number | Lấp đầy | **0..100** (FE hiển thị `%`) |
+| `adr` | int | Đơn giá TB | VND — Average Daily Rate |
+| `totalBookings` | int | Booking | Tổng booking trong kỳ |
+| `previousPeriod.revenue` | int | Delta doanh thu | |
+| `previousPeriod.occupancy` | number | Delta lấp đầy | **0..100** |
+| `previousPeriod.adr` | int | Delta ADR | |
+| `previousPeriod.bookings` | int | Delta booking | |
+
+##### Trạng thái booking (donut chart)
+
+| Field | Type | Status |
+|---|---|---|
+| `holdCount` | int | HOLD = 0 |
+| `confirmedCount` | int | CONFIRMED = 1 |
+| `cancelledCount` | int | CANCELLED = 2 |
+| `completedCount` | int | COMPLETED = 3 |
+
+##### Chart xu hướng — `revenueByDay[]`
+
+Mỗi phần tử (1 ngày trong kỳ):
+
+| Field | Type | Ghi chú |
+|---|---|---|
+| `date` | string ISO date | `"2026-06-01"` |
+| `revenue` | int | VND |
+| `bookings` | int | |
+| `occupancy` | number | **0..1** (FE ×100 khi plot) |
+
+FE toggle metric: doanh thu / lấp đầy / booking trên cùng series.
+
+##### Top phòng — `topRooms[]` (gợi ý top 5)
+
+| Field | Type |
+|---|---|
+| `roomId` | string (UUID) |
+| `name` | string |
+| `coverImage` | string? URL |
+| `revenue` | int VND |
+| `bookings` | int |
+| `occupancy` | number **0..1** |
+
+##### Phân tích lưu trú
+
+**`dayOfWeekOccupancy`** — occupancy theo thứ (T2→CN):
+
+```json
+{ "values": [0.6, 0.7, 0.65, 0.8, 0.9, 0.95, 0.85] }
+```
+
+Index `0` = Thứ Hai, `6` = Chủ Nhật. Mỗi value **0..1**.
+
+**`lengthOfStay`** — histogram số đêm:
+
+| Field | Bucket UI |
+|---|---|
+| `oneNight` | 1 đêm |
+| `twoToThree` | 2–3 đêm |
+| `fourToSeven` | 4–7 đêm |
+| `eightPlus` | 8+ đêm |
+
+##### Booking gần đây — `recentBookings[]`
+
+Parse thành `BookingModel`. FE hiển thị paginate 5 dòng/trang.
+
+| Field | Type | Bắt buộc UI |
+|---|---|---|
+| `id` | string | ✓ |
+| `propertyId` | string | ✓ |
+| `checkinDate` | string date/datetime | ✓ |
+| `checkoutDate` | string date/datetime | ✓ |
+| `status` | int | ✓ — `0=HOLD, 1=CONFIRMED, 2=CANCELLED, 3=COMPLETED` |
+| `customerName` | string? | ✓ (fallback "Không tên") |
+| `guestCount` | int | optional, default 2 |
+| `property` | object? | **Cần** `{ "name": "Tên phòng" }` cho subtitle |
+| `customerPhone`, `depositAmount`, `saleId`, `sale` | optional | |
+
+Sort: **mới nhất trước**, trong phạm vi kỳ đã chọn.
+
+##### Đánh giá khách
+
+**`ratingSummary`** (owner-level, ưu tiên — BE tính sẵn):
+
+| Field | Type |
+|---|---|
+| `avgRating` | number 0..5 |
+| `totalReviews` | int |
+| `totalProperties` | int — số căn có review |
+| `distribution` | object | `{"5": 8, "4": 4, "3": 1}` — key string OK |
+| `breakdown` | object | 6 tiêu chí (xem dưới) |
+
+**`propertyRatings[]`** — per property (fallback nếu thiếu `ratingSummary`):
+
+| Field | Type |
+|---|---|
+| `propertyId`, `propertyName` | string |
+| `coverImage` | string? |
+| `avgRating`, `totalReviews` | number, int |
+| `distribution`, `breakdown` | như trên |
+
+**`breakdown` 6 tiêu chí** (dùng chung):
+
+```json
+{
+  "cleanliness": 4.5,
+  "location": 4.3,
+  "amenities": 4.2,
+  "service": 4.6,
+  "value": 4.1,
+  "accuracy": 4.4
+}
+```
+
+**`recentReviews[]`** — preview 3 review gần nhất:
+
+| Field | Type |
+|---|---|
+| `id`, `propertyId`, `propertyName` | string |
+| `customerName` | string |
+| `customerAvatar` | string? |
+| `rating` | number 1..5 |
+| `comment` | string |
+| `createdAt` | ISO datetime |
+| `photos` | string[] URLs |
+
+##### Field legacy / phụ (FE parse, default 0 nếu thiếu)
+
+`totalRooms`, `activeRooms`, `thisMonthBookings`, `totalDeposit`, `roomsWithCover`, `roomsWithPrice`
+
+---
+
+#### Example response (rút gọn)
+
+```json
+{
+  "success": true,
+  "data": {
+    "revenue": 15000000,
+    "adr": 850000,
+    "occupancyRate": 72.5,
+    "totalBookings": 42,
+    "holdCount": 3,
+    "confirmedCount": 10,
+    "completedCount": 25,
+    "cancelledCount": 4,
+    "previousPeriod": {
+      "revenue": 12000000,
+      "bookings": 38,
+      "occupancy": 65.0,
+      "adr": 800000
+    },
+    "revenueByDay": [
+      {
+        "date": "2026-06-01",
+        "revenue": 500000,
+        "bookings": 2,
+        "occupancy": 0.75
+      }
+    ],
+    "topRooms": [
+      {
+        "roomId": "uuid",
+        "name": "Phòng 101",
+        "coverImage": "https://...",
+        "revenue": 3000000,
+        "bookings": 8,
+        "occupancy": 0.8
+      }
+    ],
+    "dayOfWeekOccupancy": {
+      "values": [0.6, 0.7, 0.65, 0.8, 0.9, 0.95, 0.85]
+    },
+    "lengthOfStay": {
+      "oneNight": 10,
+      "twoToThree": 20,
+      "fourToSeven": 8,
+      "eightPlus": 2
+    },
+    "recentBookings": [
+      {
+        "id": "uuid",
+        "propertyId": "uuid",
+        "checkinDate": "2026-06-10",
+        "checkoutDate": "2026-06-12",
+        "status": 1,
+        "customerName": "Nguyễn A",
+        "guestCount": 2,
+        "property": { "name": "Homestay X" }
+      }
+    ],
+    "propertyRatings": [],
+    "ratingSummary": {
+      "avgRating": 4.4,
+      "totalReviews": 25,
+      "totalProperties": 3,
+      "distribution": { "5": 15, "4": 7, "3": 3 },
+      "breakdown": {
+        "cleanliness": 4.5,
+        "location": 4.3,
+        "amenities": 4.2,
+        "service": 4.6,
+        "value": 4.1,
+        "accuracy": 4.4
+      }
+    },
+    "recentReviews": [],
+    "totalRooms": 10,
+    "activeRooms": 8
+  },
+  "message": "OK"
+}
+```
+
+---
+
+#### Hành vi FE (Tuỳ chỉnh) — BE cần biết
+
+1. User tap chip **Tuỳ chỉnh** → bottom sheet calendar (chọn range trên lịch + preset nhanh).
+2. Chọn xong → FE gọi `GET /reports?period=custom&from=...&to=...`.
+3. Huỷ picker → **không gọi API**, giữ kỳ cũ.
+4. Chưa chọn ngày → FE **không gọi API** (tránh 400).
+5. Đổi kỳ (Hôm nay / Tuần / …) → FE giữ data cũ + progress bar mỏng khi reload.
+
+---
+
+#### API **chưa cần** (FE không gọi)
+
+Các endpoint tách riêng trong roadmap PMS — **chưa wire**:
+
+- `GET /reports/occupancy`
+- `GET /reports/adr`
+- `GET /reports/revpar`
+- `POST /reports/export?format=csv|xlsx`
+
+Gom hết vào `GET /reports` là đủ cho release hiện tại.
+
+---
+
+#### Checklist BE (ưu tiên triển khai)
+
+- [ ] `period=today|week|month|year` với timezone VN
+- [ ] `period=custom` + `from`/`to` inclusive + validation 400
+- [ ] `previousPeriod` cùng độ dài kỳ
+- [ ] `revenue`, `adr`, `occupancyRate`, `totalBookings`
+- [ ] `revenueByDay[]` — 1 điểm/ngày trong kỳ
+- [ ] `recentBookings[]` + nested `property.name`
+- [ ] Status counts cho donut
+- [ ] Scope OWNER / SALE
+- [ ] (Optional phase 2) `topRooms`, `dayOfWeekOccupancy`, `lengthOfStay`, ratings
 
 ---
 
@@ -668,11 +1042,23 @@ Paywall modal (`paywall_modal.dart`) — không có route; hydrate từ `GET /ky
 | `/admin/users/:id/trial` | ADMIN | subscription + grant/revoke trial |
 | `/admin/kyc` | ADMIN | `GET /admin/kyc/queue?status=&page=&pageSize=` |
 | `/admin/kyc/:id` | ADMIN | GET detail, approve, reject |
-| `/admin/abuse-reports` | ADMIN | **UI placeholder** |
-| `/admin/moderation-audit` | **UI placeholder** |
+| `/admin/abuse-reports` | ADMIN | **Mock** — `MockAbuseReportRepository` (4 tab: Chờ xử lý / Tất cả / Đã xử lý / Bỏ qua) |
+| `/admin/abuse-reports/:id` | ADMIN | **Mock** — detail + actions: điều tra, bỏ qua, xử lý xong (ẩn nội dung / khóa user) |
+| `/admin/moderation-audit` | ADMIN | **UI placeholder** — hiển thị tên **Lịch sử hệ thống** (nhật ký moderation); chờ `GET /admin/audit-log` |
 | `/admin/role-permissions` | ADMIN | **Local SharedPreferences only** |
 
 KYC queue FE gọi 3 lần parallel: `status=awaiting_approval`, `approved`, `rejected` (pageSize 100).
+
+**Báo cáo vi phạm — file chính:**
+
+| Layer | File |
+|---|---|
+| Model | `features/admin/data/models/abuse_report.dart` |
+| Repository | `abuse_report_repository.dart` + `mock_abuse_report_repository.dart` |
+| Controller | `features/admin/controllers/abuse_report_controller.dart` |
+| Views | `abuse_reports_screen.dart`, `abuse_report_detail_screen.dart` |
+
+**Lịch sử hệ thống:** Route `/admin/moderation-audit`, file `moderation_audit_screen.dart`. Gồm: ai báo cáo vi phạm, admin xử lý, khóa user, ẩn tin… **Khác** inbox Thông báo (chỉ booking/thanh toán).
 
 ---
 
@@ -705,10 +1091,18 @@ Admin hide → `DELETE /admin/reviews/:reviewId { reason }`.
 
 | Route | API |
 |---|---|
-| `/notifications` | `GET /notifications` |
+| `/notifications` | `GET /notifications` — FE lọc client: chỉ `booking` + `payment` |
+| `/notifications?type=booking\|payment` | Filter chip inbox |
 | `/notifications/:id` | `PATCH /notifications/:id/read` |
 
-FCM payload FE expect (deep link): `data.type`, `data.targetType`, `data.targetId` — handler set ở `PushNotificationService.onNotificationTap` (app root).
+`NotificationType` BE có thể gửi: `booking` | `payment` | `system`.  
+**Inbox UI** (`inboxNotificationTypes`): chỉ **Booking** và **Thanh toán** — vận hành cho chủ homestay/sale.
+
+**Không hiển thị trong inbox:** `type=system` (moderation, báo cáo, audit) → thuộc **Lịch sử hệ thống** (`/admin/moderation-audit`).  
+Redirect: `/notifications?type=system` + role ADMIN → `/admin/moderation-audit`.
+
+FCM deep link: `data.type`, `data.targetType`, `data.targetId` — `PushNotificationService.onNotificationTap`.  
+Push `type=system` nên deep link admin tới lịch sử hệ thống, không inbox.
 
 Sau login: `POST /devices` register token. Logout: `DELETE /devices/:fcmToken` rồi `POST /auth/logout`.
 
@@ -718,13 +1112,9 @@ Sau login: `POST /devices` register token. Logout: `DELETE /devices/:fcmToken` r
 
 | Màn hình | Route | Trạng thái |
 |---|---|---|
-| Abuse reports | `/admin/abuse-reports` | UI demo, không gọi BE |
-| Moderation audit | `/admin/moderation-audit` | UI demo |
+| Abuse reports (list + detail) | `/admin/abuse-reports`, `/admin/abuse-reports/:id` | **Mock** — `MockAbuseReportRepository`, chưa gọi BE |
+| Lịch sử hệ thống (moderation audit) | `/admin/moderation-audit` | UI demo, chờ `GET /admin/audit-log` |
 | Role permissions | `/admin/role-permissions` | Lưu local device, không sync BE |
-| Feedback / báo lỗi | `/profile/feedback` | Chỉ analytics event local |
-| My tickets | `/profile/tickets` | Hardcoded mock tickets |
-| Notification preferences | `/profile/notifications` | SharedPreferences |
-| Data request (GDPR) | `/profile/data-request` | Placeholder |
 | Customer mode (legacy) | — | **Đã xoá** |
 | Customer đặt phòng | — | **Đã xoá** (`CustomerRepository` + screens) |
 
@@ -743,7 +1133,9 @@ Trong `api_constants.dart` hoặc spec BE có nhưng **mobile chưa integrate**:
 | `GET /properties/share/:id` | Share link public — chưa có UI |
 | `/partner/*` | Có `PartnerRepository`, không có screen |
 | Chat REST + WebSocket | Spec §17 — app chưa có module chat |
-| Disputes, Leads, Audit log | Spec §13–15 — chưa có |
+| `GET /admin/audit-log` | Spec §14 — chưa có màn FE; UX tạm thời qua thông báo `type=system` |
+| `/admin/abuse-reports` (BE) | Chưa có endpoint — FE dùng mock |
+| Disputes, Leads | Spec §13, §15 — chưa có module FE |
 | Permissions API (BE) | App dùng mock local cho admin role-permissions |
 | Generic `/uploads` | Spec §23 — app upload qua endpoint feature-specific (KYC, property images) |
 
@@ -795,7 +1187,8 @@ FE không tách `/rooms` riêng trên BE. **Tab `/rooms`** dùng `GET /propertie
 - Rehydrate: `GET /payments/active` hoặc `GET /kyc/status` → field `latestPayment` (không persist sessionId local).
 - Sau `POST /payments/initiate`: poll `GET /payments/:sessionId/status` — 5s trong 60s đầu, rồi 15s; dừng khi `status != pending` hoặc FCM `data.type == "payment"`.
 - **`qrExpiresAt`** (15 phút): countdown QR. Sau khi hết → UI "Đang đối soát, tối đa 24h" (dùng **`expiresAt`**).
-- Huỷ: `POST /payments/:sessionId/cancel` trước khi đóng modal / đổi gói.
+- **Đóng và đợi** (dialog QR): đóng overlay, giữ session `pending`, tiếp tục poll/FCM.
+- **Đóng phiên**: `POST /payments/:sessionId/cancel` → huỷ bill, clear session local, sync `/kyc/status`. 409 `cannotCancel` → re-check status.
 - **`method`**: chỉ `bank_transfer`.
 
 ### 9.7 Admin KYC approve response
@@ -813,6 +1206,33 @@ FE handle message từ BE cho: `400 booking_not_completed`, `403 not_your_bookin
 ### 9.10 Real-time
 
 App **chưa** dùng Socket.IO. Mọi cập nhật realtime hiện tại: pull-to-refresh, poll (KYC pending, payment status), FCM push (devices registered).
+
+### 9.11 Báo cáo vi phạm — chờ BE
+
+FE đã có queue + detail + actions (pattern giống KYC admin), nhưng **chưa có API**. Cần BE:
+
+| Endpoint gợi ý | Mô tả |
+|---|---|
+| `GET /admin/abuse-reports?status&page&limit` | List (status: `pending \| investigating \| resolved \| dismissed`) |
+| `GET /admin/abuse-reports/count-active` | Badge trên Admin hub (pending + investigating) |
+| `GET /admin/abuse-reports/:id` | Detail kèm target (property/user/review/booking) |
+| `POST /admin/abuse-reports/:id/investigate` | pending → investigating |
+| `POST /admin/abuse-reports/:id/dismiss` | Bỏ qua |
+| `POST /admin/abuse-reports/:id/resolve` | `{ resolution, hideContent?, banUser? }` — BE thực thi moderation thật |
+
+Sau resolve: ghi audit log (§14) + push notification `type=system` cho admin liên quan.
+
+### 9.12 Thông báo vs Lịch sử hệ thống
+
+| | Thông báo `/notifications` | Lịch sử hệ thống `/admin/moderation-audit` |
+|---|---|---|
+| User | OWNER, SALE | ADMIN |
+| Nội dung | Booking, thanh toán (khách/chủ) | Báo cáo vi phạm, moderation, audit |
+| BE `type` | `booking`, `payment` | `system` + audit-log actions (spec §14) |
+| Tùy chọn push | `/profile/notifications` — 2 nhóm | Không (admin xem log) |
+
+- `GET /admin/audit-log` **chưa wire** — màn lịch sử hiện demo cứng.
+- BE gửi `type=system` → **không** expect hiện trong inbox FE; ghi audit hoặc push deep link admin → lịch sử hệ thống.
 
 ---
 
@@ -849,7 +1269,7 @@ lib/
 │   ├── calendar/      → grid calendar controller
 │   ├── reports/       → báo cáo doanh thu
 │   ├── verify/        → KYC + payment + subscription (7 screens)
-│   ├── admin/         → users, KYC queue, trial, placeholders
+│   ├── admin/         → users, KYC queue, trial, abuse reports (mock), role-permissions (local)
 │   ├── staff/         → invite + accept
 │   ├── reviews/       → list, write, reply
 │   ├── notifications/ → inbox
@@ -878,9 +1298,10 @@ App giữ mock song song real impl cho QA override Riverpod:
 | Feature | Mock file | Real impl |
 |---|---|---|
 | KYC verify | `mock_verify_repository.dart` | `verify_repository_impl.dart` |
-| Admin KYC | `mock_admin_kyc_repository.dart` | `admin_kyc_repository_impl.dart` |
+| Admin KYC | *(không có mock trong tree hiện tại)* | `admin_kyc_repository_impl.dart` |
+| Admin abuse reports | `mock_abuse_report_repository.dart` | *(chưa có — chờ BE)* |
 
-Production build mặc định trỏ **real impl**.
+Production build mặc định trỏ **real impl** (abuse reports tạm thời chỉ có mock).
 
 ---
 

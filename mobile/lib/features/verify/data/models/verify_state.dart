@@ -1,6 +1,7 @@
 import 'package:equatable/equatable.dart';
 
 import 'cccd_upload.dart';
+import 'payment_quote.dart';
 import 'payment_session.dart';
 import 'plan.dart';
 import 'selfie_upload.dart';
@@ -28,6 +29,7 @@ class VerifyFlowState extends Equatable {
   final BillingCycle billingCycle;
 
   // ── Payment ──
+  final PaymentQuote? paymentQuote;
   final PaymentSession? paymentSession;
   final PaymentStatus? paymentStatus;
 
@@ -52,6 +54,7 @@ class VerifyFlowState extends Equatable {
     this.expectedRooms = 5,
     this.selectedPlan,
     this.billingCycle = BillingCycle.yearly,
+    this.paymentQuote,
     this.paymentSession,
     this.paymentStatus,
     this.submissionId,
@@ -94,6 +97,7 @@ class VerifyFlowState extends Equatable {
     int? expectedRooms,
     Plan? selectedPlan,
     BillingCycle? billingCycle,
+    PaymentQuote? paymentQuote,
     PaymentSession? paymentSession,
     PaymentStatus? paymentStatus,
     String? submissionId,
@@ -106,6 +110,8 @@ class VerifyFlowState extends Equatable {
     bool? refundProcessed,
     int? refundedAmount,
     bool clearReject = false,
+    bool clearPaymentSession = false,
+    bool clearPaymentQuote = false,
   }) =>
       VerifyFlowState(
         cccdFront: cccdFront ?? this.cccdFront,
@@ -115,8 +121,12 @@ class VerifyFlowState extends Equatable {
         expectedRooms: expectedRooms ?? this.expectedRooms,
         selectedPlan: selectedPlan ?? this.selectedPlan,
         billingCycle: billingCycle ?? this.billingCycle,
-        paymentSession: paymentSession ?? this.paymentSession,
-        paymentStatus: paymentStatus ?? this.paymentStatus,
+        paymentQuote:
+            clearPaymentQuote ? null : (paymentQuote ?? this.paymentQuote),
+        paymentSession:
+            clearPaymentSession ? null : (paymentSession ?? this.paymentSession),
+        paymentStatus:
+            clearPaymentSession ? null : (paymentStatus ?? this.paymentStatus),
         submissionId: submissionId ?? this.submissionId,
         status: status ?? this.status,
         rejectReason: clearReject ? null : (rejectReason ?? this.rejectReason),
@@ -137,6 +147,7 @@ class VerifyFlowState extends Equatable {
         'expectedRooms': expectedRooms,
         'selectedPlan': selectedPlan?.toJson(),
         'billingCycle': billingCycle.name,
+        'paymentQuote': null,
         'paymentSession': paymentSession?.toJson(),
         'paymentStatus': paymentStatus?.name,
         'submissionId': submissionId,
@@ -212,6 +223,7 @@ class VerifyFlowState extends Equatable {
         expectedRooms,
         selectedPlan,
         billingCycle,
+        paymentQuote,
         paymentSession,
         paymentStatus,
         submissionId,

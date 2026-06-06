@@ -113,7 +113,8 @@ class _UserListScreenState extends ConsumerState<UserListScreen> {
                   if (_searchQuery.isNotEmpty) {
                     return EmptyStateWidget(
                       icon: Icons.search_off_rounded,
-                      message: 'Không tìm thấy nhân viên\nkhớp với "$_searchQuery"',
+                      message:
+                          'Không tìm thấy nhân viên\nkhớp với "$_searchQuery"',
                     );
                   }
                   return EmptyStateWidget(
@@ -288,7 +289,9 @@ class _UserListScreenState extends ConsumerState<UserListScreen> {
                             color: Colors.white.withValues(alpha: 0.18)),
                       ),
                       child: Icon(
-                        _isSearching ? Icons.close_rounded : Icons.search_rounded,
+                        _isSearching
+                            ? Icons.close_rounded
+                            : Icons.search_rounded,
                         color: Colors.white,
                         size: 18,
                       ),
@@ -331,8 +334,8 @@ class _UserListScreenState extends ConsumerState<UserListScreen> {
                   decoration: BoxDecoration(
                     color: Colors.white.withValues(alpha: 0.15),
                     borderRadius: BorderRadius.circular(AppRadius.lg),
-                    border: Border.all(
-                        color: Colors.white.withValues(alpha: 0.25)),
+                    border:
+                        Border.all(color: Colors.white.withValues(alpha: 0.25)),
                   ),
                   child: TextField(
                     controller: _searchCtrl,
@@ -786,8 +789,11 @@ class _UserCard extends StatelessWidget {
     return switch (user.saleMembershipState) {
       'invited' => ('Chờ kích hoạt', colors.warning, colors.warningBg),
       'suspended' => ('Tạm khoá', colors.error, colors.errorBg),
-      'unassigned' => ('Chưa gán owner', colors.textSecondary,
-          colors.bgSurfaceContainer),
+      'unassigned' => (
+          'Chưa gán owner',
+          colors.textSecondary,
+          colors.bgSurfaceContainer
+        ),
       _ => ('Đang hoạt động', colors.success, colors.successBg),
     };
   }

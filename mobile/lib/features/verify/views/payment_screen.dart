@@ -10,9 +10,9 @@ import '../../../core/theme/app_spacing.dart';
 import '../../../shared/widgets/status_strip.dart';
 import '../controllers/verify_flow_controller.dart';
 import '../data/models/payment_session.dart';
-import '../data/models/plan.dart';
 import '../data/models/verify_enums.dart';
 import '../utils/payment_close_confirm.dart';
+import '../utils/payment_error_handler.dart';
 import '../utils/payment_awaiting_handler.dart';
 import '../utils/payment_status_poller.dart';
 import 'widgets/order_summary_card.dart';
@@ -46,14 +46,40 @@ class _PaymentScreenState extends ConsumerState<PaymentScreen>
   PaymentMethod _selected = PaymentMethod.bankTransfer;
   bool _processing = false;
   bool _awaitingReconcile = false;
+  bool _syncingQuote = false;
   PaymentStatusPoller? _poller;
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
-    WidgetsBinding.instance
-        .addPostFrameCallback((_) => _resumePendingSession());
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _resumePendingSession();
+      _syncQuoteFromServer();
+    });
+  }
+
+  Future<void> _syncQuoteFromServer() async {
+    final verifyState = ref.read(verifyFlowControllerProvider);
+    if (verifyState.selectedPlan == null) return;
+
+    final session = verifyState.paymentSession;
+    final hasPendingSession = session != null &&
+        verifyState.paymentStatus == PaymentStatus.pending &&
+        DateTime.now().isBefore(session.expiresAt);
+    if (hasPendingSession) return;
+
+    final quote = verifyState.paymentQuote;
+    if (quote != null && !quote.isCatalogFallback) return;
+
+    setState(() => _syncingQuote = true);
+    try {
+      await ref.read(verifyFlowControllerProvider.notifier).ensureFreshQuote();
+    } on VerifyApiException catch (e) {
+      if (mounted) showPaymentApiError(context, e);
+    } finally {
+      if (mounted) setState(() => _syncingQuote = false);
+    }
   }
 
   @override
@@ -111,6 +137,16 @@ class _PaymentScreenState extends ConsumerState<PaymentScreen>
       }
       setState(() => _awaitingReconcile = true);
       _startPolling(session.expiresAt);
+    } on VerifyApiException catch (e) {
+      if (!mounted) return;
+      showPaymentApiError(context, e);
+      AnalyticsService.logEvent('verify_payment_session_failed', params: {
+        'method': _selected.name,
+      });
+      setState(() {
+        _processing = false;
+        _awaitingReconcile = false;
+      });
     } catch (e) {
       if (!mounted) return;
       final msg = e.toString().replaceAll('Exception: ', '');
@@ -137,8 +173,27 @@ class _PaymentScreenState extends ConsumerState<PaymentScreen>
             'Đã ghi nhận. Bạn sẽ nhận thông báo khi thanh toán được xác nhận.',
           );
         },
+        onCancelSession: _cancelPaymentSession,
       ),
     );
+  }
+
+  Future<void> _cancelPaymentSession() async {
+    try {
+      await ref.read(verifyFlowControllerProvider.notifier).cancelPayment();
+      if (!mounted) return;
+      _stopPolling(clearFcm: true);
+      setState(() {
+        _processing = false;
+        _awaitingReconcile = false;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      _showError(
+        'Huỷ phiên thất bại: ${e.toString().replaceAll('Exception: ', '')}',
+      );
+      rethrow;
+    }
   }
 
   void _startPolling(DateTime expiresAt) {
@@ -245,11 +300,12 @@ class _PaymentScreenState extends ConsumerState<PaymentScreen>
     );
     if (!confirmed || !mounted) return;
 
-    _stopPolling(clearFcm: true);
-    setState(() {
-      _processing = false;
-      _awaitingReconcile = false;
-    });
+    try {
+      await _cancelPaymentSession();
+    } catch (_) {
+      return;
+    }
+    if (!mounted) return;
 
     if (context.canPop()) {
       context.pop();
@@ -277,7 +333,23 @@ class _PaymentScreenState extends ConsumerState<PaymentScreen>
       );
     }
 
-    final total = PlanPriceCalculator.total(plan, state.billingCycle);
+    final quote = state.paymentQuote;
+    if (quote == null) {
+      return Scaffold(
+        appBar: const VerifyAppBar(
+          overline: 'BƯỚC 2/2 · MUA GÓI',
+          title: 'Thanh toán',
+          currentStep: 2,
+          totalSteps: 2,
+        ),
+        body: const Center(
+          child: Text('Chưa có báo giá — quay lại chọn gói.'),
+        ),
+      );
+    }
+
+    final total = quote.totalAmount;
+    final quoteReady = !quote.isCatalogFallback && !_syncingQuote;
 
     return PopScope(
       canPop: !_hasPendingPayment(),
@@ -304,6 +376,27 @@ class _PaymentScreenState extends ConsumerState<PaymentScreen>
                 120,
               ),
               children: [
+                if (_syncingQuote) ...[
+                  const StatusStrip(
+                    icon: Icons.sync,
+                    label: 'Đang đồng bộ giá từ máy chủ',
+                    subtitle: 'Vui lòng đợi vài giây trước khi thanh toán.',
+                    variant: StatusStripVariant.brand,
+                  ),
+                  const SizedBox(height: AppSpacing.md),
+                ] else if (quote.isCatalogFallback) ...[
+                  StatusStrip(
+                    icon: Icons.warning_amber_outlined,
+                    label: 'Chưa đồng bộ được giá chính thức',
+                    subtitle: 'Chạm "Tải lại giá" bên dưới hoặc kiểm tra mạng.',
+                    variant: StatusStripVariant.warning,
+                    trailing: TextButton(
+                      onPressed: _syncingQuote ? null : _syncQuoteFromServer,
+                      child: const Text('Tải lại giá'),
+                    ),
+                  ),
+                  const SizedBox(height: AppSpacing.md),
+                ],
                 if (_awaitingReconcile) ...[
                   StatusStrip(
                     icon: Icons.schedule,
@@ -315,10 +408,9 @@ class _PaymentScreenState extends ConsumerState<PaymentScreen>
                   ),
                   const SizedBox(height: AppSpacing.md),
                 ],
-                OrderSummaryCard(
-                  plan: plan,
-                  cycle: state.billingCycle,
-                ).animate().fadeIn(duration: 320.ms),
+                OrderSummaryCard.fromQuote(plan: plan, quote: quote)
+                    .animate()
+                    .fadeIn(duration: 320.ms),
                 const SizedBox(height: AppSpacing.md),
                 Text(
                   'PHƯƠNG THỨC THANH TOÁN',
@@ -378,7 +470,8 @@ class _PaymentScreenState extends ConsumerState<PaymentScreen>
                 child: SizedBox(
                   height: 52,
                   child: FilledButton.icon(
-                    onPressed: _processing ? null : _handlePay,
+                    onPressed:
+                        _processing || !quoteReady ? null : _handlePay,
                     icon: _processing
                         ? const SizedBox(
                             width: 16,
@@ -392,7 +485,12 @@ class _PaymentScreenState extends ConsumerState<PaymentScreen>
                     label: Text(
                       _processing
                           ? 'Đang chờ đối soát...'
-                          : 'Thanh toán an toàn ${VerifyFormat.priceVND(total)}',
+                          : _syncingQuote
+                              ? 'Đang tải giá...'
+                              : !quoteReady
+                                  ? 'Chờ đồng bộ giá'
+                                  : 'Thanh toán an toàn '
+                                      '${VerifyFormat.priceVND(total)}',
                     ),
                   ),
                 ),

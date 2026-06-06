@@ -5,10 +5,10 @@ import 'package:dio/dio.dart';
 
 import '../../../../core/constants/api_constants.dart';
 import '../../../../core/network/api_client.dart';
-import '../../../../core/network/api_response.dart';
 import '../models/cccd_upload.dart';
 import '../models/ocr_result.dart';
 import '../models/payment_history_item.dart';
+import '../models/payment_quote.dart';
 import '../models/payment_session.dart';
 import '../models/plan.dart';
 import '../models/selfie_upload.dart';
@@ -75,7 +75,7 @@ class VerifyRepositoryImpl implements VerifyRepository {
       }
       return upload.copyWith(localPath: image.path);
     } on DioException catch (e) {
-      throw VerifyApiException(parseDioError(e));
+      throw VerifyApiException.fromDio(e);
     }
   }
 
@@ -101,7 +101,7 @@ class VerifyRepositoryImpl implements VerifyRepository {
       );
       return SelfieUpload.fromJson(res.data['data'] as Map<String, dynamic>);
     } on DioException catch (e) {
-      throw VerifyApiException(parseDioError(e));
+      throw VerifyApiException.fromDio(e);
     }
   }
 
@@ -130,7 +130,7 @@ class VerifyRepositoryImpl implements VerifyRepository {
         hasSelfie: uploads['selfie'] == true,
       );
     } on DioException catch (e) {
-      throw VerifyApiException(parseDioError(e));
+      throw VerifyApiException.fromDio(e);
     }
   }
 
@@ -145,11 +145,45 @@ class VerifyRepositoryImpl implements VerifyRepository {
       final list = rawList.cast<Map<String, dynamic>>();
       return list.map(Plan.fromJson).toList();
     } on DioException catch (e) {
-      throw VerifyApiException(parseDioError(e));
+      throw VerifyApiException.fromDio(e);
     }
   }
 
   // ── Payment ────────────────────────────────────────────────────────────────
+
+  @override
+  Future<PaymentQuote> fetchPaymentQuote({
+    required String planId,
+    required BillingCycle billingCycle,
+    required int rooms,
+  }) async {
+    try {
+      final res = await _dio.post(
+        ApiConstants.paymentQuote,
+        data: {
+          'planId': planId,
+          'cycle': billingCycle.name,
+          'rooms': rooms,
+        },
+      );
+      final body = res.data;
+      if (body is! Map) {
+        throw const VerifyApiException('Phản hồi báo giá không hợp lệ');
+      }
+      final data = body['data'];
+      if (data is! Map<String, dynamic>) {
+        final msg = body['message']?.toString();
+        throw VerifyApiException(
+          msg != null && msg.isNotEmpty
+              ? msg
+              : 'Máy chủ chưa trả báo giá (thiếu data)',
+        );
+      }
+      return PaymentQuote.fromJson(data);
+    } on DioException catch (e) {
+      throw VerifyApiException.fromDio(e);
+    }
+  }
 
   @override
   Future<PaymentSession> initiatePayment({
@@ -172,7 +206,7 @@ class VerifyRepositoryImpl implements VerifyRepository {
       );
       return PaymentSession.fromJson(res.data['data'] as Map<String, dynamic>);
     } on DioException catch (e) {
-      throw VerifyApiException(parseDioError(e));
+      throw VerifyApiException.fromDio(e);
     }
   }
 
@@ -183,7 +217,16 @@ class VerifyRepositoryImpl implements VerifyRepository {
       final data = res.data['data'] as Map<String, dynamic>;
       return paymentStatusFromApi(data['status'] as String);
     } on DioException catch (e) {
-      throw VerifyApiException(parseDioError(e));
+      throw VerifyApiException.fromDio(e);
+    }
+  }
+
+  @override
+  Future<void> cancelPayment(String sessionId) async {
+    try {
+      await _dio.post(ApiConstants.paymentCancel(sessionId));
+    } on DioException catch (e) {
+      throw VerifyApiException.fromDio(e);
     }
   }
 
@@ -200,7 +243,7 @@ class VerifyRepositoryImpl implements VerifyRepository {
         submittedAt: DateTime.now(),
       );
     } on DioException catch (e) {
-      throw VerifyApiException(parseDioError(e));
+      throw VerifyApiException.fromDio(e);
     }
   }
 
@@ -224,7 +267,7 @@ class VerifyRepositoryImpl implements VerifyRepository {
             .toList(),
       );
     } on DioException catch (e) {
-      throw VerifyApiException(parseDioError(e));
+      throw VerifyApiException.fromDio(e);
     }
   }
 
@@ -237,7 +280,7 @@ class VerifyRepositoryImpl implements VerifyRepository {
         data: {'items': items.map((i) => i.id).toList()},
       );
     } on DioException catch (e) {
-      throw VerifyApiException(parseDioError(e));
+      throw VerifyApiException.fromDio(e);
     }
   }
 
@@ -261,7 +304,7 @@ class VerifyRepositoryImpl implements VerifyRepository {
         refundAmount: (data['amount'] as num?)?.toInt() ?? 0,
       );
     } on DioException catch (e) {
-      throw VerifyApiException(parseDioError(e));
+      throw VerifyApiException.fromDio(e);
     }
   }
 
@@ -282,7 +325,7 @@ class VerifyRepositoryImpl implements VerifyRepository {
       );
       return PaymentHistoryPage.fromResponse(res.data as Map<String, dynamic>);
     } on DioException catch (e) {
-      throw VerifyApiException(parseDioError(e));
+      throw VerifyApiException.fromDio(e);
     }
   }
 
@@ -297,7 +340,7 @@ class VerifyRepositoryImpl implements VerifyRepository {
       );
       return PaymentSession.fromJson(res.data['data'] as Map<String, dynamic>);
     } on DioException catch (e) {
-      throw VerifyApiException(parseDioError(e));
+      throw VerifyApiException.fromDio(e);
     }
   }
 
@@ -319,14 +362,4 @@ class VerifyRepositoryImpl implements VerifyRepository {
     if (raw == null || raw is! String || raw.isEmpty) return null;
     return DateTime.tryParse(raw);
   }
-}
-
-/// Lỗi nghiệp vụ khi gọi backend KYC (đã có message tiếng Việt từ server hoặc
-/// message fallback từ `parseDioError`).
-class VerifyApiException implements Exception {
-  final String message;
-  const VerifyApiException(this.message);
-
-  @override
-  String toString() => message;
 }

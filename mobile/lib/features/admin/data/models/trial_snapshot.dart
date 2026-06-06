@@ -49,8 +49,7 @@ class TrialSnapshot {
       userName: (user['name'] as String?) ?? '',
       userPhone: (user['phone'] as String?) ?? '',
       userEmail: user['email'] as String?,
-      subscriptionStatus:
-          (json['subscriptionStatus'] as String?) ?? 'none',
+      subscriptionStatus: (json['subscriptionStatus'] as String?) ?? 'none',
       planId: json['planId'] as String?,
       cycle: json['cycle'] as String?,
       rooms: (json['rooms'] as num?)?.toInt(),

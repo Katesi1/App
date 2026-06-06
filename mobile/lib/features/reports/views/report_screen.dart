@@ -15,6 +15,7 @@ import '../../../shared/widgets/loading_widget.dart';
 import '../../../shared/widgets/pagination_bar.dart';
 import '../../auth/controllers/auth_controller.dart';
 import '../controllers/report_controller.dart';
+import '../utils/report_period_utils.dart';
 import 'widgets/extra_charts.dart';
 import 'widgets/property_ratings_section.dart';
 import 'widgets/report_format.dart';
@@ -39,7 +40,12 @@ class ReportScreen extends ConsumerWidget {
       showAppBar: false,
       body: Column(
         children: [
-          _Header(period: params.period),
+          _Header(params: params),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+            child: _PeriodSelector(params: params),
+          ),
+          const SizedBox(height: 8),
           Expanded(
             child: _buildBody(
               context,
@@ -82,15 +88,13 @@ class ReportScreen extends ConsumerWidget {
           child: ListView(
             padding: const EdgeInsets.fromLTRB(16, 12, 16, 80),
             children: [
-              _PeriodSelector(
-                current: params.period,
-                onChanged: (p) {
-                  ref.read(selectedReportParamsProvider.notifier).state =
-                      params.copyWith(period: p);
-                },
-              ),
-              const SizedBox(height: AppSpacing.md),
-              _SummaryStrip(period: params.period),
+              if (params.period == ReportPeriod.custom &&
+                  params.from != null &&
+                  params.to != null) ...[
+                _CustomRangeBanner(params: params),
+                const SizedBox(height: AppSpacing.md),
+              ],
+              _SummaryStrip(params: params),
               const SizedBox(height: AppSpacing.md),
               _ReportSection(
                 title: 'Chỉ số chính',
@@ -186,13 +190,14 @@ class ReportScreen extends ConsumerWidget {
 // ─── Summary strip ─────────────────────────────────────────────────────────
 
 class _SummaryStrip extends StatelessWidget {
-  final ReportPeriod period;
+  final ReportParams params;
 
-  const _SummaryStrip({required this.period});
+  const _SummaryStrip({required this.params});
 
   @override
   Widget build(BuildContext context) {
     final colors = context.colors;
+    final headline = ReportPeriodUtils.headline(params);
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
@@ -211,7 +216,7 @@ class _SummaryStrip extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'Tổng quan ${period.label.toLowerCase()}',
+                  'Tổng quan $headline',
                   style: GoogleFonts.beVietnamPro(
                     fontSize: 13,
                     fontWeight: FontWeight.w700,
@@ -284,8 +289,8 @@ class _ReportSection extends StatelessWidget {
 // ─── Header ─────────────────────────────────────────────────────────────────
 
 class _Header extends ConsumerWidget {
-  final ReportPeriod period;
-  const _Header({required this.period});
+  final ReportParams params;
+  const _Header({required this.params});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -355,7 +360,7 @@ class _Header extends ConsumerWidget {
                     ),
                     const SizedBox(height: 2),
                     Text(
-                      'Thống kê ${period.label.toLowerCase()}',
+                      'Thống kê ${ReportPeriodUtils.headline(params)}',
                       style: GoogleFonts.beVietnamPro(
                         fontSize: 12,
                         color: Colors.white.withValues(alpha: 0.65),
@@ -396,44 +401,222 @@ class _Header extends ConsumerWidget {
   }
 }
 
+// ─── Custom range banner ────────────────────────────────────────────────────
+
+class _CustomRangeBanner extends ConsumerWidget {
+  final ReportParams params;
+
+  const _CustomRangeBanner({required this.params});
+
+  Future<void> _edit(BuildContext context, WidgetRef ref) async {
+    final range = await ReportPeriodUtils.pickCustomRange(
+      context,
+      initialFrom: params.from,
+      initialTo: params.to,
+    );
+    if (!context.mounted || range == null) {
+      return;
+    }
+    ref.read(selectedReportParamsProvider.notifier).state = params.copyWith(
+      from: ReportPeriodUtils.dateOnly(range.start),
+      to: ReportPeriodUtils.dateOnly(range.end),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final colors = context.colors;
+    final from = params.from!;
+    final to = params.to!;
+    final days = to.difference(from).inDays + 1;
+
+    return Material(
+      color: colors.bgSurface,
+      borderRadius: BorderRadius.circular(AppRadius.lg),
+      child: InkWell(
+        onTap: () => _edit(context, ref),
+        borderRadius: BorderRadius.circular(AppRadius.lg),
+        child: Container(
+          width: double.infinity,
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(AppRadius.lg),
+            border: Border.all(color: colors.borderDefault),
+          ),
+          child: Row(
+            children: [
+              Expanded(
+                child: _DatePill(
+                  label: 'Từ',
+                  value: ReportPeriodUtils.formatDate(from),
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 8),
+                child: Icon(
+                  Icons.arrow_forward_rounded,
+                  size: 16,
+                  color: colors.brand,
+                ),
+              ),
+              Expanded(
+                child: _DatePill(
+                  label: 'Đến',
+                  value: ReportPeriodUtils.formatDate(to),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+                decoration: BoxDecoration(
+                  color: colors.brand.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(AppRadius.full),
+                ),
+                child: Text(
+                  '$days ngày',
+                  style: GoogleFonts.beVietnamPro(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w700,
+                    color: colors.brand,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 4),
+              Icon(Icons.chevron_right_rounded, color: colors.textTertiary),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 // ─── Period selector ───────────────────────────────────────────────────────
 
-class _PeriodSelector extends StatelessWidget {
-  final ReportPeriod current;
-  final ValueChanged<ReportPeriod> onChanged;
+class _DatePill extends StatelessWidget {
+  final String label;
+  final String value;
 
-  const _PeriodSelector({required this.current, required this.onChanged});
+  const _DatePill({required this.label, required this.value});
 
   @override
   Widget build(BuildContext context) {
     final colors = context.colors;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label,
+          style: GoogleFonts.beVietnamPro(
+            fontSize: 10,
+            fontWeight: FontWeight.w600,
+            color: colors.textTertiary,
+          ),
+        ),
+        const SizedBox(height: 2),
+        FittedBox(
+          fit: BoxFit.scaleDown,
+          alignment: Alignment.centerLeft,
+          child: Text(
+            value,
+            style: GoogleFonts.beVietnamPro(
+              fontSize: 13,
+              fontWeight: FontWeight.w700,
+              color: colors.textPrimary,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _PeriodSelector extends ConsumerWidget {
+  final ReportParams params;
+
+  const _PeriodSelector({required this.params});
+
+  Future<void> _onSelect(
+    BuildContext context,
+    WidgetRef ref,
+    ReportPeriod period,
+  ) async {
+    if (period == ReportPeriod.custom) {
+      final isCustom = params.period == ReportPeriod.custom;
+      final range = await ReportPeriodUtils.pickCustomRange(
+        context,
+        initialFrom: isCustom ? params.from : null,
+        initialTo: isCustom ? params.to : null,
+      );
+      if (!context.mounted || range == null) return;
+
+      ref.read(selectedReportParamsProvider.notifier).state = ReportParams(
+        period: ReportPeriod.custom,
+        from: ReportPeriodUtils.dateOnly(range.start),
+        to: ReportPeriodUtils.dateOnly(range.end),
+      );
+      return;
+    }
+
+    ref.read(selectedReportParamsProvider.notifier).state = ReportParams(
+      period: period,
+    );
+  }
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final colors = context.colors;
     return SizedBox(
-      height: 36,
+      height: 40,
       child: ListView.separated(
         scrollDirection: Axis.horizontal,
         itemCount: ReportPeriod.values.length,
         separatorBuilder: (_, __) => const SizedBox(width: 8),
         itemBuilder: (_, i) {
           final p = ReportPeriod.values[i];
-          final selected = p == current;
-          return GestureDetector(
-            onTap: () => onChanged(p),
-            child: AnimatedContainer(
-              duration: const Duration(milliseconds: 180),
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-              decoration: BoxDecoration(
-                color: selected ? colors.brand : colors.bgSurfaceContainer,
-                borderRadius: BorderRadius.circular(100),
-                border: Border.all(
-                  color: selected ? colors.brand : colors.borderDefault,
+          final selected = p == params.period;
+          final isCustom = p == ReportPeriod.custom;
+          return Material(
+            color: selected ? colors.brand : colors.bgSurface,
+            borderRadius: BorderRadius.circular(AppRadius.full),
+            child: InkWell(
+              onTap: () => _onSelect(context, ref, p),
+              borderRadius: BorderRadius.circular(AppRadius.full),
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 180),
+                padding: EdgeInsets.symmetric(
+                  horizontal: isCustom && selected ? 12 : 16,
+                  vertical: 9,
                 ),
-              ),
-              child: Text(
-                p.label,
-                style: GoogleFonts.beVietnamPro(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w700,
-                  color: selected ? colors.textOnPrimary : colors.textPrimary,
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(AppRadius.full),
+                  border: Border.all(
+                    color: selected ? colors.brand : colors.borderDefault,
+                  ),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    if (isCustom) ...[
+                      Icon(
+                        Icons.calendar_month_rounded,
+                        size: 15,
+                        color: selected
+                            ? colors.textOnPrimary
+                            : colors.textSecondary,
+                      ),
+                      const SizedBox(width: 6),
+                    ],
+                    Text(
+                      p.label,
+                      style: GoogleFonts.beVietnamPro(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w700,
+                        color:
+                            selected ? colors.textOnPrimary : colors.textPrimary,
+                      ),
+                    ),
+                  ],
                 ),
               ),
             ),
@@ -456,78 +639,84 @@ class _KpiGrid extends StatelessWidget {
 
     return Column(
       children: [
-        Row(
-          children: [
-            Expanded(
-              child: _KpiCard(
-                icon: Icons.payments_rounded,
-                iconColor: colors.success,
-                label: 'Doanh thu',
-                value: ReportFormat.vndShort(report.revenue),
-                fullValue: ReportFormat.vndFull(report.revenue),
-                delta: ReportFormat.percentDelta(
-                  report.revenue,
-                  report.previousPeriod.revenue,
-                ),
-              )
-                  .animate(delay: 0.ms)
-                  .fadeIn(duration: 260.ms)
-                  .slideY(begin: 0.06, end: 0, duration: 260.ms),
-            ),
-            const SizedBox(width: 10),
-            Expanded(
-              child: _KpiCard(
-                icon: Icons.percent_rounded,
-                iconColor: colors.brand,
-                label: 'Lấp đầy',
-                value: '${report.occupancyRate.toStringAsFixed(0)}%',
-                delta: ReportFormat.percentDelta(
-                  report.occupancyRate,
-                  report.previousPeriod.occupancy,
-                ),
-              )
-                  .animate(delay: 70.ms)
-                  .fadeIn(duration: 260.ms)
-                  .slideY(begin: 0.06, end: 0, duration: 260.ms),
-            ),
-          ],
+        IntrinsicHeight(
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Expanded(
+                child: _KpiCard(
+                  icon: Icons.payments_rounded,
+                  iconColor: colors.success,
+                  label: 'Doanh thu',
+                  value: ReportFormat.vndShort(report.revenue),
+                  fullValue: ReportFormat.vndFull(report.revenue),
+                  delta: ReportFormat.percentDelta(
+                    report.revenue,
+                    report.previousPeriod.revenue,
+                  ),
+                )
+                    .animate(delay: 0.ms)
+                    .fadeIn(duration: 260.ms)
+                    .slideY(begin: 0.06, end: 0, duration: 260.ms),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: _KpiCard(
+                  icon: Icons.percent_rounded,
+                  iconColor: colors.brand,
+                  label: 'Lấp đầy',
+                  value: '${report.occupancyRate.toStringAsFixed(0)}%',
+                  delta: ReportFormat.percentDelta(
+                    report.occupancyRate,
+                    report.previousPeriod.occupancy,
+                  ),
+                )
+                    .animate(delay: 70.ms)
+                    .fadeIn(duration: 260.ms)
+                    .slideY(begin: 0.06, end: 0, duration: 260.ms),
+              ),
+            ],
+          ),
         ),
         const SizedBox(height: 10),
-        Row(
-          children: [
-            Expanded(
-              child: _KpiCard(
-                icon: Icons.trending_up_rounded,
-                iconColor: colors.brandLight,
-                label: 'Đơn giá TB',
-                value: ReportFormat.vndShort(report.adr),
-                fullValue: ReportFormat.vndFull(report.adr),
-                delta: ReportFormat.percentDelta(
-                  report.adr,
-                  report.previousPeriod.adr,
-                ),
-              )
-                  .animate(delay: 140.ms)
-                  .fadeIn(duration: 260.ms)
-                  .slideY(begin: 0.06, end: 0, duration: 260.ms),
-            ),
-            const SizedBox(width: 10),
-            Expanded(
-              child: _KpiCard(
-                icon: Icons.book_rounded,
-                iconColor: AppColors.gold500,
-                label: 'Booking',
-                value: '${report.totalBookings}',
-                delta: ReportFormat.percentDelta(
-                  report.totalBookings,
-                  report.previousPeriod.bookings,
-                ),
-              )
-                  .animate(delay: 210.ms)
-                  .fadeIn(duration: 260.ms)
-                  .slideY(begin: 0.06, end: 0, duration: 260.ms),
-            ),
-          ],
+        IntrinsicHeight(
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Expanded(
+                child: _KpiCard(
+                  icon: Icons.trending_up_rounded,
+                  iconColor: colors.brandLight,
+                  label: 'Đơn giá TB',
+                  value: ReportFormat.vndShort(report.adr),
+                  fullValue: ReportFormat.vndFull(report.adr),
+                  delta: ReportFormat.percentDelta(
+                    report.adr,
+                    report.previousPeriod.adr,
+                  ),
+                )
+                    .animate(delay: 140.ms)
+                    .fadeIn(duration: 260.ms)
+                    .slideY(begin: 0.06, end: 0, duration: 260.ms),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: _KpiCard(
+                  icon: Icons.book_rounded,
+                  iconColor: AppColors.gold500,
+                  label: 'Booking',
+                  value: '${report.totalBookings}',
+                  delta: ReportFormat.percentDelta(
+                    report.totalBookings,
+                    report.previousPeriod.bookings,
+                  ),
+                )
+                    .animate(delay: 210.ms)
+                    .fadeIn(duration: 260.ms)
+                    .slideY(begin: 0.06, end: 0, duration: 260.ms),
+              ),
+            ],
+          ),
         ),
       ],
     );
@@ -555,90 +744,107 @@ class _KpiCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final colors = context.colors;
     final deltaColor = ReportFormat.deltaColor(colors, delta);
+    final showFullValue = fullValue != null && fullValue != value;
 
-    return Container(
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: colors.bgSurface,
-        border: Border.all(color: colors.borderDefault),
-        borderRadius: BorderRadius.circular(14),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Container(
-                width: 28,
-                height: 28,
-                decoration: BoxDecoration(
-                  color: iconColor.withValues(alpha: 0.12),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Icon(icon, color: iconColor, size: 16),
-              ),
-              const Spacer(),
-              if (delta != null)
+    return SizedBox(
+      height: 118,
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: colors.bgSurface,
+          border: Border.all(color: colors.borderDefault),
+          borderRadius: BorderRadius.circular(14),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
                 Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                  width: 28,
+                  height: 28,
                   decoration: BoxDecoration(
-                    color: deltaColor.withValues(alpha: 0.12),
-                    borderRadius: BorderRadius.circular(6),
+                    color: iconColor.withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(8),
                   ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(
-                        ReportFormat.deltaIcon(delta),
-                        size: 10,
-                        color: deltaColor,
-                      ),
-                      const SizedBox(width: 2),
-                      Text(
-                        ReportFormat.deltaLabel(delta),
-                        style: GoogleFonts.beVietnamPro(
-                          fontSize: 10,
-                          fontWeight: FontWeight.w800,
+                  child: Icon(icon, color: iconColor, size: 16),
+                ),
+                const Spacer(),
+                if (delta != null)
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 6,
+                      vertical: 2,
+                    ),
+                    decoration: BoxDecoration(
+                      color: deltaColor.withValues(alpha: 0.12),
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          ReportFormat.deltaIcon(delta),
+                          size: 10,
                           color: deltaColor,
                         ),
-                      ),
-                    ],
-                  ),
-                ),
-            ],
-          ),
-          const SizedBox(height: 10),
-          Text(
-            value,
-            style: GoogleFonts.beVietnamPro(
-              fontSize: 19,
-              fontWeight: FontWeight.w800,
-              color: colors.textPrimary,
-              height: 1.1,
+                        const SizedBox(width: 2),
+                        Text(
+                          ReportFormat.deltaLabel(delta),
+                          style: GoogleFonts.beVietnamPro(
+                            fontSize: 10,
+                            fontWeight: FontWeight.w800,
+                            color: deltaColor,
+                          ),
+                        ),
+                      ],
+                    ),
+                  )
+                else
+                  const SizedBox(width: 28, height: 16),
+              ],
             ),
-          ),
-          const SizedBox(height: 2),
-          Text(
-            label,
-            style: GoogleFonts.beVietnamPro(
-              fontSize: 11,
-              fontWeight: FontWeight.w500,
-              color: colors.textTertiary,
-            ),
-          ),
-          if (fullValue != null && fullValue != value) ...[
-            const SizedBox(height: 1),
+            const Spacer(),
             Text(
-              fullValue!,
+              value,
               style: GoogleFonts.beVietnamPro(
-                fontSize: 9,
+                fontSize: 19,
+                fontWeight: FontWeight.w800,
+                color: colors.textPrimary,
+                height: 1.1,
+              ),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+            const SizedBox(height: 2),
+            Text(
+              label,
+              style: GoogleFonts.beVietnamPro(
+                fontSize: 11,
                 fontWeight: FontWeight.w500,
                 color: colors.textTertiary,
               ),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+            SizedBox(
+              height: 11,
+              child: showFullValue
+                  ? Text(
+                      fullValue!,
+                      style: GoogleFonts.beVietnamPro(
+                        fontSize: 9,
+                        fontWeight: FontWeight.w500,
+                        color: colors.textTertiary,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    )
+                  : null,
             ),
           ],
-        ],
+        ),
       ),
     );
   }

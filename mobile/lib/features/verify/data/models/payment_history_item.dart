@@ -129,13 +129,20 @@ class PaymentHistoryPage extends Equatable {
   List<Object?> get props => [items, nextCursor, limit];
 }
 
-enum PaymentHistoryKind { subscription, renew, upgrade, refund }
+enum PaymentHistoryKind {
+  subscription,
+  renew,
+  upgrade,
+  downgrade,
+  refund,
+}
 
 extension PaymentHistoryKindX on PaymentHistoryKind {
   String get label => switch (this) {
         PaymentHistoryKind.subscription => 'Đăng ký lần đầu',
         PaymentHistoryKind.renew => 'Gia hạn',
         PaymentHistoryKind.upgrade => 'Nâng cấp gói',
+        PaymentHistoryKind.downgrade => 'Hạ gói',
         PaymentHistoryKind.refund => 'Hoàn tiền',
       };
 }
@@ -147,6 +154,8 @@ PaymentHistoryKind _kindFromApi(String raw) {
       return PaymentHistoryKind.renew;
     case 'upgrade':
       return PaymentHistoryKind.upgrade;
+    case 'downgrade':
+      return PaymentHistoryKind.downgrade;
     case 'refund':
       return PaymentHistoryKind.refund;
     case 'subscription':

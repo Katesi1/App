@@ -1,34 +1,78 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
+import 'package:intl/intl.dart';
+
 import '../../../core/theme/app_color_scheme.dart';
 import '../../../core/theme/app_spacing.dart';
+import '../../../shared/widgets/loading_widget.dart';
+import '../controllers/profile_settings_controller.dart';
+import '../data/models/support_ticket.dart';
 
-class MyTicketsScreen extends StatelessWidget {
+class MyTicketsScreen extends ConsumerWidget {
   const MyTicketsScreen({super.key});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final ticketsAsync = ref.watch(supportTicketListProvider);
+
     return Scaffold(
       appBar: AppBar(title: const Text('Yêu cầu hỗ trợ của tôi')),
-      body: ListView(
-        padding: const EdgeInsets.all(AppSpacing.md),
-        children: const [
-          _OverviewCard(),
-          SizedBox(height: AppSpacing.md),
-          _TicketTile(
-            id: 'HT-1024',
-            title: 'Không nhận được thông báo booking',
-            status: 'Đang xử lý',
-            createdAt: '06/05/2026 20:15',
-            priority: 'Cao',
-          ),
-          _TicketTile(
-            id: 'HT-1009',
-            title: 'Cập nhật thông tin hóa đơn',
-            status: 'Đã giải quyết',
-            createdAt: '03/05/2026 14:20',
-            priority: 'Trung bình',
-          ),
-        ],
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: () => _showCreateSheet(context, ref),
+        icon: const Icon(Icons.add),
+        label: const Text('Tạo yêu cầu'),
+      ),
+      body: ticketsAsync.when(
+        loading: () => const LoadingWidget(),
+        error: (e, _) => ErrorStateWidget(
+          message: e.toString().replaceAll('Exception: ', ''),
+          onRetry: () => ref.invalidate(supportTicketListProvider),
+        ),
+        data: (tickets) {
+          if (tickets.isEmpty) {
+            return EmptyStateWidget(
+              icon: Icons.support_agent_outlined,
+              message: 'Chưa có yêu cầu hỗ trợ',
+              actionLabel: 'Tạo yêu cầu đầu tiên',
+              onAction: () => _showCreateSheet(context, ref),
+            );
+          }
+          return RefreshIndicator(
+            onRefresh: () async => ref.invalidate(supportTicketListProvider),
+            child: ListView(
+              padding: const EdgeInsets.fromLTRB(
+                AppSpacing.md,
+                AppSpacing.md,
+                AppSpacing.md,
+                88,
+              ),
+              children: [
+                const _OverviewCard(),
+                const SizedBox(height: AppSpacing.md),
+                ...tickets.map(
+                  (t) => _TicketTile(
+                    ticket: t,
+                    onTap: () => context.push('/profile/tickets/${t.id}'),
+                  ),
+                ),
+              ],
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  void _showCreateSheet(BuildContext context, WidgetRef ref) {
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      builder: (ctx) => _CreateTicketSheet(
+        onCreated: (id) {
+          Navigator.of(ctx).pop();
+          context.push('/profile/tickets/$id');
+        },
       ),
     );
   }
@@ -46,87 +90,190 @@ class _OverviewCard extends StatelessWidget {
         color: colors.bgSurfaceContainer,
         borderRadius: BorderRadius.circular(AppRadius.lg),
       ),
-      child: const Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            'Theo dõi tiến độ xử lý',
-            style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
-          ),
-          SizedBox(height: 6),
-          Text(
-            'Mỗi yêu cầu đều có mã ticket và trạng thái xử lý. '
-            'Bạn có thể liên hệ lại nếu ticket đã quá hạn.',
-          ),
-        ],
+      child: Text(
+        'Mỗi yêu cầu có mã ticket và trạng thái xử lý. '
+        'Bạn có thể trả lời thêm trong chi tiết ticket.',
+        style: TextStyle(color: colors.textSecondary, height: 1.45),
       ),
     );
   }
 }
 
 class _TicketTile extends StatelessWidget {
-  final String id;
-  final String title;
-  final String status;
-  final String createdAt;
-  final String priority;
+  final SupportTicket ticket;
+  final VoidCallback onTap;
 
-  const _TicketTile({
-    required this.id,
-    required this.title,
-    required this.status,
-    required this.createdAt,
-    required this.priority,
-  });
+  const _TicketTile({required this.ticket, required this.onTap});
 
   @override
   Widget build(BuildContext context) {
     final colors = context.colors;
-    final isDone = status == 'Đã giải quyết';
+    final isDone = ticket.status.toLowerCase() == 'resolved' ||
+        ticket.status.toLowerCase() == 'closed';
     final statusColor = isDone ? colors.success : colors.warning;
+    final created = ticket.createdAt != null
+        ? DateFormat('dd/MM/yyyy HH:mm').format(ticket.createdAt!.toLocal())
+        : '—';
+
     return Container(
       margin: const EdgeInsets.only(bottom: AppSpacing.sm),
-      padding: const EdgeInsets.all(AppSpacing.md),
-      decoration: BoxDecoration(
+      child: Material(
         color: colors.bgSurface,
         borderRadius: BorderRadius.circular(AppRadius.lg),
-        border: Border.all(color: colors.borderDefault),
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(AppRadius.lg),
+          child: Container(
+            padding: const EdgeInsets.all(AppSpacing.md),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(AppRadius.lg),
+              border: Border.all(color: colors.borderDefault),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        '${ticket.displayCode} · ${ticket.subject}',
+                        style: TextStyle(
+                          color: colors.textPrimary,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 3,
+                      ),
+                      decoration: BoxDecoration(
+                        color: statusColor.withValues(alpha: 0.15),
+                        borderRadius: BorderRadius.circular(AppRadius.full),
+                      ),
+                      child: Text(
+                        ticket.statusLabel,
+                        style: TextStyle(
+                          color: statusColor,
+                          fontSize: 11,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  'Tạo lúc: $created',
+                  style: TextStyle(color: colors.textSecondary, fontSize: 12),
+                ),
+              ],
+            ),
+          ),
+        ),
       ),
+    );
+  }
+}
+
+class _CreateTicketSheet extends ConsumerStatefulWidget {
+  final ValueChanged<String> onCreated;
+
+  const _CreateTicketSheet({required this.onCreated});
+
+  @override
+  ConsumerState<_CreateTicketSheet> createState() =>
+      _CreateTicketSheetState();
+}
+
+class _CreateTicketSheetState extends ConsumerState<_CreateTicketSheet> {
+  final _subjectCtrl = TextEditingController();
+  final _messageCtrl = TextEditingController();
+  final _contactCtrl = TextEditingController();
+  bool _submitting = false;
+
+  @override
+  void dispose() {
+    _subjectCtrl.dispose();
+    _messageCtrl.dispose();
+    _contactCtrl.dispose();
+    super.dispose();
+  }
+
+  Future<void> _submit() async {
+    if (_subjectCtrl.text.trim().isEmpty || _messageCtrl.text.trim().isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Nhập tiêu đề và nội dung')),
+      );
+      return;
+    }
+    setState(() => _submitting = true);
+    final (ok, msg, id) =
+        await ref.read(supportTicketActionsProvider.notifier).createTicket(
+              subject: _subjectCtrl.text.trim(),
+              message: _messageCtrl.text.trim(),
+              contact: _contactCtrl.text.trim().isEmpty
+                  ? null
+                  : _contactCtrl.text.trim(),
+              category: 'support',
+            );
+    if (!mounted) return;
+    setState(() => _submitting = false);
+    if (!ok) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(msg), backgroundColor: context.colors.error),
+      );
+      return;
+    }
+    if (id != null && id.isNotEmpty) {
+      widget.onCreated(id);
+    } else {
+      Navigator.of(context).pop();
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final bottom = MediaQuery.viewInsetsOf(context).bottom;
+    return Padding(
+      padding: EdgeInsets.fromLTRB(20, 16, 20, 16 + bottom),
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Row(
-            children: [
-              Expanded(
-                child: Text(
-                  '$id · $title',
-                  style: TextStyle(
-                    color: colors.textPrimary,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                decoration: BoxDecoration(
-                  color: statusColor.withValues(alpha: 0.15),
-                  borderRadius: BorderRadius.circular(AppRadius.full),
-                ),
-                child: Text(
-                  status,
-                  style: TextStyle(
-                    color: statusColor,
-                    fontSize: 11,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ),
-            ],
+          Text(
+            'Tạo yêu cầu hỗ trợ',
+            style: Theme.of(context).textTheme.titleMedium,
+          ),
+          const SizedBox(height: 12),
+          TextField(
+            controller: _subjectCtrl,
+            decoration: const InputDecoration(labelText: 'Tiêu đề'),
           ),
           const SizedBox(height: 8),
-          Text(
-            'Mức ưu tiên: $priority · Tạo lúc: $createdAt',
-            style: TextStyle(color: colors.textSecondary, fontSize: 12),
+          TextField(
+            controller: _messageCtrl,
+            maxLines: 4,
+            decoration: const InputDecoration(labelText: 'Mô tả chi tiết'),
+          ),
+          const SizedBox(height: 8),
+          TextField(
+            controller: _contactCtrl,
+            decoration: const InputDecoration(
+              labelText: 'Liên hệ (tuỳ chọn)',
+            ),
+          ),
+          const SizedBox(height: 16),
+          FilledButton(
+            onPressed: _submitting ? null : _submit,
+            child: _submitting
+                ? const SizedBox(
+                    width: 20,
+                    height: 20,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                : const Text('Gửi yêu cầu'),
           ),
         ],
       ),

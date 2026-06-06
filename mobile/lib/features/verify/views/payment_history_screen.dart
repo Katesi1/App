@@ -366,6 +366,7 @@ class _KindIcon extends StatelessWidget {
       PaymentHistoryKind.subscription => Icons.workspace_premium,
       PaymentHistoryKind.renew => Icons.autorenew,
       PaymentHistoryKind.upgrade => Icons.upgrade,
+      PaymentHistoryKind.downgrade => Icons.trending_down,
       PaymentHistoryKind.refund => Icons.undo,
     };
     final tint =

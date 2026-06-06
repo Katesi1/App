@@ -17,7 +17,8 @@ final trialSnapshotProvider =
 // ─── Grant / Revoke Notifier ─────────────────────────────────────────────────
 
 class AdminTrialNotifier extends StateNotifier<AsyncValue<void>> {
-  AdminTrialNotifier(this._repo, this._ref) : super(const AsyncValue.data(null));
+  AdminTrialNotifier(this._repo, this._ref)
+      : super(const AsyncValue.data(null));
 
   final AdminTrialRepository _repo;
   final Ref _ref;

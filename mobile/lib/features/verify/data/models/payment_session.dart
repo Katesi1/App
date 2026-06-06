@@ -1,5 +1,7 @@
 import 'package:equatable/equatable.dart';
 
+import 'payment_history_item.dart';
+import 'payment_quote.dart';
 import 'verify_enums.dart';
 
 /// Thông tin chuyển khoản ngân hàng (backend trả về dạng object).
@@ -110,6 +112,12 @@ class PaymentSession extends Equatable {
 
   final DateTime expiresAt;
 
+  /// Loại giao dịch — BE trả từ initiate/renew (§10.2.4).
+  final PaymentHistoryKind? kind;
+  final String? planId;
+  final BillingCycle? cycle;
+  final PaymentBreakdown? breakdown;
+
   const PaymentSession({
     required this.sessionId,
     required this.method,
@@ -120,6 +128,10 @@ class PaymentSession extends Equatable {
     this.redirectUrl,
     this.payUrl,
     required this.expiresAt,
+    this.kind,
+    this.planId,
+    this.cycle,
+    this.breakdown,
   });
 
   factory PaymentSession.fromJson(Map<String, dynamic> json) {
@@ -140,6 +152,14 @@ class PaymentSession extends Equatable {
       expiresAt: DateTime.parse(
         (json['expiresAt'] ?? json['expires_at']) as String,
       ),
+      kind: _sessionKindFromApi(json['kind'] as String?),
+      planId: json['planId'] as String?,
+      cycle: _cycleFromApi(json['cycle'] as String?),
+      breakdown: json['breakdown'] is Map<String, dynamic>
+          ? PaymentBreakdown.fromJson(
+              json['breakdown'] as Map<String, dynamic>,
+            )
+          : null,
     );
   }
 
@@ -153,6 +173,10 @@ class PaymentSession extends Equatable {
         'redirectUrl': redirectUrl,
         'payUrl': payUrl,
         'expiresAt': expiresAt.toIso8601String(),
+        if (kind != null) 'kind': kind!.name,
+        if (planId != null) 'planId': planId,
+        if (cycle != null) 'cycle': cycle!.name,
+        if (breakdown != null) 'breakdown': breakdown,
       };
 
   @override
@@ -166,7 +190,35 @@ class PaymentSession extends Equatable {
         redirectUrl,
         payUrl,
         expiresAt,
+        kind,
+        planId,
+        cycle,
+        breakdown,
       ];
+}
+
+PaymentHistoryKind? _sessionKindFromApi(String? raw) {
+  if (raw == null || raw.isEmpty) return null;
+  switch (raw.toLowerCase()) {
+    case 'renew':
+    case 'renewal':
+      return PaymentHistoryKind.renew;
+    case 'upgrade':
+      return PaymentHistoryKind.upgrade;
+    case 'downgrade':
+      return PaymentHistoryKind.downgrade;
+    case 'refund':
+      return PaymentHistoryKind.refund;
+    case 'subscription':
+      return PaymentHistoryKind.subscription;
+    default:
+      return null;
+  }
+}
+
+BillingCycle? _cycleFromApi(String? raw) {
+  if (raw == null || raw.isEmpty) return null;
+  return raw == 'yearly' ? BillingCycle.yearly : BillingCycle.monthly;
 }
 
 /// Backend dùng `vnpay_qr|bank_transfer|card`, frontend enum dùng camelCase.

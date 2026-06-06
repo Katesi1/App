@@ -18,7 +18,8 @@ final userListProvider =
   ref.onDispose(timer.cancel);
   final repo = ref.watch(userRepositoryProvider);
   final result = await repo.getUsers(role: role);
-  if (result.success) return result.data ?? (throw Exception('Dữ liệu trả về trống'));
+  if (result.success)
+    return result.data ?? (throw Exception('Dữ liệu trả về trống'));
   throw Exception(result.message);
 });
 
@@ -30,7 +31,8 @@ final myStaffProvider =
   ref.onDispose(timer.cancel);
   final repo = ref.watch(userRepositoryProvider);
   final result = await repo.getMyStaff();
-  if (result.success) return result.data ?? (throw Exception('Dữ liệu trả về trống'));
+  if (result.success)
+    return result.data ?? (throw Exception('Dữ liệu trả về trống'));
   throw Exception(result.message);
 });
 
@@ -45,11 +47,13 @@ final staffListProvider =
   final repo = ref.watch(userRepositoryProvider);
   if (user != null && user.isAdmin) {
     final result = await repo.getUsers();
-    if (result.success) return result.data ?? (throw Exception('Dữ liệu trả về trống'));
+    if (result.success)
+      return result.data ?? (throw Exception('Dữ liệu trả về trống'));
     throw Exception(result.message);
   } else {
     final result = await repo.getMyStaff();
-    if (result.success) return result.data ?? (throw Exception('Dữ liệu trả về trống'));
+    if (result.success)
+      return result.data ?? (throw Exception('Dữ liệu trả về trống'));
     throw Exception(result.message);
   }
 });
@@ -59,7 +63,8 @@ final userDetailProvider =
     FutureProvider.family<UserModel, String>((ref, id) async {
   final repo = ref.watch(userRepositoryProvider);
   final result = await repo.getUser(id);
-  if (result.success) return result.data ?? (throw Exception('Dữ liệu trả về trống'));
+  if (result.success)
+    return result.data ?? (throw Exception('Dữ liệu trả về trống'));
   throw Exception(result.message);
 });
 

@@ -8,8 +8,10 @@ import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../auth/controllers/auth_controller.dart';
 import '../controllers/verify_flow_controller.dart';
+import '../data/models/payment_quote.dart';
 import '../data/models/plan.dart';
 import '../data/models/verify_enums.dart';
+import '../utils/payment_error_handler.dart';
 import 'widgets/plan_card.dart';
 import 'widgets/verify_app_bar.dart';
 import 'widgets/verify_format.dart';
@@ -33,6 +35,7 @@ class SelectPlanScreen extends ConsumerStatefulWidget {
 class _SelectPlanScreenState extends ConsumerState<SelectPlanScreen> {
   late BillingCycle _cycle;
   Tier? _selected;
+  bool _submitting = false;
 
   @override
   void initState() {
@@ -73,7 +76,56 @@ class _SelectPlanScreenState extends ConsumerState<SelectPlanScreen> {
           if (selectedPlan == null) {
             return const Center(child: CircularProgressIndicator());
           }
-          final total = PlanPriceCalculator.total(selectedPlan, _cycle);
+          if (!selectedPlan.hasFixedPrice) {
+            return Stack(
+              children: [
+                ListView(
+                  padding: const EdgeInsets.fromLTRB(
+                    AppSpacing.md,
+                    AppSpacing.md,
+                    AppSpacing.md,
+                    120,
+                  ),
+                  children: [
+                    _BillingToggle(
+                      cycle: _cycle,
+                      onChanged: (c) => setState(() => _cycle = c),
+                    ),
+                    const SizedBox(height: AppSpacing.md),
+                    ...plans.asMap().entries.map(
+                          (e) => Padding(
+                            padding: const EdgeInsets.only(top: 12),
+                            child: PlanCard(
+                              plan: e.value,
+                              cycle: _cycle,
+                              isSelected: e.value.tier == _selected,
+                              onTap: () => _onPlanTap(e.value),
+                            ),
+                          ),
+                        ),
+                  ],
+                ),
+                Positioned(
+                  left: 0,
+                  right: 0,
+                  bottom: 0,
+                  child: _CTABar(
+                    planName: selectedPlan.tier.displayName,
+                    totalLabel: 'Liên hệ tư vấn',
+                    label: 'Tư vấn Enterprise',
+                    onTap: () => context.push('/profile/help'),
+                  ),
+                ),
+              ],
+            );
+          }
+
+          final quoteParams = (
+            planId: selectedPlan.id,
+            cycle: _cycle,
+            rooms: selectedPlan.rooms,
+          );
+          final quoteAsync = ref.watch(paymentQuoteProvider(quoteParams));
 
           return Stack(
             children: [
@@ -112,16 +164,46 @@ class _SelectPlanScreenState extends ConsumerState<SelectPlanScreen> {
                 left: 0,
                 right: 0,
                 bottom: 0,
-                child: _CTABar(
-                  planName: selectedPlan.tier.displayName,
-                  total: total,
-                  label: isUpgrade ? 'Nâng cấp' : 'Tiếp tục',
-                  onTap: () {
-                    ref
-                        .read(verifyFlowControllerProvider.notifier)
-                        .selectPlan(selectedPlan, _cycle);
-                    context.push('/verify/payment');
+                child: quoteAsync.when(
+                  loading: () => _CTABar(
+                    planName: selectedPlan.tier.displayName,
+                    totalLabel: 'Đang tính giá...',
+                    label: isUpgrade ? 'Nâng cấp' : 'Tiếp tục',
+                    enabled: false,
+                    onTap: () {},
+                  ),
+                  error: (e, _) {
+                    final apiEx = e is VerifyApiException ? e : null;
+                    final frozen = apiEx?.isSubscriptionFrozen == true;
+                    return _CTABar(
+                      planName: selectedPlan.tier.displayName,
+                      totalLabel: frozen
+                          ? 'Tài khoản bị đóng băng'
+                          : 'Không tải được giá · Chạm thử lại',
+                      label: isUpgrade ? 'Nâng cấp' : 'Tiếp tục',
+                      enabled: !frozen,
+                      onTap: () {
+                        if (frozen && apiEx != null) {
+                          showPaymentApiError(context, apiEx);
+                          return;
+                        }
+                        ref.invalidate(paymentQuoteProvider(quoteParams));
+                      },
+                    );
                   },
+                  data: (quote) => _CTABar(
+                    planName: selectedPlan.tier.displayName,
+                    totalLabel: quote.isDowngrade
+                        ? 'Áp dụng từ ${VerifyFormat.dateVN(quote.effectiveAt ?? DateTime.now())}'
+                        : '${VerifyFormat.priceVND(quote.totalAmount)}'
+                            '${quote.isCatalogFallback ? ' (tạm tính)' : ''}',
+                    label: quote.isDowngrade
+                        ? 'Đặt lịch hạ gói'
+                        : (isUpgrade ? 'Nâng cấp' : 'Tiếp tục'),
+                    enabled: !_submitting,
+                    loading: _submitting,
+                    onTap: () => _onContinue(selectedPlan, quote),
+                  ),
                 ),
               ),
             ],
@@ -133,6 +215,42 @@ class _SelectPlanScreenState extends ConsumerState<SelectPlanScreen> {
 
   void _onPlanTap(Plan plan) {
     setState(() => _selected = plan.tier);
+  }
+
+  Future<void> _onContinue(Plan plan, PaymentQuote quote) async {
+    setState(() => _submitting = true);
+    final notifier = ref.read(verifyFlowControllerProvider.notifier);
+    notifier.selectPlan(plan, _cycle, quote: quote);
+
+    if (quote.isDowngrade) {
+      try {
+        await notifier.initiatePayment(PaymentMethod.bankTransfer);
+      } on VerifyApiException catch (e) {
+        if (!mounted) return;
+        if (e.isDowngradeScheduled) {
+          await ref.read(authProvider.notifier).refreshProfile();
+          if (!mounted) return;
+          showPaymentApiError(context, e);
+          context.go('/verify/subscription-detail');
+        } else {
+          showPaymentApiError(context, e);
+        }
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(e.toString())),
+          );
+        }
+      } finally {
+        if (mounted) setState(() => _submitting = false);
+      }
+      return;
+    }
+
+    if (mounted) {
+      setState(() => _submitting = false);
+      context.push('/verify/payment');
+    }
   }
 }
 
@@ -288,15 +406,19 @@ class _TrialBanner extends StatelessWidget {
 
 class _CTABar extends StatelessWidget {
   final String planName;
-  final int total;
+  final String totalLabel;
   final String label;
   final VoidCallback onTap;
+  final bool enabled;
+  final bool loading;
 
   const _CTABar({
     required this.planName,
-    required this.total,
+    required this.totalLabel,
     required this.label,
     required this.onTap,
+    this.enabled = true,
+    this.loading = false,
   });
 
   @override
@@ -316,12 +438,20 @@ class _CTABar extends StatelessWidget {
       child: SizedBox(
         height: 52,
         child: FilledButton(
-          onPressed: onTap,
+          onPressed: enabled && !loading ? onTap : null,
           child: Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
+              if (loading) ...[
+                const SizedBox(
+                  width: 16,
+                  height: 16,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                ),
+                const SizedBox(width: 8),
+              ],
               Text(
-                '$label $planName · ${VerifyFormat.priceVND(total)}',
+                '$label $planName · $totalLabel',
                 style: const TextStyle(
                   fontSize: 14,
                   fontWeight: FontWeight.w700,

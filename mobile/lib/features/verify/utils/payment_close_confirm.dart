@@ -3,9 +3,10 @@ import 'package:google_fonts/google_fonts.dart';
 
 import '../../../core/theme/app_color_scheme.dart';
 
-/// Xác nhận trước khi đóng phiên thanh toán chưa hoàn tất.
+/// Xác nhận trước khi huỷ phiên thanh toán chưa hoàn tất.
 ///
-/// Trả về `true` nếu user chọn đóng/huỷ phiên.
+/// Trả về `true` nếu user chọn **Đóng phiên** (huỷ bill trên BE).
+/// `false` = tiếp tục thanh toán.
 Future<bool> confirmClosePendingPayment(
   BuildContext context, {
   bool isBankTransfer = false,
@@ -16,17 +17,17 @@ Future<bool> confirmClosePendingPayment(
     barrierDismissible: false,
     builder: (ctx) => AlertDialog(
       title: Text(
-        isBankTransfer ? 'Rời khỏi màn thanh toán?' : 'Huỷ phiên thanh toán?',
+        isBankTransfer ? 'Huỷ phiên thanh toán?' : 'Huỷ phiên thanh toán?',
         style: GoogleFonts.beVietnamPro(fontWeight: FontWeight.w700),
       ),
       content: Text(
         isBankTransfer
             ? 'Giao dịch chưa được xác nhận.\n\n'
-                '• Nếu bạn chưa chuyển khoản, phiên sẽ bị huỷ và cần '
-                'tạo lại khi thanh toán sau.\n\n'
-                '• Nếu đã chuyển khoản, hãy chọn "Đóng và đợi" để hệ '
-                'thống tiếp tục đối soát (có thể mất 1–3 giờ).'
-            : 'Thanh toán chưa được xác nhận. Đóng màn hình này có thể huỷ '
+                '• Đóng phiên — huỷ bill này trên hệ thống. '
+                'Admin sẽ không phải duyệt phiên đã huỷ.\n\n'
+                '• Nếu bạn đã chuyển khoản, hãy quay lại và chọn '
+                '"Đóng và đợi" để hệ thống tiếp tục đối soát (1–3 giờ).'
+            : 'Thanh toán chưa được xác nhận. Đóng màn hình này sẽ huỷ '
                 'phiên hiện tại và bạn sẽ cần thanh toán lại.',
         style: GoogleFonts.beVietnamPro(
           fontSize: 14,
@@ -49,7 +50,7 @@ Future<bool> confirmClosePendingPayment(
           ),
           onPressed: () => Navigator.of(ctx).pop(true),
           child: Text(
-            isBankTransfer ? 'Đóng phiên' : 'Huỷ phiên',
+            'Đóng phiên',
             style: GoogleFonts.beVietnamPro(fontWeight: FontWeight.w700),
           ),
         ),
@@ -63,22 +64,28 @@ Future<bool> confirmClosePendingPayment(
 class PaymentDialogPopScope extends StatelessWidget {
   final Widget child;
   final bool isBankTransfer;
-  final VoidCallback? onConfirmedClose;
+  final Future<void> Function()? onCancelSession;
 
   const PaymentDialogPopScope({
     super.key,
     required this.child,
     this.isBankTransfer = false,
-    this.onConfirmedClose,
+    this.onCancelSession,
   });
 
-  Future<void> _handleCloseAttempt(BuildContext context) async {
+  Future<void> _handleCancelSession(BuildContext context) async {
     final confirmed = await confirmClosePendingPayment(
       context,
       isBankTransfer: isBankTransfer,
     );
     if (!confirmed || !context.mounted) return;
-    onConfirmedClose?.call();
+
+    try {
+      await onCancelSession?.call();
+    } catch (_) {
+      // Vẫn đóng dialog — caller có thể hiện snackbar nếu cần.
+    }
+    if (!context.mounted) return;
     Navigator.of(context).pop();
   }
 
@@ -88,7 +95,7 @@ class PaymentDialogPopScope extends StatelessWidget {
       canPop: false,
       onPopInvokedWithResult: (didPop, _) {
         if (didPop) return;
-        _handleCloseAttempt(context);
+        _handleCancelSession(context);
       },
       child: child,
     );

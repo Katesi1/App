@@ -161,7 +161,8 @@ class _RevenueTrendChartState extends State<RevenueTrendChart> {
             ),
           ),
         ),
-        rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+        rightTitles:
+            const AxisTitles(sideTitles: SideTitles(showTitles: false)),
         topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
         bottomTitles: AxisTitles(
           sideTitles: SideTitles(
@@ -273,9 +274,8 @@ class _MetricToggle extends StatelessWidget {
               decoration: BoxDecoration(
                 color: selected ? colors.bgSurface : Colors.transparent,
                 borderRadius: BorderRadius.circular(100),
-                border: selected
-                    ? Border.all(color: colors.borderDefault)
-                    : null,
+                border:
+                    selected ? Border.all(color: colors.borderDefault) : null,
               ),
               child: Text(
                 m.label,

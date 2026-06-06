@@ -69,11 +69,12 @@ final reportDataProvider = FutureProvider.autoDispose
   final repo = ref.read(reportRepositoryProvider);
 
   final p = params ?? const ReportParams();
-  // Custom period bắt buộc đủ from/to — nếu thiếu thì rơi về month mặc định
-  // để tránh request 400 ngay lúc user mới mở picker.
-  final useCustom = p.period == ReportPeriod.custom &&
-      p.from != null &&
-      p.to != null;
+
+  if (p.period == ReportPeriod.custom && (p.from == null || p.to == null)) {
+    throw Exception('Chọn khoảng ngày để xem báo cáo tuỳ chỉnh');
+  }
+
+  final useCustom = p.period == ReportPeriod.custom;
 
   final result = await repo.getReport(
     period: useCustom ? 'custom' : p.period.apiValue,

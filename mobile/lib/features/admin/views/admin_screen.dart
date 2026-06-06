@@ -12,6 +12,7 @@ import '../../../data/models/user_model.dart';
 import '../../auth/controllers/auth_controller.dart';
 import '../../bookings/controllers/booking_controller.dart';
 import '../../properties/controllers/property_controller.dart';
+import '../controllers/abuse_report_controller.dart';
 import '../controllers/kyc_approval_controller.dart';
 import '../controllers/user_controller.dart';
 
@@ -27,6 +28,8 @@ class AdminScreen extends ConsumerWidget {
     final homestaysAsync = ref.watch(homestayListProvider(true));
     final bookingsAsync = ref.watch(bookingListProvider(null));
     final pendingKycCount = ref.watch(pendingKycCountProvider).valueOrNull ?? 0;
+    final pendingAbuseCount =
+        ref.watch(pendingAbuseReportCountProvider).valueOrNull ?? 0;
 
     return AppScaffold(
       title: '',
@@ -306,7 +309,10 @@ class AdminScreen extends ConsumerWidget {
                       iconBg: colors.error.withValues(alpha: 0.1),
                       iconColor: colors.error,
                       title: 'Báo cáo vi phạm',
-                      subtitle: 'Danh sách tố cáo và xử lý abuse',
+                      subtitle: 'Xem chi tiết và xử lý tố cáo',
+                      trailing: pendingAbuseCount > 0
+                          ? '$pendingAbuseCount chờ'
+                          : 'Trống',
                       onTap: () => context.push('/admin/abuse-reports'),
                     ),
                     const SizedBox(height: 10),
@@ -314,8 +320,8 @@ class AdminScreen extends ConsumerWidget {
                       icon: Icons.history_rounded,
                       iconBg: colors.bgSurfaceContainer,
                       iconColor: colors.textSecondary,
-                      title: 'Lịch sử moderation',
-                      subtitle: 'Audit các hành động kiểm duyệt',
+                      title: 'Lịch sử hệ thống',
+                      subtitle: 'Báo cáo vi phạm, moderation và audit',
                       onTap: () => context.push('/admin/moderation-audit'),
                     ),
                   ],

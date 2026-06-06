@@ -16,6 +16,16 @@ class ApiConstants {
   // Users
   static const String users = '/users';
   static String userDetail(String id) => '/users/$id';
+  static const String userMeDataExport = '/users/me/data-export';
+  static const String userMeConsents = '/users/me/consents';
+  static const String userMeNotificationPreferences =
+      '/users/me/notification-preferences';
+
+  // Support & feedback
+  static const String supportTickets = '/support/tickets';
+  static String supportTicketDetail(String id) => '/support/tickets/$id';
+  static String supportTicketReply(String id) => '/support/tickets/$id/reply';
+  static const String feedback = '/feedback';
 
   // Properties (cơ sở lưu trú — đây cũng là booking unit)
   static const String properties = '/properties';
@@ -63,11 +73,15 @@ class ApiConstants {
   static const String billingPlans = '/billing/plans';
 
   // Payment
+  static const String paymentQuote = '/payments/quote';
   static const String paymentInitiate = '/payments/initiate';
+  static const String paymentActive = '/payments/active';
   static const String paymentRenew = '/payments/renew';
   static const String paymentHistory = '/payments/history';
   static String paymentStatus(String sessionId) =>
       '/payments/$sessionId/status';
+  static String paymentCancel(String sessionId) =>
+      '/payments/$sessionId/cancel';
   static String paymentRefund(String sessionId) =>
       '/payments/$sessionId/refund';
 

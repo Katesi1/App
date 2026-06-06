@@ -1,109 +1,115 @@
 import 'package:flutter/material.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+
 import '../../../core/theme/app_color_scheme.dart';
 import '../../../core/theme/app_spacing.dart';
+import '../../../shared/widgets/loading_widget.dart';
+import '../controllers/profile_settings_controller.dart';
+import '../data/models/notification_preferences.dart';
 
-class NotificationPreferencesScreen extends StatefulWidget {
+class NotificationPreferencesScreen extends ConsumerStatefulWidget {
   const NotificationPreferencesScreen({super.key});
 
   @override
-  State<NotificationPreferencesScreen> createState() =>
+  ConsumerState<NotificationPreferencesScreen> createState() =>
       _NotificationPreferencesScreenState();
 }
 
 class _NotificationPreferencesScreenState
-    extends State<NotificationPreferencesScreen> {
-  static const _bookingKey = 'notify_booking';
-  static const _paymentKey = 'notify_payment';
-  static const _systemKey = 'notify_system';
-  static const _quietHoursKey = 'notify_quiet_hours';
-  bool _booking = true;
-  bool _payment = true;
-  bool _system = true;
-  bool _quietHours = false;
-
-  @override
-  void initState() {
-    super.initState();
-    _load();
-  }
-
-  Future<void> _load() async {
-    final prefs = await SharedPreferences.getInstance();
-    setState(() {
-      _booking = prefs.getBool(_bookingKey) ?? true;
-      _payment = prefs.getBool(_paymentKey) ?? true;
-      _system = prefs.getBool(_systemKey) ?? true;
-      _quietHours = prefs.getBool(_quietHoursKey) ?? false;
-    });
-  }
+    extends ConsumerState<NotificationPreferencesScreen> {
+  NotificationPreferences? _draft;
+  bool _saving = false;
 
   Future<void> _save() async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setBool(_bookingKey, _booking);
-    await prefs.setBool(_paymentKey, _payment);
-    await prefs.setBool(_systemKey, _system);
-    await prefs.setBool(_quietHoursKey, _quietHours);
+    final draft = _draft;
+    if (draft == null) return;
+
+    setState(() => _saving = true);
+    final (ok, msg) = await ref
+        .read(notificationPreferencesActionsProvider.notifier)
+        .save(draft);
     if (!mounted) return;
+    setState(() => _saving = false);
+
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Đã cập nhật tùy chọn thông báo')),
+      SnackBar(
+        content: Text(msg),
+        backgroundColor: ok ? null : context.colors.error,
+      ),
     );
   }
 
   @override
   Widget build(BuildContext context) {
     final colors = context.colors;
+    final prefsAsync = ref.watch(notificationPreferencesProvider);
+
     return Scaffold(
       appBar: AppBar(title: const Text('Tùy chọn thông báo')),
-      body: ListView(
-        padding: const EdgeInsets.all(AppSpacing.md),
-        children: [
-          Container(
+      body: prefsAsync.when(
+        loading: () => const LoadingWidget(),
+        error: (e, _) => ErrorStateWidget(
+          message: e.toString().replaceAll('Exception: ', ''),
+          onRetry: () => ref.invalidate(notificationPreferencesProvider),
+        ),
+        data: (prefs) {
+          _draft ??= prefs;
+          final draft = _draft!;
+
+          return ListView(
             padding: const EdgeInsets.all(AppSpacing.md),
-            decoration: BoxDecoration(
-              color: colors.bgSurfaceContainer,
-              borderRadius: BorderRadius.circular(AppRadius.lg),
-            ),
-            child: Text(
-              'Bật/tắt thông báo theo từng nhóm để tránh bỏ lỡ cập nhật quan trọng.',
-              style: TextStyle(color: colors.textSecondary),
-            ),
-          ),
-          const SizedBox(height: AppSpacing.md),
-          _NotificationTile(
-            value: _booking,
-            title: 'Booking',
-            subtitle: 'Nhận thông báo xác nhận, huỷ, thay đổi lịch đặt',
-            icon: Icons.calendar_month_outlined,
-            onChanged: (v) => setState(() => _booking = v),
-          ),
-          _NotificationTile(
-            value: _payment,
-            title: 'Thanh toán',
-            subtitle: 'Nhận thông báo hóa đơn, hoàn tiền, giao dịch',
-            icon: Icons.payments_outlined,
-            onChanged: (v) => setState(() => _payment = v),
-          ),
-          _NotificationTile(
-            value: _system,
-            title: 'Hệ thống',
-            subtitle: 'Nhận thông báo bảo trì, cập nhật và bảo mật tài khoản',
-            icon: Icons.settings_outlined,
-            onChanged: (v) => setState(() => _system = v),
-          ),
-          _NotificationTile(
-            value: _quietHours,
-            title: 'Giờ yên lặng',
-            subtitle: 'Giảm thông báo từ 22:00 đến 07:00',
-            icon: Icons.dark_mode_outlined,
-            onChanged: (v) => setState(() => _quietHours = v),
-          ),
-          const SizedBox(height: AppSpacing.md),
-          FilledButton(
-            onPressed: _save,
-            child: const Text('Lưu'),
-          ),
-        ],
+            children: [
+              Container(
+                padding: const EdgeInsets.all(AppSpacing.md),
+                decoration: BoxDecoration(
+                  color: colors.bgSurfaceContainer,
+                  borderRadius: BorderRadius.circular(AppRadius.lg),
+                ),
+                child: Text(
+                  'Thông báo vận hành cho chủ homestay và sale: booking, '
+                  'thanh toán. Đồng bộ với server.',
+                  style: TextStyle(color: colors.textSecondary, height: 1.4),
+                ),
+              ),
+              const SizedBox(height: AppSpacing.md),
+              _NotificationTile(
+                value: draft.booking,
+                title: 'Booking',
+                subtitle: 'Xác nhận, huỷ, thay đổi lịch đặt phòng',
+                icon: Icons.calendar_month_outlined,
+                onChanged: (v) =>
+                    setState(() => _draft = draft.copyWith(booking: v)),
+              ),
+              _NotificationTile(
+                value: draft.payment,
+                title: 'Thanh toán',
+                subtitle: 'Hóa đơn, hoàn tiền, giao dịch subscription',
+                icon: Icons.payments_outlined,
+                onChanged: (v) =>
+                    setState(() => _draft = draft.copyWith(payment: v)),
+              ),
+              _NotificationTile(
+                value: draft.quietHours,
+                title: 'Giờ yên lặng',
+                subtitle: 'Giảm thông báo từ 22:00 đến 07:00',
+                icon: Icons.dark_mode_outlined,
+                onChanged: (v) =>
+                    setState(() => _draft = draft.copyWith(quietHours: v)),
+              ),
+              const SizedBox(height: AppSpacing.md),
+              FilledButton(
+                onPressed: _saving ? null : _save,
+                child: _saving
+                    ? const SizedBox(
+                        width: 20,
+                        height: 20,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : const Text('Lưu'),
+              ),
+            ],
+          );
+        },
       ),
     );
   }

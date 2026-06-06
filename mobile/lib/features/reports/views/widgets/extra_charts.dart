@@ -59,8 +59,9 @@ class _CriteriaRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final colors = context.colors;
     final pct = (score / 5).clamp(0.0, 1.0);
-    final barColor =
-        score >= 4.5 ? colors.success : (score >= 3.5 ? AppColors.gold500 : colors.warning);
+    final barColor = score >= 4.5
+        ? colors.success
+        : (score >= 3.5 ? AppColors.gold500 : colors.warning);
 
     return Row(
       children: [
@@ -179,7 +180,8 @@ class LengthOfStayChart extends StatelessWidget {
                 gridData: FlGridData(
                   show: true,
                   drawVerticalLine: false,
-                  horizontalInterval: (maxCount / 3).ceilToDouble().clamp(1, double.infinity),
+                  horizontalInterval:
+                      (maxCount / 3).ceilToDouble().clamp(1, double.infinity),
                   getDrawingHorizontalLine: (_) => FlLine(
                     color: colors.borderSubtle,
                     strokeWidth: 1,
@@ -233,7 +235,8 @@ class LengthOfStayChart extends StatelessWidget {
                         backDrawRodData: BackgroundBarChartRodData(
                           show: true,
                           toY: maxCount.toDouble() * 1.2,
-                          color: colors.bgSurfaceContainer.withValues(alpha: 0.4),
+                          color:
+                              colors.bgSurfaceContainer.withValues(alpha: 0.4),
                         ),
                       ),
                     ],
@@ -324,8 +327,7 @@ class DayOfWeekChart extends StatelessWidget {
                 ),
               ),
               Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                 decoration: BoxDecoration(
                   color: AppColors.gold500.withValues(alpha: 0.14),
                   borderRadius: BorderRadius.circular(100),
@@ -404,9 +406,8 @@ class _DayCell extends StatelessWidget {
           decoration: BoxDecoration(
             color: colors.brand.withValues(alpha: alpha.clamp(0.0, 1.0)),
             borderRadius: BorderRadius.circular(10),
-            border: isPeak
-                ? Border.all(color: AppColors.gold500, width: 2)
-                : null,
+            border:
+                isPeak ? Border.all(color: AppColors.gold500, width: 2) : null,
           ),
           alignment: Alignment.center,
           child: Text(

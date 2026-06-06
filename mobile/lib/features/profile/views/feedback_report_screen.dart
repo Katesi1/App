@@ -1,20 +1,32 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
+
 import '../../../core/monitoring/analytics_service.dart';
 import '../../../core/theme/app_color_scheme.dart';
 import '../../../core/theme/app_spacing.dart';
+import '../controllers/profile_settings_controller.dart';
 
-class FeedbackReportScreen extends StatefulWidget {
+class FeedbackReportScreen extends ConsumerStatefulWidget {
   const FeedbackReportScreen({super.key});
 
   @override
-  State<FeedbackReportScreen> createState() => _FeedbackReportScreenState();
+  ConsumerState<FeedbackReportScreen> createState() =>
+      _FeedbackReportScreenState();
 }
 
-class _FeedbackReportScreenState extends State<FeedbackReportScreen> {
+class _FeedbackReportScreenState extends ConsumerState<FeedbackReportScreen> {
   final _contentCtrl = TextEditingController();
   final _contactCtrl = TextEditingController();
-  String _category = 'Bug';
+  String _category = 'bug';
   bool _includeDeviceInfo = true;
+  bool _submitting = false;
+
+  static const _categories = [
+    ('bug', 'Bug'),
+    ('feature', 'Đề xuất tính năng'),
+    ('support', 'Hỗ trợ'),
+  ];
 
   @override
   void dispose() {
@@ -23,22 +35,41 @@ class _FeedbackReportScreenState extends State<FeedbackReportScreen> {
     super.dispose();
   }
 
-  void _submit() {
+  Future<void> _submit() async {
     if (_contentCtrl.text.trim().isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Vui lòng nhập nội dung phản hồi')),
       );
       return;
     }
+
+    setState(() => _submitting = true);
+    final (ok, msg) = await ref.read(feedbackActionsProvider.notifier).submit(
+          category: _category,
+          content: _contentCtrl.text.trim(),
+          contact: _contactCtrl.text.trim().isEmpty
+              ? null
+              : _contactCtrl.text.trim(),
+          includeDeviceInfo: _includeDeviceInfo,
+        );
+    if (!mounted) return;
+    setState(() => _submitting = false);
+
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Đã gửi phản hồi, cảm ơn bạn')),
+      SnackBar(
+        content: Text(msg),
+        backgroundColor: ok ? null : context.colors.error,
+      ),
     );
-    AnalyticsService.logEvent(
-      'feedback_submitted',
-      params: {'category': _category},
-    );
-    _contentCtrl.clear();
-    _contactCtrl.clear();
+
+    if (ok) {
+      AnalyticsService.logEvent(
+        'feedback_submitted',
+        params: {'category': _category},
+      );
+      _contentCtrl.clear();
+      _contactCtrl.clear();
+    }
   }
 
   @override
@@ -56,21 +87,20 @@ class _FeedbackReportScreenState extends State<FeedbackReportScreen> {
               borderRadius: BorderRadius.circular(AppRadius.lg),
             ),
             child: Text(
-              'Mô tả càng chi tiết thì đội hỗ trợ xử lý càng nhanh. '
-              'Bạn có thể để lại kênh liên hệ để nhận phản hồi.',
+              'Gửi phản hồi nhanh (tối đa 10 lần/giờ). '
+              'Nếu cần theo dõi tiến độ, tạo yêu cầu hỗ trợ.',
               style: TextStyle(color: colors.textSecondary, height: 1.45),
             ),
           ),
           const SizedBox(height: AppSpacing.md),
           DropdownButtonFormField<String>(
             initialValue: _category,
-            items: const [
-              DropdownMenuItem(value: 'Bug', child: Text('Bug')),
-              DropdownMenuItem(
-                  value: 'Feature', child: Text('Đề xuất tính năng')),
-              DropdownMenuItem(value: 'Support', child: Text('Hỗ trợ')),
-            ],
-            onChanged: (v) => setState(() => _category = v ?? 'Bug'),
+            items: _categories
+                .map(
+                  (c) => DropdownMenuItem(value: c.$1, child: Text(c.$2)),
+                )
+                .toList(),
+            onChanged: (v) => setState(() => _category = v ?? 'bug'),
             decoration: const InputDecoration(labelText: 'Danh mục'),
           ),
           const SizedBox(height: AppSpacing.sm),
@@ -99,8 +129,20 @@ class _FeedbackReportScreenState extends State<FeedbackReportScreen> {
           ),
           const SizedBox(height: AppSpacing.md),
           FilledButton(
-            onPressed: _submit,
-            child: const Text('Gửi yêu cầu hỗ trợ'),
+            onPressed: _submitting ? null : _submit,
+            child: _submitting
+                ? const SizedBox(
+                    width: 20,
+                    height: 20,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                : const Text('Gửi phản hồi'),
+          ),
+          const SizedBox(height: AppSpacing.sm),
+          OutlinedButton.icon(
+            onPressed: () => context.push('/profile/tickets'),
+            icon: const Icon(Icons.confirmation_number_outlined, size: 18),
+            label: const Text('Xem yêu cầu hỗ trợ của tôi'),
           ),
         ],
       ),
