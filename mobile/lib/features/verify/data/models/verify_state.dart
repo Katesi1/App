@@ -123,8 +123,9 @@ class VerifyFlowState extends Equatable {
         billingCycle: billingCycle ?? this.billingCycle,
         paymentQuote:
             clearPaymentQuote ? null : (paymentQuote ?? this.paymentQuote),
-        paymentSession:
-            clearPaymentSession ? null : (paymentSession ?? this.paymentSession),
+        paymentSession: clearPaymentSession
+            ? null
+            : (paymentSession ?? this.paymentSession),
         paymentStatus:
             clearPaymentSession ? null : (paymentStatus ?? this.paymentStatus),
         submissionId: submissionId ?? this.submissionId,
@@ -148,8 +149,7 @@ class VerifyFlowState extends Equatable {
         'selectedPlan': selectedPlan?.toJson(),
         'billingCycle': billingCycle.name,
         'paymentQuote': null,
-        'paymentSession': paymentSession?.toJson(),
-        'paymentStatus': paymentStatus?.name,
+        // paymentSession / paymentStatus: runtime cache từ API — không persist.
         'submissionId': submissionId,
         'status': status.name,
         'rejectReason': rejectReason,
@@ -181,16 +181,7 @@ class VerifyFlowState extends Equatable {
           (c) => c.name == (json['billingCycle'] as String? ?? 'yearly'),
           orElse: () => BillingCycle.yearly,
         ),
-        paymentSession: json['paymentSession'] == null
-            ? null
-            : PaymentSession.fromJson(
-                json['paymentSession'] as Map<String, dynamic>),
-        paymentStatus: json['paymentStatus'] == null
-            ? null
-            : PaymentStatus.values.firstWhere(
-                (s) => s.name == json['paymentStatus'],
-                orElse: () => PaymentStatus.pending,
-              ),
+        // Không restore payment từ draft — luôn hydrate qua GET /payments/active.
         submissionId: json['submissionId'] as String?,
         status: VerifyStatus.values.firstWhere(
           (s) => s.name == (json['status'] as String? ?? 'draft'),

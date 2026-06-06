@@ -141,7 +141,8 @@ class VerifyRepositoryImpl implements VerifyRepository {
     try {
       final res = await _dio.get(ApiConstants.billingPlans);
       final rawList = res.data['data'];
-      if (rawList is! List) throw const VerifyApiException('Invalid response format');
+      if (rawList is! List)
+        throw const VerifyApiException('Invalid response format');
       final list = rawList.cast<Map<String, dynamic>>();
       return list.map(Plan.fromJson).toList();
     } on DioException catch (e) {
@@ -225,6 +226,19 @@ class VerifyRepositoryImpl implements VerifyRepository {
   Future<void> cancelPayment(String sessionId) async {
     try {
       await _dio.post(ApiConstants.paymentCancel(sessionId));
+    } on DioException catch (e) {
+      throw VerifyApiException.fromDio(e);
+    }
+  }
+
+  @override
+  Future<PaymentSession?> fetchActivePaymentSession() async {
+    try {
+      final res = await _dio.get(ApiConstants.paymentActive);
+      final data = res.data['data'];
+      if (data == null) return null;
+      if (data is! Map<String, dynamic>) return null;
+      return PaymentSession.fromJson(data);
     } on DioException catch (e) {
       throw VerifyApiException.fromDio(e);
     }

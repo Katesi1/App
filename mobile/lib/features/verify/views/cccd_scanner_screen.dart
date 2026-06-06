@@ -121,8 +121,7 @@ class _CCCDScannerScreenState extends State<CCCDScannerScreen>
       if (_isFront) {
         _recognizer = TextRecognizer(script: TextRecognitionScript.latin);
       } else {
-        _barcodeScanner =
-            BarcodeScanner(formats: const [BarcodeFormat.qrCode]);
+        _barcodeScanner = BarcodeScanner(formats: const [BarcodeFormat.qrCode]);
       }
       _initCamera();
     }

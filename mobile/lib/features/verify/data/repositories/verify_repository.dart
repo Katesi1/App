@@ -101,6 +101,9 @@ abstract class VerifyRepository {
   Future<PaymentStatus> checkPaymentStatus(String sessionId);
   Future<void> cancelPayment(String sessionId);
 
+  /// Session `pending` mới nhất — rehydrate QR/bankInfo sau reload app.
+  Future<PaymentSession?> fetchActivePaymentSession();
+
   Future<SubmissionResult> submitForApproval();
   Future<ApprovalResult> checkApprovalStatus(String submissionId);
   Future<void> resubmit({required List<RejectableItem> items});
@@ -122,23 +125,31 @@ class VerifyApiException implements Exception {
   final String? code;
   final DateTime? effectiveAt;
   final String? pendingPlanId;
+  final PendingSessionSummary? pendingSession;
 
   const VerifyApiException(
     this.message, {
     this.code,
     this.effectiveAt,
     this.pendingPlanId,
+    this.pendingSession,
   });
 
   factory VerifyApiException.fromDio(DioException e) {
     final status = e.response?.statusCode;
     final data = e.response?.data;
     if (data is Map) {
+      PendingSessionSummary? pendingSession;
+      final pendingRaw = data['pendingSession'];
+      if (pendingRaw is Map<String, dynamic>) {
+        pendingSession = PendingSessionSummary.fromJson(pendingRaw);
+      }
       return VerifyApiException(
         data['message']?.toString() ?? parseDioError(e),
         code: data['code'] as String?,
         effectiveAt: _parseApiDate(data['effectiveAt']),
         pendingPlanId: data['pendingPlanId'] as String?,
+        pendingSession: pendingSession,
       );
     }
     if (status == 404) {
@@ -154,6 +165,7 @@ class VerifyApiException implements Exception {
   bool get isSubscriptionFrozen => code == 'subscriptionFrozen';
   bool get isNoActiveSubscription => code == 'noActiveSubscription';
   bool get isAmountMismatch => code == 'amountMismatch';
+  bool get isPaymentPending => code == 'paymentPending';
 
   /// Message hiển thị cho user — ưu tiên tiếng Việt.
   String get vietnameseMessage {

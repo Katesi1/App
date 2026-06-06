@@ -14,6 +14,7 @@ import '../data/models/verify_enums.dart';
 import '../utils/payment_close_confirm.dart';
 import '../utils/payment_error_handler.dart';
 import '../utils/payment_awaiting_handler.dart';
+import '../utils/payment_pending_handler.dart';
 import '../utils/payment_status_poller.dart';
 import 'widgets/order_summary_card.dart';
 import 'widgets/payment_dialogs.dart';
@@ -53,9 +54,9 @@ class _PaymentScreenState extends ConsumerState<PaymentScreen>
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      _resumePendingSession();
-      _syncQuoteFromServer();
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      await _bootstrapPaymentScreen();
+      if (mounted) await _syncQuoteFromServer();
     });
   }
 
@@ -101,18 +102,43 @@ class _PaymentScreenState extends ConsumerState<PaymentScreen>
     }
   }
 
-  void _resumePendingSession() {
+  Future<void> _bootstrapPaymentScreen() async {
+    final notifier = ref.read(verifyFlowControllerProvider.notifier);
     final verifyState = ref.read(verifyFlowControllerProvider);
-    final session = verifyState.paymentSession;
-    if (session == null) return;
-    if (verifyState.paymentStatus == PaymentStatus.paid) return;
-    if (DateTime.now().isAfter(session.expiresAt)) return;
-    if (verifyState.paymentStatus != PaymentStatus.pending) return;
+    final plan = verifyState.selectedPlan;
 
+    PaymentSession? session;
+    try {
+      session = await notifier.syncActivePaymentFromApi();
+    } on VerifyApiException catch (e) {
+      if (mounted) showPaymentApiError(context, e);
+      return;
+    }
+    if (session == null) return;
+
+    if (plan != null && session.planId != null && session.planId != plan.id) {
+      return;
+    }
+    if (plan != null &&
+        session.cycle != null &&
+        session.cycle != verifyState.billingCycle) {
+      return;
+    }
+
+    try {
+      final status = await notifier.checkPaymentStatus();
+      if (!mounted) return;
+      if (status != PaymentStatus.pending) return;
+    } catch (_) {
+      return;
+    }
+
+    if (!mounted) return;
     setState(() {
       _processing = true;
       _awaitingReconcile = true;
     });
+    _showBankTransferDialog(session);
     _startPolling(session.expiresAt);
   }
 
@@ -139,6 +165,30 @@ class _PaymentScreenState extends ConsumerState<PaymentScreen>
       _startPolling(session.expiresAt);
     } on VerifyApiException catch (e) {
       if (!mounted) return;
+      if (e.isPaymentPending) {
+        final session = await resolvePaymentPendingConflict(
+          context: context,
+          ref: ref,
+          error: e,
+          onRetryAfterCancel: () => ref
+              .read(verifyFlowControllerProvider.notifier)
+              .initiatePayment(_selected),
+        );
+        if (!mounted) return;
+        if (session != null) {
+          if (_selected == PaymentMethod.bankTransfer) {
+            _showBankTransferDialog(session);
+          }
+          setState(() => _awaitingReconcile = true);
+          _startPolling(session.expiresAt);
+          return;
+        }
+        setState(() {
+          _processing = false;
+          _awaitingReconcile = false;
+        });
+        return;
+      }
       showPaymentApiError(context, e);
       AnalyticsService.logEvent('verify_payment_session_failed', params: {
         'method': _selected.name,
@@ -172,6 +222,7 @@ class _PaymentScreenState extends ConsumerState<PaymentScreen>
           _showInfo(
             'Đã ghi nhận. Bạn sẽ nhận thông báo khi thanh toán được xác nhận.',
           );
+          context.go('/verify/subscription-detail');
         },
         onCancelSession: _cancelPaymentSession,
       ),
@@ -285,6 +336,16 @@ class _PaymentScreenState extends ConsumerState<PaymentScreen>
   }
 
   Future<void> _handleBack() async {
+    // User đã chọn "Đóng và đợi" — giữ phiên pending, chỉ rời màn.
+    if (_awaitingReconcile) {
+      if (context.canPop()) {
+        context.pop();
+      } else {
+        context.go('/verify/subscription-detail');
+      }
+      return;
+    }
+
     if (!_hasPendingPayment()) {
       if (context.canPop()) {
         context.pop();
@@ -470,8 +531,7 @@ class _PaymentScreenState extends ConsumerState<PaymentScreen>
                 child: SizedBox(
                   height: 52,
                   child: FilledButton.icon(
-                    onPressed:
-                        _processing || !quoteReady ? null : _handlePay,
+                    onPressed: _processing || !quoteReady ? null : _handlePay,
                     icon: _processing
                         ? const SizedBox(
                             width: 16,

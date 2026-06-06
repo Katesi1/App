@@ -115,8 +115,8 @@ class PaymentHistoryPage extends Equatable {
   bool get hasMore => nextCursor != null && nextCursor!.isNotEmpty;
 
   factory PaymentHistoryPage.fromResponse(Map<String, dynamic> response) {
-    final list = (response['data'] as List?)?.cast<Map<String, dynamic>>() ??
-        const [];
+    final list =
+        (response['data'] as List?)?.cast<Map<String, dynamic>>() ?? const [];
     final meta = response['meta'] as Map<String, dynamic>?;
     return PaymentHistoryPage(
       items: list.map(PaymentHistoryItem.fromJson).toList(),

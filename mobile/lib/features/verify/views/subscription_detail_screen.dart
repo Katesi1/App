@@ -18,9 +18,9 @@ import '../data/models/plan.dart';
 import '../data/models/verify_enums.dart';
 import '../data/models/verify_state.dart';
 import '../data/models/payment_quote.dart';
-import '../utils/payment_close_confirm.dart';
 import '../utils/payment_awaiting_handler.dart';
 import '../utils/payment_error_handler.dart';
+import '../utils/payment_pending_handler.dart';
 import '../utils/payment_status_poller.dart';
 import '../utils/subscription_renew_validator.dart';
 import 'widgets/payment_dialogs.dart';
@@ -56,7 +56,34 @@ class _SubscriptionDetailScreenState
       ref.read(authProvider.notifier).refreshProfile(),
       ref.read(verifyFlowControllerProvider.notifier).hydrate(),
     ]);
-    if (mounted) setState(() => _bootstrapping = false);
+    if (mounted) {
+      setState(() => _bootstrapping = false);
+      await _bootstrapPendingFromApi();
+    }
+  }
+
+  Future<void> _bootstrapPendingFromApi() async {
+    final notifier = ref.read(verifyFlowControllerProvider.notifier);
+
+    PaymentSession? session;
+    try {
+      session = await notifier.syncActivePaymentFromApi();
+    } catch (_) {
+      return;
+    }
+    if (session == null) return;
+
+    try {
+      final status = await notifier.checkPaymentStatus();
+      if (!mounted) return;
+      if (status != PaymentStatus.pending) return;
+    } catch (_) {
+      return;
+    }
+
+    if (!mounted) return;
+    setState(() => _awaitingReconcile = true);
+    _startPolling(session.expiresAt);
   }
 
   @override
@@ -132,6 +159,26 @@ class _SubscriptionDetailScreenState
       _openSessionDialog(session, method);
     } on VerifyApiException catch (e) {
       if (!mounted) return;
+      if (e.isPaymentPending) {
+        final session = await resolvePaymentPendingConflict(
+          context: context,
+          ref: ref,
+          error: e,
+          onRetryAfterCancel: () async {
+            if (validation.path == RenewPaymentPath.initiateSamePlan) {
+              notifier.selectPlan(plan, ctx.cycle, quote: quote);
+              return notifier.initiatePayment(method);
+            }
+            return notifier.initiateRenewal(method);
+          },
+        );
+        if (!mounted) return;
+        if (session != null) {
+          _openSessionDialog(session, method);
+          return;
+        }
+        return;
+      }
       if (e.isNoActiveSubscription && user.isInTrial) {
         try {
           notifier.selectPlan(plan, ctx.cycle, quote: quote);
@@ -309,23 +356,12 @@ class _SubscriptionDetailScreenState
   }
 
   Future<void> _handleBackWhilePending() async {
-    if (!_awaitingReconcile) {
+    // Đã "Đóng và đợi" — giữ phiên pending, cho rời màn tự do.
+    if (_awaitingReconcile) {
       if (context.canPop()) context.pop();
       return;
     }
 
-    final confirmed = await confirmClosePendingPayment(
-      context,
-      isBankTransfer: true,
-    );
-    if (!confirmed || !mounted) return;
-
-    try {
-      await _cancelPaymentSession();
-    } catch (_) {
-      return;
-    }
-    if (!mounted) return;
     if (context.canPop()) context.pop();
   }
 
@@ -544,8 +580,7 @@ class _SubscriptionDetailScreenState
                   StatusStrip(
                     icon: Icons.trending_down,
                     label: 'Đã đặt lịch hạ gói',
-                    subtitle:
-                        'Gói ${user.pendingPlanLabel} áp dụng từ '
+                    subtitle: 'Gói ${user.pendingPlanLabel} áp dụng từ '
                         '${VerifyFormat.dateVN(user.pendingEffectiveAt!)}',
                     variant: StatusStripVariant.brand,
                   ),

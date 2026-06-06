@@ -42,9 +42,7 @@ class _SelfieCaptureScreenState extends ConsumerState<SelfieCaptureScreen> {
     setState(() => _uploading = true);
     try {
       await ref.read(verifyFlowControllerProvider.notifier).uploadSelfie(file);
-      await ref
-          .read(verifyFlowControllerProvider.notifier)
-          .submitForApproval();
+      await ref.read(verifyFlowControllerProvider.notifier).submitForApproval();
       await ref.read(authProvider.notifier).refreshProfile();
       if (!mounted) return;
       context.pushReplacement('/verify/pending');

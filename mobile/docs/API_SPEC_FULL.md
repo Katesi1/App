@@ -1266,6 +1266,8 @@ Response (200):
 
 Quote **không** tạo session, không ghi DB. FE có thể gọi mỗi khi user đổi plan/cycle để re-render order summary. Khi user confirm, FE gọi `POST /payments/initiate` với `totalAmount` lấy từ quote — BE vẫn tính lại và validate ±1%.
 
+**Riêng nhánh `upgrade`** BE **không** validate `totalAmount` FE gửi (vì FE cũ gửi full giá gói mới chưa biết prorate). BE override `totalAmount` trong response session bằng số đã prorate; FE đọc lại từ response thay vì tự tính. Nhánh `subscription` / `renew` vẫn validate ±1% như cũ.
+
 ### 10.2.4 Mở rộng response của `initiate` / `renew`
 
 Session response (trên hai endpoint này) trả thêm so với spec cũ:
@@ -1297,7 +1299,39 @@ Session response (trên hai endpoint này) trả thêm so với spec cũ:
 | `subscriptionFrozen` | 409 | Mọi initiate/renew/quote khi `subscriptionStatus = frozen` |
 | `downgradeScheduled` | 409 | `POST /payments/initiate` với tier thấp hơn. Body kèm `effectiveAt` + `pendingPlanId` |
 | `cannotDowngradeInTrial` | 409 | (reserved) Trial chưa hết mà muốn hạ gói |
+| `paymentPending` | 409 | User đã có session `pending` đang chờ duyệt/đối soát. Body kèm `pendingSession` (xem §10.2.6) |
 | `markPaidDuplicate` | 409 | Đã paid trước đó |
+
+### 10.2.6 Chặn tạo session khi đang có pending (v1.8+)
+
+Khi user gọi `POST /payments/initiate` hoặc `POST /payments/renew` mà đã có session `status=pending` (bất kỳ kind nào) → **409 `paymentPending`**, KHÔNG tạo session mới.
+
+```json
+{
+  "success": false,
+  "statusCode": 409,
+  "code": "paymentPending",
+  "message": "Bạn đang có phiên thanh toán chờ duyệt. Vui lòng hoàn tất hoặc hủy phiên hiện tại trước khi tạo mới.",
+  "pendingSession": {
+    "sessionId": "uuid",
+    "kind": "upgrade",
+    "totalAmount": 769450,
+    "planId": "rooms_10",
+    "planLabel": "Standard · Tháng",
+    "cycle": "monthly",
+    "method": "bank_transfer",
+    "createdAt": "2026-06-06T10:00:00.000Z",
+    "expiresAt": "2026-06-07T10:00:00.000Z"
+  }
+}
+```
+
+**FE handle:**
+- Khi nhận 409 `paymentPending` → điều hướng user về màn QR / order summary của `pendingSession.sessionId` (gọi `GET /payments/active` hoặc `GET /payments/:sessionId/status` để rehydrate).
+- Hiển thị `message` BE trả về.
+- Cho user 2 lựa chọn: **chờ duyệt** (tiếp tục) hoặc **hủy session cũ** (gọi `POST /payments/:sessionId/cancel` rồi mới tạo session mới).
+
+**Auto-cancel 24h:** Session `pending` quá `expiresAt` (24h sau `createdAt`) sẽ tự động chuyển `expired` qua cron `expirePendingSessions` (chạy mỗi 5 phút). Đồng thời revert `KycSubmission.payment_pending → kyc_submitted` cho session thuộc nhánh subscription lần đầu. User KHÔNG cần thao tác — sau 24h sẽ tự động tạo session mới được.
 
 Method values: `bank_transfer` (chỉ hỗ trợ duy nhất — VNPay và Apple IAP đã loại bỏ ở v1.4).
 

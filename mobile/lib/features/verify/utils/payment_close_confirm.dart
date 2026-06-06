@@ -61,7 +61,7 @@ Future<bool> confirmClosePendingPayment(
 }
 
 /// Bọc dialog thanh toán — chặn back/barrier dismiss trừ khi user xác nhận.
-class PaymentDialogPopScope extends StatelessWidget {
+class PaymentDialogPopScope extends StatefulWidget {
   final Widget child;
   final bool isBankTransfer;
   final Future<void> Function()? onCancelSession;
@@ -73,15 +73,35 @@ class PaymentDialogPopScope extends StatelessWidget {
     this.onCancelSession,
   });
 
+  static PaymentDialogPopScopeState? maybeOf(BuildContext context) {
+    return context.findAncestorStateOfType<PaymentDialogPopScopeState>();
+  }
+
+  @override
+  State<PaymentDialogPopScope> createState() => PaymentDialogPopScopeState();
+}
+
+class PaymentDialogPopScopeState extends State<PaymentDialogPopScope> {
+  bool _allowPop = false;
+
+  /// Đóng dialog nhưng **giữ** phiên `pending` — dùng cho "Đóng và đợi".
+  void popKeepingSession() {
+    if (!mounted) return;
+    setState(() => _allowPop = true);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) Navigator.of(context).pop();
+    });
+  }
+
   Future<void> _handleCancelSession(BuildContext context) async {
     final confirmed = await confirmClosePendingPayment(
       context,
-      isBankTransfer: isBankTransfer,
+      isBankTransfer: widget.isBankTransfer,
     );
     if (!confirmed || !context.mounted) return;
 
     try {
-      await onCancelSession?.call();
+      await widget.onCancelSession?.call();
     } catch (_) {
       // Vẫn đóng dialog — caller có thể hiện snackbar nếu cần.
     }
@@ -92,12 +112,12 @@ class PaymentDialogPopScope extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return PopScope(
-      canPop: false,
+      canPop: _allowPop,
       onPopInvokedWithResult: (didPop, _) {
         if (didPop) return;
         _handleCancelSession(context);
       },
-      child: child,
+      child: widget.child,
     );
   }
 }

@@ -10,15 +10,13 @@ void showPaymentApiError(BuildContext context, VerifyApiException e) {
   String message = e.vietnameseMessage;
 
   if (e.isDowngradeScheduled && e.effectiveAt != null) {
-    message =
-        'Gói mới áp dụng từ ${VerifyFormat.dateVN(e.effectiveAt!)}';
+    message = 'Gói mới áp dụng từ ${VerifyFormat.dateVN(e.effectiveAt!)}';
   }
 
   ScaffoldMessenger.of(context).showSnackBar(
     SnackBar(
       content: Text(message),
-      backgroundColor:
-          e.isDowngradeScheduled ? colors.brand : colors.error,
+      backgroundColor: e.isDowngradeScheduled ? colors.brand : colors.error,
       duration: const Duration(seconds: 5),
     ),
   );

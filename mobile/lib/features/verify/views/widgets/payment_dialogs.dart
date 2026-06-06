@@ -552,9 +552,7 @@ class _BankTransferDialogState extends State<BankTransferDialog> {
                   vertical: 8,
                 ),
                 decoration: BoxDecoration(
-                  color: expired
-                      ? colors.errorBg
-                      : colors.bgSurfaceContainer,
+                  color: expired ? colors.errorBg : colors.bgSurfaceContainer,
                   borderRadius: BorderRadius.circular(20),
                 ),
                 child: Row(
@@ -619,8 +617,9 @@ class _BankTransferDialogState extends State<BankTransferDialog> {
                   onPressed: expired
                       ? null
                       : () {
-                          Navigator.of(context).maybePop();
                           widget.onWaitAndClose?.call();
+                          PaymentDialogPopScope.maybeOf(context)
+                              ?.popKeepingSession();
                         },
                   icon:
                       const Icon(Icons.notifications_active_outlined, size: 18),

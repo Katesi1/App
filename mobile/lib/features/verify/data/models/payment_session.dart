@@ -82,6 +82,67 @@ class BankInfo extends Equatable {
       ];
 }
 
+/// Snapshot phiên pending từ body 409 `paymentPending` (§10.2.6).
+class PendingSessionSummary extends Equatable {
+  final String sessionId;
+  final PaymentHistoryKind? kind;
+  final int totalAmount;
+  final String? planId;
+  final String? planLabel;
+  final BillingCycle? cycle;
+  final PaymentMethod method;
+  final DateTime? createdAt;
+  final DateTime expiresAt;
+
+  const PendingSessionSummary({
+    required this.sessionId,
+    this.kind,
+    required this.totalAmount,
+    this.planId,
+    this.planLabel,
+    this.cycle,
+    required this.method,
+    this.createdAt,
+    required this.expiresAt,
+  });
+
+  factory PendingSessionSummary.fromJson(Map<String, dynamic> json) {
+    final methodRaw =
+        (json['method'] as String?)?.toLowerCase() ?? 'bank_transfer';
+    return PendingSessionSummary(
+      sessionId: (json['sessionId'] ?? json['session_id']) as String,
+      kind: _sessionKindFromApi(json['kind'] as String?),
+      totalAmount: (json['totalAmount'] ?? json['total_amount'] ?? 0) as int,
+      planId: json['planId'] as String?,
+      planLabel: json['planLabel'] as String?,
+      cycle: _cycleFromApi(json['cycle'] as String?),
+      method: _methodFromApi(methodRaw),
+      createdAt: _parseOptionalDate(json['createdAt'] ?? json['created_at']),
+      expiresAt: DateTime.parse(
+        (json['expiresAt'] ?? json['expires_at']) as String,
+      ),
+    );
+  }
+
+  @override
+  List<Object?> get props => [
+        sessionId,
+        kind,
+        totalAmount,
+        planId,
+        planLabel,
+        cycle,
+        method,
+        createdAt,
+        expiresAt,
+      ];
+}
+
+DateTime? _parseOptionalDate(dynamic raw) {
+  if (raw == null || raw is! String || raw.isEmpty) return null;
+  return DateTime.tryParse(raw);
+}
+
 /// Một phiên thanh toán đang mở (VNPay / bank transfer / card).
 class PaymentSession extends Equatable {
   final String sessionId;

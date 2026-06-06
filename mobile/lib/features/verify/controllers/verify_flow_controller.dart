@@ -61,10 +61,10 @@ final paymentQuoteProvider = FutureProvider.autoDispose
   }
 });
 
-final paymentHistoryProvider =
-    FutureProvider<PaymentHistoryPage>((ref) async {
+final paymentHistoryProvider = FutureProvider<PaymentHistoryPage>((ref) async {
   return ref.read(verifyRepositoryProvider).fetchPaymentHistory();
 });
+
 class PaymentHistoryListState {
   final List<PaymentHistoryItem> items;
   final String? nextCursor;
@@ -180,10 +180,9 @@ class VerifyFlowController extends StateNotifier<VerifyFlowState> {
   // Hydrate — load state từ backend khi vào lại flow
   // ════════════════════════════════════════════════════════════
 
-  /// Đồng bộ trạng thái KYC với backend (`GET /kyc/status`).
+  /// Đồng bộ trạng thái KYC + payment pending từ backend.
   ///
-  /// Gọi khi user mở app lại / vào paywall modal — để resume đúng step
-  /// thay vì luôn bắt đầu từ CCCD trước. Idempotent, an toàn để gọi nhiều lần.
+  /// Payment pending: source of truth là `GET /payments/active`, không đọc draft.
   Future<void> hydrate() async {
     try {
       final snap = await _repo.getKycStatus();
@@ -195,9 +194,40 @@ class VerifyFlowController extends StateNotifier<VerifyFlowState> {
         approvedAt: snap.approvedAt,
         trialEndsAt: snap.trialEndsAt,
       );
+      await syncActivePaymentFromApi();
+      _persistDraft();
     } catch (_) {
       // Hydrate fail không nên crash flow — user vẫn có thể start lại từ đầu.
     }
+  }
+
+  /// `GET /payments/active` — source of truth cho phiên pending (QR + bankInfo).
+  ///
+  /// Cập nhật runtime cache trong state; trả `null` nếu BE không có session pending.
+  Future<PaymentSession?> syncActivePaymentFromApi() async {
+    try {
+      final active = await _repo.fetchActivePaymentSession();
+      if (active == null || !DateTime.now().isBefore(active.expiresAt)) {
+        state = state.copyWith(clearPaymentSession: true);
+        return null;
+      }
+      state = state.copyWith(
+        paymentSession: active,
+        paymentStatus: PaymentStatus.pending,
+        status: VerifyStatus.paymentPending,
+      );
+      return active;
+    } on VerifyApiException {
+      rethrow;
+    } catch (_) {
+      state = state.copyWith(clearPaymentSession: true);
+      return null;
+    }
+  }
+
+  /// Xoá runtime cache payment (sau khi BE confirm paid/expired/cancel).
+  void clearPaymentSessionCache() {
+    state = state.copyWith(clearPaymentSession: true);
   }
 
   Future<void> _restoreDraft() async {
@@ -208,7 +238,9 @@ class VerifyFlowController extends StateNotifier<VerifyFlowState> {
         return;
       }
       final json = jsonDecode(raw) as Map<String, dynamic>;
-      state = VerifyFlowState.fromJson(json);
+      state = VerifyFlowState.fromJson(json).copyWith(
+        clearPaymentSession: true,
+      );
     } catch (_) {
       // Không block flow nếu parse lỗi draft cũ.
     }
@@ -289,12 +321,15 @@ class VerifyFlowController extends StateNotifier<VerifyFlowState> {
   /// trong state cho payment + admin queue). Enterprise: rooms = -1 → giữ
   /// nguyên giá trị cũ (không override).
   void selectPlan(Plan plan, BillingCycle cycle, {PaymentQuote? quote}) {
+    final planChanged =
+        state.selectedPlan?.id != plan.id || state.billingCycle != cycle;
     state = state.copyWith(
       selectedPlan: plan,
       billingCycle: cycle,
       paymentQuote: quote,
       expectedRooms: plan.rooms > 0 ? plan.rooms : state.expectedRooms,
       clearPaymentQuote: quote == null,
+      clearPaymentSession: planChanged,
     );
     _persistDraft();
   }
@@ -420,8 +455,11 @@ class VerifyFlowController extends StateNotifier<VerifyFlowState> {
     if (session == null) return PaymentStatus.pending;
 
     final status = await _repo.checkPaymentStatus(session.sessionId);
-    state = state.copyWith(paymentStatus: status);
-    _persistDraft();
+    if (status == PaymentStatus.pending) {
+      state = state.copyWith(paymentStatus: status);
+    } else {
+      state = state.copyWith(clearPaymentSession: true, paymentStatus: status);
+    }
     return status;
   }
 
@@ -430,25 +468,32 @@ class VerifyFlowController extends StateNotifier<VerifyFlowState> {
   Future<void> cancelPayment() async {
     final session = state.paymentSession;
     if (session == null) return;
+    await cancelPaymentById(session.sessionId);
+  }
 
+  /// Huỷ session theo id (409 paymentPending → huỷ session cũ trước khi tạo mới).
+  Future<void> cancelPaymentById(String sessionId) async {
     try {
-      await _repo.cancelPayment(session.sessionId);
+      await _repo.cancelPayment(sessionId);
     } on VerifyApiException {
-      // 409 cannotCancel — session đã paid/expired/...; sync status local.
       try {
-        final status = await _repo.checkPaymentStatus(session.sessionId);
-        state = state.copyWith(paymentStatus: status);
-        _persistDraft();
+        final status = await _repo.checkPaymentStatus(sessionId);
+        if (state.paymentSession?.sessionId == sessionId) {
+          state = state.copyWith(paymentStatus: status);
+          _persistDraft();
+        }
       } catch (_) {}
       rethrow;
     }
 
-    state = state.copyWith(clearPaymentSession: true);
-    try {
-      final snap = await _repo.getKycStatus();
-      state = state.copyWith(status: snap.status);
-    } catch (_) {}
-    _persistDraft();
+    if (state.paymentSession?.sessionId == sessionId) {
+      state = state.copyWith(clearPaymentSession: true);
+      try {
+        final snap = await _repo.getKycStatus();
+        state = state.copyWith(status: snap.status);
+      } catch (_) {}
+      _persistDraft();
+    }
   }
 
   // ════════════════════════════════════════════════════════════

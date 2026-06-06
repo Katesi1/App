@@ -50,8 +50,7 @@ class SubscriptionRenewValidator {
       return RenewValidation(
         showRenewButton: true,
         canTap: false,
-        blockMessage:
-            'Tài khoản đang bị đóng băng. Vui lòng liên hệ hỗ trợ.',
+        blockMessage: 'Tài khoản đang bị đóng băng. Vui lòng liên hệ hỗ trợ.',
         disabledHint: 'Không thể gia hạn khi tài khoản bị đóng băng',
       );
     }
@@ -96,8 +95,7 @@ class SubscriptionRenewValidator {
       return RenewValidation(
         showRenewButton: true,
         canTap: false,
-        blockMessage:
-            'Không tải được danh mục gói. Vui lòng thử lại sau.',
+        blockMessage: 'Không tải được danh mục gói. Vui lòng thử lại sau.',
         disabledHint: 'Đang tải thông tin gói...',
       );
     }
