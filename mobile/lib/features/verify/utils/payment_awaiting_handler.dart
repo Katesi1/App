@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../auth/controllers/auth_controller.dart';
+import '../../../shared/widgets/app_toast.dart';
 import '../data/models/verify_enums.dart';
 
 /// Xử lý kết quả poll payment — dùng chung payment + renewal screens.
@@ -32,11 +33,9 @@ Future<bool> handlePaymentStatusUpdate({
     onPollingStopped();
     if (context.mounted) {
       setProcessing(false);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: const Text('Thanh toán thất bại hoặc phiên đã hết hạn'),
-          backgroundColor: Theme.of(context).colorScheme.error,
-        ),
+      AppToast.error(
+        context,
+        'Thanh toán thất bại hoặc phiên đã hết hạn',
       );
     }
     return true;

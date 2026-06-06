@@ -8,6 +8,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_mlkit_face_detection/google_mlkit_face_detection.dart';
 
+import '../../../shared/widgets/app_toast.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
 
@@ -407,9 +408,7 @@ class _SelfieScannerScreenState extends State<SelfieScannerScreen>
     } catch (e) {
       if (!mounted) return;
       _capturing = false;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Chụp lỗi: $e')),
-      );
+      AppToast.error(context, 'Chụp lỗi: $e');
       try {
         await c.startImageStream(_onFrame);
       } catch (_) {}

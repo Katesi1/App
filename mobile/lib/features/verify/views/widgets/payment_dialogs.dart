@@ -6,6 +6,7 @@ import 'package:flutter/services.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../../../core/theme/app_color_scheme.dart';
+import '../../../../shared/widgets/app_toast.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/utils/viet_qr_url.dart';
 import '../../data/models/payment_session.dart';
@@ -275,13 +276,7 @@ class _BankTransferDialogState extends State<BankTransferDialog> {
   Future<void> _copy(String label, String value) async {
     await Clipboard.setData(ClipboardData(text: value));
     if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('Đã sao chép $label'),
-        duration: const Duration(seconds: 1),
-        behavior: SnackBarBehavior.floating,
-      ),
-    );
+    AppToast.success(context, 'Đã sao chép $label');
   }
 
   @override

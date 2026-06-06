@@ -10,6 +10,7 @@ import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../data/models/user_model.dart';
 import '../../../shared/widgets/loading_widget.dart';
+import '../../../shared/widgets/app_toast.dart';
 import '../../../shared/widgets/status_strip.dart';
 import '../../auth/controllers/auth_controller.dart';
 import '../controllers/verify_flow_controller.dart';
@@ -23,6 +24,7 @@ import '../utils/payment_error_handler.dart';
 import '../utils/payment_pending_handler.dart';
 import '../utils/payment_status_poller.dart';
 import '../utils/subscription_renew_validator.dart';
+import '../utils/verify_flow_navigation.dart';
 import 'widgets/payment_dialogs.dart';
 import 'widgets/status_timeline.dart';
 import 'widgets/subscription_hero_card.dart';
@@ -258,14 +260,10 @@ class _SubscriptionDetailScreenState
           session: session,
           onWaitAndClose: () {
             if (!mounted) return;
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: const Text(
-                  'Đã ghi nhận. Bạn sẽ nhận thông báo khi thanh toán '
-                  'được xác nhận.',
-                ),
-                backgroundColor: context.colors.brand,
-              ),
+            AppToast.info(
+              context,
+              'Đã ghi nhận. Bạn sẽ nhận thông báo khi thanh toán '
+              'được xác nhận.',
             );
           },
           onCancelSession: _cancelPaymentSession,
@@ -342,27 +340,33 @@ class _SubscriptionDetailScreenState
       });
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            'Huỷ phiên thất bại: '
-            '${e.toString().replaceAll('Exception: ', '')}',
-          ),
-          backgroundColor: context.colors.error,
-        ),
+      AppToast.error(
+        context,
+        'Huỷ phiên thất bại: '
+        '${e.toString().replaceAll('Exception: ', '')}',
       );
       rethrow;
     }
   }
 
-  Future<void> _handleBackWhilePending() async {
-    // Đã "Đóng và đợi" — giữ phiên pending, cho rời màn tự do.
-    if (_awaitingReconcile) {
-      if (context.canPop()) context.pop();
+  void _handleBack() {
+    popSubscriptionDetailOrDashboard(context);
+  }
+
+  Future<void> _reopenPaymentDialog() async {
+    final notifier = ref.read(verifyFlowControllerProvider.notifier);
+    var session = ref.read(verifyFlowControllerProvider).paymentSession;
+    session ??= await notifier.syncActivePaymentFromApi();
+    if (!mounted || session == null) return;
+
+    try {
+      final status = await notifier.checkPaymentStatus();
+      if (!mounted || status != PaymentStatus.pending) return;
+    } catch (_) {
       return;
     }
 
-    if (context.canPop()) context.pop();
+    _openSessionDialog(session, PaymentMethod.bankTransfer);
   }
 
   BillingCycle _resolveCycle(
@@ -544,16 +548,16 @@ class _SubscriptionDetailScreenState
     final metrics = _buildMetrics(user, plan, cycle, displayCost);
 
     return PopScope(
-      canPop: !_awaitingReconcile,
+      canPop: true,
       onPopInvokedWithResult: (didPop, _) {
         if (didPop) return;
-        _handleBackWhilePending();
+        _handleBack();
       },
       child: Scaffold(
         backgroundColor: colors.bgCanvas,
         appBar: AppBar(
           title: const Text('Chi tiết gói đăng ký'),
-          leading: BackButton(onPressed: _handleBackWhilePending),
+          leading: BackButton(onPressed: _handleBack),
         ),
         body: Stack(
           children: [
@@ -566,12 +570,16 @@ class _SubscriptionDetailScreenState
               ),
               children: [
                 if (_awaitingReconcile) ...[
-                  const StatusStrip(
+                  StatusStrip(
                     icon: Icons.schedule,
                     label: 'Đang chờ đối soát thủ công',
                     subtitle: 'Có thể mất 1–3 giờ. Bạn có thể đóng app — '
                         'sẽ nhận thông báo khi xác nhận thành công.',
                     variant: StatusStripVariant.brand,
+                    trailing: TextButton(
+                      onPressed: _reopenPaymentDialog,
+                      child: const Text('Xem QR'),
+                    ),
                   ),
                   const SizedBox(height: AppSpacing.md),
                 ],

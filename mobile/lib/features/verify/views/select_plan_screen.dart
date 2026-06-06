@@ -11,6 +11,7 @@ import '../controllers/verify_flow_controller.dart';
 import '../data/models/payment_quote.dart';
 import '../data/models/plan.dart';
 import '../data/models/verify_enums.dart';
+import '../../../shared/widgets/app_toast.dart';
 import '../utils/payment_error_handler.dart';
 import 'widgets/plan_card.dart';
 import 'widgets/verify_app_bar.dart';
@@ -237,8 +238,9 @@ class _SelectPlanScreenState extends ConsumerState<SelectPlanScreen> {
         }
       } catch (e) {
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text(e.toString())),
+          AppToast.error(
+            context,
+            e.toString().replaceAll('Exception: ', ''),
           );
         }
       } finally {

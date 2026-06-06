@@ -11,6 +11,7 @@ import 'package:google_mlkit_text_recognition/google_mlkit_text_recognition.dart
 import '../../../core/theme/app_color_scheme.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
+import '../../../shared/widgets/app_toast.dart';
 import '../data/models/ocr_result.dart';
 import '../data/models/scanner_result.dart';
 import '../data/models/verify_enums.dart';
@@ -390,9 +391,7 @@ class _CCCDScannerScreenState extends State<CCCDScannerScreen>
       if (!mounted) return;
       _capturing = false;
       _setStatus(_Status.searching);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Chụp lỗi: $e')),
-      );
+      AppToast.error(context, 'Chụp lỗi: $e');
       // Restart stream để user thử lại.
       try {
         await c.startImageStream(_onFrame);

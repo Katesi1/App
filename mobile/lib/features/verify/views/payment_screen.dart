@@ -7,6 +7,7 @@ import '../../../core/services/push_notification_service.dart';
 import '../../../core/theme/app_color_scheme.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
+import '../../../shared/widgets/app_toast.dart';
 import '../../../shared/widgets/status_strip.dart';
 import '../controllers/verify_flow_controller.dart';
 import '../data/models/payment_session.dart';
@@ -16,6 +17,7 @@ import '../utils/payment_error_handler.dart';
 import '../utils/payment_awaiting_handler.dart';
 import '../utils/payment_pending_handler.dart';
 import '../utils/payment_status_poller.dart';
+import '../utils/verify_flow_navigation.dart';
 import 'widgets/order_summary_card.dart';
 import 'widgets/payment_dialogs.dart';
 import 'widgets/payment_method_tile.dart';
@@ -222,7 +224,10 @@ class _PaymentScreenState extends ConsumerState<PaymentScreen>
           _showInfo(
             'Đã ghi nhận. Bạn sẽ nhận thông báo khi thanh toán được xác nhận.',
           );
-          context.go('/verify/subscription-detail');
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (!mounted) return;
+            goToSubscriptionDetail(context);
+          });
         },
         onCancelSession: _cancelPaymentSession,
       ),
@@ -237,6 +242,10 @@ class _PaymentScreenState extends ConsumerState<PaymentScreen>
       setState(() {
         _processing = false;
         _awaitingReconcile = false;
+      });
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        goToSubscriptionDetail(context);
       });
     } catch (e) {
       if (!mounted) return;
@@ -307,22 +316,11 @@ class _PaymentScreenState extends ConsumerState<PaymentScreen>
   }
 
   void _showInfo(String msg) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(msg),
-        duration: const Duration(seconds: 4),
-        backgroundColor: context.colors.brand,
-      ),
-    );
+    AppToast.info(context, msg);
   }
 
   void _showError(String msg) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(msg),
-        backgroundColor: context.colors.error,
-      ),
-    );
+    AppToast.error(context, msg);
   }
 
   bool _hasPendingPayment() {
@@ -336,13 +334,8 @@ class _PaymentScreenState extends ConsumerState<PaymentScreen>
   }
 
   Future<void> _handleBack() async {
-    // User đã chọn "Đóng và đợi" — giữ phiên pending, chỉ rời màn.
     if (_awaitingReconcile) {
-      if (context.canPop()) {
-        context.pop();
-      } else {
-        context.go('/verify/subscription-detail');
-      }
+      goToSubscriptionDetail(context);
       return;
     }
 
@@ -365,13 +358,6 @@ class _PaymentScreenState extends ConsumerState<PaymentScreen>
       await _cancelPaymentSession();
     } catch (_) {
       return;
-    }
-    if (!mounted) return;
-
-    if (context.canPop()) {
-      context.pop();
-    } else {
-      context.go('/dashboard');
     }
   }
 
