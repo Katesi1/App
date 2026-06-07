@@ -46,9 +46,7 @@ class _SelfieCaptureScreenState extends ConsumerState<SelfieCaptureScreen> {
       // identity verification immediately and route to the pending screen.
       // The user picks + buys a plan separately (from /verify/subscription-detail
       // or the trial active screen after admin approval).
-      await ref
-          .read(verifyFlowControllerProvider.notifier)
-          .submitForApproval();
+      await ref.read(verifyFlowControllerProvider.notifier).submitForApproval();
       if (!mounted) return;
       context.pushReplacement('/verify/pending');
     } catch (e) {

@@ -182,6 +182,20 @@ class ProfileScreen extends ConsumerWidget {
                         onTap: () => context.push('/profile/privacy'),
                       ),
                       _MenuItemData(
+                        icon: Icons.fact_check_outlined,
+                        label: 'Quyền đồng ý dữ liệu',
+                        subtitle: 'Quản lý consent KYC & marketing',
+                        iconColor: colors.brand,
+                        onTap: () => context.push('/profile/consent'),
+                      ),
+                      _MenuItemData(
+                        icon: Icons.download_outlined,
+                        label: 'Yêu cầu dữ liệu cá nhân',
+                        subtitle: 'Xuất bản sao dữ liệu (GDPR)',
+                        iconColor: colors.brandSecondary,
+                        onTap: () => context.push('/profile/data-request'),
+                      ),
+                      _MenuItemData(
                         icon: Icons.gavel_outlined,
                         label: 'Điều khoản sử dụng',
                         subtitle: 'Điều khoản dịch vụ',
@@ -193,8 +207,7 @@ class ProfileScreen extends ConsumerWidget {
                         label: 'Xoá tài khoản',
                         subtitle: 'Xoá vĩnh viễn dữ liệu của bạn',
                         iconColor: colors.error,
-                        onTap: () =>
-                            context.push('/profile/delete-account'),
+                        onTap: () => context.push('/profile/delete-account'),
                       ),
                     ],
                   ),
@@ -435,8 +448,7 @@ class ProfileScreen extends ConsumerWidget {
               ),
               ListTile(
                 contentPadding: EdgeInsets.zero,
-                leading:
-                    Icon(Icons.mail_outline, color: colors.brandSecondary),
+                leading: Icon(Icons.mail_outline, color: colors.brandSecondary),
                 title: const Text('Gửi email'),
                 subtitle: const Text(AppConstants.supportEmail),
                 onTap: () async {

@@ -84,7 +84,6 @@ class AdminKycRepositoryImpl implements AdminKycRepository {
     }
   }
 
-
   @override
   Future<KYCSubmission> reject(
     String id, {

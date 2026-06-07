@@ -36,8 +36,7 @@ void main() {
       // catch early crashes. But DO NOT block longer than 5s (e.g. if network
       // init hangs).
       try {
-        await Firebase.initializeApp()
-            .timeout(const Duration(seconds: 5));
+        await Firebase.initializeApp().timeout(const Duration(seconds: 5));
         await CrashReporter.init().timeout(const Duration(seconds: 3));
       } catch (e) {
         if (kDebugMode) debugPrint('[Firebase] Init failed/timeout: $e');
@@ -86,6 +85,11 @@ class _HomestayAppState extends ConsumerState<HomestayApp>
     // notification tap).
     WidgetsBinding.instance.addPostFrameCallback((_) {
       PushNotificationService.instance.onNotificationTap = (data) {
+        // Subscription was just activated (admin reconciled the VietQR bank
+        // transfer) → pull the fresh profile so the dashboard banner + route
+        // guards update before we navigate.
+        _maybeRefreshOnSubscriptionPush(data);
+
         final deepLink = data['deepLink'];
         if (deepLink is! String || deepLink.isEmpty) return;
         final uri = Uri.tryParse(deepLink);
@@ -96,11 +100,29 @@ class _HomestayAppState extends ConsumerState<HomestayApp>
         ref.read(routerProvider).go(deepLink);
       };
 
+      // Silent foreground data push (no tap) — e.g. `subscription_paid` arrives
+      // while the user waits on the payment screen → refresh profile in place.
+      PushNotificationService.instance.onForegroundData = (data) {
+        _maybeRefreshOnSubscriptionPush(data);
+      };
+
       // Check app version against BE — if force-update, block UI immediately;
       // if soft-update, show a dismissible dialog. Run after the first frame
       // so splash is finished and we have a valid context.
       _checkAppVersion();
     });
+  }
+
+  /// Refresh the signed-in user's profile when a subscription-related push
+  /// arrives, so a freshly-activated plan (admin marked the VietQR transfer as
+  /// paid) is reflected in `currentUserProvider` immediately. Covers the
+  /// `subscription_paid` push and other `subscription_*` state changes.
+  void _maybeRefreshOnSubscriptionPush(Map<String, dynamic> data) {
+    final pushType = data['pushType'];
+    if (pushType is! String || !pushType.startsWith('subscription')) return;
+    final auth = ref.read(authProvider);
+    if (!auth.isLoggedIn) return;
+    ref.read(authProvider.notifier).refreshProfile();
   }
 
   Future<void> _checkAppVersion() async {
@@ -110,8 +132,8 @@ class _HomestayAppState extends ConsumerState<HomestayApp>
         info.status == AppVersionStatus.unknown) {
       return;
     }
-    final ctx = ref.read(routerProvider).routerDelegate.navigatorKey
-        .currentContext;
+    final ctx =
+        ref.read(routerProvider).routerDelegate.navigatorKey.currentContext;
     if (ctx == null || !ctx.mounted) return;
     await showAppUpdatePrompt(ctx, info: info);
   }

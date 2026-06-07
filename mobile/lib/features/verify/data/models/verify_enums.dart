@@ -81,6 +81,34 @@ extension PaymentMethodX on PaymentMethod {
 
 enum PaymentStatus { pending, paid, failed, expired, refunded }
 
+/// Loại giao dịch BE tự nhận diện (quote/initiate/history trả về). BE là source
+/// of truth — FE chỉ đọc để render nhãn/icon, KHÔNG tự suy ra.
+enum TransactionKind { subscription, renew, upgrade, downgrade }
+
+TransactionKind? transactionKindFromApi(String? raw) {
+  switch (raw) {
+    case 'subscription':
+      return TransactionKind.subscription;
+    case 'renew':
+      return TransactionKind.renew;
+    case 'upgrade':
+      return TransactionKind.upgrade;
+    case 'downgrade':
+      return TransactionKind.downgrade;
+    default:
+      return null;
+  }
+}
+
+extension TransactionKindX on TransactionKind {
+  String get label => switch (this) {
+        TransactionKind.subscription => 'Đăng ký gói',
+        TransactionKind.renew => 'Gia hạn gói',
+        TransactionKind.upgrade => 'Nâng gói',
+        TransactionKind.downgrade => 'Hạ gói',
+      };
+}
+
 /// KYC items that can be rejected individually.
 enum RejectableItem { cccdFront, cccdBack, selfie }
 

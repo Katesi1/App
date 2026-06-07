@@ -3,7 +3,6 @@ import 'dart:io';
 import 'dart:convert';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:in_app_purchase/in_app_purchase.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../../core/constants/app_constants.dart';
@@ -18,7 +17,6 @@ import '../data/models/verify_enums.dart';
 import '../data/models/verify_state.dart';
 import '../data/repositories/verify_repository.dart';
 import '../data/repositories/verify_repository_impl.dart';
-import '../data/services/iap_service.dart';
 
 final verifyRepositoryProvider = Provider<VerifyRepository>(
   (ref) => VerifyRepositoryImpl(),
@@ -36,10 +34,10 @@ final verifyPlansProvider = FutureProvider<List<Plan>>((ref) async {
   }
 });
 
-final paymentHistoryProvider =
-    FutureProvider<PaymentHistoryPage>((ref) async {
+final paymentHistoryProvider = FutureProvider<PaymentHistoryPage>((ref) async {
   return ref.read(verifyRepositoryProvider).fetchPaymentHistory();
 });
+
 class PaymentHistoryListState {
   final List<PaymentHistoryItem> items;
   final String? nextCursor;
@@ -141,18 +139,15 @@ final verifyFlowControllerProvider =
     StateNotifierProvider<VerifyFlowController, VerifyFlowState>(
   (ref) => VerifyFlowController(
     ref.read(verifyRepositoryProvider),
-    ref.read(iapServiceProvider),
     ref,
   ),
 );
 
 class VerifyFlowController extends StateNotifier<VerifyFlowState> {
   final VerifyRepository _repo;
-  final IAPService _iap;
   final Ref _ref;
 
-  VerifyFlowController(this._repo, this._iap, this._ref)
-      : super(const VerifyFlowState()) {
+  VerifyFlowController(this._repo, this._ref) : super(const VerifyFlowState()) {
     _restoreDraft();
     // Security: wipe the in-progress draft whenever the signed-in account
     // changes (logout → null, or switch user) so one user's selected plan /
@@ -310,19 +305,49 @@ class VerifyFlowController extends StateNotifier<VerifyFlowState> {
   // Payment — Step 6
   // ════════════════════════════════════════════════════════════
 
-  /// Create a payment session (opens QR / bank info / card form).
-  Future<PaymentSession> initiatePayment(PaymentMethod method) async {
+  /// Báo giá trước khi mở màn thanh toán (`POST /payments/quote`). BE là source
+  /// of truth cho số tiền + loại giao dịch (subscription/renew/upgrade/downgrade).
+  Future<PaymentQuote> getQuote() async {
     final plan = state.selectedPlan;
     if (plan == null) {
       throw StateError('Chưa chọn plan');
     }
-    final total = PlanPriceCalculator.total(plan, state.billingCycle);
+    return _repo.getQuote(
+      planId: plan.id,
+      billingCycle: state.billingCycle,
+      rooms: plan.rooms,
+    );
+  }
+
+  /// Báo giá cho 1 plan + cycle bất kỳ (không đụng state) — dùng ở màn chọn gói
+  /// để hiển thị đúng số tiền BE chốt khi user đổi plan/cycle.
+  Future<PaymentQuote> getQuoteFor(Plan plan, BillingCycle cycle) {
+    return _repo.getQuote(
+      planId: plan.id,
+      billingCycle: cycle,
+      rooms: plan.rooms,
+    );
+  }
+
+  /// Create a payment session (opens QR / bank info / card form).
+  ///
+  /// `totalAmount` **bắt buộc** đến từ quote (`POST /payments/quote`) — BE là
+  /// source of truth. KHÔNG bao giờ tự tính local (liên quan tiền thật của chủ
+  /// nhà; BE validate ±1% và sẽ 400 `amountMismatch` nếu sai).
+  Future<PaymentSession> initiatePayment(
+    PaymentMethod method, {
+    required int totalAmount,
+  }) async {
+    final plan = state.selectedPlan;
+    if (plan == null) {
+      throw StateError('Chưa chọn plan');
+    }
     final session = await _repo.initiatePayment(
       planId: plan.id,
       billingCycle: state.billingCycle,
       method: method,
       rooms: plan.rooms,
-      totalAmount: total,
+      totalAmount: totalAmount,
     );
     state = state.copyWith(
       paymentSession: session,
@@ -343,6 +368,28 @@ class VerifyFlowController extends StateNotifier<VerifyFlowState> {
     );
     _persistDraft();
     return session;
+  }
+
+  /// Lấy phiên đang chờ đầy đủ (qrCode/bankInfo) để resume QR — dùng khi BE trả
+  /// 409 `paymentPending`. Lưu vào state để màn QR + polling dùng lại.
+  Future<PaymentSession?> getActivePayment() async {
+    final session = await _repo.getActivePayment();
+    if (session != null) {
+      state = state.copyWith(
+        paymentSession: session,
+        paymentStatus: PaymentStatus.pending,
+      );
+      _persistDraft();
+    }
+    return session;
+  }
+
+  /// Cancel an open bank-transfer session — voids the pending bill on the
+  /// backend so it's no longer reconciled. Clears the local payment state.
+  Future<void> cancelPayment(String sessionId) async {
+    await _repo.cancelPayment(sessionId);
+    state = state.copyWith(paymentStatus: PaymentStatus.failed);
+    _persistDraft();
   }
 
   /// Poll payment status (Screen 5 calls every 3s).
@@ -370,143 +417,16 @@ class VerifyFlowController extends StateNotifier<VerifyFlowState> {
     return status;
   }
 
-  // ════════════════════════════════════════════════════════════
-  // Apple In-App Purchase (iOS only — Guideline 3.1.1)
-  // ════════════════════════════════════════════════════════════
-
-  /// Fetch products from StoreKit using the IDs in [AppleProductIds.all].
-  /// Returns the matched products + any IDs missing from App Store Connect
-  /// (helpful during sandbox setup — they show up in `notFoundIDs`).
-  Future<ProductDetailsResponse> queryAppleProducts() async {
-    if (!await _iap.isAvailable()) {
-      throw const VerifyApiException(
-        'In-App Purchase chưa sẵn sàng trên thiết bị này.',
-      );
+  /// Re-sync the signed-in user's profile from backend so a freshly-activated
+  /// subscription (admin marked the bank transfer as paid) is reflected in
+  /// `currentUserProvider` — drives the dashboard banner + route guards.
+  /// Best-effort: a failure here never breaks the payment flow.
+  Future<void> refreshUserProfile() async {
+    try {
+      await _ref.read(authProvider.notifier).refreshProfile();
+    } catch (_) {
+      // Ignore — app-resume + pull-to-refresh will re-sync later.
     }
-    return _iap.queryProducts(AppleProductIds.all);
-  }
-
-  /// Start an Apple IAP purchase for the currently-selected plan + cycle.
-  /// Returns when StoreKit accepts the request (the purchase outcome arrives
-  /// asynchronously via [listenAppleStoreKit]). Throws if no plan is selected
-  /// or the product isn't available in App Store Connect.
-  ///
-  /// Sets `state.applePurchasePending` so the UI can disable the CTA + show
-  /// a spinner; the stream handler clears it on success/error/cancel.
-  Future<void> buyApplePlanForSelection() async {
-    final plan = state.selectedPlan;
-    if (plan == null) {
-      throw StateError('Chưa chọn plan');
-    }
-    final productId = AppleProductIds.forPlan(plan.tier, state.billingCycle);
-    if (productId == null) {
-      throw const VerifyApiException(
-        'Gói Enterprise không hỗ trợ thanh toán trong app — vui lòng liên hệ.',
-      );
-    }
-    final response = await _iap.queryProducts({productId});
-    if (response.productDetails.isEmpty) {
-      throw VerifyApiException(
-        'Không tìm thấy sản phẩm "$productId" trên App Store Connect.',
-      );
-    }
-    state =
-        state.copyWith(applePurchasePending: true, clearAppleError: true);
-    await _iap.buySubscription(response.productDetails.first);
-  }
-
-  /// Trigger "Restore Purchases" (required by Apple). The restored entries
-  /// arrive via [listenAppleStoreKit] just like a fresh purchase.
-  Future<void> restoreApplePurchases() {
-    state =
-        state.copyWith(applePurchasePending: true, clearAppleError: true);
-    return _iap.restorePurchases();
-  }
-
-  /// Clear `applePurchaseError` after the UI has displayed it. Called from
-  /// the snackbar `onVisible` so consecutive errors retrigger the snackbar.
-  void clearAppleError() {
-    if (state.applePurchaseError == null) return;
-    state = state.copyWith(clearAppleError: true);
-  }
-
-  /// Subscribe to StoreKit's purchase stream. Call once at app start or from
-  /// the payment screen `initState`. Returns the subscription so the caller
-  /// can cancel it.
-  ///
-  /// For each delivered purchase:
-  ///  - `pendingCompletePurchase == true` → send the receipt to backend; on
-  ///    backend success, mark as approved + complete the StoreKit transaction
-  ///  - on error → surface to UI; DO NOT complete (StoreKit will redeliver)
-  ///  - cancelled by user → no-op
-  StreamSubscription<List<PurchaseDetails>> listenAppleStoreKit({
-    void Function(String message)? onError,
-    void Function()? onSuccess,
-  }) {
-    return _iap.purchaseStream.listen(
-      (purchases) async {
-        for (final purchase in purchases) {
-          switch (purchase.status) {
-            case PurchaseStatus.purchased:
-            case PurchaseStatus.restored:
-              try {
-                final result = await _repo.verifyAppleReceipt(
-                  productId: purchase.productID,
-                  purchaseId: purchase.purchaseID ?? '',
-                  receiptData:
-                      purchase.verificationData.serverVerificationData,
-                );
-                // `paymentStatus = paid` so any code mirroring the VNPay flow
-                // (e.g. polling UIs) sees the same state for Apple purchases.
-                state = state.copyWith(
-                  status: result.status,
-                  trialEndsAt: result.expiresAt,
-                  paymentStatus: PaymentStatus.paid,
-                  applePurchasePending: false,
-                  clearAppleError: true,
-                );
-                _persistDraft();
-                if (purchase.pendingCompletePurchase) {
-                  await _iap.completePurchase(purchase);
-                }
-                onSuccess?.call();
-              } catch (e) {
-                final msg = e.toString().replaceAll('Exception: ', '');
-                state = state.copyWith(
-                  applePurchasePending: false,
-                  applePurchaseError: msg,
-                );
-                onError?.call(msg);
-              }
-              break;
-            case PurchaseStatus.error:
-              final msg =
-                  purchase.error?.message ?? 'Thanh toán Apple thất bại.';
-              state = state.copyWith(
-                applePurchasePending: false,
-                applePurchaseError: msg,
-              );
-              if (purchase.pendingCompletePurchase) {
-                await _iap.completePurchase(purchase);
-              }
-              onError?.call(msg);
-              break;
-            case PurchaseStatus.canceled:
-              state = state.copyWith(
-                applePurchasePending: false,
-                clearAppleError: true,
-              );
-              if (purchase.pendingCompletePurchase) {
-                await _iap.completePurchase(purchase);
-              }
-              break;
-            case PurchaseStatus.pending:
-              // Waiting on Apple — no UI change yet (CTA stays disabled).
-              break;
-          }
-        }
-      },
-    );
   }
 
   // ════════════════════════════════════════════════════════════

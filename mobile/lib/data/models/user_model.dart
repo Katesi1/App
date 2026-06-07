@@ -35,9 +35,17 @@ class UserModel {
   final String? subscriptionPlanId; // rooms_1 | rooms_5 | ... | enterprise
   final String? subscriptionCycle; // monthly | yearly
   final String? subscriptionProvider; // apple_iap | vnpay | pays2 | null
-  final DateTime? subscriptionExpiresAt; // subscription/trial expiry from backend
+  final DateTime?
+      subscriptionExpiresAt; // subscription/trial expiry from backend
   final DateTime? trialEndsAt;
   final DateTime? nextChargeAt;
+
+  // Billing period + scheduled downgrade (BE §10.2.5).
+  final DateTime? currentPeriodStart;
+  final DateTime? currentPeriodEnd; // hết hạn kỳ hiện tại
+  final String? pendingPlanId; // downgrade đã đặt lịch
+  final String? pendingCycle;
+  final DateTime? pendingEffectiveAt; // ngày downgrade có hiệu lực
 
   const UserModel({
     required this.id,
@@ -61,12 +69,19 @@ class UserModel {
     this.subscriptionExpiresAt,
     this.trialEndsAt,
     this.nextChargeAt,
+    this.currentPeriodStart,
+    this.currentPeriodEnd,
+    this.pendingPlanId,
+    this.pendingCycle,
+    this.pendingEffectiveAt,
   });
+
+  /// Có lịch hạ gói chờ áp dụng từ kỳ sau.
+  bool get hasPendingDowngrade => pendingPlanId != null;
 
   /// Defensive wrapper around `_$UserModelFromJson` — older backends may omit
   /// id/name/phone on some responses. The generated file stays untouched.
-  factory UserModel.fromJson(Map<String, dynamic> json) =>
-      _$UserModelFromJson({
+  factory UserModel.fromJson(Map<String, dynamic> json) => _$UserModelFromJson({
         ...json,
         'id': json['id'] ?? '',
         'name': json['name'] ?? '',
@@ -111,8 +126,7 @@ class UserModel {
     return hasOwner ? 'active' : 'unassigned';
   }
 
-  bool get isSaleMembershipActive =>
-      !isSale || saleMembershipState == 'active';
+  bool get isSaleMembershipActive => !isSale || saleMembershipState == 'active';
   bool get isSaleMembershipInvited => saleMembershipState == 'invited';
   bool get isSaleMembershipSuspended => saleMembershipState == 'suspended';
   bool get isSaleMembershipUnassigned => saleMembershipState == 'unassigned';
@@ -158,7 +172,7 @@ class UserModel {
   /// [trialEndsAt] while the backend hasn't started sending
   /// `subscriptionExpiresAt`.
   int? get subscriptionDaysLeft {
-    final expiry = subscriptionExpiresAt ?? trialEndsAt;
+    final expiry = currentPeriodEnd ?? subscriptionExpiresAt ?? trialEndsAt;
     if (expiry == null) return null;
     final diff = expiry.difference(DateTime.now()).inDays;
     return diff < 0 ? 0 : diff;
@@ -186,6 +200,11 @@ class UserModel {
     DateTime? subscriptionExpiresAt,
     DateTime? trialEndsAt,
     DateTime? nextChargeAt,
+    DateTime? currentPeriodStart,
+    DateTime? currentPeriodEnd,
+    String? pendingPlanId,
+    String? pendingCycle,
+    DateTime? pendingEffectiveAt,
   }) =>
       UserModel(
         id: id ?? this.id,
@@ -210,5 +229,10 @@ class UserModel {
             subscriptionExpiresAt ?? this.subscriptionExpiresAt,
         trialEndsAt: trialEndsAt ?? this.trialEndsAt,
         nextChargeAt: nextChargeAt ?? this.nextChargeAt,
+        currentPeriodStart: currentPeriodStart ?? this.currentPeriodStart,
+        currentPeriodEnd: currentPeriodEnd ?? this.currentPeriodEnd,
+        pendingPlanId: pendingPlanId ?? this.pendingPlanId,
+        pendingCycle: pendingCycle ?? this.pendingCycle,
+        pendingEffectiveAt: pendingEffectiveAt ?? this.pendingEffectiveAt,
       );
 }

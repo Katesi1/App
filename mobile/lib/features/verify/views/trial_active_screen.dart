@@ -377,7 +377,7 @@ class _SubscriptionCard extends StatelessWidget {
             ),
             const SizedBox(height: 4),
             Text(
-              '${VerifyFormat.priceVND(total)}/${cycle == BillingCycle.yearly ? "năm" : "tháng"} · Tự động gia hạn',
+              '${VerifyFormat.priceVND(total)}/${cycle == BillingCycle.yearly ? "năm" : "tháng"} · Gia hạn thủ công qua chuyển khoản',
               style: TextStyle(
                 fontSize: 11,
                 fontWeight: FontWeight.w500,

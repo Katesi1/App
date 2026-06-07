@@ -56,25 +56,42 @@ class ReportScreen extends ConsumerWidget {
                   children: [
                     _PeriodSelector(
                       current: params.period,
-                      onChanged: (p) {
-                        ref.read(selectedReportParamsProvider.notifier).state =
-                            params.copyWith(period: p);
+                      onChanged: (p) async {
+                        if (p == ReportPeriod.custom) {
+                          await _pickCustomRange(context, ref, params);
+                        } else {
+                          ref
+                              .read(selectedReportParamsProvider.notifier)
+                              .state = params.copyWith(period: p);
+                        }
                       },
                     ),
+                    if (params.period == ReportPeriod.custom &&
+                        params.from != null &&
+                        params.to != null) ...[
+                      const SizedBox(height: 10),
+                      _CustomRangeChip(
+                        from: params.from!,
+                        to: params.to!,
+                        onEdit: () => _pickCustomRange(context, ref, params),
+                      ),
+                    ],
                     const SizedBox(height: AppSpacing.md),
-
                     _KpiGrid(report: report),
                     const SizedBox(height: AppSpacing.md),
-
-                    RevenueTrendChart(points: report.revenueByDay),
+                    RevenueTrendChart(points: report.revenueByDay)
+                        .animate()
+                        .fadeIn(delay: 220.ms, duration: 360.ms)
+                        .slideY(begin: 0.05, end: 0, curve: Curves.easeOut),
                     const SizedBox(height: AppSpacing.md),
-
-                    DayOfWeekChart(data: report.dayOfWeekOccupancy),
+                    DayOfWeekChart(data: report.dayOfWeekOccupancy)
+                        .animate()
+                        .fadeIn(delay: 280.ms, duration: 360.ms),
                     const SizedBox(height: AppSpacing.md),
-
-                    LengthOfStayChart(distribution: report.lengthOfStay),
+                    LengthOfStayChart(distribution: report.lengthOfStay)
+                        .animate()
+                        .fadeIn(delay: 320.ms, duration: 360.ms),
                     const SizedBox(height: AppSpacing.md),
-
                     _SectionTitle(title: 'TRẠNG THÁI BOOKING'),
                     const SizedBox(height: 8),
                     StatusDonutChart(
@@ -84,14 +101,12 @@ class ReportScreen extends ConsumerWidget {
                       cancelledCount: report.cancelledCount,
                     ),
                     const SizedBox(height: AppSpacing.md),
-
                     if (report.topRooms.isNotEmpty) ...[
                       _SectionTitle(title: 'TOP PHÒNG DOANH THU'),
                       const SizedBox(height: 8),
                       _TopRoomsList(rooms: report.topRooms),
                       const SizedBox(height: AppSpacing.md),
                     ],
-
                     _SectionTitle(title: 'ĐÁNH GIÁ KHÁCH'),
                     const SizedBox(height: 8),
                     PropertyRatingsSection(
@@ -106,7 +121,6 @@ class ReportScreen extends ConsumerWidget {
                       CriteriaBreakdownCard(breakdown: report.overallBreakdown),
                     ],
                     const SizedBox(height: AppSpacing.md),
-
                     _SectionTitle(title: 'BOOKING GẦN ĐÂY'),
                     const SizedBox(height: 8),
                     if (report.recentBookings.isEmpty)
@@ -125,6 +139,335 @@ class ReportScreen extends ConsumerWidget {
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  /// Open the custom-range filter as a bottom sheet (no separate page). Only
+  /// applies when the user actually picks a range (cancel → keep current).
+  Future<void> _pickCustomRange(
+    BuildContext context,
+    WidgetRef ref,
+    ReportParams params,
+  ) async {
+    final now = DateTime.now();
+    final picked = await showModalBottomSheet<DateTimeRange>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => _RangeFilterSheet(
+        initialFrom: params.from ?? now.subtract(const Duration(days: 7)),
+        initialTo: params.to ?? now,
+      ),
+    );
+    if (picked == null) return;
+    ref.read(selectedReportParamsProvider.notifier).state = params.copyWith(
+      period: ReportPeriod.custom,
+      from: DateTime(picked.start.year, picked.start.month, picked.start.day),
+      to: DateTime(picked.end.year, picked.end.month, picked.end.day),
+    );
+  }
+}
+
+// ─── Custom range filter bottom sheet ────────────────────────────────────────
+
+/// Date-range picker presented in-place as a bottom sheet so users filter the
+/// report without leaving the screen. Quick presets + per-date dialogs.
+class _RangeFilterSheet extends StatefulWidget {
+  final DateTime initialFrom;
+  final DateTime initialTo;
+
+  const _RangeFilterSheet({required this.initialFrom, required this.initialTo});
+
+  @override
+  State<_RangeFilterSheet> createState() => _RangeFilterSheetState();
+}
+
+class _RangeFilterSheetState extends State<_RangeFilterSheet> {
+  late DateTime _from = widget.initialFrom;
+  late DateTime _to = widget.initialTo;
+
+  String _d(DateTime x) =>
+      '${x.day.toString().padLeft(2, '0')}/${x.month.toString().padLeft(2, '0')}/${x.year}';
+
+  void _applyPreset(int days) {
+    final now = DateTime.now();
+    setState(() {
+      _to = DateTime(now.year, now.month, now.day);
+      _from = _to.subtract(Duration(days: days));
+    });
+  }
+
+  Future<void> _pickDate({required bool isFrom}) async {
+    final now = DateTime.now();
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: isFrom ? _from : _to,
+      firstDate: DateTime(now.year - 3),
+      lastDate: now,
+      helpText: isFrom ? 'Chọn ngày bắt đầu' : 'Chọn ngày kết thúc',
+    );
+    if (picked == null) return;
+    setState(() {
+      if (isFrom) {
+        _from = picked;
+        if (_from.isAfter(_to)) _to = _from;
+      } else {
+        _to = picked;
+        if (_to.isBefore(_from)) _from = _to;
+      }
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.colors;
+    final days = _to.difference(_from).inDays + 1;
+
+    return Container(
+      decoration: BoxDecoration(
+        color: colors.bgSurface,
+        borderRadius:
+            const BorderRadius.vertical(top: Radius.circular(AppRadius.xl)),
+      ),
+      padding: EdgeInsets.fromLTRB(
+        20,
+        10,
+        20,
+        MediaQuery.of(context).viewInsets.bottom + 24,
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Center(
+            child: Container(
+              width: 40,
+              height: 4,
+              decoration: BoxDecoration(
+                color: colors.borderStrong,
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+          ),
+          const SizedBox(height: 18),
+          Row(
+            children: [
+              Icon(Icons.tune_rounded, size: 18, color: colors.textBrand),
+              const SizedBox(width: 8),
+              Text(
+                'Lọc theo thời gian',
+                style: GoogleFonts.beVietnamPro(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w800,
+                  color: colors.textPrimary,
+                ),
+              ),
+              const Spacer(),
+              GestureDetector(
+                onTap: () => Navigator.of(context).pop(),
+                child: Icon(Icons.close_rounded,
+                    size: 20, color: colors.textTertiary),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          // Quick presets.
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              _PresetChip(label: '7 ngày qua', onTap: () => _applyPreset(6)),
+              _PresetChip(label: '30 ngày qua', onTap: () => _applyPreset(29)),
+              _PresetChip(label: '90 ngày qua', onTap: () => _applyPreset(89)),
+            ],
+          ),
+          const SizedBox(height: 16),
+          Row(
+            children: [
+              Expanded(
+                child: _DateTile(
+                  label: 'Từ ngày',
+                  value: _d(_from),
+                  onTap: () => _pickDate(isFrom: true),
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: _DateTile(
+                  label: 'Đến ngày',
+                  value: _d(_to),
+                  onTap: () => _pickDate(isFrom: false),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Center(
+            child: Text(
+              'Khoảng $days ngày',
+              style: GoogleFonts.beVietnamPro(
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+                color: colors.textTertiary,
+              ),
+            ),
+          ),
+          const SizedBox(height: 16),
+          SizedBox(
+            width: double.infinity,
+            height: 50,
+            child: FilledButton.icon(
+              onPressed: () => Navigator.of(context).pop(
+                DateTimeRange(start: _from, end: _to),
+              ),
+              icon: const Icon(Icons.check_rounded, size: 18),
+              label: const Text('Áp dụng bộ lọc'),
+            ),
+          ),
+        ],
+      ),
+    ).animate().fadeIn(duration: 200.ms).slideY(
+          begin: 0.08,
+          end: 0,
+          duration: 260.ms,
+          curve: Curves.easeOutCubic,
+        );
+  }
+}
+
+class _PresetChip extends StatelessWidget {
+  final String label;
+  final VoidCallback onTap;
+  const _PresetChip({required this.label, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.colors;
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+        decoration: BoxDecoration(
+          color: colors.brand.withValues(alpha: 0.08),
+          borderRadius: BorderRadius.circular(AppRadius.full),
+          border: Border.all(color: colors.brand.withValues(alpha: 0.25)),
+        ),
+        child: Text(
+          label,
+          style: GoogleFonts.beVietnamPro(
+            fontSize: 12,
+            fontWeight: FontWeight.w700,
+            color: colors.textBrand,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _DateTile extends StatelessWidget {
+  final String label;
+  final String value;
+  final VoidCallback onTap;
+
+  const _DateTile({
+    required this.label,
+    required this.value,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.colors;
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+        decoration: BoxDecoration(
+          color: colors.bgSurfaceContainer,
+          borderRadius: BorderRadius.circular(AppRadius.lg),
+          border: Border.all(color: colors.borderDefault),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              label,
+              style: GoogleFonts.beVietnamPro(
+                fontSize: 11,
+                fontWeight: FontWeight.w600,
+                color: colors.textTertiary,
+              ),
+            ),
+            const SizedBox(height: 4),
+            Row(
+              children: [
+                Icon(Icons.calendar_today_rounded,
+                    size: 14, color: colors.textBrand),
+                const SizedBox(width: 6),
+                Text(
+                  value,
+                  style: GoogleFonts.beVietnamPro(
+                    fontSize: 13.5,
+                    fontWeight: FontWeight.w700,
+                    color: colors.textPrimary,
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ─── Custom range chip ──────────────────────────────────────────────────────
+
+class _CustomRangeChip extends StatelessWidget {
+  final DateTime from;
+  final DateTime to;
+  final VoidCallback onEdit;
+
+  const _CustomRangeChip({
+    required this.from,
+    required this.to,
+    required this.onEdit,
+  });
+
+  String _d(DateTime x) =>
+      '${x.day.toString().padLeft(2, '0')}/${x.month.toString().padLeft(2, '0')}/${x.year}';
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.colors;
+    return GestureDetector(
+      onTap: onEdit,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
+        decoration: BoxDecoration(
+          color: colors.brand.withValues(alpha: 0.08),
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(color: colors.brand.withValues(alpha: 0.25)),
+        ),
+        child: Row(
+          children: [
+            Icon(Icons.date_range_rounded, size: 16, color: colors.textBrand),
+            const SizedBox(width: 8),
+            Text(
+              '${_d(from)} → ${_d(to)}',
+              style: GoogleFonts.beVietnamPro(
+                fontSize: 12,
+                fontWeight: FontWeight.w700,
+                color: colors.textBrand,
+              ),
+            ),
+            const Spacer(),
+            Icon(Icons.edit_calendar_outlined,
+                size: 15, color: colors.textBrand),
+          ],
+        ),
       ),
     );
   }
@@ -223,8 +566,7 @@ class _Header extends ConsumerWidget {
                     gradient: const LinearGradient(
                         colors: [AppColors.jade500, AppColors.gold500]),
                     border: Border.all(
-                        color: Colors.white.withValues(alpha: 0.3),
-                        width: 1.5),
+                        color: Colors.white.withValues(alpha: 0.3), width: 1.5),
                   ),
                   child: Center(
                     child: Text(
@@ -270,8 +612,7 @@ class _PeriodSelector extends StatelessWidget {
             onTap: () => onChanged(p),
             child: AnimatedContainer(
               duration: const Duration(milliseconds: 180),
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
               decoration: BoxDecoration(
                 color: selected ? colors.brand : colors.bgSurfaceContainer,
                 borderRadius: BorderRadius.circular(100),
@@ -305,67 +646,76 @@ class _KpiGrid extends StatelessWidget {
   Widget build(BuildContext context) {
     final colors = context.colors;
 
+    final cards = <Widget>[
+      _KpiCard(
+        icon: Icons.payments_rounded,
+        iconColor: colors.success,
+        label: 'Doanh thu',
+        value: ReportFormat.vndShort(report.revenue),
+        fullValue: ReportFormat.vndFull(report.revenue),
+        delta: ReportFormat.percentDelta(
+          report.revenue,
+          report.previousPeriod.revenue,
+        ),
+      ),
+      _KpiCard(
+        icon: Icons.percent_rounded,
+        iconColor: colors.brand,
+        label: 'Lấp đầy',
+        value: '${report.occupancyRate.toStringAsFixed(0)}%',
+        delta: ReportFormat.percentDelta(
+          report.occupancyRate,
+          report.previousPeriod.occupancy,
+        ),
+      ),
+      _KpiCard(
+        icon: Icons.trending_up_rounded,
+        iconColor: colors.brandLight,
+        label: 'Đơn giá TB',
+        value: ReportFormat.vndShort(report.adr),
+        fullValue: ReportFormat.vndFull(report.adr),
+        delta: ReportFormat.percentDelta(
+          report.adr,
+          report.previousPeriod.adr,
+        ),
+      ),
+      _KpiCard(
+        icon: Icons.book_rounded,
+        iconColor: AppColors.gold500,
+        label: 'Booking',
+        value: '${report.totalBookings}',
+        delta: ReportFormat.percentDelta(
+          report.totalBookings,
+          report.previousPeriod.bookings,
+        ),
+      ),
+    ];
+
+    // Stagger each card in (fade + slide) — max 2 effects per item.
+    final animated = cards
+        .asMap()
+        .entries
+        .map((e) => e.value
+            .animate(delay: (e.key * 70).ms)
+            .fadeIn(duration: 320.ms)
+            .slideY(begin: 0.08, end: 0, curve: Curves.easeOutCubic))
+        .toList();
+
     return Column(
       children: [
         Row(
           children: [
-            Expanded(
-              child: _KpiCard(
-                icon: Icons.payments_rounded,
-                iconColor: colors.success,
-                label: 'Doanh thu',
-                value: ReportFormat.vndShort(report.revenue),
-                fullValue: ReportFormat.vndFull(report.revenue),
-                delta: ReportFormat.percentDelta(
-                  report.revenue,
-                  report.previousPeriod.revenue,
-                ),
-              ),
-            ),
+            Expanded(child: animated[0]),
             const SizedBox(width: 10),
-            Expanded(
-              child: _KpiCard(
-                icon: Icons.percent_rounded,
-                iconColor: colors.brand,
-                label: 'Lấp đầy',
-                value: '${report.occupancyRate.toStringAsFixed(0)}%',
-                delta: ReportFormat.percentDelta(
-                  report.occupancyRate,
-                  report.previousPeriod.occupancy,
-                ),
-              ),
-            ),
+            Expanded(child: animated[1]),
           ],
         ),
         const SizedBox(height: 10),
         Row(
           children: [
-            Expanded(
-              child: _KpiCard(
-                icon: Icons.trending_up_rounded,
-                iconColor: colors.brandLight,
-                label: 'Đơn giá TB',
-                value: ReportFormat.vndShort(report.adr),
-                fullValue: ReportFormat.vndFull(report.adr),
-                delta: ReportFormat.percentDelta(
-                  report.adr,
-                  report.previousPeriod.adr,
-                ),
-              ),
-            ),
+            Expanded(child: animated[2]),
             const SizedBox(width: 10),
-            Expanded(
-              child: _KpiCard(
-                icon: Icons.book_rounded,
-                iconColor: AppColors.gold500,
-                label: 'Booking',
-                value: '${report.totalBookings}',
-                delta: ReportFormat.percentDelta(
-                  report.totalBookings,
-                  report.previousPeriod.bookings,
-                ),
-              ),
-            ),
+            Expanded(child: animated[3]),
           ],
         ),
       ],

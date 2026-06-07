@@ -1,18 +1,23 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:url_launcher/url_launcher.dart';
 
 import '../../../core/theme/app_color_scheme.dart';
 import '../../../core/theme/app_spacing.dart';
-import '../../../core/utils/app_store_compliance.dart';
 import '../../auth/controllers/auth_controller.dart';
 import '../controllers/verify_flow_controller.dart';
 import '../data/models/payment_session.dart';
 import '../data/models/plan.dart';
 import '../data/models/verify_enums.dart';
+import '../data/repositories/verify_repository_impl.dart';
 import 'widgets/payment_dialogs.dart';
 import 'widgets/verify_format.dart';
+
+/// Subscription status, derived from the REAL backend profile (`/kyc/status`),
+/// NOT the local picker draft — drives the hero card styling + which actions
+/// to surface.
+enum _SubKind { none, trial, active, pastDue, cancelled }
 
 class SubscriptionDetailScreen extends ConsumerStatefulWidget {
   const SubscriptionDetailScreen({super.key});
@@ -26,62 +31,143 @@ class _SubscriptionDetailScreenState
     extends ConsumerState<SubscriptionDetailScreen> {
   bool _renewing = false;
 
+  /// Renew via VietQR bank transfer (the only supported method). Backend uses
+  /// the user's current plan + cycle; the app only sends the method.
   Future<void> _handleRenew() async {
-    final method = await showModalBottomSheet<PaymentMethod>(
-      context: context,
-      backgroundColor: context.colors.bgSurfaceElevated,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(AppRadius.xl)),
-      ),
-      builder: (_) => const _RenewMethodSheet(),
-    );
-    if (method == null || !mounted) return;
-
     setState(() => _renewing = true);
     try {
       final session = await ref
           .read(verifyFlowControllerProvider.notifier)
-          .initiateRenewal(method);
+          .initiateRenewal(PaymentMethod.bankTransfer);
       if (!mounted) return;
-      _openSessionDialog(session, method);
+      _openSessionDialog(session);
+    } on VerifyApiException catch (e) {
+      if (!mounted) return;
+      if (e.isPaymentPending) {
+        await _onRenewPaymentPending(e);
+      } else if (e.isSubscriptionFrozen) {
+        _snack('Gói đang tạm khoá. Vui lòng liên hệ hỗ trợ.', error: true);
+      } else {
+        _snack('Tạo phiên gia hạn thất bại: ${e.message}', error: true);
+      }
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Tạo phiên gia hạn thất bại: '
-              '${e.toString().replaceAll('Exception: ', '')}'),
-          backgroundColor: context.colors.error,
-        ),
+      _snack(
+        'Tạo phiên gia hạn thất bại: '
+        '${e.toString().replaceAll('Exception: ', '')}',
+        error: true,
       );
     } finally {
       if (mounted) setState(() => _renewing = false);
     }
   }
 
-  void _openSessionDialog(PaymentSession session, PaymentMethod method) {
-    switch (method) {
-      case PaymentMethod.vnpayQR:
-        showDialog<void>(
-          context: context,
-          barrierDismissible: false,
-          builder: (_) => VNPayQRDialog(session: session),
-        );
-        break;
-      case PaymentMethod.bankTransfer:
-        showDialog<void>(
-          context: context,
-          builder: (_) => BankTransferDialog(session: session),
-        );
-        break;
-      case PaymentMethod.card:
-        break;
+  void _snack(String msg, {bool error = false}) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(msg),
+        backgroundColor: error ? context.colors.error : null,
+      ),
+    );
+  }
+
+  /// 409 `paymentPending` khi gia hạn — hỏi tiếp tục đợi (resume) hay huỷ & tạo
+  /// lại.
+  Future<void> _onRenewPaymentPending(VerifyApiException e) async {
+    final pending = e.pendingSession;
+    final choice = await showDialog<String>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Đang có phiên chờ thanh toán'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(e.message),
+            if (pending != null) ...[
+              const SizedBox(height: 10),
+              Text(
+                '${pending.planLabel ?? ''} · '
+                '${VerifyFormat.priceVND(pending.totalAmount)}',
+                style: const TextStyle(fontWeight: FontWeight.w700),
+              ),
+              if (pending.expiresAt != null)
+                Text('Hết hạn: ${VerifyFormat.dateVN(pending.expiresAt!)}',
+                    style: TextStyle(
+                        fontSize: 12, color: context.colors.textTertiary)),
+            ],
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop('cancel'),
+            child: const Text('Huỷ phiên cũ'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(ctx).pop('wait'),
+            child: const Text('Tiếp tục đợi'),
+          ),
+        ],
+      ),
+    );
+    if (!mounted || choice == null) return;
+    if (choice == 'wait') {
+      final active = await ref
+          .read(verifyFlowControllerProvider.notifier)
+          .getActivePayment();
+      if (!mounted || active == null) return;
+      _openSessionDialog(active);
+    } else if (choice == 'cancel' && pending != null) {
+      try {
+        await ref
+            .read(verifyFlowControllerProvider.notifier)
+            .cancelPayment(pending.sessionId);
+        if (!mounted) return;
+        _handleRenew();
+      } catch (err) {
+        _snack('Huỷ phiên cũ thất bại: '
+            '${err.toString().replaceAll('Exception: ', '')}');
+      }
     }
-    // Refresh history after the user closes the dialog (assumption: webhook
-    // has or will update status). Don't poll here to keep logic simple.
+  }
+
+  void _openSessionDialog(PaymentSession session) {
+    showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => BankTransferDialog(
+        session: session,
+        onCloseAndWait: () {
+          if (!mounted) return;
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text(
+                'Đã ghi nhận. Gói sẽ gia hạn khi hệ thống xác nhận chuyển khoản.',
+              ),
+            ),
+          );
+        },
+        onCreateNew: _handleRenew,
+        // Abandon → confirm in-dialog, then void the pending bill server-side.
+        onCancel: () async {
+          await ref
+              .read(verifyFlowControllerProvider.notifier)
+              .cancelPayment(session.sessionId);
+          if (!mounted) return;
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Đã huỷ phiên chuyển khoản.')),
+          );
+          ref.invalidate(paymentHistoryProvider);
+          ref.invalidate(paymentHistoryListProvider);
+        },
+      ),
+    );
+    // Refresh history after the user closes the dialog (assumption: admin
+    // reconcile has or will update status). Don't poll here to keep logic simple.
     Future<void>.delayed(const Duration(seconds: 2), () {
       if (mounted) {
         ref.invalidate(paymentHistoryProvider);
-        // Reload the full paginated list if the user has /verify/payment-history open.
         ref.invalidate(paymentHistoryListProvider);
       }
     });
@@ -90,184 +176,382 @@ class _SubscriptionDetailScreenState
   @override
   Widget build(BuildContext context) {
     final colors = context.colors;
-    final state = ref.watch(verifyFlowControllerProvider);
-    final plan = state.selectedPlan;
-    final total =
-        plan == null ? 0 : PlanPriceCalculator.total(plan, state.billingCycle);
-    // Real subscription status from the backend (/kyc/status). Drives which
-    // actions to surface — a user with no live paid plan should only see the
-    // plan picker + restore, NOT "đổi gói / huỷ đăng ký".
     final user = ref.watch(currentUserProvider);
-    final hasActiveSub =
-        (user?.isSubscriptionActive ?? false) ||
-            (user?.isSubscriptionPastDue ?? false);
+
+    // Plan + cycle come from the REAL backend subscription (/kyc/status), not
+    // the local picker draft — a leftover draft must never look like an owned
+    // plan on a brand-new account.
+    final tier = Plan.tierFromId(user?.subscriptionPlanId);
+    final catalog =
+        ref.watch(verifyPlansProvider).valueOrNull ?? const <Plan>[];
+    final plan =
+        tier == null ? null : PlanPriceCalculator.planFor(tier, catalog);
+    final cycle = user?.subscriptionCycle == 'yearly'
+        ? BillingCycle.yearly
+        : BillingCycle.monthly;
+    final price = plan == null ? 0 : PlanPriceCalculator.total(plan, cycle);
+
+    final inTrial = user?.isInTrial ?? false;
+    final isActive = user?.isSubscriptionActive ?? false;
+    final isPastDue = user?.isSubscriptionPastDue ?? false;
+    final isCancelled = user?.isSubscriptionCancelled ?? false;
+    final hasActiveSub = isActive || isPastDue;
+
+    final kind = switch (true) {
+      _ when isPastDue => _SubKind.pastDue,
+      _ when isCancelled => _SubKind.cancelled,
+      _ when inTrial => _SubKind.trial,
+      _ when isActive => _SubKind.active,
+      _ => _SubKind.none,
+    };
+
+    final expiry = user?.currentPeriodEnd ??
+        user?.subscriptionExpiresAt ??
+        user?.trialEndsAt;
+    final daysLeft = inTrial ? user?.trialDaysLeft : user?.subscriptionDaysLeft;
+
+    // Price label for the hero — only when there's a real plan with a fixed
+    // price (skip the "Chưa đăng ký" empty state).
+    final priceLabel = (plan != null && plan.hasFixedPrice && tier != null)
+        ? '${VerifyFormat.priceVND(price)}'
+            '/${cycle == BillingCycle.yearly ? 'năm' : 'tháng'}'
+        : null;
 
     return Scaffold(
+      backgroundColor: colors.bgCanvas,
       appBar: AppBar(title: const Text('Chi tiết gói đăng ký')),
       body: ListView(
         padding: const EdgeInsets.all(AppSpacing.md),
         children: [
-          Container(
-            padding: const EdgeInsets.all(AppSpacing.md),
-            decoration: BoxDecoration(
-              color: colors.bgSurfaceContainer,
-              borderRadius: BorderRadius.circular(AppRadius.lg),
+          _StatusHero(
+            kind: kind,
+            tier: tier,
+            cycle: cycle,
+            daysLeft: daysLeft,
+            expiry: expiry,
+            priceLabel: priceLabel,
+          ).animate().fadeIn(duration: 400.ms).slideY(
+                begin: 0.06,
+                end: 0,
+                duration: 400.ms,
+                curve: Curves.easeOutCubic,
+              ),
+          const SizedBox(height: AppSpacing.lg),
+
+          // Scheduled downgrade (BE đã ghi pendingPlanId/EffectiveAt).
+          if (user?.hasPendingDowngrade ?? false) ...[
+            _PendingDowngradeBanner(
+              planId: user!.pendingPlanId!,
+              effectiveAt: user.pendingEffectiveAt,
             ),
-            child: Text(
-              'Thông tin gói hiện tại, chu kỳ thanh toán và các mốc trial.',
-              style: TextStyle(color: colors.textSecondary),
-            ),
+            const SizedBox(height: AppSpacing.md),
+          ],
+
+          // ── Plan facts ─────────────────────────────────────────────
+          if (plan != null) ...[
+            _SectionLabel('CHI TIẾT GÓI'),
+            const SizedBox(height: AppSpacing.sm),
+            ..._buildFacts(colors, plan, cycle, price, expiry).animateList(),
+            const SizedBox(height: AppSpacing.lg),
+            if (plan.features.isNotEmpty) ...[
+              _SectionLabel('TÍNH NĂNG'),
+              const SizedBox(height: AppSpacing.sm),
+              _FeatureCard(features: plan.features)
+                  .animate()
+                  .fadeIn(delay: 240.ms, duration: 350.ms),
+              const SizedBox(height: AppSpacing.lg),
+            ],
+          ],
+
+          // ── Actions ────────────────────────────────────────────────
+          // VietQR bank-transfer lifecycle (Apple IAP removed):
+          //  - No live plan → "Chọn gói" → select-plan → VietQR
+          //  - Active/past_due → "Gia hạn ngay" (VietQR) + "Đổi gói"
+          //  - Always → "Lịch sử thanh toán"
+          ..._buildActions(context, colors, hasActiveSub, price)
+              .animate()
+              .fadeIn(delay: 320.ms, duration: 350.ms),
+        ],
+      ),
+    );
+  }
+
+  List<Widget> _buildFacts(
+    AppColorScheme colors,
+    Plan plan,
+    BillingCycle cycle,
+    int price,
+    DateTime? expiry,
+  ) {
+    final rooms = plan.tier.rooms;
+    return [
+      _DetailItem(
+        icon: Icons.workspace_premium_rounded,
+        label: 'Tên gói',
+        value: plan.tier.displayName,
+      ),
+      _DetailItem(
+        icon: Icons.meeting_room_rounded,
+        label: 'Số phòng',
+        value: rooms < 0 ? 'Không giới hạn' : '$rooms phòng',
+      ),
+      _DetailItem(
+        icon: Icons.event_repeat_rounded,
+        label: 'Chu kỳ',
+        value: cycle == BillingCycle.yearly ? 'Hàng năm' : 'Hàng tháng',
+      ),
+      _DetailItem(
+        icon: Icons.payments_rounded,
+        // "Giá niêm yết" (list price từ catalog) — KHÔNG phải số tiền thực thu.
+        // Số tiền thật (prorate/override) do BE tính, hiện trong QR khi gia hạn.
+        label: 'Giá niêm yết',
+        value: plan.hasFixedPrice
+            ? '${VerifyFormat.priceVND(price)}'
+                '/${cycle == BillingCycle.yearly ? 'năm' : 'tháng'}'
+            : 'Liên hệ',
+      ),
+      if (expiry != null)
+        _DetailItem(
+          icon: Icons.schedule_rounded,
+          label: 'Hết hạn',
+          value: VerifyFormat.dateVN(expiry),
+        ),
+    ];
+  }
+
+  List<Widget> _buildActions(
+    BuildContext context,
+    AppColorScheme colors,
+    bool hasActiveSub,
+    int price,
+  ) {
+    return [
+      if (!hasActiveSub)
+        SizedBox(
+          height: 50,
+          child: FilledButton.icon(
+            onPressed: () => context.push('/verify/select-plan'),
+            icon: const Icon(Icons.workspace_premium_outlined, size: 18),
+            label: const Text('Chọn gói đăng ký'),
+          ),
+        )
+      else ...[
+        SizedBox(
+          height: 50,
+          child: FilledButton.icon(
+            onPressed: _renewing ? null : _handleRenew,
+            icon: _renewing
+                ? const SizedBox(
+                    width: 14,
+                    height: 14,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                : const Icon(Icons.autorenew_rounded, size: 18),
+            // KHÔNG hiện số tiền local trên nút — số thật do BE tính, hiển thị
+            // trong QR (renew response). Tránh chủ nhà thấy số lệch với thực thu.
+            label: Text(_renewing ? 'Đang tạo phiên...' : 'Gia hạn ngay'),
+          ),
+        ),
+        const SizedBox(height: AppSpacing.sm),
+        SizedBox(
+          height: 46,
+          child: OutlinedButton.icon(
+            onPressed: () => context.push('/verify/select-plan'),
+            icon: const Icon(Icons.upgrade_rounded, size: 18),
+            label: const Text('Đổi gói (nâng cấp/hạ cấp)'),
+          ),
+        ),
+      ],
+      const SizedBox(height: AppSpacing.sm),
+      SizedBox(
+        height: 46,
+        child: OutlinedButton.icon(
+          onPressed: () => context.push('/verify/payment-history'),
+          icon: const Icon(Icons.receipt_long_outlined, size: 18),
+          label: const Text('Lịch sử thanh toán'),
+        ),
+      ),
+    ];
+  }
+}
+
+// ─── Status hero ─────────────────────────────────────────────────────────────
+
+class _StatusHero extends StatelessWidget {
+  final _SubKind kind;
+  final Tier? tier;
+  final BillingCycle cycle;
+  final int? daysLeft;
+  final DateTime? expiry;
+  final String? priceLabel;
+
+  const _StatusHero({
+    required this.kind,
+    required this.tier,
+    required this.cycle,
+    required this.daysLeft,
+    required this.expiry,
+    required this.priceLabel,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.colors;
+
+    // Per-kind styling: gradient, badge label, icon.
+    final ({List<Color> grad, String badge, IconData icon}) s = switch (kind) {
+      _SubKind.trial => (
+          grad: [colors.brand, colors.brandLight],
+          badge: 'ĐANG DÙNG THỬ',
+          icon: Icons.rocket_launch_rounded,
+        ),
+      _SubKind.active => (
+          grad: [colors.brand, colors.brandSecondary],
+          badge: 'ĐANG HOẠT ĐỘNG',
+          icon: Icons.verified_rounded,
+        ),
+      _SubKind.pastDue => (
+          grad: [colors.error, Color.lerp(colors.error, Colors.black, 0.28)!],
+          badge: 'QUÁ HẠN',
+          icon: Icons.error_outline_rounded,
+        ),
+      _SubKind.cancelled => (
+          grad: [colors.textTertiary, colors.textSecondary],
+          badge: 'ĐÃ HUỶ',
+          icon: Icons.pause_circle_outline_rounded,
+        ),
+      _SubKind.none => (
+          grad: [colors.brand, colors.brandLight],
+          badge: 'CHƯA ĐĂNG KÝ',
+          icon: Icons.workspace_premium_outlined,
+        ),
+    };
+
+    final title = switch (kind) {
+      _SubKind.none => 'Chưa có gói đăng ký',
+      _ => tier?.displayName ?? 'Gói đăng ký',
+    };
+
+    final subtitle = switch (kind) {
+      _SubKind.none =>
+        'Chọn gói để mở khoá quản lý phòng & booking không giới hạn.',
+      _SubKind.trial => daysLeft != null
+          ? 'Còn $daysLeft ngày dùng thử miễn phí.'
+          : 'Bạn đang trong thời gian dùng thử.',
+      _SubKind.active => expiry != null
+          ? 'Gia hạn tự động vào ${VerifyFormat.dateVN(expiry!)}.'
+          : 'Gói của bạn đang hoạt động.',
+      _SubKind.pastDue => 'Thanh toán quá hạn — vui lòng gia hạn để tiếp tục.',
+      _SubKind.cancelled => expiry != null
+          ? 'Đã huỷ — còn dùng đến ${VerifyFormat.dateVN(expiry!)}.'
+          : 'Gói đã bị huỷ.',
+    };
+
+    return Container(
+      padding: const EdgeInsets.all(AppSpacing.lg),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: s.grad,
+        ),
+        borderRadius: BorderRadius.circular(AppRadius.xl),
+        boxShadow: [
+          BoxShadow(
+            color: s.grad.first.withValues(alpha: 0.35),
+            blurRadius: 24,
+            offset: const Offset(0, 10),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: 0.22),
+                  borderRadius: BorderRadius.circular(AppRadius.full),
+                ),
+                child: Text(
+                  s.badge,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 10,
+                    fontWeight: FontWeight.w800,
+                    letterSpacing: 0.8,
+                  ),
+                ),
+              ),
+              const Spacer(),
+              Icon(s.icon,
+                  color: Colors.white.withValues(alpha: 0.9), size: 26),
+            ],
           ),
           const SizedBox(height: AppSpacing.md),
-          // Plan name + cycle come from the REAL backend subscription
-          // (/kyc/status), not the local picker draft — otherwise a leftover
-          // draft (e.g. Starter pre-selected in a past session) would show up
-          // as if the brand-new account already owns a plan. "—" when unbought.
-          _DetailItem(
-            label: 'Tên gói',
-            value: Plan.tierFromId(user?.subscriptionPlanId)?.displayName ?? '—',
+          Text(
+            title,
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 24,
+              fontWeight: FontWeight.w800,
+              height: 1.1,
+            ),
           ),
-          _DetailItem(
-            label: 'Chu kỳ',
-            value: switch (user?.subscriptionCycle) {
-              'monthly' => 'Hàng tháng',
-              'yearly' => 'Hàng năm',
-              _ => '—',
-            },
+          const SizedBox(height: 6),
+          Text(
+            subtitle,
+            style: TextStyle(
+              color: Colors.white.withValues(alpha: 0.85),
+              fontSize: 13,
+              height: 1.35,
+            ),
           ),
-          // On iOS, the source of truth for price + renewal is Apple
-          // (Settings > Apple ID > Subscriptions). We hide the VND amount to
-          // avoid mismatch with the locale price the user paid via StoreKit.
-          if (!usesAppleIAP)
-            _DetailItem(
-              label: 'Chi phí',
-              value: VerifyFormat.priceVND(total),
+          // Current fee — "đang dùng gói gì với cước bao nhiêu".
+          if (priceLabel != null) ...[
+            const SizedBox(height: AppSpacing.md),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+              decoration: BoxDecoration(
+                color: Colors.white.withValues(alpha: 0.18),
+                borderRadius: BorderRadius.circular(AppRadius.full),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(Icons.payments_rounded,
+                      size: 14, color: Colors.white),
+                  const SizedBox(width: 6),
+                  Text(
+                    priceLabel!,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 13,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                ],
+              ),
             ),
-          if (state.trialEndsAt != null)
-            _DetailItem(
-              label: 'Trial đến',
-              value: VerifyFormat.dateVN(state.trialEndsAt!),
-            ),
-          if (state.chargeStartsAt != null)
-            _DetailItem(
-              label: 'Bắt đầu thu phí',
-              value: VerifyFormat.dateVN(state.chargeStartsAt!),
-            ),
-          const SizedBox(height: AppSpacing.lg),
-          if (usesAppleIAP) ...[
-            // Apple subscription lifecycle:
-            //  - Buy first time          → "Chọn gói + Mua qua App Store"
-            //  - Auto-renewal            → Apple handles automatically (no UI needed)
-            //  - Upgrade / Downgrade     → "Đổi gói" → select-plan → IAP (Apple prorates)
-            //  - Cancel / Change card    → "Quản lý đăng ký trên App Store"
-            //                              (REQUIRED by Apple Guideline 3.1.2(a) —
-            //                              deep link to iOS Settings, the only way
-            //                              to cancel or change payment method)
-            //  - Restore (new device)    → "Khôi phục đăng ký đã mua"
-            //                              (REQUIRED by Apple — re-fires the
-            //                              purchase stream with `restored` events)
-            if (!hasActiveSub) ...[
-              SizedBox(
-                height: 48,
-                child: FilledButton.icon(
-                  onPressed: () => context.push('/verify/select-plan'),
-                  icon:
-                      const Icon(Icons.workspace_premium_outlined, size: 18),
-                  label: const Text('Chọn gói + Mua qua App Store'),
+          ],
+          // Trial progress bar (baseline 7 days).
+          if (kind == _SubKind.trial && daysLeft != null) ...[
+            const SizedBox(height: AppSpacing.md),
+            ClipRRect(
+              borderRadius: BorderRadius.circular(AppRadius.full),
+              child: TweenAnimationBuilder<double>(
+                tween: Tween(begin: 0, end: (daysLeft! / 7).clamp(0.0, 1.0)),
+                duration: const Duration(milliseconds: 800),
+                curve: Curves.easeOutCubic,
+                builder: (_, v, __) => LinearProgressIndicator(
+                  value: v,
+                  minHeight: 7,
+                  backgroundColor: Colors.white.withValues(alpha: 0.25),
+                  valueColor: const AlwaysStoppedAnimation(Colors.white),
                 ),
-              ),
-              const SizedBox(height: AppSpacing.sm),
-            ] else ...[
-              // User has an active plan — let them upgrade/downgrade to a
-              // different tier. Apple shows the IAP sheet and handles
-              // proration automatically when the new tier is in the same
-              // subscription group as the current one.
-              SizedBox(
-                height: 48,
-                child: FilledButton.icon(
-                  onPressed: () => context.push('/verify/select-plan'),
-                  icon: const Icon(Icons.upgrade_rounded, size: 18),
-                  label: const Text('Đổi gói (nâng cấp/hạ cấp)'),
-                ),
-              ),
-              const SizedBox(height: AppSpacing.sm),
-            ],
-            // Cancel / change-card only makes sense when there's a live
-            // subscription to manage. Hidden for new/trial users (nothing to
-            // cancel yet).
-            if (hasActiveSub) ...[
-              SizedBox(
-                height: 44,
-                child: OutlinedButton.icon(
-                  onPressed: () async {
-                    final uri = Uri.parse(appleManageSubscriptionsUrl);
-                    await launchUrl(uri,
-                        mode: LaunchMode.externalApplication);
-                  },
-                  icon: const Icon(Icons.settings_outlined, size: 18),
-                  label: const Text('Huỷ đăng ký / Đổi thẻ thanh toán'),
-                ),
-              ),
-              const SizedBox(height: AppSpacing.sm),
-            ],
-            SizedBox(
-              height: 44,
-              child: OutlinedButton.icon(
-                onPressed: () async {
-                  try {
-                    await ref
-                        .read(verifyFlowControllerProvider.notifier)
-                        .restoreApplePurchases();
-                    if (!context.mounted) return;
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text(
-                          'Đang khôi phục đăng ký. Đăng ký hợp lệ sẽ tự kích hoạt.',
-                        ),
-                      ),
-                    );
-                  } catch (e) {
-                    if (!context.mounted) return;
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: Text(
-                          e.toString().replaceAll('Exception: ', ''),
-                        ),
-                        backgroundColor: context.colors.error,
-                      ),
-                    );
-                  }
-                },
-                icon: const Icon(Icons.refresh, size: 18),
-                label: const Text('Khôi phục đăng ký đã mua'),
-              ),
-            ),
-          ] else ...[
-            SizedBox(
-              height: 48,
-              child: FilledButton.icon(
-                onPressed: _renewing || plan == null ? null : _handleRenew,
-                icon: _renewing
-                    ? const SizedBox(
-                        width: 14,
-                        height: 14,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      )
-                    : const Icon(Icons.autorenew, size: 18),
-                label: Text(
-                  _renewing
-                      ? 'Đang tạo phiên...'
-                      : 'Gia hạn ngay (${VerifyFormat.priceVND(total)})',
-                ),
-              ),
-            ),
-            const SizedBox(height: AppSpacing.sm),
-            SizedBox(
-              height: 44,
-              child: OutlinedButton.icon(
-                onPressed: () => context.push('/verify/payment-history'),
-                icon: const Icon(Icons.receipt_long_outlined, size: 18),
-                label: const Text('Lịch sử thanh toán'),
               ),
             ),
           ],
@@ -277,18 +561,28 @@ class _SubscriptionDetailScreenState
   }
 }
 
+// ─── Detail row ──────────────────────────────────────────────────────────────
+
 class _DetailItem extends StatelessWidget {
+  final IconData icon;
   final String label;
   final String value;
 
-  const _DetailItem({required this.label, required this.value});
+  const _DetailItem({
+    required this.icon,
+    required this.label,
+    required this.value,
+  });
 
   @override
   Widget build(BuildContext context) {
     final colors = context.colors;
     return Container(
       margin: const EdgeInsets.only(bottom: AppSpacing.sm),
-      padding: const EdgeInsets.all(AppSpacing.md),
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.md,
+        vertical: 14,
+      ),
       decoration: BoxDecoration(
         color: colors.bgSurface,
         borderRadius: BorderRadius.circular(AppRadius.lg),
@@ -296,17 +590,20 @@ class _DetailItem extends StatelessWidget {
       ),
       child: Row(
         children: [
+          Icon(icon, size: 18, color: colors.textBrand),
+          const SizedBox(width: 12),
           Expanded(
             child: Text(
               label,
-              style: TextStyle(color: colors.textSecondary),
+              style: TextStyle(color: colors.textSecondary, fontSize: 13),
             ),
           ),
           Text(
             value,
             style: TextStyle(
               color: colors.textPrimary,
-              fontWeight: FontWeight.w600,
+              fontWeight: FontWeight.w700,
+              fontSize: 13.5,
             ),
           ),
         ],
@@ -315,124 +612,143 @@ class _DetailItem extends StatelessWidget {
   }
 }
 
-class _RenewMethodSheet extends StatelessWidget {
-  const _RenewMethodSheet();
+// ─── Feature card ────────────────────────────────────────────────────────────
+
+class _FeatureCard extends StatelessWidget {
+  final List<String> features;
+  const _FeatureCard({required this.features});
 
   @override
   Widget build(BuildContext context) {
     final colors = context.colors;
-    return Padding(
-      padding: EdgeInsets.fromLTRB(
-        AppSpacing.lg,
-        AppSpacing.lg,
-        AppSpacing.lg,
-        MediaQuery.of(context).padding.bottom + AppSpacing.lg,
+    return Container(
+      padding: const EdgeInsets.all(AppSpacing.md),
+      decoration: BoxDecoration(
+        color: colors.bgSurface,
+        borderRadius: BorderRadius.circular(AppRadius.lg),
+        border: Border.all(color: colors.borderDefault),
       ),
       child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            'Chọn phương thức gia hạn',
-            style: TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.w800,
-              color: colors.textPrimary,
+        children: features.asMap().entries.map((e) {
+          final isLast = e.key == features.length - 1;
+          return Padding(
+            padding: EdgeInsets.only(bottom: isLast ? 0 : 12),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Container(
+                  width: 20,
+                  height: 20,
+                  decoration: BoxDecoration(
+                    color: colors.success.withValues(alpha: 0.14),
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(Icons.check_rounded,
+                      size: 13, color: colors.success),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    e.value,
+                    style: TextStyle(
+                      color: colors.textPrimary,
+                      fontSize: 13,
+                      height: 1.3,
+                    ),
+                  ),
+                ),
+              ],
             ),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            'Hệ thống dùng plan + chu kỳ hiện tại của bạn.',
-            style: TextStyle(
-              fontSize: 12,
-              fontWeight: FontWeight.w500,
-              color: colors.textTertiary,
-            ),
-          ),
-          const SizedBox(height: AppSpacing.md),
-          _MethodOption(
-            icon: Icons.qr_code_2,
-            title: 'VNPay QR',
-            subtitle: 'Quét QR bằng app ngân hàng · Tức thời',
-            onTap: () => Navigator.of(context).pop(PaymentMethod.vnpayQR),
-          ),
-          const SizedBox(height: 8),
-          _MethodOption(
-            icon: Icons.account_balance,
-            title: 'Chuyển khoản',
-            subtitle: 'STK + nội dung CK · 5–30 phút',
-            onTap: () => Navigator.of(context).pop(PaymentMethod.bankTransfer),
-          ),
-        ],
+          );
+        }).toList(),
       ),
     );
   }
 }
 
-class _MethodOption extends StatelessWidget {
-  final IconData icon;
-  final String title;
-  final String subtitle;
-  final VoidCallback onTap;
+// ─── Section label ───────────────────────────────────────────────────────────
 
-  const _MethodOption({
-    required this.icon,
-    required this.title,
-    required this.subtitle,
-    required this.onTap,
-  });
+class _SectionLabel extends StatelessWidget {
+  final String text;
+  const _SectionLabel(this.text);
 
   @override
   Widget build(BuildContext context) {
     final colors = context.colors;
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(12),
-      child: Container(
-        padding: const EdgeInsets.all(12),
-        decoration: BoxDecoration(
-          color: colors.bgSurface,
-          border: Border.all(color: colors.borderDefault),
-          borderRadius: BorderRadius.circular(12),
-        ),
-        child: Row(
-          children: [
-            Container(
-              width: 36,
-              height: 36,
-              decoration: BoxDecoration(
-                color: colors.bgSurfaceContainer,
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: Icon(icon, size: 18, color: colors.brandLight),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    title,
-                    style: TextStyle(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w800,
-                      color: colors.textPrimary,
-                    ),
+    return Text(
+      text,
+      style: TextStyle(
+        fontSize: 11,
+        fontWeight: FontWeight.w700,
+        letterSpacing: 1.2,
+        color: colors.textTertiary,
+      ),
+    );
+  }
+}
+
+// Stagger helper — fade + slide each list item in sequence.
+extension _AnimateList on List<Widget> {
+  List<Widget> animateList() => asMap()
+      .entries
+      .map((e) => e.value
+          .animate(delay: (80 + e.key * 70).ms)
+          .fadeIn(duration: 320.ms)
+          .slideX(begin: 0.04, end: 0, curve: Curves.easeOut))
+      .toList();
+}
+
+/// Banner "đã đặt lịch hạ gói" — hiện khi `user.pendingPlanId != null`.
+class _PendingDowngradeBanner extends StatelessWidget {
+  final String planId;
+  final DateTime? effectiveAt;
+
+  const _PendingDowngradeBanner({required this.planId, this.effectiveAt});
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.colors;
+    final planName = Plan.tierFromId(planId)?.displayName ?? planId;
+    final whenText = effectiveAt != null
+        ? 'áp dụng từ ${VerifyFormat.dateVN(effectiveAt!)}'
+        : 'áp dụng từ kỳ tiếp theo';
+    return Container(
+      padding: const EdgeInsets.all(AppSpacing.md),
+      decoration: BoxDecoration(
+        color: colors.warning.withValues(alpha: 0.10),
+        borderRadius: BorderRadius.circular(AppRadius.lg),
+        border: Border.all(color: colors.warning.withValues(alpha: 0.3)),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(Icons.trending_down_rounded, size: 20, color: colors.warning),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Đã đặt lịch hạ gói',
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w800,
+                    color: colors.textPrimary,
                   ),
-                  Text(
-                    subtitle,
-                    style: TextStyle(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w500,
-                      color: colors.textTertiary,
-                    ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  'Gói $planName sẽ $whenText. Tới lúc đó bạn vẫn dùng quyền lợi gói hiện tại.',
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: colors.textSecondary,
+                    height: 1.45,
                   ),
-                ],
-              ),
+                ),
+              ],
             ),
-            Icon(Icons.chevron_right, color: colors.textTertiary),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }

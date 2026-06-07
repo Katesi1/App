@@ -44,15 +44,6 @@ class VerifyFlowState extends Equatable {
   final bool refundProcessed;
   final int? refundedAmount;
 
-  /// Apple IAP — true while a StoreKit purchase is in flight (sheet open or
-  /// backend receipt verification in progress). UI uses this to disable the
-  /// CTA + show loading. Not persisted.
-  final bool applePurchasePending;
-
-  /// Last Apple IAP error to surface to the user (snackbar / inline message).
-  /// Cleared via `copyWith(clearAppleError: true)` after display.
-  final String? applePurchaseError;
-
   const VerifyFlowState({
     this.cccdFront,
     this.cccdBack,
@@ -72,8 +63,6 @@ class VerifyFlowState extends Equatable {
     this.chargeStartsAt,
     this.refundProcessed = false,
     this.refundedAmount,
-    this.applePurchasePending = false,
-    this.applePurchaseError,
   });
 
   /// Have all 3 uploads (CCCD front + back + selfie) been submitted?
@@ -110,10 +99,7 @@ class VerifyFlowState extends Equatable {
     DateTime? chargeStartsAt,
     bool? refundProcessed,
     int? refundedAmount,
-    bool? applePurchasePending,
-    String? applePurchaseError,
     bool clearReject = false,
-    bool clearAppleError = false,
   }) =>
       VerifyFlowState(
         cccdFront: cccdFront ?? this.cccdFront,
@@ -135,11 +121,6 @@ class VerifyFlowState extends Equatable {
         chargeStartsAt: chargeStartsAt ?? this.chargeStartsAt,
         refundProcessed: refundProcessed ?? this.refundProcessed,
         refundedAmount: refundedAmount ?? this.refundedAmount,
-        applePurchasePending:
-            applePurchasePending ?? this.applePurchasePending,
-        applePurchaseError: clearAppleError
-            ? null
-            : (applePurchaseError ?? this.applePurchaseError),
       );
 
   Map<String, dynamic> toJson() => {
@@ -150,8 +131,8 @@ class VerifyFlowState extends Equatable {
         'expectedRooms': expectedRooms,
         'selectedPlan': selectedPlan?.toJson(),
         'billingCycle': billingCycle.name,
-        'paymentSession': paymentSession?.toJson(),
-        'paymentStatus': paymentStatus?.name,
+        // KHÔNG persist paymentSession/paymentStatus (tiền + phiên). Đây là
+        // server state — resume bằng `GET /payments/active`, không cache local.
         'submissionId': submissionId,
         'status': status.name,
         'rejectReason': rejectReason,
@@ -183,14 +164,8 @@ class VerifyFlowState extends Equatable {
           (c) => c.name == (json['billingCycle'] as String? ?? 'yearly'),
           orElse: () => BillingCycle.yearly,
         ),
-        paymentSession: json['paymentSession'] == null
-            ? null
-            : PaymentSession.fromJson(
-                json['paymentSession'] as Map<String, dynamic>),
-        paymentStatus: json['paymentStatus'] == null
-            ? null
-            : PaymentStatus.values
-                .firstWhere((s) => s.name == json['paymentStatus']),
+        // paymentSession/paymentStatus KHÔNG khôi phục từ local — luôn lấy lại
+        // từ server (`GET /payments/active`) để tránh hiển thị tiền/phiên cũ.
         submissionId: json['submissionId'] as String?,
         status: VerifyStatus.values.firstWhere(
           (s) => s.name == (json['status'] as String? ?? 'draft'),
@@ -234,8 +209,6 @@ class VerifyFlowState extends Equatable {
         chargeStartsAt,
         refundProcessed,
         refundedAmount,
-        applePurchasePending,
-        applePurchaseError,
       ];
 }
 

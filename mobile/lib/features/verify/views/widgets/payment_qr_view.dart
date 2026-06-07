@@ -15,17 +15,23 @@ import '../../../../core/theme/app_color_scheme.dart';
 ///    FE decodes + `Image.memory`. Fallback when backend uses the VNPay SDK
 ///    that emits a pre-rendered image.
 ///
-/// The widget chooses the source in order: payload > imageBase64. If both are
-/// null, it shows a placeholder + error message.
+/// The widget chooses the source in order: payload > imageBase64 > imageUrl.
+/// If all are null, it shows a placeholder + error message.
+///
+/// [imageUrl] is the img.vietqr.io quick-link (server-rendered QR encoding
+/// account + amount + memo) — used as a last-resort fallback when the backend
+/// returns neither a raw EMVCo payload nor a base64 image.
 class PaymentQrView extends StatelessWidget {
   final String? payload;
   final String? imageBase64;
+  final String? imageUrl;
   final double size;
 
   const PaymentQrView({
     super.key,
     this.payload,
     this.imageBase64,
+    this.imageUrl,
     this.size = 220,
   });
 
@@ -65,6 +71,20 @@ class PaymentQrView extends StatelessWidget {
       } catch (_) {
         child = _placeholder(context, 'Ảnh QR không hợp lệ');
       }
+    } else if (imageUrl != null && imageUrl!.isNotEmpty) {
+      child = Image.network(
+        imageUrl!,
+        width: size,
+        height: size,
+        fit: BoxFit.contain,
+        gaplessPlayback: true,
+        loadingBuilder: (context, widget, progress) {
+          if (progress == null) return widget;
+          return const Center(child: CircularProgressIndicator(strokeWidth: 2));
+        },
+        errorBuilder: (context, _, __) =>
+            _placeholder(context, 'Không tải được mã QR'),
+      );
     } else {
       child = _placeholder(context, 'Chưa có dữ liệu QR');
     }

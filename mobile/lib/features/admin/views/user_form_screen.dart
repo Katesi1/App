@@ -171,7 +171,6 @@ class _UserFormScreenState extends ConsumerState<UserFormScreen> {
           SliverToBoxAdapter(
             child: _buildProfileHeader(roleColor),
           ),
-
           SliverToBoxAdapter(
             child: Padding(
               padding: const EdgeInsets.fromLTRB(20, 0, 20, 40),
@@ -206,9 +205,7 @@ class _UserFormScreenState extends ConsumerState<UserFormScreen> {
                       .animate()
                       .fadeIn(duration: 300.ms)
                       .slideY(begin: 0.06, end: 0),
-
                   const SizedBox(height: AppSpacing.xl),
-
                   _SectionTitle('Vai trò'),
                   const SizedBox(height: 4),
                   Text(
@@ -240,9 +237,7 @@ class _UserFormScreenState extends ConsumerState<UserFormScreen> {
                       ),
                     ],
                   ).animate(delay: 100.ms).fadeIn(duration: 300.ms),
-
                   const SizedBox(height: AppSpacing.xl),
-
                   _SectionTitle('Trạng thái tài khoản'),
                   const SizedBox(height: AppSpacing.sm),
                   _InfoCard(
@@ -299,9 +294,7 @@ class _UserFormScreenState extends ConsumerState<UserFormScreen> {
                       ),
                     ],
                   ).animate(delay: 200.ms).fadeIn(duration: 300.ms),
-
                   const SizedBox(height: AppSpacing.xl),
-
                   _SaveButton(
                     isLoading: _isLoading,
                     label: 'Lưu thay đổi',
@@ -479,9 +472,7 @@ class _UserFormScreenState extends ConsumerState<UserFormScreen> {
                   ),
                 ],
               ).animate().fadeIn(duration: 300.ms),
-
               const SizedBox(height: AppSpacing.xl),
-
               _SectionTitle('Vai trò *'),
               const SizedBox(height: AppSpacing.md),
               Row(
@@ -505,9 +496,7 @@ class _UserFormScreenState extends ConsumerState<UserFormScreen> {
                   ),
                 ],
               ).animate(delay: 100.ms).fadeIn(duration: 300.ms),
-
               const SizedBox(height: AppSpacing.xl),
-
               _SaveButton(
                 isLoading: _isLoading,
                 label: 'Tạo tài khoản',

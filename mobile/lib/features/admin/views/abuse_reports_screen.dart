@@ -1,30 +1,88 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+
 import '../../../core/theme/app_color_scheme.dart';
 import '../../../core/theme/app_spacing.dart';
+import '../../../core/utils/helpers.dart';
+import '../../../shared/widgets/loading_widget.dart';
+import '../controllers/moderation_controller.dart';
+import '../data/models/moderation_models.dart';
 
-class AbuseReportsScreen extends StatelessWidget {
+/// Hàng đợi khiếu nại/tranh chấp (`GET /admin/disputes`). ADMIN-only.
+class AbuseReportsScreen extends ConsumerWidget {
   const AbuseReportsScreen({super.key});
 
+  static const _filters = <(String?, String)>[
+    (null, 'Tất cả'),
+    ('pending', 'Chờ xử lý'),
+    ('investigating', 'Đang điều tra'),
+    ('resolved', 'Đã giải quyết'),
+    ('rejected', 'Đã từ chối'),
+  ];
+
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final colors = context.colors;
+    final selected = ref.watch(disputeStatusFilterProvider);
+    final disputesAsync = ref.watch(disputesProvider);
+
     return Scaffold(
-      appBar: AppBar(title: const Text('Báo cáo vi phạm')),
-      body: ListView(
-        padding: const EdgeInsets.all(AppSpacing.md),
-        children: const [
-          _SummaryCard(),
-          SizedBox(height: AppSpacing.md),
-          _ReportTile(
-            title: 'Tin đăng spam phòng giả',
-            reporter: 'user_172',
-            level: 'Cao',
-            category: 'Spam',
+      appBar: AppBar(title: const Text('Khiếu nại & vi phạm')),
+      body: Column(
+        children: [
+          SizedBox(
+            height: 50,
+            child: ListView.separated(
+              scrollDirection: Axis.horizontal,
+              padding: const EdgeInsets.symmetric(
+                  horizontal: AppSpacing.md, vertical: AppSpacing.sm),
+              itemCount: _filters.length,
+              separatorBuilder: (_, __) => const SizedBox(width: 8),
+              itemBuilder: (_, i) {
+                final (value, label) = _filters[i];
+                final isSel = value == selected;
+                return ChoiceChip(
+                  label: Text(label),
+                  selected: isSel,
+                  onSelected: (_) => ref
+                      .read(disputeStatusFilterProvider.notifier)
+                      .state = value,
+                  selectedColor: colors.brand.withValues(alpha: 0.15),
+                  labelStyle: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w700,
+                    color: isSel ? colors.textBrand : colors.textSecondary,
+                  ),
+                );
+              },
+            ),
           ),
-          _ReportTile(
-            title: 'Nội dung không phù hợp',
-            reporter: 'user_816',
-            level: 'Trung bình',
-            category: 'Nội dung',
+          Expanded(
+            child: disputesAsync.when(
+              loading: () => const LoadingWidget(),
+              error: (e, _) => ErrorStateWidget(
+                message: e.toString().replaceAll('Exception: ', ''),
+                onRetry: () => ref.invalidate(disputesProvider),
+              ),
+              data: (list) {
+                if (list.isEmpty) {
+                  return const EmptyStateWidget(
+                    icon: Icons.verified_user_outlined,
+                    message: 'Không có khiếu nại nào',
+                  );
+                }
+                return RefreshIndicator(
+                  color: colors.brand,
+                  onRefresh: () async => ref.invalidate(disputesProvider),
+                  child: ListView.separated(
+                    padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
+                    itemCount: list.length,
+                    separatorBuilder: (_, __) => const SizedBox(height: 10),
+                    itemBuilder: (_, i) => _DisputeTile(dispute: list[i]),
+                  ),
+                );
+              },
+            ),
           ),
         ],
       ),
@@ -32,45 +90,30 @@ class AbuseReportsScreen extends StatelessWidget {
   }
 }
 
-class _SummaryCard extends StatelessWidget {
-  const _SummaryCard();
+class _DisputeTile extends StatelessWidget {
+  final DisputeModel dispute;
+  const _DisputeTile({required this.dispute});
+
+  Color _statusColor(AppColorScheme colors) => switch (dispute.status) {
+        'pending' => colors.warning,
+        'investigating' => colors.brand,
+        'resolved' => colors.success,
+        'rejected' => colors.error,
+        _ => colors.textSecondary,
+      };
 
   @override
   Widget build(BuildContext context) {
     final colors = context.colors;
+    final statusColor = _statusColor(colors);
+    final meta = [
+      if (dispute.propertyName != null) dispute.propertyName!,
+      if (dispute.customerName != null) 'Khách: ${dispute.customerName}',
+      if (dispute.createdAt != null)
+        AppHelpers.vietnameseDayOfWeek(dispute.createdAt!.weekday),
+    ].join(' · ');
+
     return Container(
-      padding: const EdgeInsets.all(AppSpacing.md),
-      decoration: BoxDecoration(
-        color: colors.bgSurfaceContainer,
-        borderRadius: BorderRadius.circular(AppRadius.lg),
-      ),
-      child: const Text(
-        'Hàng đợi này tổng hợp báo cáo vi phạm từ cộng đồng. '
-        'Ưu tiên xử lý các ticket mức Cao để giảm rủi ro vận hành.',
-      ),
-    );
-  }
-}
-
-class _ReportTile extends StatelessWidget {
-  final String title;
-  final String reporter;
-  final String level;
-  final String category;
-
-  const _ReportTile({
-    required this.title,
-    required this.reporter,
-    required this.level,
-    required this.category,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final colors = context.colors;
-    final isHigh = level == 'Cao';
-    return Container(
-      margin: const EdgeInsets.only(bottom: AppSpacing.sm),
       padding: const EdgeInsets.all(AppSpacing.md),
       decoration: BoxDecoration(
         color: colors.bgSurface,
@@ -80,36 +123,93 @@ class _ReportTile extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            title,
-            style: TextStyle(
-              color: colors.textPrimary,
-              fontWeight: FontWeight.w600,
-            ),
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  dispute.subject,
+                  style: TextStyle(
+                    color: colors.textPrimary,
+                    fontWeight: FontWeight.w700,
+                    fontSize: 14,
+                  ),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+              const SizedBox(width: 8),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
+                decoration: BoxDecoration(
+                  color: statusColor.withValues(alpha: 0.14),
+                  borderRadius: BorderRadius.circular(AppRadius.full),
+                ),
+                child: Text(
+                  dispute.statusLabel,
+                  style: TextStyle(
+                    color: statusColor,
+                    fontSize: 11,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
+            ],
           ),
           const SizedBox(height: 6),
           Text(
-            'Reporter: $reporter · Danh mục: $category',
-            style: TextStyle(color: colors.textSecondary),
+            dispute.description,
+            style: TextStyle(color: colors.textSecondary, fontSize: 12.5),
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
           ),
-          const SizedBox(height: 8),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-            decoration: BoxDecoration(
-              color: (isHigh ? colors.error : colors.warning)
-                  .withValues(alpha: 0.16),
-              borderRadius: BorderRadius.circular(AppRadius.full),
-            ),
-            child: Text(
-              'Mức độ: $level',
-              style: TextStyle(
-                color: isHigh ? colors.error : colors.warning,
-                fontSize: 11,
-                fontWeight: FontWeight.w700,
-              ),
-            ),
+          const SizedBox(height: 10),
+          Row(
+            children: [
+              _Tag(label: dispute.typeLabel, color: colors.brandSecondary),
+              if (dispute.amount != null && dispute.amount! > 0) ...[
+                const SizedBox(width: 6),
+                _Tag(
+                  label: AppHelpers.formatPrice(dispute.amount!),
+                  color: colors.warning,
+                ),
+              ],
+            ],
           ),
+          if (meta.isNotEmpty) ...[
+            const SizedBox(height: 8),
+            Text(
+              meta,
+              style: TextStyle(color: colors.textTertiary, fontSize: 11),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ],
         ],
+      ),
+    );
+  }
+}
+
+class _Tag extends StatelessWidget {
+  final String label;
+  final Color color;
+  const _Tag({required this.label, required this.color});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(6),
+      ),
+      child: Text(
+        label,
+        style: TextStyle(
+          color: color,
+          fontSize: 11,
+          fontWeight: FontWeight.w700,
+        ),
       ),
     );
   }

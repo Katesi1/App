@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -7,8 +9,10 @@ import '../../../core/theme/app_color_scheme.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../controllers/verify_flow_controller.dart';
+import '../data/models/payment_session.dart';
 import '../data/models/plan.dart';
 import '../data/models/verify_enums.dart';
+import '../data/repositories/verify_repository_impl.dart';
 import 'widgets/plan_card.dart';
 import 'widgets/verify_app_bar.dart';
 import 'widgets/verify_format.dart';
@@ -31,6 +35,13 @@ class _SelectPlanScreenState extends ConsumerState<SelectPlanScreen> {
   late BillingCycle _cycle;
   Tier? _selected;
 
+  // Giá hiển thị = số tiền BE chốt (`POST /payments/quote`), KHÔNG tự tính local.
+  Timer? _debounce;
+  PaymentQuote? _quote;
+  bool _quoting = false;
+  String? _quoteError;
+  String _lastKey = '';
+
   @override
   void initState() {
     super.initState();
@@ -38,6 +49,67 @@ class _SelectPlanScreenState extends ConsumerState<SelectPlanScreen> {
     _cycle = state.billingCycle;
     // Default Starter (5 rooms) — most common tier for small homestays.
     _selected = state.selectedPlan?.tier ?? Tier.rooms5;
+  }
+
+  @override
+  void dispose() {
+    _debounce?.cancel();
+    super.dispose();
+  }
+
+  /// Gọi quote (debounce) khi user đổi plan/cycle. Enterprise (giá liên hệ) thì
+  /// bỏ qua.
+  void _maybeQuote(Plan plan) {
+    if (plan.isEnterprise) {
+      if (_quote != null || _quoting || _quoteError != null) {
+        setState(() {
+          _quote = null;
+          _quoting = false;
+          _quoteError = null;
+        });
+      }
+      _lastKey = 'enterprise';
+      return;
+    }
+    final key = '${plan.tier}_${_cycle.name}';
+    if (key == _lastKey) return;
+    _lastKey = key;
+    _debounce?.cancel();
+    setState(() {
+      _quoting = true;
+      _quoteError = null;
+    });
+    _debounce = Timer(
+      const Duration(milliseconds: 300),
+      () => _runQuote(plan, _cycle, key),
+    );
+  }
+
+  Future<void> _runQuote(Plan plan, BillingCycle cycle, String key) async {
+    try {
+      final q = await ref
+          .read(verifyFlowControllerProvider.notifier)
+          .getQuoteFor(plan, cycle);
+      if (!mounted || key != _lastKey) return;
+      setState(() {
+        _quote = q;
+        _quoting = false;
+      });
+    } on VerifyApiException catch (e) {
+      if (!mounted || key != _lastKey) return;
+      setState(() {
+        _quoting = false;
+        _quote = null;
+        _quoteError = e.message;
+      });
+    } catch (e) {
+      if (!mounted || key != _lastKey) return;
+      setState(() {
+        _quoting = false;
+        _quote = null;
+        _quoteError = e.toString().replaceAll('Exception: ', '');
+      });
+    }
   }
 
   @override
@@ -56,7 +128,10 @@ class _SelectPlanScreenState extends ConsumerState<SelectPlanScreen> {
         error: (e, _) => Center(child: Text('Lỗi: $e')),
         data: (plans) {
           final selectedPlan = PlanPriceCalculator.planFor(_selected!, plans);
-          final total = PlanPriceCalculator.total(selectedPlan, _cycle);
+          // Quote lại khi selection/cycle đổi (sau frame để tránh setState lúc build).
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (mounted) _maybeQuote(selectedPlan);
+          });
 
           return Stack(
             children: [
@@ -97,8 +172,20 @@ class _SelectPlanScreenState extends ConsumerState<SelectPlanScreen> {
                 bottom: 0,
                 child: _CTABar(
                   planName: selectedPlan.tier.displayName,
-                  total: total,
+                  isEnterprise: selectedPlan.isEnterprise,
+                  quoting: _quoting,
+                  quoteError: _quoteError,
+                  total: _quote?.totalAmount,
+                  kind: _quote?.kind,
                   onTap: () {
+                    if (selectedPlan.isEnterprise) {
+                      context.push('/profile/help');
+                      return;
+                    }
+                    if (_quoteError != null) {
+                      _maybeQuote(selectedPlan); // retry
+                      return;
+                    }
                     ref
                         .read(verifyFlowControllerProvider.notifier)
                         .selectPlan(selectedPlan, _cycle);
@@ -227,8 +314,10 @@ class _TrialBanner extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: AppColors.successBgDark,
-        border: Border.all(color: AppColors.successBorder),
+        // Theme-aware success tint (mint in light, deep green in dark) instead
+        // of the hardcoded dark token — harmonious on the light plan canvas.
+        color: colors.successBg,
+        border: Border.all(color: colors.success.withValues(alpha: 0.25)),
         borderRadius: BorderRadius.circular(12),
       ),
       child: Row(
@@ -270,18 +359,41 @@ class _TrialBanner extends StatelessWidget {
 
 class _CTABar extends StatelessWidget {
   final String planName;
-  final int total;
+  final bool isEnterprise;
+  final bool quoting;
+  final String? quoteError;
+
+  /// Số tiền BE chốt (quote). null khi đang tính / lỗi / enterprise.
+  final int? total;
+  final TransactionKind? kind;
   final VoidCallback onTap;
 
   const _CTABar({
     required this.planName,
+    required this.isEnterprise,
+    required this.quoting,
+    required this.quoteError,
     required this.total,
+    required this.kind,
     required this.onTap,
   });
+
+  String _label() {
+    if (isEnterprise) return 'Liên hệ tư vấn';
+    if (quoteError != null) return 'Thử lại';
+    if (quoting || total == null) return 'Đang tính giá...';
+    final action = kind == TransactionKind.upgrade
+        ? 'Nâng lên'
+        : kind == TransactionKind.downgrade
+            ? 'Hạ xuống'
+            : 'Chọn';
+    return '$action $planName · ${VerifyFormat.priceVND(total!)}';
+  }
 
   @override
   Widget build(BuildContext context) {
     final colors = context.colors;
+    final showSpinner = quoting && !isEnterprise && quoteError == null;
     return Container(
       padding: EdgeInsets.fromLTRB(
         AppSpacing.md,
@@ -293,25 +405,49 @@ class _CTABar extends StatelessWidget {
         color: colors.bgSurface,
         border: Border(top: BorderSide(color: colors.borderDefault)),
       ),
-      child: SizedBox(
-        height: 52,
-        child: FilledButton(
-          onPressed: onTap,
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Text(
-                'Chọn $planName · ${VerifyFormat.priceVND(total)}',
-                style: const TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w700,
-                ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (quoteError != null)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 6),
+              child: Text(
+                quoteError!,
+                textAlign: TextAlign.center,
+                style: TextStyle(fontSize: 11, color: colors.error),
               ),
-              const SizedBox(width: 6),
-              const Icon(Icons.arrow_forward, size: 16),
-            ],
+            ),
+          SizedBox(
+            height: 52,
+            child: FilledButton(
+              // Chặn bấm khi đang tính giá (chưa có số tiền thật từ BE).
+              onPressed: showSpinner ? null : onTap,
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  if (showSpinner) ...[
+                    const SizedBox(
+                      width: 16,
+                      height: 16,
+                      child: CircularProgressIndicator(
+                          strokeWidth: 2, color: AppColors.darkBg),
+                    ),
+                    const SizedBox(width: 8),
+                  ],
+                  Text(
+                    _label(),
+                    style: const TextStyle(
+                        fontSize: 14, fontWeight: FontWeight.w700),
+                  ),
+                  if (!showSpinner && !isEnterprise && quoteError == null) ...[
+                    const SizedBox(width: 6),
+                    const Icon(Icons.arrow_forward, size: 16),
+                  ],
+                ],
+              ),
+            ),
           ),
-        ),
+        ],
       ),
     );
   }

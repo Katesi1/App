@@ -140,8 +140,7 @@ class _DeleteAccountScreenState extends ConsumerState<DeleteAccountScreen> {
             CheckboxListTile(
               contentPadding: EdgeInsets.zero,
               value: _confirmedPolicy,
-              onChanged: (v) =>
-                  setState(() => _confirmedPolicy = v ?? false),
+              onChanged: (v) => setState(() => _confirmedPolicy = v ?? false),
               title: const Text(
                 'Tôi hiểu rằng dữ liệu KHÔNG thể khôi phục được sau khi xoá',
               ),

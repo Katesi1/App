@@ -220,56 +220,8 @@ class PlanPriceCalculator {
   /// Look up a plan by tier within the catalog. Falls back to the bundled
   /// default for the same tier if the catalog doesn't carry it — keeps the
   /// UI alive when the backend ships an incomplete plan list.
-  static Plan planFor(Tier tier, List<Plan> catalog) =>
-      catalog.firstWhere(
+  static Plan planFor(Tier tier, List<Plan> catalog) => catalog.firstWhere(
         (p) => p.tier == tier,
-        orElse: () =>
-            kDefaultPlans.firstWhere((p) => p.tier == tier),
+        orElse: () => kDefaultPlans.firstWhere((p) => p.tier == tier),
       );
-}
-
-/// Apple App Store Connect product IDs for each (tier, billing cycle).
-///
-/// **Setup checklist for App Store Connect:**
-///  1. Create one auto-renewable subscription group: `Halong24h Subscriptions`.
-///  2. Inside the group, create 12 subscription products (6 tiers × 2 cycles):
-///     - Product ID: exactly as listed below (e.g. `com.halong24h.sub.rooms5_monthly`)
-///     - Reference name: `Starter Monthly`, `Starter Yearly`, ...
-///     - Duration: 1 month / 1 year
-///     - Pricing tier: closest VND match to the plan's `monthlyPrice` (or
-///       `monthly × 12 × 0.8` for yearly with built-in 20% discount).
-///     - Family Sharing: OFF (B2B account).
-///     - Free trial: 7 days introductory offer (matches existing flow).
-///  3. Enterprise tier: skip — sold via direct contract, not IAP.
-///
-/// Enterprise (`Tier.enterprise`) has no IAP product — caller should NOT
-/// offer IAP for it; show a "Contact sales" CTA instead.
-class AppleProductIds {
-  AppleProductIds._();
-
-  /// Bundle ID prefix for App Store Connect IAP products.
-  /// Must match the `Bundle ID` registered in App Store Connect.
-  static const String _prefix = 'com.halong24h.sub';
-
-  /// Map (tier, cycle) → Apple product ID. Returns `null` for Enterprise
-  /// (no IAP — contact sales).
-  static String? forPlan(Tier tier, BillingCycle cycle) {
-    if (tier == Tier.enterprise) return null;
-    final tierSlug = switch (tier) {
-      Tier.rooms1 => 'rooms1',
-      Tier.rooms5 => 'rooms5',
-      Tier.rooms10 => 'rooms10',
-      Tier.rooms20 => 'rooms20',
-      Tier.rooms50 => 'rooms50',
-      Tier.enterprise => '', // unreachable
-    };
-    final cycleSlug = cycle == BillingCycle.yearly ? 'yearly' : 'monthly';
-    return '$_prefix.${tierSlug}_$cycleSlug';
-  }
-
-  /// Full set of product IDs to query from StoreKit at app start.
-  static Set<String> get all => {
-        for (final tier in Tier.values.where((t) => t != Tier.enterprise))
-          for (final cycle in BillingCycle.values) forPlan(tier, cycle)!,
-      };
 }

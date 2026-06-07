@@ -4,38 +4,27 @@ import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:in_app_purchase/in_app_purchase.dart';
 
 import '../../../core/theme/app_color_scheme.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../core/monitoring/analytics_service.dart';
-import '../../../core/utils/app_store_compliance.dart';
 import '../../../shared/widgets/status_strip.dart';
 import '../controllers/verify_flow_controller.dart';
-import '../data/models/plan.dart';
+import '../data/models/payment_session.dart';
 import '../data/models/verify_enums.dart';
-import 'widgets/order_summary_card.dart';
+import '../data/repositories/verify_repository_impl.dart';
 import 'widgets/payment_dialogs.dart';
-import 'widgets/payment_method_tile.dart';
+import 'widgets/quote_summary_card.dart';
 import 'widgets/verify_app_bar.dart';
 import 'widgets/verify_format.dart';
 
-/// 3 non-IAP payment methods (Android only — VNPay / Pays2 bank / card).
-/// iOS forces Apple In-App Purchase per Guideline 3.1.1 — see [usesAppleIAP].
-const _kAvailableMethods = <PaymentMethod>[
-  PaymentMethod.vnpayQR,
-  PaymentMethod.bankTransfer,
-  PaymentMethod.card,
-];
-
 /// Screen 5 — Payment.
 ///
-/// On iOS: Apple StoreKit IAP — no method selection, single "Mua qua App
-/// Store" CTA. Backend verifies the receipt at `/payments/apple/verify`.
-///
-/// On Android: VNPay QR / bank transfer / card via Pays2 gateway — original
-/// flow (create session → show dialog → poll status → submit for approval).
+/// Single payment method: VietQR bank transfer (Apple IAP + VNPay removed —
+/// backend only accepts `bank_transfer`, reconciled manually by admin). Flow:
+/// create session → show VietQR dialog → poll status (with back-off) until
+/// admin marks it paid, or the user closes and waits for the FCM push.
 class PaymentScreen extends ConsumerStatefulWidget {
   const PaymentScreen({super.key});
 
@@ -44,232 +33,344 @@ class PaymentScreen extends ConsumerStatefulWidget {
 }
 
 class _PaymentScreenState extends ConsumerState<PaymentScreen> {
-  PaymentMethod _selected = PaymentMethod.vnpayQR;
   bool _processing = false;
   Timer? _pollTimer;
-  int _pollCount = 0;
+  DateTime? _pollStartedAt;
 
-  // iOS only — StoreKit purchase stream subscription + cached product info.
-  StreamSubscription<List<PurchaseDetails>>? _iapSub;
-  ProductDetails? _appleProduct;
-  String? _appleProductError;
-  bool _loadingAppleProduct = false;
+  /// True while a [BankTransferDialog] is on screen — so [_onPaid] only pops a
+  /// dialog (never the payment screen itself).
+  bool _dialogOpen = false;
+
+  /// Bumped on every new session. The dialog's dismissal handler is gated on
+  /// this so a stale dialog (e.g. the expired one after "Tạo mã mới") can't
+  /// cancel the polling / reset state of the fresh session that replaced it.
+  int _payGen = 0;
+
+  // Quote (POST /payments/quote) — BE là source of truth cho số tiền + kind.
+  PaymentQuote? _quote;
+  bool _loadingQuote = true;
+  String? _quoteError;
+  bool _frozen = false; // subscriptionFrozen → chặn thanh toán
 
   @override
   void initState() {
     super.initState();
-    if (usesAppleIAP) {
-      _initApple();
-    }
+    _loadQuote();
   }
 
   @override
   void dispose() {
     _pollTimer?.cancel();
-    _iapSub?.cancel();
     super.dispose();
   }
 
-  /// iOS: fetch product price from App Store Connect + subscribe to the
-  /// StoreKit purchase stream. The stream catches `purchased`, `restored`,
-  /// `error`, and `cancelled` events.
-  Future<void> _initApple() async {
-    setState(() => _loadingAppleProduct = true);
-    try {
-      final plan = ref.read(verifyFlowControllerProvider).selectedPlan;
-      final cycle = ref.read(verifyFlowControllerProvider).billingCycle;
-      if (plan == null) return;
-      final productId = AppleProductIds.forPlan(plan.tier, cycle);
-      if (productId == null) {
-        setState(() {
-          _appleProductError =
-              'Gói Enterprise không hỗ trợ thanh toán trong app. Vui lòng liên hệ.';
-          _loadingAppleProduct = false;
-        });
-        return;
-      }
-      final response = await ref
-          .read(verifyFlowControllerProvider.notifier)
-          .queryAppleProducts();
-      final match = response.productDetails
-          .where((p) => p.id == productId)
-          .cast<ProductDetails?>()
-          .firstWhere((_) => true, orElse: () => null);
-      if (!mounted) return;
-      setState(() {
-        _appleProduct = match;
-        _appleProductError = match == null
-            ? 'Không tìm thấy sản phẩm trên App Store. Vui lòng thử lại.'
-            : null;
-        _loadingAppleProduct = false;
-      });
-
-      _iapSub = ref
-          .read(verifyFlowControllerProvider.notifier)
-          .listenAppleStoreKit(
-            onSuccess: () {
-              if (!mounted) return;
-              setState(() => _processing = false);
-              // KYC is decoupled from purchase. If admin already approved
-              // (user buying separately) → go to subscription detail. If not
-              // yet approved → /verify/pending shows the waiting state.
-              final status =
-                  ref.read(verifyFlowControllerProvider).status;
-              final target = status == VerifyStatus.approved
-                  ? '/verify/subscription-detail'
-                  : '/verify/pending';
-              context.pushReplacement(target);
-            },
-            onError: (msg) {
-              if (!mounted) return;
-              setState(() => _processing = false);
-              _showError(msg);
-            },
-          );
-    } catch (e) {
-      if (!mounted) return;
-      setState(() {
-        _appleProductError = e.toString().replaceAll('Exception: ', '');
-        _loadingAppleProduct = false;
-      });
-    }
-  }
-
-  Future<void> _handlePayApple() async {
-    setState(() => _processing = true);
-    AnalyticsService.logEvent('verify_payment_submit', params: const {
-      'method': 'apple_iap',
+  Future<void> _loadQuote() async {
+    setState(() {
+      _loadingQuote = true;
+      _quoteError = null;
+      _frozen = false;
     });
     try {
-      await ref
-          .read(verifyFlowControllerProvider.notifier)
-          .buyApplePlanForSelection();
-      // Result arrives via _iapSub.onSuccess / onError.
+      final quote =
+          await ref.read(verifyFlowControllerProvider.notifier).getQuote();
+      if (!mounted) return;
+      setState(() {
+        _quote = quote;
+        _loadingQuote = false;
+      });
+    } on VerifyApiException catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _loadingQuote = false;
+        if (e.isSubscriptionFrozen) {
+          _frozen = true;
+        } else {
+          _quoteError = e.message;
+        }
+      });
     } catch (e) {
       if (!mounted) return;
-      setState(() => _processing = false);
-      _showError(e.toString().replaceAll('Exception: ', ''));
-    }
-  }
-
-  Future<void> _handleRestoreApple() async {
-    try {
-      await ref
-          .read(verifyFlowControllerProvider.notifier)
-          .restoreApplePurchases();
-      _showInfo(
-        'Đang khôi phục đăng ký. Nếu bạn đã mua trước đó, app sẽ tự kích hoạt.',
-      );
-    } catch (e) {
-      _showError(e.toString().replaceAll('Exception: ', ''));
+      setState(() {
+        _loadingQuote = false;
+        _quoteError = e.toString().replaceAll('Exception: ', '');
+      });
     }
   }
 
   Future<void> _handlePay() async {
-    AnalyticsService.logEvent('verify_payment_submit', params: {
-      'method': _selected.name,
+    // Số tiền PHẢI từ quote (API). Không có quote thì không cho thanh toán —
+    // tuyệt đối không tự tính local (tiền thật).
+    final quote = _quote;
+    if (quote == null) {
+      _showError('Chưa lấy được báo giá. Vui lòng thử lại.');
+      _loadQuote();
+      return;
+    }
+    final gen = ++_payGen;
+    _pollTimer?.cancel(); // supersede any in-flight session before starting.
+    AnalyticsService.logEvent('verify_payment_submit', params: const {
+      'method': 'bank_transfer',
     });
     setState(() => _processing = true);
     try {
-      final session = await ref
-          .read(verifyFlowControllerProvider.notifier)
-          .initiatePayment(_selected);
+      final session =
+          await ref.read(verifyFlowControllerProvider.notifier).initiatePayment(
+                PaymentMethod.bankTransfer,
+                totalAmount: quote.totalAmount,
+              );
       AnalyticsService.logEvent('verify_payment_session_created', params: {
-        'method': _selected.name,
+        'method': 'bank_transfer',
         'amount': session.totalAmount,
       });
 
       if (!mounted) return;
 
-      switch (_selected) {
-        case PaymentMethod.vnpayQR:
-          showDialog<void>(
-            context: context,
-            barrierDismissible: false,
-            builder: (_) => VNPayQRDialog(session: session),
-          );
-          break;
-        case PaymentMethod.bankTransfer:
-          showDialog<void>(
-            context: context,
-            barrierDismissible: true,
-            builder: (_) => BankTransferDialog(session: session),
-          );
-          break;
-        case PaymentMethod.card:
-          break;
+      // Session created → the modal dialog now gates interaction, so re-enable
+      // the underlying CTA (it's covered by the barrier anyway). This avoids a
+      // stuck "Đang xử lý..." state if the user later dismisses the dialog.
+      setState(() => _processing = false);
+      _showSessionDialog(session, gen);
+    } on VerifyApiException catch (e) {
+      if (!mounted) return;
+      setState(() => _processing = false);
+      if (e.isDowngradeScheduled) {
+        _onDowngradeScheduled(e);
+      } else if (e.isSubscriptionFrozen) {
+        setState(() => _frozen = true);
+      } else if (e.isPaymentPending) {
+        _onPaymentPending(e);
+      } else {
+        _showError('Khởi tạo thanh toán thất bại: ${e.message}');
       }
-      _startPolling();
+      AnalyticsService.logEvent('verify_payment_session_failed',
+          params: {'method': 'bank_transfer', 'code': e.code ?? ''});
     } catch (e) {
       if (!mounted) return;
       final msg = e.toString().replaceAll('Exception: ', '');
       _showError('Khởi tạo thanh toán thất bại: $msg');
-      AnalyticsService.logEvent('verify_payment_session_failed', params: {
-        'method': _selected.name,
+      AnalyticsService.logEvent('verify_payment_session_failed', params: const {
+        'method': 'bank_transfer',
       });
       setState(() => _processing = false);
     }
   }
 
-  int get _maxPollCount => switch (_selected) {
-        PaymentMethod.vnpayQR => 20,
-        PaymentMethod.bankTransfer => 600,
-        PaymentMethod.card => 20,
-      };
+  /// BE trả 409 `downgradeScheduled` — đã đặt lịch hạ gói (không charge, không
+  /// session). Refresh profile để lấy `pendingPlanId`/`pendingEffectiveAt` rồi
+  /// rời màn.
+  Future<void> _onDowngradeScheduled(VerifyApiException e) async {
+    await ref.read(verifyFlowControllerProvider.notifier).refreshUserProfile();
+    if (!mounted) return;
+    final when = e.effectiveAt;
+    _showInfo(when != null
+        ? 'Đã đặt lịch hạ gói. Áp dụng từ ${VerifyFormat.dateVN(when)}.'
+        : 'Đã đặt lịch hạ gói. Áp dụng từ kỳ tiếp theo.');
+    if (context.canPop()) {
+      context.pop();
+    } else {
+      context.go('/dashboard');
+    }
+  }
+
+  /// Mở QR dialog cho 1 session + bắt đầu polling. Dùng cho cả phiên mới tạo và
+  /// phiên resume (409 paymentPending). `gen` chốt session hiện tại để handler
+  /// đóng dialog không can thiệp lên phiên mới hơn.
+  void _showSessionDialog(PaymentSession session, int gen) {
+    _dialogOpen = true;
+    showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => BankTransferDialog(
+        session: session,
+        onCloseAndWait: _handleCloseAndWait,
+        onCreateNew: _handlePay,
+        onCancel: () async {
+          await ref
+              .read(verifyFlowControllerProvider.notifier)
+              .cancelPayment(session.sessionId);
+          _pollTimer?.cancel();
+          _dialogOpen = false;
+          if (!mounted) return;
+          setState(() => _processing = false);
+          _showInfo('Đã huỷ phiên chuyển khoản.');
+        },
+      ),
+    ).then((_) {
+      if (gen != _payGen) return;
+      _dialogOpen = false;
+      _pollTimer?.cancel();
+    });
+    _startPolling();
+  }
+
+  /// BE trả 409 `paymentPending` — user đã có phiên chờ. Hỏi: tiếp tục đợi
+  /// (resume QR cũ qua `GET /payments/active`) hay huỷ phiên cũ rồi tạo lại.
+  Future<void> _onPaymentPending(VerifyApiException e) async {
+    final pending = e.pendingSession;
+    final choice = await showDialog<String>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Đang có phiên chờ thanh toán'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(e.message),
+            if (pending != null) ...[
+              const SizedBox(height: 10),
+              Text(
+                '${pending.planLabel ?? ''} · '
+                '${VerifyFormat.priceVND(pending.totalAmount)}',
+                style: const TextStyle(fontWeight: FontWeight.w700),
+              ),
+              if (pending.expiresAt != null)
+                Text(
+                  'Hết hạn: ${VerifyFormat.dateVN(pending.expiresAt!)}',
+                  style: TextStyle(
+                      fontSize: 12, color: context.colors.textTertiary),
+                ),
+            ],
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop('cancel'),
+            child: const Text('Huỷ phiên cũ'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(ctx).pop('wait'),
+            child: const Text('Tiếp tục đợi'),
+          ),
+        ],
+      ),
+    );
+    if (!mounted || choice == null) return;
+
+    if (choice == 'wait') {
+      // Resume — lấy phiên đầy đủ (qrCode/bankInfo) rồi mở lại QR.
+      final gen = ++_payGen;
+      _pollTimer?.cancel();
+      try {
+        final active = await ref
+            .read(verifyFlowControllerProvider.notifier)
+            .getActivePayment();
+        if (!mounted) return;
+        if (active != null) {
+          _showSessionDialog(active, gen);
+        } else {
+          // Phiên đã biến mất → thử tạo lại.
+          _handlePay();
+        }
+      } catch (err) {
+        if (!mounted) return;
+        _showError(err.toString().replaceAll('Exception: ', ''));
+      }
+    } else if (choice == 'cancel' && pending != null) {
+      // Huỷ phiên cũ rồi tạo lại.
+      try {
+        await ref
+            .read(verifyFlowControllerProvider.notifier)
+            .cancelPayment(pending.sessionId);
+        if (!mounted) return;
+        _handlePay();
+      } catch (err) {
+        if (!mounted) return;
+        _showError('Huỷ phiên cũ thất bại: '
+            '${err.toString().replaceAll('Exception: ', '')}');
+      }
+    }
+  }
+
+  /// User confirms they've transferred → stop active polling and leave. The
+  /// subscription activates asynchronously via the `subscription_paid` FCM push
+  /// + app-resume profile refresh; the dashboard banner reflects it.
+  void _handleCloseAndWait() {
+    _pollTimer?.cancel();
+    _dialogOpen = false;
+    if (!mounted) return;
+    setState(() => _processing = false);
+    _showInfo(
+      'Đã ghi nhận. Chúng tôi sẽ thông báo và kích hoạt gói ngay khi nhận '
+      'được chuyển khoản.',
+    );
+    if (context.canPop()) {
+      context.pop();
+    } else {
+      context.go('/dashboard');
+    }
+  }
+
+  /// Poll interval grows with elapsed time so we don't hammer the backend for
+  /// the whole 24h window: 3s for the first 30s (covers fast/sandbox reconcile),
+  /// then 10s up to 2 min, 30s up to 10 min, 60s after that. Manual admin
+  /// reconcile typically lands within 1–3 hours anyway.
+  Duration _nextPollDelay() {
+    final elapsed = DateTime.now().difference(_pollStartedAt ?? DateTime.now());
+    if (elapsed < const Duration(seconds: 30)) {
+      return const Duration(seconds: 3);
+    }
+    if (elapsed < const Duration(minutes: 2)) {
+      return const Duration(seconds: 10);
+    }
+    if (elapsed < const Duration(minutes: 10)) {
+      return const Duration(seconds: 30);
+    }
+    return const Duration(seconds: 60);
+  }
 
   void _startPolling() {
     _pollTimer?.cancel();
-    _pollCount = 0;
-    _pollTimer = Timer.periodic(const Duration(seconds: 3), (timer) async {
-      _pollCount++;
-      if (_pollCount > _maxPollCount) {
-        timer.cancel();
-        if (mounted) {
-          setState(() => _processing = false);
-          if (_selected == PaymentMethod.bankTransfer) {
-            _showInfo(
-              'Vẫn đang đối soát chuyển khoản. Bạn có thể đóng app — '
-              'hệ thống sẽ tự xác nhận khi nhận được tiền.',
-            );
-          } else {
-            _showError(
-              'Chưa nhận được xác nhận từ VNPay sau 60 giây. '
-              'Nếu bạn đã thanh toán, vui lòng liên hệ hỗ trợ.',
-            );
-          }
-        }
+    _pollStartedAt = DateTime.now();
+    _scheduleNextPoll();
+  }
+
+  void _scheduleNextPoll() {
+    _pollTimer = Timer(_nextPollDelay(), _poll);
+  }
+
+  Future<void> _poll() async {
+    if (!mounted) return;
+    try {
+      final status = await ref
+          .read(verifyFlowControllerProvider.notifier)
+          .checkPaymentStatus();
+      if (!mounted) return;
+      if (status == PaymentStatus.paid) {
+        await _onPaid();
+        return;
+      } else if (status == PaymentStatus.failed ||
+          status == PaymentStatus.expired) {
+        setState(() => _processing = false);
+        _showError('Phiên thanh toán đã kết thúc. Vui lòng tạo mã mới.');
         return;
       }
-      try {
-        final status = await ref
-            .read(verifyFlowControllerProvider.notifier)
-            .checkPaymentStatus();
-        if (status == PaymentStatus.paid) {
-          timer.cancel();
-          if (!mounted) return;
-          if (Navigator.of(context, rootNavigator: true).canPop()) {
-            Navigator.of(context, rootNavigator: true).pop();
-          }
-          // KYC decoupled from purchase: if admin already approved → go to
-          // subscription detail (user bought separately). Else → pending.
-          final verifyStatus =
-              ref.read(verifyFlowControllerProvider).status;
-          final target = verifyStatus == VerifyStatus.approved
-              ? '/verify/subscription-detail'
-              : '/verify/pending';
-          context.pushReplacement(target);
-        } else if (status == PaymentStatus.failed ||
-            status == PaymentStatus.expired) {
-          timer.cancel();
-          if (mounted) {
-            setState(() => _processing = false);
-            _showError('Thanh toán thất bại');
-          }
-        }
-      } catch (_) {
-        // silent retry
-      }
-    });
+    } catch (_) {
+      // Silent retry — keep polling on transient network errors.
+    }
+    if (mounted) _scheduleNextPoll();
+  }
+
+  Future<void> _onPaid() async {
+    _pollTimer?.cancel();
+    // Supersede the current session so the dialog's dismissal handler (fired by
+    // the pop below) doesn't fight our navigation.
+    _payGen++;
+    // Pull the freshly-activated subscription into currentUserProvider so the
+    // dashboard banner + route guards update immediately.
+    await ref.read(verifyFlowControllerProvider.notifier).refreshUserProfile();
+    if (!mounted) return;
+    // Close the QR dialog only if one is actually open — never the screen.
+    if (_dialogOpen) {
+      Navigator.of(context, rootNavigator: true).pop();
+      _dialogOpen = false;
+    }
+    // KYC decoupled from purchase: if admin already approved → subscription
+    // detail; else → pending (waiting on KYC approval).
+    final verifyStatus = ref.read(verifyFlowControllerProvider).status;
+    final target = verifyStatus == VerifyStatus.approved
+        ? '/verify/subscription-detail'
+        : '/verify/pending';
+    context.pushReplacement(target);
   }
 
   void _showInfo(String msg) {
@@ -308,210 +409,219 @@ class _PaymentScreenState extends ConsumerState<PaymentScreen> {
       );
     }
 
-    if (usesAppleIAP) {
-      return _buildAppleIAP(plan, state.billingCycle);
-    }
-
-    final total = PlanPriceCalculator.total(plan, state.billingCycle);
+    final planName = plan.tier.displayName;
     return Scaffold(
       backgroundColor: colors.bgCanvas,
       appBar: const VerifyAppBar(
         overline: 'NÂNG GÓI · SUBSCRIPTION',
         title: 'Thanh toán',
       ),
-      body: Stack(
-        children: [
-          ListView(
-            padding: const EdgeInsets.fromLTRB(
-              AppSpacing.md,
-              AppSpacing.md,
-              AppSpacing.md,
-              120,
-            ),
-            children: [
-              OrderSummaryCard(
-                plan: plan,
-                cycle: state.billingCycle,
-              ).animate().fadeIn(duration: 320.ms),
-              const SizedBox(height: AppSpacing.md),
-              Text(
-                'PHƯƠNG THỨC THANH TOÁN',
-                style: TextStyle(
-                  fontSize: 11,
-                  fontWeight: FontWeight.w700,
-                  letterSpacing: 0.3,
-                  color: colors.textTertiary,
-                ),
-              ),
-              const SizedBox(height: 10),
-              ...PaymentMethod.values.asMap().entries.map((e) {
-                final method = e.value;
-                final isAvailable = _kAvailableMethods.contains(method);
-                return Padding(
-                  padding: const EdgeInsets.only(bottom: 8),
-                  child: PaymentMethodTile(
-                    method: method,
-                    isSelected: _selected == method,
-                    isComingSoon: !isAvailable,
-                    onTap: () {
-                      if (!isAvailable) return;
-                      setState(() => _selected = method);
-                    },
-                  )
-                      .animate(delay: (60 * e.key).ms)
-                      .fadeIn(duration: 240.ms)
-                      .slideY(begin: 0.05, end: 0),
-                );
-              }),
-              const SizedBox(height: AppSpacing.md),
-              const StatusStrip(
-                icon: Icons.lock_outline,
-                label: 'Hoàn tiền 100% trong 14 ngày',
-                subtitle:
-                    'Nếu không hài lòng, yêu cầu hoàn tiền trong vòng 14 ngày kể từ thanh toán.',
-                variant: StatusStripVariant.brand,
-              ),
-            ],
-          ),
-          Positioned(
-            left: 0,
-            right: 0,
-            bottom: 0,
-            child: Container(
-              padding: EdgeInsets.fromLTRB(
-                AppSpacing.md,
-                AppSpacing.sm,
-                AppSpacing.md,
-                MediaQuery.of(context).padding.bottom + AppSpacing.sm,
-              ),
-              decoration: BoxDecoration(
-                color: colors.bgSurface,
-                border: Border(top: BorderSide(color: colors.borderDefault)),
-              ),
-              child: SizedBox(
-                height: 52,
-                child: FilledButton.icon(
-                  onPressed: _processing ? null : _handlePay,
-                  icon: _processing
-                      ? const SizedBox(
-                          width: 16,
-                          height: 16,
-                          child: CircularProgressIndicator(
-                              strokeWidth: 2, color: AppColors.darkBg),
-                        )
-                      : const Icon(Icons.lock_outline, size: 18),
-                  label: Text(
-                    _processing
-                        ? 'Đang xử lý...'
-                        : 'Thanh toán an toàn ${VerifyFormat.priceVND(total)}',
-                  ),
-                ),
-              ),
-            ),
-          ),
-        ],
-      ),
+      body: _buildBody(colors, planName),
     );
   }
 
-  /// iOS-only payment surface: single Apple IAP method + Restore Purchases
-  /// link. No VNPay / bank / Pays2 options (Apple Guideline 3.1.1).
-  Widget _buildAppleIAP(Plan plan, BillingCycle cycle) {
-    final colors = context.colors;
-    final priceLabel = _appleProduct?.price ??
-        (_loadingAppleProduct ? 'Đang tải giá...' : '');
-    return Scaffold(
-      backgroundColor: colors.bgCanvas,
-      appBar: const VerifyAppBar(
-        overline: 'NÂNG GÓI · SUBSCRIPTION',
-        title: 'Thanh toán',
-      ),
-      body: Stack(
-        children: [
-          ListView(
-            padding: const EdgeInsets.fromLTRB(
-              AppSpacing.md,
-              AppSpacing.md,
-              AppSpacing.md,
-              140,
-            ),
+  Widget _buildBody(AppColorScheme colors, String planName) {
+    if (_loadingQuote) {
+      return const Center(child: CircularProgressIndicator());
+    }
+    if (_frozen) {
+      return _FrozenView(onContact: () => context.push('/profile/help'));
+    }
+    if (_quoteError != null) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
             children: [
-              OrderSummaryCard(plan: plan, cycle: cycle)
-                  .animate()
-                  .fadeIn(duration: 320.ms),
-              const SizedBox(height: AppSpacing.md),
+              Icon(Icons.error_outline_rounded, size: 40, color: colors.error),
+              const SizedBox(height: 12),
               Text(
-                'PHƯƠNG THỨC THANH TOÁN',
-                style: TextStyle(
-                  fontSize: 11,
-                  fontWeight: FontWeight.w700,
-                  letterSpacing: 0.3,
-                  color: colors.textTertiary,
+                _quoteError!,
+                textAlign: TextAlign.center,
+                style: TextStyle(color: colors.textSecondary),
+              ),
+              const SizedBox(height: 16),
+              FilledButton(onPressed: _loadQuote, child: const Text('Thử lại')),
+            ],
+          ),
+        ),
+      );
+    }
+
+    final quote = _quote!;
+    final isDowngrade = quote.kind == TransactionKind.downgrade;
+    return Stack(
+      children: [
+        ListView(
+          padding: const EdgeInsets.fromLTRB(
+              AppSpacing.md, AppSpacing.md, AppSpacing.md, 120),
+          children: isDowngrade
+              ? [_DowngradeNotice(planName: planName)]
+              : [
+                  QuoteSummaryCard(quote: quote, planName: planName)
+                      .animate()
+                      .fadeIn(duration: 320.ms),
+                  const SizedBox(height: AppSpacing.md),
+                  Text(
+                    'PHƯƠNG THỨC THANH TOÁN',
+                    style: TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w700,
+                      letterSpacing: 0.3,
+                      color: colors.textTertiary,
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  _VietQrMethodCard()
+                      .animate()
+                      .fadeIn(duration: 240.ms)
+                      .slideY(begin: 0.05, end: 0),
+                  const SizedBox(height: AppSpacing.md),
+                  const StatusStrip(
+                    icon: Icons.schedule_outlined,
+                    label: 'Đối soát thủ công — thường 1–3 giờ',
+                    subtitle:
+                        'Sau khi chuyển khoản, gói sẽ tự kích hoạt khi hệ thống xác nhận. Bạn có thể đóng app và đợi thông báo.',
+                    variant: StatusStripVariant.brand,
+                  ),
+                  const SizedBox(height: AppSpacing.sm),
+                  const StatusStrip(
+                    icon: Icons.lock_outline,
+                    label: 'Hoàn tiền 100% trong 14 ngày',
+                    subtitle:
+                        'Nếu không hài lòng, yêu cầu hoàn tiền trong vòng 14 ngày kể từ thanh toán.',
+                    variant: StatusStripVariant.neutral,
+                  ),
+                ],
+        ),
+        Positioned(
+          left: 0,
+          right: 0,
+          bottom: 0,
+          child: Container(
+            padding: EdgeInsets.fromLTRB(
+              AppSpacing.md,
+              AppSpacing.sm,
+              AppSpacing.md,
+              MediaQuery.of(context).padding.bottom + AppSpacing.sm,
+            ),
+            decoration: BoxDecoration(
+              color: colors.bgSurface,
+              border: Border(top: BorderSide(color: colors.borderDefault)),
+            ),
+            child: SizedBox(
+              height: 52,
+              child: FilledButton.icon(
+                onPressed: _processing ? null : _handlePay,
+                icon: _processing
+                    ? const SizedBox(
+                        width: 16,
+                        height: 16,
+                        child: CircularProgressIndicator(
+                            strokeWidth: 2, color: AppColors.darkBg),
+                      )
+                    : Icon(isDowngrade
+                        ? Icons.trending_down_rounded
+                        : Icons.qr_code_2),
+                label: Text(
+                  _processing
+                      ? 'Đang xử lý...'
+                      : isDowngrade
+                          ? 'Xác nhận hạ gói'
+                          : 'Tạo mã VietQR · ${VerifyFormat.priceVND(quote.totalAmount)}',
                 ),
               ),
-              const SizedBox(height: 10),
-              _AppleIAPTile(
-                priceLabel: priceLabel,
-                productTitle: _appleProduct?.title ?? 'App Store In-App Purchase',
-                isLoading: _loadingAppleProduct,
-                errorMessage: _appleProductError,
-              ),
-              const SizedBox(height: AppSpacing.md),
-              const StatusStrip(
-                icon: Icons.lock_outline,
-                label: 'Thanh toán an toàn qua App Store',
-                subtitle:
-                    'Mọi giao dịch xử lý bởi Apple. Đăng ký tự gia hạn — hủy bất cứ lúc nào trong Cài đặt > Apple ID > Đăng ký.',
-                variant: StatusStripVariant.brand,
-              ),
-              const SizedBox(height: AppSpacing.md),
-              Center(
-                child: TextButton.icon(
-                  onPressed: _handleRestoreApple,
-                  icon: const Icon(Icons.refresh, size: 18),
-                  label: const Text('Khôi phục đăng ký đã mua'),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+/// Hiển thị khi subscription đang frozen — chặn thanh toán, mời liên hệ HT.
+class _FrozenView extends StatelessWidget {
+  final VoidCallback onContact;
+  const _FrozenView({required this.onContact});
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.colors;
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.ac_unit_rounded, size: 44, color: colors.textTertiary),
+            const SizedBox(height: 12),
+            Text(
+              'Gói đăng ký đang tạm khoá',
+              style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w800,
+                  color: colors.textPrimary),
+            ),
+            const SizedBox(height: 6),
+            Text(
+              'Tài khoản đang bị đóng băng nên không thể thanh toán/gia hạn. '
+              'Vui lòng liên hệ hỗ trợ để được mở lại.',
+              textAlign: TextAlign.center,
+              style: TextStyle(color: colors.textSecondary, height: 1.45),
+            ),
+            const SizedBox(height: 16),
+            FilledButton.icon(
+              onPressed: onContact,
+              icon: const Icon(Icons.support_agent_rounded, size: 18),
+              label: const Text('Liên hệ hỗ trợ'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Thông báo hạ gói — không charge ngay, áp dụng từ kỳ sau (BE deferred).
+class _DowngradeNotice extends StatelessWidget {
+  final String planName;
+  const _DowngradeNotice({required this.planName});
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.colors;
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: colors.bgSurface,
+        border: Border.all(color: colors.borderDefault),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.trending_down_rounded, color: colors.warning),
+              const SizedBox(width: 8),
+              Text(
+                'Hạ xuống gói $planName',
+                style: TextStyle(
+                  fontSize: 15,
+                  fontWeight: FontWeight.w800,
+                  color: colors.textPrimary,
                 ),
               ),
             ],
           ),
-          Positioned(
-            left: 0,
-            right: 0,
-            bottom: 0,
-            child: Container(
-              padding: EdgeInsets.fromLTRB(
-                AppSpacing.md,
-                AppSpacing.sm,
-                AppSpacing.md,
-                MediaQuery.of(context).padding.bottom + AppSpacing.sm,
-              ),
-              decoration: BoxDecoration(
-                color: colors.bgSurface,
-                border: Border(top: BorderSide(color: colors.borderDefault)),
-              ),
-              child: SizedBox(
-                height: 52,
-                child: FilledButton.icon(
-                  onPressed:
-                      (_processing || _appleProduct == null) ? null : _handlePayApple,
-                  icon: _processing
-                      ? const SizedBox(
-                          width: 16,
-                          height: 16,
-                          child: CircularProgressIndicator(
-                              strokeWidth: 2, color: AppColors.darkBg),
-                        )
-                      : const Icon(Icons.apple, size: 20),
-                  label: Text(
-                    _processing
-                        ? 'Đang xử lý...'
-                        : priceLabel.isEmpty
-                            ? 'Mua qua App Store'
-                            : 'Mua qua App Store · $priceLabel',
-                  ),
-                ),
-              ),
-            ),
+          const SizedBox(height: 10),
+          Text(
+            'Hạ gói KHÔNG tính phí ngay. Gói mới sẽ áp dụng từ kỳ tiếp theo '
+            '(khi kỳ hiện tại kết thúc). Bạn vẫn dùng quyền lợi gói hiện tại '
+            'tới hết kỳ.',
+            style: TextStyle(
+                color: colors.textSecondary, fontSize: 13, height: 1.5),
           ),
         ],
       ),
@@ -519,19 +629,8 @@ class _PaymentScreenState extends ConsumerState<PaymentScreen> {
   }
 }
 
-class _AppleIAPTile extends StatelessWidget {
-  final String priceLabel;
-  final String productTitle;
-  final bool isLoading;
-  final String? errorMessage;
-
-  const _AppleIAPTile({
-    required this.priceLabel,
-    required this.productTitle,
-    required this.isLoading,
-    required this.errorMessage,
-  });
-
+/// Single, always-selected VietQR bank-transfer method tile.
+class _VietQrMethodCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = context.colors;
@@ -548,10 +647,11 @@ class _AppleIAPTile extends StatelessWidget {
             width: 40,
             height: 40,
             decoration: BoxDecoration(
-              color: colors.bgCanvas,
+              color: colors.bgSurfaceContainer,
               borderRadius: BorderRadius.circular(10),
             ),
-            child: Icon(Icons.apple, size: 22, color: colors.textPrimary),
+            child: Icon(Icons.account_balance,
+                size: 22, color: colors.brandSecondary),
           ),
           const SizedBox(width: 12),
           Expanded(
@@ -559,7 +659,7 @@ class _AppleIAPTile extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'Apple In-App Purchase',
+                  'Chuyển khoản VietQR',
                   style: TextStyle(
                     fontSize: 14,
                     fontWeight: FontWeight.w700,
@@ -568,33 +668,18 @@ class _AppleIAPTile extends StatelessWidget {
                 ),
                 const SizedBox(height: 2),
                 Text(
-                  errorMessage ??
-                      (isLoading
-                          ? 'Đang lấy thông tin sản phẩm từ App Store...'
-                          : '$productTitle · Đăng ký tự gia hạn'),
+                  'Quét QR hoặc copy STK + nội dung CK trong app ngân hàng',
                   style: TextStyle(
                     fontSize: 11,
                     fontWeight: FontWeight.w500,
-                    color: errorMessage != null
-                        ? colors.error
-                        : colors.textTertiary,
+                    color: colors.textTertiary,
                     height: 1.4,
                   ),
                 ),
               ],
             ),
           ),
-          if (priceLabel.isNotEmpty && errorMessage == null) ...[
-            const SizedBox(width: 8),
-            Text(
-              priceLabel,
-              style: TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.w700,
-                color: colors.textPrimary,
-              ),
-            ),
-          ],
+          Icon(Icons.check_circle, size: 20, color: colors.brandSecondary),
         ],
       ),
     );

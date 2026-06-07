@@ -63,6 +63,26 @@ class BankInfo extends Equatable {
       ? null
       : 'https://api.vietqr.io/img/$bankBin.png';
 
+  /// img.vietqr.io quick-link QR image (server-rendered, encodes account +
+  /// amount + memo). Used as a fallback when the backend doesn't return a raw
+  /// EMVCo [vietQrPayload]. Returns null if we lack the BIN or account number
+  /// needed to build it. All values come from the backend `bankInfo` — nothing
+  /// is hardcoded.
+  String? vietQrImageUrl(int amount) {
+    if (bankBin == null || bankBin!.isEmpty || accountNumber.isEmpty) {
+      return null;
+    }
+    final params = <String, String>{
+      'amount': amount.toString(),
+      'addInfo': content,
+      if (accountName.isNotEmpty) 'accountName': accountName,
+    };
+    final query = params.entries
+        .map((e) => '${e.key}=${Uri.encodeQueryComponent(e.value)}')
+        .join('&');
+    return 'https://img.vietqr.io/image/$bankBin-$accountNumber-compact2.png?$query';
+  }
+
   @override
   List<Object?> get props => [
         bankName,
@@ -74,6 +94,142 @@ class BankInfo extends Equatable {
       ];
 }
 
+/// Chi tiết giá BE trả (quote + initiate/renew). FE đọc thẳng, KHÔNG tự tính.
+class PaymentBreakdown extends Equatable {
+  final int listPrice;
+  final int creditApplied; // > 0 chỉ khi upgrade
+  final int vat;
+
+  /// Chỉ có khi upgrade (prorate). null nếu không phải upgrade.
+  final int? remainingDays;
+  final int? totalDays;
+  final String? currentPlanId;
+
+  /// Số tháng kỳ được gia hạn (renew/subscription: 1 hoặc 12; upgrade: null).
+  final int? periodExtensionMonths;
+
+  const PaymentBreakdown({
+    required this.listPrice,
+    required this.creditApplied,
+    required this.vat,
+    this.remainingDays,
+    this.totalDays,
+    this.currentPlanId,
+    this.periodExtensionMonths,
+  });
+
+  factory PaymentBreakdown.fromJson(Map<String, dynamic> json) {
+    final pe = json['periodExtension'];
+    return PaymentBreakdown(
+      listPrice: (json['listPrice'] as num?)?.toInt() ?? 0,
+      creditApplied: (json['creditApplied'] as num?)?.toInt() ?? 0,
+      vat: (json['vat'] as num?)?.toInt() ?? 0,
+      remainingDays: (json['remainingDays'] as num?)?.toInt(),
+      totalDays: (json['totalDays'] as num?)?.toInt(),
+      currentPlanId: json['currentPlanId'] as String?,
+      periodExtensionMonths: pe is Map ? (pe['months'] as num?)?.toInt() : null,
+    );
+  }
+
+  Map<String, dynamic> toJson() => {
+        'listPrice': listPrice,
+        'creditApplied': creditApplied,
+        'vat': vat,
+        if (remainingDays != null) 'remainingDays': remainingDays,
+        if (totalDays != null) 'totalDays': totalDays,
+        if (currentPlanId != null) 'currentPlanId': currentPlanId,
+        if (periodExtensionMonths != null)
+          'periodExtension': {'months': periodExtensionMonths},
+      };
+
+  @override
+  List<Object?> get props => [
+        listPrice,
+        creditApplied,
+        vat,
+        remainingDays,
+        totalDays,
+        currentPlanId,
+        periodExtensionMonths,
+      ];
+}
+
+/// Báo giá (`POST /payments/quote`) — FE gọi trước khi mở màn thanh toán để biết
+/// số tiền + loại giao dịch. Không tạo session.
+class PaymentQuote extends Equatable {
+  final TransactionKind? kind;
+  final String planId;
+  final String cycle;
+  final int rooms;
+  final int totalAmount;
+  final PaymentBreakdown breakdown;
+
+  const PaymentQuote({
+    required this.kind,
+    required this.planId,
+    required this.cycle,
+    required this.rooms,
+    required this.totalAmount,
+    required this.breakdown,
+  });
+
+  factory PaymentQuote.fromJson(Map<String, dynamic> json) => PaymentQuote(
+        kind: transactionKindFromApi(json['kind'] as String?),
+        planId: (json['planId'] ?? '') as String,
+        cycle: (json['cycle'] ?? 'monthly') as String,
+        rooms: (json['rooms'] as num?)?.toInt() ?? 0,
+        totalAmount: (json['totalAmount'] as num?)?.toInt() ?? 0,
+        breakdown: PaymentBreakdown.fromJson(
+            (json['breakdown'] as Map<String, dynamic>?) ?? const {}),
+      );
+
+  @override
+  List<Object?> get props =>
+      [kind, planId, cycle, rooms, totalAmount, breakdown];
+}
+
+/// Thông tin phiên đang chờ (kèm trong 409 `paymentPending`). Đủ để hiển thị
+/// + resume (qua `GET /payments/active`) hoặc huỷ (`POST /payments/:id/cancel`).
+class PendingSessionInfo {
+  final String sessionId;
+  final TransactionKind? kind;
+  final int totalAmount;
+  final String? planId;
+  final String? planLabel;
+  final String? cycle;
+  final String? method;
+  final DateTime? createdAt;
+  final DateTime? expiresAt;
+
+  const PendingSessionInfo({
+    required this.sessionId,
+    this.kind,
+    this.totalAmount = 0,
+    this.planId,
+    this.planLabel,
+    this.cycle,
+    this.method,
+    this.createdAt,
+    this.expiresAt,
+  });
+
+  factory PendingSessionInfo.fromJson(Map<String, dynamic> json) {
+    DateTime? d(dynamic v) =>
+        v is String && v.isNotEmpty ? DateTime.tryParse(v) : null;
+    return PendingSessionInfo(
+      sessionId: (json['sessionId'] ?? '') as String,
+      kind: transactionKindFromApi(json['kind'] as String?),
+      totalAmount: (json['totalAmount'] as num?)?.toInt() ?? 0,
+      planId: json['planId'] as String?,
+      planLabel: json['planLabel'] as String?,
+      cycle: json['cycle'] as String?,
+      method: json['method'] as String?,
+      createdAt: d(json['createdAt']),
+      expiresAt: d(json['expiresAt']),
+    );
+  }
+}
+
 /// An open payment session (VNPay / bank transfer / card).
 class PaymentSession extends Equatable {
   final String sessionId;
@@ -81,6 +237,16 @@ class PaymentSession extends Equatable {
 
   /// Total amount (VAT included) — VND.
   final int totalAmount;
+
+  /// Loại giao dịch BE tự branch (subscription | renew | upgrade | downgrade).
+  final TransactionKind? kind;
+
+  /// Plan + cycle BE chốt cho phiên này (có thể khác draft local khi upgrade).
+  final String? planId;
+  final String? cycle;
+
+  /// Chi tiết giá BE trả về (FE render trong order summary).
+  final PaymentBreakdown? breakdown;
 
   /// VNPay QR payload — raw EMVCo string (FE renders via `QrImageView`).
   /// Backend returns it after calling the VNPay createQR API.
@@ -110,6 +276,10 @@ class PaymentSession extends Equatable {
     required this.sessionId,
     required this.method,
     required this.totalAmount,
+    this.kind,
+    this.planId,
+    this.cycle,
+    this.breakdown,
     this.qrCode,
     this.qrImageBase64,
     this.bankInfo,
@@ -122,10 +292,17 @@ class PaymentSession extends Equatable {
     final methodRaw = (json['method'] as String).toLowerCase();
     final method = _methodFromApi(methodRaw);
     final bankRaw = json['bankInfo'] ?? json['bank_info'];
+    final breakdownRaw = json['breakdown'];
     return PaymentSession(
       sessionId: (json['sessionId'] ?? json['session_id']) as String,
       method: method,
       totalAmount: (json['totalAmount'] ?? json['total_amount']) as int,
+      kind: transactionKindFromApi(json['kind'] as String?),
+      planId: (json['planId'] ?? json['plan_id']) as String?,
+      cycle: json['cycle'] as String?,
+      breakdown: breakdownRaw is Map<String, dynamic>
+          ? PaymentBreakdown.fromJson(breakdownRaw)
+          : null,
       qrCode: (json['qrCode'] ?? json['qr_code']) as String?,
       qrImageBase64:
           (json['qrImageBase64'] ?? json['qr_image_base64']) as String?,
@@ -143,6 +320,10 @@ class PaymentSession extends Equatable {
         'sessionId': sessionId,
         'method': method.toApiString(),
         'totalAmount': totalAmount,
+        if (kind != null) 'kind': kind!.name,
+        if (planId != null) 'planId': planId,
+        if (cycle != null) 'cycle': cycle,
+        if (breakdown != null) 'breakdown': breakdown!.toJson(),
         'qrCode': qrCode,
         'qrImageBase64': qrImageBase64,
         'bankInfo': bankInfo?.toJson(),
@@ -156,6 +337,10 @@ class PaymentSession extends Equatable {
         sessionId,
         method,
         totalAmount,
+        kind,
+        planId,
+        cycle,
+        breakdown,
         qrCode,
         qrImageBase64,
         bankInfo,

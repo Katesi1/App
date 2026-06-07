@@ -1,9 +1,28 @@
 import 'package:flutter/material.dart';
+import 'package:url_launcher/url_launcher.dart';
+import '../../../core/services/app_version_service.dart';
 import '../../../core/theme/app_color_scheme.dart';
 import '../../../core/theme/app_spacing.dart';
 
 class ForceUpdateScreen extends StatelessWidget {
   const ForceUpdateScreen({super.key});
+
+  Future<void> _openStore(BuildContext context) async {
+    // Re-fetch the store URL (this standalone screen carries no info object).
+    final info = await AppVersionService.instance.check();
+    final url = info.storeUrl;
+    if (url != null && url.isNotEmpty) {
+      final uri = Uri.tryParse(url);
+      if (uri != null) {
+        await launchUrl(uri, mode: LaunchMode.externalApplication);
+        return;
+      }
+    }
+    if (!context.mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Không lấy được liên kết cửa hàng')),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -45,11 +64,7 @@ class ForceUpdateScreen extends StatelessWidget {
             SizedBox(
               width: double.infinity,
               child: FilledButton(
-                onPressed: () {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Mở store để cập nhật app')),
-                  );
-                },
+                onPressed: () => _openStore(context),
                 child: const Text('Cập nhật ngay'),
               ),
             ),

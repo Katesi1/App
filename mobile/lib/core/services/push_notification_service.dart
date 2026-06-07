@@ -42,6 +42,12 @@ class PushNotificationService {
   /// `context.go(deepLink)`). Set once at the widget root.
   void Function(Map<String, dynamic> data)? onNotificationTap;
 
+  /// Callback for data messages received while the app is in the FOREGROUND
+  /// (no tap required). Set once at the widget root. Used to react to silent
+  /// state-change pushes — e.g. `pushType=subscription_paid` → refresh the user
+  /// profile so the just-activated subscription shows up immediately.
+  void Function(Map<String, dynamic> data)? onForegroundData;
+
   /// Called once at app startup (after `Firebase.initializeApp`).
   /// Does **NOT** request permission here — only sets up listeners. Permission
   /// is requested after the user logs in so the OS prompt doesn't appear on
@@ -51,8 +57,7 @@ class PushNotificationService {
     FirebaseMessaging.onBackgroundMessage(firebaseMessagingBackgroundHandler);
 
     // Local notification plugin — used to show banners while in foreground.
-    const androidInit =
-        AndroidInitializationSettings('@mipmap/ic_launcher');
+    const androidInit = AndroidInitializationSettings('@mipmap/ic_launcher');
     const iosInit = DarwinInitializationSettings(
       requestAlertPermission: false,
       requestBadgePermission: false,
@@ -67,8 +72,8 @@ class PushNotificationService {
     );
 
     // Plugin requires a channel registration (no-op on iOS at runtime).
-    final androidPlugin = _localNotifications
-        .resolvePlatformSpecificImplementation<
+    final androidPlugin =
+        _localNotifications.resolvePlatformSpecificImplementation<
             AndroidFlutterLocalNotificationsPlugin>();
     await androidPlugin?.createNotificationChannel(
       const AndroidNotificationChannel(
@@ -83,8 +88,7 @@ class PushNotificationService {
     _foregroundSub = FirebaseMessaging.onMessage.listen(_onForegroundMessage);
 
     // Tap notification (background → foreground).
-    _openedAppSub =
-        FirebaseMessaging.onMessageOpenedApp.listen(_onOpenedApp);
+    _openedAppSub = FirebaseMessaging.onMessageOpenedApp.listen(_onOpenedApp);
 
     // Cold start: app opened by tapping a notification.
     final initialMessage = await _fcm.getInitialMessage();
@@ -156,6 +160,9 @@ class PushNotificationService {
 
   // ── Internal ──────────────────────────────────────────────────────────────
 
+  /// Coerce an FCM data-map value to a String without throwing on odd types.
+  static String? _asString(Object? v) => v is String ? v : v?.toString();
+
   Future<void> _registerTokenWithBackend(String token) async {
     await _deviceRepo.register(
       fcmToken: token,
@@ -165,15 +172,29 @@ class PushNotificationService {
   }
 
   void _onForegroundMessage(RemoteMessage message) {
+    // Surface data-only messages (BE sends data-messages per API spec §8.4) to
+    // the app so it can react silently — e.g. refresh profile on
+    // `subscription_paid`. Runs regardless of whether a banner is shown.
+    if (message.data.isNotEmpty) {
+      onForegroundData?.call(message.data);
+    }
+
     final notification = message.notification;
-    if (notification == null) return;
+    // Data-only push (no `notification` block) → fall back to title/subtitle in
+    // the data payload so the user still sees a banner (e.g. "Thanh toán thành công").
+    // Read defensively: FCM data values are strings by contract, but never crash
+    // the stream handler if the backend ever sends a non-string value.
+    final title = notification?.title ?? _asString(message.data['title']);
+    final body = notification?.body ??
+        _asString(message.data['subtitle'] ?? message.data['body']);
+    if (title == null && body == null) return;
 
     // Show local banner — only when there is content. Background banners are
     // shown by the OS automatically; no work needed here.
     _localNotifications.show(
-      notification.hashCode,
-      notification.title,
-      notification.body,
+      message.hashCode,
+      title,
+      body,
       NotificationDetails(
         android: AndroidNotificationDetails(
           _channelId,

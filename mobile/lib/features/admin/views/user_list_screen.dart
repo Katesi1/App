@@ -667,8 +667,11 @@ class _UserCard extends StatelessWidget {
     return switch (user.saleMembershipState) {
       'invited' => ('Chờ kích hoạt', colors.warning, colors.warningBg),
       'suspended' => ('Tạm khoá', colors.error, colors.errorBg),
-      'unassigned' => ('Chưa gán owner', colors.textSecondary,
-          colors.bgSurfaceContainer),
+      'unassigned' => (
+          'Chưa gán owner',
+          colors.textSecondary,
+          colors.bgSurfaceContainer
+        ),
       _ => ('Đang hoạt động', colors.success, colors.successBg),
     };
   }

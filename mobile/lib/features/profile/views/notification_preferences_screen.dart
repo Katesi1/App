@@ -1,123 +1,135 @@
 import 'package:flutter/material.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+
 import '../../../core/theme/app_color_scheme.dart';
 import '../../../core/theme/app_spacing.dart';
+import '../../../shared/widgets/loading_widget.dart';
+import '../controllers/account_controller.dart';
+import '../data/models/account_models.dart';
 
-class NotificationPreferencesScreen extends StatefulWidget {
+/// Tuỳ chọn thông báo (`GET/PUT /users/me/notification-preferences`).
+class NotificationPreferencesScreen extends ConsumerStatefulWidget {
   const NotificationPreferencesScreen({super.key});
 
   @override
-  State<NotificationPreferencesScreen> createState() =>
+  ConsumerState<NotificationPreferencesScreen> createState() =>
       _NotificationPreferencesScreenState();
 }
 
 class _NotificationPreferencesScreenState
-    extends State<NotificationPreferencesScreen> {
-  static const _bookingKey = 'notify_booking';
-  static const _paymentKey = 'notify_payment';
-  static const _systemKey = 'notify_system';
-  static const _quietHoursKey = 'notify_quiet_hours';
-  bool _booking = true;
-  bool _payment = true;
-  bool _system = true;
-  bool _quietHours = false;
-
-  @override
-  void initState() {
-    super.initState();
-    _load();
-  }
-
-  Future<void> _load() async {
-    final prefs = await SharedPreferences.getInstance();
-    if (!mounted) return;
-    setState(() {
-      _booking = prefs.getBool(_bookingKey) ?? true;
-      _payment = prefs.getBool(_paymentKey) ?? true;
-      _system = prefs.getBool(_systemKey) ?? true;
-      _quietHours = prefs.getBool(_quietHoursKey) ?? false;
-    });
-  }
+    extends ConsumerState<NotificationPreferencesScreen> {
+  NotificationPrefs? _draft;
+  bool _saving = false;
 
   Future<void> _save() async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setBool(_bookingKey, _booking);
-    await prefs.setBool(_paymentKey, _payment);
-    await prefs.setBool(_systemKey, _system);
-    await prefs.setBool(_quietHoursKey, _quietHours);
+    final draft = _draft;
+    if (draft == null) return;
+    setState(() => _saving = true);
+    final result = await ref
+        .read(accountRepositoryProvider)
+        .updateNotificationPrefs(draft);
     if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Đã cập nhật tùy chọn thông báo')),
-    );
+    setState(() => _saving = false);
+    if (result.success) {
+      ref.invalidate(notificationPrefsProvider);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Đã cập nhật tùy chọn thông báo')),
+      );
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(result.message),
+          backgroundColor: context.colors.error,
+        ),
+      );
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     final colors = context.colors;
+    final prefsAsync = ref.watch(notificationPrefsProvider);
+
     return Scaffold(
       appBar: AppBar(title: const Text('Tùy chọn thông báo')),
-      body: ListView(
-        padding: const EdgeInsets.all(AppSpacing.md),
-        children: [
-          Container(
+      body: prefsAsync.when(
+        loading: () => const LoadingWidget(),
+        error: (e, _) => ErrorStateWidget(
+          message: e.toString().replaceAll('Exception: ', ''),
+          onRetry: () => ref.invalidate(notificationPrefsProvider),
+        ),
+        data: (serverPrefs) {
+          final prefs = _draft ?? serverPrefs;
+          return ListView(
             padding: const EdgeInsets.all(AppSpacing.md),
-            decoration: BoxDecoration(
-              color: colors.bgSurfaceContainer,
-              borderRadius: BorderRadius.circular(AppRadius.lg),
-            ),
-            child: Text(
-              'Bật/tắt thông báo theo từng nhóm để tránh bỏ lỡ cập nhật quan trọng.',
-              style: TextStyle(color: colors.textSecondary),
-            ),
-          ),
-          const SizedBox(height: AppSpacing.md),
-          _NotificationTile(
-            value: _booking,
-            title: 'Booking',
-            subtitle: 'Nhận thông báo xác nhận, huỷ, thay đổi lịch đặt',
-            icon: Icons.calendar_month_outlined,
-            onChanged: (v) => setState(() => _booking = v),
-          ),
-          _NotificationTile(
-            value: _payment,
-            title: 'Thanh toán',
-            subtitle: 'Nhận thông báo hóa đơn, hoàn tiền, giao dịch',
-            icon: Icons.payments_outlined,
-            onChanged: (v) => setState(() => _payment = v),
-          ),
-          _NotificationTile(
-            value: _system,
-            title: 'Hệ thống',
-            subtitle: 'Nhận thông báo bảo trì, cập nhật và bảo mật tài khoản',
-            icon: Icons.settings_outlined,
-            onChanged: (v) => setState(() => _system = v),
-          ),
-          _NotificationTile(
-            value: _quietHours,
-            title: 'Giờ yên lặng',
-            subtitle: 'Giảm thông báo từ 22:00 đến 07:00',
-            icon: Icons.dark_mode_outlined,
-            onChanged: (v) => setState(() => _quietHours = v),
-          ),
-          const SizedBox(height: AppSpacing.md),
-          FilledButton(
-            onPressed: _save,
-            child: const Text('Lưu'),
-          ),
-        ],
+            children: [
+              Container(
+                padding: const EdgeInsets.all(AppSpacing.md),
+                decoration: BoxDecoration(
+                  color: colors.bgSurfaceContainer,
+                  borderRadius: BorderRadius.circular(AppRadius.lg),
+                ),
+                child: Text(
+                  'Bật/tắt thông báo theo từng nhóm để tránh bỏ lỡ cập nhật quan trọng.',
+                  style: TextStyle(color: colors.textSecondary),
+                ),
+              ),
+              const SizedBox(height: AppSpacing.md),
+              _Tile(
+                value: prefs.booking,
+                title: 'Booking',
+                subtitle: 'Nhận thông báo xác nhận, huỷ, thay đổi lịch đặt',
+                icon: Icons.calendar_month_outlined,
+                onChanged: (v) =>
+                    setState(() => _draft = prefs.copyWith(booking: v)),
+              ),
+              _Tile(
+                value: prefs.payment,
+                title: 'Thanh toán',
+                subtitle: 'Nhận thông báo hóa đơn, hoàn tiền, giao dịch',
+                icon: Icons.payments_outlined,
+                onChanged: (v) =>
+                    setState(() => _draft = prefs.copyWith(payment: v)),
+              ),
+              _Tile(
+                value: prefs.system,
+                title: 'Hệ thống',
+                subtitle:
+                    'Nhận thông báo bảo trì, cập nhật và bảo mật tài khoản',
+                icon: Icons.settings_outlined,
+                onChanged: (v) =>
+                    setState(() => _draft = prefs.copyWith(system: v)),
+              ),
+              _Tile(
+                value: prefs.quietHours,
+                title: 'Giờ yên lặng',
+                subtitle:
+                    'Giảm thông báo từ ${prefs.quietFrom} đến ${prefs.quietTo}',
+                icon: Icons.dark_mode_outlined,
+                onChanged: (v) =>
+                    setState(() => _draft = prefs.copyWith(quietHours: v)),
+              ),
+              const SizedBox(height: AppSpacing.md),
+              FilledButton(
+                onPressed: _saving ? null : _save,
+                child: Text(_saving ? 'Đang lưu...' : 'Lưu'),
+              ),
+            ],
+          );
+        },
       ),
     );
   }
 }
 
-class _NotificationTile extends StatelessWidget {
+class _Tile extends StatelessWidget {
   final bool value;
   final String title;
   final String subtitle;
   final IconData icon;
   final ValueChanged<bool> onChanged;
 
-  const _NotificationTile({
+  const _Tile({
     required this.value,
     required this.title,
     required this.subtitle,

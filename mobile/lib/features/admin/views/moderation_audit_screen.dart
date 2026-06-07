@@ -1,69 +1,137 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+
 import '../../../core/theme/app_color_scheme.dart';
 import '../../../core/theme/app_spacing.dart';
+import '../../../shared/widgets/loading_widget.dart';
+import '../controllers/moderation_controller.dart';
+import '../data/models/moderation_models.dart';
 
-class ModerationAuditScreen extends StatelessWidget {
+/// Nhật ký kiểm duyệt (`GET /admin/audit-log`). ADMIN-only. Read-only —
+/// backend tự ghi log mỗi khi admin thực hiện action.
+class ModerationAuditScreen extends ConsumerWidget {
   const ModerationAuditScreen({super.key});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final colors = context.colors;
+    final auditAsync = ref.watch(auditLogProvider);
+
     return Scaffold(
-      appBar: AppBar(title: const Text('Lịch sử moderation')),
-      body: ListView(
-        padding: const EdgeInsets.all(AppSpacing.md),
-        children: const [
-          _AuditTile(
-            action: 'Khóa user_172',
-            reason: 'Spam lặp lại',
-            at: '06/05/2026 21:15',
-            by: 'admin_01',
-          ),
-          _AuditTile(
-            action: 'Ẩn bài đăng room_548',
-            reason: 'Sai sự thật',
-            at: '05/05/2026 10:20',
-            by: 'moderator_03',
-          ),
-        ],
+      appBar: AppBar(title: const Text('Lịch sử kiểm duyệt')),
+      body: auditAsync.when(
+        loading: () => const LoadingWidget(),
+        error: (e, _) => ErrorStateWidget(
+          message: e.toString().replaceAll('Exception: ', ''),
+          onRetry: () => ref.invalidate(auditLogProvider),
+        ),
+        data: (entries) {
+          if (entries.isEmpty) {
+            return const EmptyStateWidget(
+              icon: Icons.history_toggle_off_outlined,
+              message: 'Chưa có hoạt động kiểm duyệt nào',
+            );
+          }
+          return RefreshIndicator(
+            color: colors.brand,
+            onRefresh: () async => ref.invalidate(auditLogProvider),
+            child: ListView.separated(
+              padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
+              itemCount: entries.length,
+              separatorBuilder: (_, __) => const SizedBox(height: 10),
+              itemBuilder: (_, i) => _AuditTile(entry: entries[i]),
+            ),
+          );
+        },
       ),
     );
   }
 }
 
 class _AuditTile extends StatelessWidget {
-  final String action;
-  final String reason;
-  final String at;
-  final String by;
+  final AuditEntry entry;
+  const _AuditTile({required this.entry});
 
-  const _AuditTile({
-    required this.action,
-    required this.reason,
-    required this.at,
-    required this.by,
-  });
+  static String _two(int n) => n.toString().padLeft(2, '0');
+
+  String _fmtTime(DateTime? d) {
+    if (d == null) return '';
+    final l = d.toLocal();
+    return '${_two(l.day)}/${_two(l.month)}/${l.year} ${_two(l.hour)}:${_two(l.minute)}';
+  }
 
   @override
   Widget build(BuildContext context) {
     final colors = context.colors;
+    final subtitleParts = <String>[
+      if (entry.targetLabel != null && entry.targetLabel!.isNotEmpty)
+        entry.targetLabel!
+      else if (entry.targetType.isNotEmpty)
+        entry.targetType,
+      if (entry.actorName != null) 'bởi ${entry.actorName}',
+    ];
+
     return Container(
-      margin: const EdgeInsets.only(bottom: AppSpacing.sm),
+      padding: const EdgeInsets.all(AppSpacing.md),
       decoration: BoxDecoration(
         color: colors.bgSurface,
         borderRadius: BorderRadius.circular(AppRadius.lg),
         border: Border.all(color: colors.borderDefault),
       ),
-      child: ListTile(
-        title: Text(
-          action,
-          style: TextStyle(
-            color: colors.textPrimary,
-            fontWeight: FontWeight.w600,
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            width: 36,
+            height: 36,
+            decoration: BoxDecoration(
+              color: colors.brand.withValues(alpha: 0.10),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Icon(Icons.gavel_rounded, size: 18, color: colors.brand),
           ),
-        ),
-        subtitle: Text('Lý do: $reason\nThực hiện bởi: $by · $at'),
-        isThreeLine: true,
-        trailing: Icon(Icons.history_toggle_off_outlined, color: colors.brand),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  entry.actionLabel,
+                  style: TextStyle(
+                    color: colors.textPrimary,
+                    fontWeight: FontWeight.w700,
+                    fontSize: 14,
+                  ),
+                ),
+                if (subtitleParts.isNotEmpty) ...[
+                  const SizedBox(height: 2),
+                  Text(
+                    subtitleParts.join(' · '),
+                    style:
+                        TextStyle(color: colors.textSecondary, fontSize: 12.5),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ],
+                if (entry.reason != null && entry.reason!.isNotEmpty) ...[
+                  const SizedBox(height: 4),
+                  Text(
+                    'Lý do: ${entry.reason}',
+                    style:
+                        TextStyle(color: colors.textTertiary, fontSize: 11.5),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ],
+                const SizedBox(height: 6),
+                Text(
+                  _fmtTime(entry.createdAt),
+                  style: TextStyle(color: colors.textTertiary, fontSize: 11),
+                ),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }

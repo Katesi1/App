@@ -8,6 +8,7 @@ import '../../features/admin/views/kyc_approval_detail_screen.dart';
 import '../../features/admin/views/kyc_approval_list_screen.dart';
 import '../../features/admin/views/moderation_audit_screen.dart';
 import '../../features/admin/views/role_permission_screen.dart';
+import '../../features/admin/views/staff_permission_screen.dart';
 import '../../features/properties/views/property_management_screen.dart';
 import '../../features/admin/views/user_form_screen.dart';
 import '../../features/admin/views/user_list_screen.dart';
@@ -22,6 +23,7 @@ import '../../features/staff/views/staff_management_screen.dart';
 import '../../features/bookings/views/booking_calendar_screen.dart';
 import '../../features/bookings/views/owner_calendar_screen.dart';
 import '../../features/bookings/views/booking_list_screen.dart';
+import '../../features/bookings/views/front_desk_screen.dart';
 import '../../features/dashboard/views/dashboard_screen.dart';
 import '../../features/properties/views/property_amenities_screen.dart';
 import '../../features/properties/views/property_cancellation_screen.dart';
@@ -43,6 +45,7 @@ import '../../features/profile/views/feedback_report_screen.dart';
 import '../../features/profile/views/force_update_screen.dart';
 import '../../features/profile/views/help_screen.dart';
 import '../../features/profile/views/my_tickets_screen.dart';
+import '../../features/profile/views/ticket_detail_screen.dart';
 import '../../features/profile/views/notification_preferences_screen.dart';
 import '../../features/profile/views/personal_info_screen.dart';
 import '../../features/profile/views/privacy_policy_screen.dart';
@@ -141,6 +144,7 @@ String? resolveRedirectPath({
       '/admin/abuse-reports',
       '/admin/moderation-audit',
       '/admin/kyc',
+      '/admin/role-permissions',
     ];
     final isAdminOnly = isUserFormRoute ||
         adminOnlyPrefixes.any((p) => path == p || path.startsWith(p));
@@ -304,6 +308,15 @@ final routerProvider = Provider<GoRouter>((ref) {
             ),
           ),
           GoRoute(
+            path: 'tickets/:id',
+            pageBuilder: (_, state) => slideUpPage(
+              key: state.pageKey,
+              child: TicketDetailScreen(
+                ticketId: state.pathParameters['id'] ?? '',
+              ),
+            ),
+          ),
+          GoRoute(
             path: 'delete-account',
             pageBuilder: (_, state) => slideUpPage(
               key: state.pageKey,
@@ -376,6 +389,17 @@ final routerProvider = Provider<GoRouter>((ref) {
         pageBuilder: (_, state) => horizontalPage(
           key: state.pageKey,
           child: const BookingListScreen(),
+        ),
+      ),
+
+      // ── Front desk (check-in / check-out by day) ───────────────────
+      GoRoute(
+        path: '/front-desk',
+        pageBuilder: (_, state) => horizontalPage(
+          key: state.pageKey,
+          child: FrontDeskScreen(
+            initialTab: state.uri.queryParameters['tab'],
+          ),
         ),
       ),
 
@@ -631,6 +655,15 @@ final routerProvider = Provider<GoRouter>((ref) {
         pageBuilder: (_, state) => slideUpPage(
           key: state.pageKey,
           child: const RolePermissionScreen(),
+        ),
+      ),
+      GoRoute(
+        path: '/admin/role-permissions/:userId',
+        pageBuilder: (_, state) => slideUpPage(
+          key: state.pageKey,
+          child: StaffPermissionScreen(
+            userId: state.pathParameters['userId'] ?? '',
+          ),
         ),
       ),
 

@@ -261,17 +261,6 @@ class AdminScreen extends ConsumerWidget {
                     onTap: () => context.push('/admin/owner-calendar'),
                   ),
 
-                  const SizedBox(height: 10),
-
-                  _MenuCard(
-                    icon: Icons.tune_rounded,
-                    iconBg: AppColors.jade50,
-                    iconColor: AppColors.jade700,
-                    title: 'Phân quyền vai trò',
-                    subtitle: 'Cấu hình quyền truy cập cho từng vai trò',
-                    onTap: () => context.push('/admin/role-permissions'),
-                  ),
-
                   // OWNER subscription entry — visible only for OWNER (admins
                   // don't subscribe). Tap → /verify/subscription-detail which
                   // hosts the "Chọn gói + Mua qua App Store" CTA (iOS) or the
@@ -289,7 +278,18 @@ class AdminScreen extends ConsumerWidget {
                     ),
                   ],
 
+                  // ADMIN-only: phân quyền nhân viên, duyệt KYC, xử lý khiếu
+                  // nại, và nhật ký hệ thống. Tài khoản khác (OWNER) không thấy.
                   if (isAdmin) ...[
+                    const SizedBox(height: 10),
+                    _MenuCard(
+                      icon: Icons.tune_rounded,
+                      iconBg: AppColors.jade50,
+                      iconColor: AppColors.jade700,
+                      title: 'Phân quyền nhân viên',
+                      subtitle: 'Cấu hình quyền truy cập cho từng nhân viên',
+                      onTap: () => context.push('/admin/role-permissions'),
+                    ),
                     const SizedBox(height: 10),
                     _MenuCard(
                       icon: Icons.verified_user_rounded,
@@ -307,8 +307,8 @@ class AdminScreen extends ConsumerWidget {
                       icon: Icons.report_gmailerrorred_rounded,
                       iconBg: colors.error.withValues(alpha: 0.1),
                       iconColor: colors.error,
-                      title: 'Báo cáo vi phạm',
-                      subtitle: 'Danh sách tố cáo và xử lý abuse',
+                      title: 'Xử lý khiếu nại',
+                      subtitle: 'Danh sách khiếu nại / vi phạm cần xử lý',
                       onTap: () => context.push('/admin/abuse-reports'),
                     ),
                     const SizedBox(height: 10),
@@ -316,8 +316,8 @@ class AdminScreen extends ConsumerWidget {
                       icon: Icons.history_rounded,
                       iconBg: colors.bgSurfaceContainer,
                       iconColor: colors.textSecondary,
-                      title: 'Lịch sử moderation',
-                      subtitle: 'Audit các hành động kiểm duyệt',
+                      title: 'Nhật ký hệ thống',
+                      subtitle: 'Lịch sử kiểm duyệt & hành động hệ thống',
                       onTap: () => context.push('/admin/moderation-audit'),
                     ),
                   ],

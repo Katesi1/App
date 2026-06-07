@@ -1,20 +1,29 @@
+import 'dart:io' show Platform;
+
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:package_info_plus/package_info_plus.dart';
+
 import '../../../core/monitoring/analytics_service.dart';
 import '../../../core/theme/app_color_scheme.dart';
 import '../../../core/theme/app_spacing.dart';
+import '../controllers/account_controller.dart';
 
-class FeedbackReportScreen extends StatefulWidget {
+/// Gửi phản hồi / báo lỗi (`POST /feedback`, rate-limit 10/giờ/user).
+class FeedbackReportScreen extends ConsumerStatefulWidget {
   const FeedbackReportScreen({super.key});
 
   @override
-  State<FeedbackReportScreen> createState() => _FeedbackReportScreenState();
+  ConsumerState<FeedbackReportScreen> createState() =>
+      _FeedbackReportScreenState();
 }
 
-class _FeedbackReportScreenState extends State<FeedbackReportScreen> {
+class _FeedbackReportScreenState extends ConsumerState<FeedbackReportScreen> {
   final _contentCtrl = TextEditingController();
   final _contactCtrl = TextEditingController();
-  String _category = 'Bug';
+  String _category = 'bug'; // bug | feature | support | other
   bool _includeDeviceInfo = true;
+  bool _sending = false;
 
   @override
   void dispose() {
@@ -23,22 +32,51 @@ class _FeedbackReportScreenState extends State<FeedbackReportScreen> {
     super.dispose();
   }
 
-  void _submit() {
-    if (_contentCtrl.text.trim().isEmpty) {
+  Future<String?> _deviceInfo() async {
+    if (!_includeDeviceInfo) return null;
+    try {
+      final info = await PackageInfo.fromPlatform();
+      return '${Platform.operatingSystem} ${Platform.operatingSystemVersion} · '
+          'app ${info.version}+${info.buildNumber}';
+    } catch (_) {
+      return Platform.operatingSystem;
+    }
+  }
+
+  Future<void> _submit() async {
+    final content = _contentCtrl.text.trim();
+    if (content.length < 10) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Vui lòng nhập nội dung phản hồi')),
+        const SnackBar(content: Text('Nội dung cần ít nhất 10 ký tự')),
       );
       return;
     }
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Đã gửi phản hồi, cảm ơn bạn')),
-    );
-    AnalyticsService.logEvent(
-      'feedback_submitted',
-      params: {'category': _category},
-    );
-    _contentCtrl.clear();
-    _contactCtrl.clear();
+    setState(() => _sending = true);
+    final deviceInfo = await _deviceInfo();
+    final result = await ref.read(accountRepositoryProvider).submitFeedback(
+          category: _category,
+          message: content,
+          contact: _contactCtrl.text.trim(),
+          deviceInfo: deviceInfo,
+        );
+    if (!mounted) return;
+    setState(() => _sending = false);
+    if (result.success) {
+      AnalyticsService.logEvent('feedback_submitted',
+          params: {'category': _category});
+      _contentCtrl.clear();
+      _contactCtrl.clear();
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Đã gửi phản hồi, cảm ơn bạn')),
+      );
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(result.message),
+          backgroundColor: context.colors.error,
+        ),
+      );
+    }
   }
 
   @override
@@ -65,12 +103,13 @@ class _FeedbackReportScreenState extends State<FeedbackReportScreen> {
           DropdownButtonFormField<String>(
             initialValue: _category,
             items: const [
-              DropdownMenuItem(value: 'Bug', child: Text('Bug')),
+              DropdownMenuItem(value: 'bug', child: Text('Báo lỗi')),
               DropdownMenuItem(
-                  value: 'Feature', child: Text('Đề xuất tính năng')),
-              DropdownMenuItem(value: 'Support', child: Text('Hỗ trợ')),
+                  value: 'feature', child: Text('Đề xuất tính năng')),
+              DropdownMenuItem(value: 'support', child: Text('Hỗ trợ')),
+              DropdownMenuItem(value: 'other', child: Text('Khác')),
             ],
-            onChanged: (v) => setState(() => _category = v ?? 'Bug'),
+            onChanged: (v) => setState(() => _category = v ?? 'bug'),
             decoration: const InputDecoration(labelText: 'Danh mục'),
           ),
           const SizedBox(height: AppSpacing.sm),
@@ -99,8 +138,8 @@ class _FeedbackReportScreenState extends State<FeedbackReportScreen> {
           ),
           const SizedBox(height: AppSpacing.md),
           FilledButton(
-            onPressed: _submit,
-            child: const Text('Gửi yêu cầu hỗ trợ'),
+            onPressed: _sending ? null : _submit,
+            child: Text(_sending ? 'Đang gửi...' : 'Gửi phản hồi'),
           ),
         ],
       ),

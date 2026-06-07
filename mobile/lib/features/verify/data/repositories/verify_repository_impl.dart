@@ -195,11 +195,37 @@ class VerifyRepositoryImpl implements VerifyRepository {
       );
       return PaymentSession.fromJson(res.data['data'] as Map<String, dynamic>);
     } on DioException catch (e) {
-      throw VerifyApiException(parseDioError(e));
+      // 409 downgradeScheduled / subscriptionFrozen carry extra fields.
+      throw _verifyError(e);
     } on TypeError catch (_) {
       // BE returned 200 but the body has a bad schema (null field, wrong type)
       // → cast fails. Convert to a business error so UI shows a friendly
       // message instead of crashing.
+      throw const VerifyApiException(
+        'Phản hồi máy chủ không hợp lệ. Vui lòng thử lại sau.',
+      );
+    }
+  }
+
+  @override
+  Future<PaymentQuote> getQuote({
+    required String planId,
+    required BillingCycle billingCycle,
+    required int rooms,
+  }) async {
+    try {
+      final res = await _dio.post(
+        ApiConstants.paymentQuote,
+        data: {
+          'planId': planId,
+          'cycle': billingCycle.name,
+          'rooms': rooms,
+        },
+      );
+      return PaymentQuote.fromJson(res.data['data'] as Map<String, dynamic>);
+    } on DioException catch (e) {
+      throw _verifyError(e);
+    } on TypeError catch (_) {
       throw const VerifyApiException(
         'Phản hồi máy chủ không hợp lệ. Vui lòng thử lại sau.',
       );
@@ -221,6 +247,35 @@ class VerifyRepositoryImpl implements VerifyRepository {
       throw const VerifyApiException(
         'Phản hồi máy chủ không hợp lệ. Vui lòng thử lại sau.',
       );
+    }
+  }
+
+  @override
+  Future<PaymentSession?> getActivePayment() async {
+    try {
+      final res = await _dio.get(ApiConstants.paymentActive);
+      final data = res.data['data'];
+      if (data is! Map<String, dynamic> || data['sessionId'] == null) {
+        return null;
+      }
+      return PaymentSession.fromJson(data);
+    } on DioException catch (e) {
+      // 404/empty → no active session.
+      if (e.response?.statusCode == 404) return null;
+      throw VerifyApiException(parseDioError(e));
+    } on TypeError catch (_) {
+      throw const VerifyApiException(
+        'Phản hồi máy chủ không hợp lệ. Vui lòng thử lại sau.',
+      );
+    }
+  }
+
+  @override
+  Future<void> cancelPayment(String sessionId) async {
+    try {
+      await _dio.post(ApiConstants.paymentCancel(sessionId));
+    } on DioException catch (e) {
+      throw VerifyApiException(parseDioError(e));
     }
   }
 
@@ -369,45 +424,11 @@ class VerifyRepositoryImpl implements VerifyRepository {
       );
       return PaymentSession.fromJson(res.data['data'] as Map<String, dynamic>);
     } on DioException catch (e) {
-      throw VerifyApiException(parseDioError(e));
+      throw _verifyError(e);
     } on TypeError catch (_) {
       // BE returned 200 but the body has a bad schema (null field, wrong type)
       // → cast fails. Convert to a business error so UI shows a friendly
       // message instead of crashing.
-      throw const VerifyApiException(
-        'Phản hồi máy chủ không hợp lệ. Vui lòng thử lại sau.',
-      );
-    }
-  }
-
-  // ── Apple In-App Purchase verification (iOS only) ──────────────────────────
-
-  @override
-  Future<AppleReceiptVerification> verifyAppleReceipt({
-    required String productId,
-    required String purchaseId,
-    required String receiptData,
-  }) async {
-    try {
-      final res = await _dio.post(
-        ApiConstants.paymentAppleVerify,
-        data: {
-          'productId': productId,
-          'purchaseId': purchaseId,
-          'receiptData': receiptData,
-        },
-      );
-      final data = res.data['data'] as Map<String, dynamic>;
-      final statusRaw = (data['status'] ?? 'approved') as String;
-      return AppleReceiptVerification(
-        status: verifyStatusFromApi(statusRaw),
-        expiresAt: _parseDate(data['expiresAt'] ?? data['expires_at']),
-        originalTransactionId: (data['originalTransactionId'] ??
-            data['original_transaction_id']) as String?,
-      );
-    } on DioException catch (e) {
-      throw VerifyApiException(parseDioError(e));
-    } on TypeError catch (_) {
       throw const VerifyApiException(
         'Phản hồi máy chủ không hợp lệ. Vui lòng thử lại sau.',
       );
@@ -432,13 +453,53 @@ class VerifyRepositoryImpl implements VerifyRepository {
     if (raw == null || raw is! String || raw.isEmpty) return null;
     return DateTime.tryParse(raw);
   }
+
+  /// Build a [VerifyApiException] from a Dio error, carrying the BE `code` +
+  /// downgrade fields (`effectiveAt`, `pendingPlanId`) for 409 business cases
+  /// (downgradeScheduled / subscriptionFrozen / ...).
+  static VerifyApiException _verifyError(DioException e) {
+    // Error response (§10.2.7): `code` + extras (pendingSession / effectiveAt /
+    // pendingPlanId) nằm ở ROOT body — KHÔNG nằm trong `.data`. Đọc thẳng từ
+    // root, tuyệt đối không unwrap `body['data']`.
+    final body = e.response?.data;
+    if (body is! Map) return VerifyApiException(parseDioError(e));
+    final pendingRaw = body['pendingSession'];
+    return VerifyApiException(
+      parseDioError(e),
+      code: body['code'] as String?,
+      effectiveAt: _parseDate(body['effectiveAt']),
+      pendingPlanId: body['pendingPlanId'] as String?,
+      pendingSession: pendingRaw is Map<String, dynamic>
+          ? PendingSessionInfo.fromJson(pendingRaw)
+          : null,
+    );
+  }
 }
 
 /// Business error from the KYC backend (carries the server's Vietnamese
-/// message or a fallback from `parseDioError`).
+/// message or a fallback from `parseDioError`). For 409 billing cases it also
+/// carries the BE `code` + downgrade scheduling fields.
 class VerifyApiException implements Exception {
   final String message;
-  const VerifyApiException(this.message);
+  final String?
+      code; // downgradeScheduled | subscriptionFrozen | planNotFound...
+  final DateTime? effectiveAt; // downgrade có hiệu lực
+  final String? pendingPlanId;
+
+  /// Kèm trong 409 `paymentPending` — phiên đang chờ để FE resume/huỷ.
+  final PendingSessionInfo? pendingSession;
+
+  const VerifyApiException(
+    this.message, {
+    this.code,
+    this.effectiveAt,
+    this.pendingPlanId,
+    this.pendingSession,
+  });
+
+  bool get isDowngradeScheduled => code == 'downgradeScheduled';
+  bool get isSubscriptionFrozen => code == 'subscriptionFrozen';
+  bool get isPaymentPending => code == 'paymentPending';
 
   @override
   String toString() => message;

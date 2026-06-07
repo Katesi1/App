@@ -285,14 +285,15 @@ class DashboardScreen extends ConsumerWidget {
                               icon: Icons.login_rounded,
                               label: 'Check-in',
                               color: colors.brandLight,
-                              onTap: () {},
+                              onTap: () => context.push('/front-desk'),
                             ),
                             const SizedBox(width: 10),
                             _QuickAction(
                               icon: Icons.logout_rounded,
                               label: 'Check-out',
                               color: colors.brandSecondary,
-                              onTap: () {},
+                              onTap: () =>
+                                  context.push('/front-desk?tab=departures'),
                             ),
                             if (user?.canManageProperty ?? false) ...[
                               const SizedBox(width: 10),
