@@ -12,6 +12,7 @@ import '../../../shared/widgets/app_toast.dart';
 import '../../../shared/widgets/loading_widget.dart';
 import '../../auth/controllers/auth_controller.dart';
 import '../controllers/verify_flow_controller.dart';
+import '../utils/kyc_access.dart';
 import 'selfie_scanner_screen.dart';
 import 'widgets/camera_frame_overlay.dart';
 import 'widgets/verify_app_bar.dart';
@@ -45,8 +46,9 @@ class _SelfieCaptureScreenState extends ConsumerState<SelfieCaptureScreen> {
       await ref.read(verifyFlowControllerProvider.notifier).uploadSelfie(file);
       await ref.read(verifyFlowControllerProvider.notifier).submitForApproval();
       await ref.read(authProvider.notifier).refreshProfile();
+      syncUserKycPendingAfterSubmit(ref);
       if (!mounted) return;
-      context.pushReplacement('/verify/pending');
+      context.go('/verify/pending');
     } catch (e) {
       if (mounted) {
         final msg = e.toString().replaceAll('Exception: ', '');

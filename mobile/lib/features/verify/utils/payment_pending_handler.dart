@@ -43,7 +43,7 @@ Future<PaymentSession?> resolvePaymentPendingConflict({
       }
       return session;
     } on VerifyApiException catch (e) {
-      if (context.mounted) showPaymentApiError(context, e);
+      if (context.mounted) showPaymentApiError(context, e, ref: ref);
       return null;
     }
   }
@@ -62,7 +62,7 @@ Future<PaymentSession?> resolvePaymentPendingConflict({
   try {
     await notifier.cancelPaymentById(sessionId);
   } on VerifyApiException catch (e) {
-    if (context.mounted) showPaymentApiError(context, e);
+    if (context.mounted) showPaymentApiError(context, e, ref: ref);
     return null;
   }
 
@@ -71,7 +71,7 @@ Future<PaymentSession?> resolvePaymentPendingConflict({
   try {
     return await onRetryAfterCancel();
   } on VerifyApiException catch (e) {
-    if (context.mounted) showPaymentApiError(context, e);
+    if (context.mounted) showPaymentApiError(context, e, ref: ref);
     return null;
   } catch (_) {
     if (context.mounted) {

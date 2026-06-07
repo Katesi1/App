@@ -6,12 +6,13 @@ import 'package:go_router/go_router.dart';
 import '../../../core/theme/app_color_scheme.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../controllers/verify_flow_controller.dart';
+import '../utils/kyc_access.dart';
 import '../data/models/plan.dart';
 import '../data/models/verify_enums.dart';
 import 'widgets/trial_countdown_text.dart';
 import 'widgets/verify_format.dart';
 
-/// Screen 7 — Trial active sau khi admin duyệt.
+/// Screen 7 — Trial active sau khi thanh toán subscription đầu tiên.
 class TrialActiveScreen extends ConsumerWidget {
   const TrialActiveScreen({super.key});
 
@@ -40,7 +41,7 @@ class TrialActiveScreen extends ConsumerWidget {
             icon: const Icon(Icons.close),
             color: colors.textSecondary,
             tooltip: 'Đóng',
-            onPressed: () => context.go('/dashboard'),
+            onPressed: () => popVerifyFlowOrDashboard(context),
           ),
         ],
       ),
@@ -84,7 +85,7 @@ class TrialActiveScreen extends ConsumerWidget {
                         side: BorderSide(color: colors.borderDefault),
                         foregroundColor: colors.textSecondary,
                       ),
-                      onPressed: () => context.go('/dashboard'),
+                      onPressed: () => popVerifyFlowOrDashboard(context),
                       child: const Text('Để sau · Về trang chủ'),
                     ),
                   ).animate(delay: 500.ms).fadeIn(duration: 320.ms),

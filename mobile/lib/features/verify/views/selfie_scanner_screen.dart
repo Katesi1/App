@@ -5,9 +5,10 @@ import 'dart:math' as math;
 import 'package:camera/camera.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:google_mlkit_face_detection/google_mlkit_face_detection.dart';
 
+import '../utils/camera_mlkit_input.dart';
+import '../utils/face_analysis_space.dart';
 import '../../../shared/widgets/app_toast.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
@@ -17,7 +18,7 @@ import '../../../core/theme/app_spacing.dart';
 // front-cam mirrored display). pitch > 0 = looking up.
 const double _yawThreshold = 18.0;
 const double _pitchThreshold = 12.0;
-const double _neutralTolerance = 8.0;
+const double _neutralTolerance = 12.0;
 
 /// Full-screen selfie scanner với **liveness challenge** + min 5s gate.
 ///
@@ -71,17 +72,10 @@ class _SelfieScannerScreenState extends State<SelfieScannerScreen>
   // để `_Challenge.matches()` enum cũng dùng được cùng giá trị.
 
   // Face quality (initial gate trước khi vào challenge).
-  static const double _minFaceFraction = 0.22;
-  static const double _maxOffsetX = 0.25;
-  static const double _maxOffsetY = 0.28;
+  static const double _minFaceFraction = 0.16;
+  static const double _maxOffsetX = 0.38;
+  static const double _maxOffsetY = 0.42;
   static const double _minEyeOpenProb = 0.4;
-
-  static const _orientationDegrees = <DeviceOrientation, int>{
-    DeviceOrientation.portraitUp: 0,
-    DeviceOrientation.landscapeLeft: 90,
-    DeviceOrientation.portraitDown: 180,
-    DeviceOrientation.landscapeRight: 270,
-  };
 
   _Phase _phase = _Phase.searching;
   _PositionHint _positionHint = _PositionHint.searching;
@@ -117,7 +111,7 @@ class _SelfieScannerScreenState extends State<SelfieScannerScreen>
         enableContours: false,
         enableTracking: false,
         performanceMode: FaceDetectorMode.accurate,
-        minFaceSize: 0.2,
+        minFaceSize: 0.15,
       ),
     );
     _initCamera();
@@ -162,7 +156,7 @@ class _SelfieScannerScreenState extends State<SelfieScannerScreen>
           enableContours: false,
           enableTracking: false,
           performanceMode: FaceDetectorMode.accurate,
-          minFaceSize: 0.2,
+          minFaceSize: 0.15,
         ),
       );
       _initCamera();
@@ -226,12 +220,17 @@ class _SelfieScannerScreenState extends State<SelfieScannerScreen>
     _processing = true;
 
     try {
-      final input = _toInputImage(image);
+      final input = cameraImageToMlKitInput(_controller!, image);
       if (input == null) return;
       final faces = await _detector?.processImage(input);
-      if (faces == null || !mounted) return;
+      if (!mounted) return;
 
-      _processFrame(faces, image.width, image.height);
+      _processFrame(
+        faces ?? const [],
+        image: image,
+        input: input,
+      );
+      setState(() {});
     } catch (e) {
       if (kDebugMode) debugPrint('[selfie scanner] frame err: $e');
     } finally {
@@ -240,7 +239,22 @@ class _SelfieScannerScreenState extends State<SelfieScannerScreen>
   }
 
   /// Phase machine driver — gọi mỗi frame (~200ms).
-  void _processFrame(List<Face> faces, int imgW, int imgH) {
+  void _processFrame(
+    List<Face> faces, {
+    required CameraImage image,
+    required InputImage input,
+  }) {
+    final controller = _controller;
+    if (controller == null) return;
+
+    final space = FaceAnalysisSpace.fromStream(
+      rawWidth: image.width,
+      rawHeight: image.height,
+      rotation:
+          input.metadata?.rotation ?? InputImageRotation.rotation0deg,
+      isFrontCamera:
+          controller.description.lensDirection == CameraLensDirection.front,
+    );
     // ── Guard: phải có đúng 1 mặt ──
     if (faces.isEmpty) {
       _setPhase(_Phase.searching, hint: _PositionHint.searching);
@@ -262,13 +276,14 @@ class _SelfieScannerScreenState extends State<SelfieScannerScreen>
 
     // ── Phase 1: positioning — đảm bảo face quality OK trước khi vào challenge ──
     if (_phase == _Phase.searching) {
-      final faceFraction = box.width / imgW;
+      final faceFraction = space.faceSizeFraction(box);
       if (faceFraction < _minFaceFraction) {
         _setPhase(_Phase.searching, hint: _PositionHint.tooFar);
         return;
       }
-      final dx = (box.center.dx - imgW / 2).abs() / imgW;
-      final dy = (box.center.dy - imgH / 2).abs() / imgH;
+      final center = space.centerInPreviewSpace(box);
+      final dx = (center.dx - space.width / 2).abs() / space.width;
+      final dy = (center.dy - space.height / 2).abs() / space.height;
       if (dx > _maxOffsetX || dy > _maxOffsetY) {
         _setPhase(_Phase.searching, hint: _PositionHint.offCenter);
         return;
@@ -303,14 +318,10 @@ class _SelfieScannerScreenState extends State<SelfieScannerScreen>
           } else {
             if (mounted) setState(() => _currentIdx++); // một setState duy nhất
           }
-        } else {
-          // Chỉ setState để re-render progress bar, không setState thêm lần nào
-          if (mounted && !_processing) setState(() {});
         }
       } else {
         if (_holdFrames != 0) {
           _holdFrames = 0;
-          if (mounted) setState(() {});
         }
       }
       return;
@@ -326,14 +337,9 @@ class _SelfieScannerScreenState extends State<SelfieScannerScreen>
         _holdFrames++;
         if (_holdFrames >= _neutralHoldThreshold && _minDurationMet) {
           _capture();
-        } else {
-          if (mounted && !_processing) setState(() {});
         }
-      } else {
-        if (_holdFrames != 0) {
-          _holdFrames = 0;
-          if (mounted) setState(() {});
-        }
+      } else if (_holdFrames != 0) {
+        _holdFrames = 0;
       }
     }
   }
@@ -346,48 +352,6 @@ class _SelfieScannerScreenState extends State<SelfieScannerScreen>
         if (hint != null) _positionHint = hint;
       });
     }
-  }
-
-  InputImage? _toInputImage(CameraImage image) {
-    final controller = _controller;
-    if (controller == null) return null;
-    final cam = controller.description;
-
-    InputImageRotation? rotation;
-    if (Platform.isIOS) {
-      rotation = InputImageRotationValue.fromRawValue(cam.sensorOrientation);
-    } else {
-      final deviceRotation =
-          _orientationDegrees[controller.value.deviceOrientation];
-      if (deviceRotation == null) return null;
-      var rot = cam.lensDirection == CameraLensDirection.front
-          ? (cam.sensorOrientation + deviceRotation) % 360
-          : (cam.sensorOrientation - deviceRotation + 360) % 360;
-      rotation = InputImageRotationValue.fromRawValue(rot);
-    }
-    if (rotation == null) return null;
-
-    final format = InputImageFormatValue.fromRawValue(image.format.raw);
-    if (format == null) return null;
-    if (Platform.isAndroid && format != InputImageFormat.nv21) return null;
-    if (Platform.isIOS && format != InputImageFormat.bgra8888) return null;
-    if (image.planes.isEmpty) return null;
-
-    final buffer = WriteBuffer();
-    for (final plane in image.planes) {
-      buffer.putUint8List(plane.bytes);
-    }
-    final bytes = buffer.done().buffer.asUint8List();
-
-    return InputImage.fromBytes(
-      bytes: bytes,
-      metadata: InputImageMetadata(
-        size: Size(image.width.toDouble(), image.height.toDouble()),
-        rotation: rotation,
-        format: format,
-        bytesPerRow: image.planes.first.bytesPerRow,
-      ),
-    );
   }
 
   // ─── Capture ─────────────────────────────────────────────────────────
@@ -611,26 +575,20 @@ enum _Challenge {
         _Challenge.lookDown => 'Cúi đầu XUỐNG',
       };
 
+  /// Mũi tên theo **màn hình mirror** (preview front cam): quay TRÁI của user
+  /// → mặt dịch sang phải trên màn → arrow_forward.
   IconData get icon => switch (this) {
-        _Challenge.lookLeft => Icons.arrow_back_rounded,
-        _Challenge.lookRight => Icons.arrow_forward_rounded,
+        _Challenge.lookLeft => Icons.arrow_forward_rounded,
+        _Challenge.lookRight => Icons.arrow_back_rounded,
         _Challenge.lookUp => Icons.arrow_upward_rounded,
         _Challenge.lookDown => Icons.arrow_downward_rounded,
       };
 
-  /// Check nếu pose hiện tại match challenge này.
-  ///
-  /// **Front camera + Flutter `camera` plugin convention** (verified empirically):
-  /// - User quay đầu sang **phải** (perspective của user) → headEulerAngleY > 0
-  /// - User quay đầu sang **trái** → headEulerAngleY < 0
-  /// - User ngẩng lên → headEulerAngleX > 0
-  /// - User cúi xuống → headEulerAngleX < 0
-  ///
-  /// (Trước đây dựa vào docs ML Kit "viewer's right" → wrong vì display tự
-  /// mirror; user kêu ngược → flip thực nghiệm.)
+  /// Pose match — yaw/pitch từ ML Kit trên ảnh front cam (không mirror).
+  /// Đã đảo trái/phải so với docs ML Kit để khớp thao tác user thực tế.
   bool matches(double yaw, double pitch) => switch (this) {
-        _Challenge.lookLeft => yaw < -_yawThreshold,
-        _Challenge.lookRight => yaw > _yawThreshold,
+        _Challenge.lookLeft => yaw > _yawThreshold,
+        _Challenge.lookRight => yaw < -_yawThreshold,
         _Challenge.lookUp => pitch > _pitchThreshold,
         _Challenge.lookDown => pitch < -_pitchThreshold,
       };

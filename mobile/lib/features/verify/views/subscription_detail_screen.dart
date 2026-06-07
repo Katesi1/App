@@ -137,6 +137,11 @@ class _SubscriptionDetailScreenState
     );
     if (method == null || !mounted) return;
 
+    if (validation.path == RenewPaymentPath.initiateSamePlan &&
+        !ensureKycApprovedForPayment(context, ref)) {
+      return;
+    }
+
     final quote = ctx.quote;
     final plan = ctx.plan;
     if (quote == null || plan == null) {
@@ -189,10 +194,10 @@ class _SubscriptionDetailScreenState
           _openSessionDialog(session, method);
           return;
         } on VerifyApiException catch (retry) {
-          showPaymentApiError(context, retry);
+          showPaymentApiError(context, retry, ref: ref);
         }
       } else {
-        showPaymentApiError(context, e);
+        showPaymentApiError(context, e, ref: ref);
       }
     } catch (e) {
       if (!mounted) return;

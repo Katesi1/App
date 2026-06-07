@@ -5,6 +5,7 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../data/models/user_model.dart';
 import '../../../core/theme/app_color_scheme.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
@@ -12,12 +13,13 @@ import '../../../shared/widgets/status_strip.dart';
 import '../../auth/controllers/auth_controller.dart';
 import '../controllers/verify_flow_controller.dart';
 import '../data/models/verify_enums.dart';
+import '../utils/kyc_access.dart';
 import 'widgets/status_timeline.dart';
 import 'widgets/verify_format.dart';
 
 /// Screen 6 — Pending approval.
 ///
-/// Polling status mỗi 30s. Khi nhận `approved` → push trial active screen,
+/// Polling status mỗi 8s. Khi nhận `approved` → chọn gói & thanh toán,
 /// nhận `rejected` → push rejected screen.
 class PendingApprovalScreen extends ConsumerStatefulWidget {
   const PendingApprovalScreen({super.key});
@@ -56,12 +58,12 @@ class _PendingApprovalScreenState extends ConsumerState<PendingApprovalScreen> {
         // sau khi user navigate về (không phải pull-to-refresh).
         await ref.read(authProvider.notifier).refreshProfile();
         if (!mounted) return;
-        context.pushReplacement('/verify/approved');
+        context.go(UserModel.subscriptionEntryRoute);
       } else if (status == VerifyStatus.rejected) {
         _poll?.cancel();
         await ref.read(authProvider.notifier).refreshProfile();
         if (!mounted) return;
-        context.pushReplacement('/verify/rejected');
+        context.go('/verify/rejected');
       }
     } catch (_) {
       // silent retry
@@ -72,16 +74,20 @@ class _PendingApprovalScreenState extends ConsumerState<PendingApprovalScreen> {
   Widget build(BuildContext context) {
     final colors = context.colors;
     final state = ref.watch(verifyFlowControllerProvider);
-    final email = state.cccdFront?.ocrResult?.fullName ?? 'tuan@email.com';
-    final paidAt = state.paymentSession != null
-        ? VerifyFormat.time(DateTime.now())
-        : '14:35';
+    final user = ref.watch(currentUserProvider);
+    final email = user?.email ?? user?.phone ?? '—';
+    final submittedAt = state.cccdFront?.uploadedAt ?? DateTime.now();
+    final submittedLabel = VerifyFormat.time(submittedAt);
 
     return Scaffold(
       backgroundColor: colors.bgCanvas,
       appBar: AppBar(
         backgroundColor: colors.bgSurface,
         elevation: 0,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back_rounded),
+          onPressed: () => returnToDashboardAfterKyc(context, ref),
+        ),
         title: Text(
           'Hồ sơ đã gửi',
           style: TextStyle(
@@ -105,7 +111,7 @@ class _PendingApprovalScreenState extends ConsumerState<PendingApprovalScreen> {
                 ),
             const SizedBox(height: AppSpacing.md),
             Text(
-              'Đang chờ admin duyệt',
+              'Đã hoàn tất xác minh',
               style: TextStyle(
                 fontSize: 18,
                 fontWeight: FontWeight.w700,
@@ -113,6 +119,16 @@ class _PendingApprovalScreenState extends ConsumerState<PendingApprovalScreen> {
               ),
             ).animate().fadeIn(delay: 200.ms, duration: 320.ms),
             const SizedBox(height: 4),
+            Text(
+              'Đang chờ admin duyệt',
+              style: TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
+                color: colors.brandSecondary,
+              ),
+              textAlign: TextAlign.center,
+            ).animate().fadeIn(delay: 260.ms, duration: 320.ms),
+            const SizedBox(height: 6),
             Text.rich(
               TextSpan(
                 style: TextStyle(
@@ -142,13 +158,17 @@ class _PendingApprovalScreenState extends ConsumerState<PendingApprovalScreen> {
               steps: [
                 TimelineStep(
                   title: 'CCCD xác minh',
-                  subtitle: '$paidAt hôm nay',
+                  subtitle: '$submittedLabel hôm nay',
                   status: TimelineStepStatus.done,
                 ),
-                TimelineStep(
-                  title: 'Thanh toán đã nhận',
-                  subtitle:
-                      '${state.selectedPlan?.tier.displayName ?? "Pro"} ${state.billingCycle == BillingCycle.yearly ? "1 năm" : "1 tháng"} · $paidAt',
+                const TimelineStep(
+                  title: 'Selfie so khớp mặt',
+                  subtitle: 'Hoàn tất',
+                  status: TimelineStepStatus.done,
+                ),
+                const TimelineStep(
+                  title: 'Gửi hồ sơ',
+                  subtitle: 'Đã nộp đủ ảnh',
                   status: TimelineStepStatus.done,
                 ),
                 const TimelineStep(
@@ -157,8 +177,13 @@ class _PendingApprovalScreenState extends ConsumerState<PendingApprovalScreen> {
                   status: TimelineStepStatus.current,
                 ),
                 const TimelineStep(
-                  title: 'Bắt đầu trial 7 ngày',
+                  title: 'Chọn gói và thanh toán',
                   subtitle: 'Sau khi được duyệt',
+                  status: TimelineStepStatus.pending,
+                ),
+                const TimelineStep(
+                  title: 'Bắt đầu trial 7 ngày',
+                  subtitle: 'Sau khi thanh toán thành công',
                   status: TimelineStepStatus.pending,
                 ),
               ],
@@ -181,9 +206,10 @@ class _PendingApprovalScreenState extends ConsumerState<PendingApprovalScreen> {
                 Expanded(
                   child: SizedBox(
                     height: 48,
-                    child: OutlinedButton(
+                    child: OutlinedButton.icon(
                       onPressed: () => context.push('/profile/help'),
-                      child: const Text('Liên hệ HT'),
+                      icon: const Icon(Icons.support_agent_outlined, size: 18),
+                      label: const Text('Liên hệ admin'),
                     ),
                   ),
                 ),
@@ -191,13 +217,11 @@ class _PendingApprovalScreenState extends ConsumerState<PendingApprovalScreen> {
                 Expanded(
                   child: SizedBox(
                     height: 48,
-                    child: OutlinedButton(
-                      style: OutlinedButton.styleFrom(
-                        side: BorderSide(color: colors.borderDefault),
-                        foregroundColor: colors.textBrand,
-                      ),
-                      onPressed: () => context.go('/dashboard'),
-                      child: const Text('Về trang chủ'),
+                    child: FilledButton.icon(
+                      onPressed: () =>
+                          returnToDashboardAfterKyc(context, ref),
+                      icon: const Icon(Icons.dashboard_outlined, size: 18),
+                      label: const Text('Trang tổng quan'),
                     ),
                   ),
                 ),

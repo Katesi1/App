@@ -357,7 +357,7 @@ class ProfileScreen extends ConsumerWidget {
         return _MenuItemData(
           icon: Icons.verified_user_outlined,
           label: 'Xác thực CCCD',
-          subtitle: 'Xác minh danh tính để đăng phòng',
+          subtitle: 'Cần xác minh tài khoản',
           iconColor: colors.brand,
           onTap: () => context.push('/verify/cccd-front'),
         );
@@ -376,7 +376,7 @@ class ProfileScreen extends ConsumerWidget {
         label: 'Mua gói',
         subtitle: 'Chọn gói phù hợp với số phòng',
         iconColor: AppColors.goldText,
-        onTap: () => context.push('/verify/select-plan'),
+        onTap: () => context.push(UserModel.subscriptionEntryRoute),
       );
     }
 
@@ -453,7 +453,13 @@ class _ProfileHeader extends StatelessWidget {
           Align(
             alignment: Alignment.centerLeft,
             child: GestureDetector(
-              onTap: () => Navigator.of(context).maybePop(),
+              onTap: () {
+                if (context.canPop()) {
+                  context.pop();
+                } else {
+                  context.go('/dashboard');
+                }
+              },
               child: Container(
                 width: 40,
                 height: 40,

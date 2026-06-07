@@ -381,30 +381,12 @@ class VerifyFlowController extends StateNotifier<VerifyFlowState> {
 
   /// Tạo payment session (mở QR / bank info / card form).
   ///
-  /// Backend yêu cầu KYC submission phải tồn tại trước khi tạo payment
-  /// (`POST /kyc/submit` trước `POST /payments/initiate`). Nếu chưa có
-  /// [submissionId], tự động submit KYC để lấy ID, sau đó tạo payment.
+  /// Option A: `POST /payments/initiate` yêu cầu admin đã duyệt KYC
+  /// (`user.kycStatus = approved`). Không tự submit KYC tại đây.
   Future<PaymentSession> initiatePayment(PaymentMethod method) async {
     final plan = state.selectedPlan;
     if (plan == null) {
       throw StateError('Chưa chọn plan');
-    }
-
-    if (state.submissionId == null) {
-      try {
-        final result = await _repo.submitForApproval();
-        state = state.copyWith(submissionId: result.submissionId);
-        _persistDraft();
-      } catch (_) {
-        // Có thể đã submit trước đó (409) — lấy submissionId từ /kyc/status.
-        try {
-          final snap = await _repo.getKycStatus();
-          if (snap.submissionId != null) {
-            state = state.copyWith(submissionId: snap.submissionId);
-            _persistDraft();
-          }
-        } catch (_) {}
-      }
     }
 
     PaymentQuote quote;

@@ -214,13 +214,11 @@ class UserModel {
     return 'Chưa có';
   }
 
-  /// Route màn hình quản lý/mua gói.
-  String get subscriptionManageRoute {
-    if (hasEverPurchasedSubscription) {
-      return '/verify/subscription-detail';
-    }
-    return '/verify/select-plan';
-  }
+  /// Màn đầu tiên khi vào luồng mua/quản lý gói — chi tiết trước, chọn gói sau.
+  static const subscriptionEntryRoute = '/verify/subscription-detail';
+
+  /// Route màn hình quản lý/mua gói (luôn chi tiết gói đăng ký).
+  String get subscriptionManageRoute => subscriptionEntryRoute;
 
   /// Đã từng có subscription (trial/active/past_due/cancelled).
   bool get hasEverPurchasedSubscription => subscriptionStatus != 'none';

@@ -9,6 +9,7 @@ import '../../../shared/widgets/app_toast.dart';
 import '../../../shared/widgets/status_strip.dart';
 import '../controllers/verify_flow_controller.dart';
 import '../data/models/verify_enums.dart';
+import '../utils/kyc_access.dart';
 import 'widgets/verify_format.dart';
 
 /// Screen 8 — Rejected (admin reject toàn bộ hoặc một phần).
@@ -35,7 +36,7 @@ class RejectedScreen extends ConsumerWidget {
             icon: const Icon(Icons.close),
             color: colors.textSecondary,
             tooltip: 'Đóng',
-            onPressed: () => context.go('/dashboard'),
+            onPressed: () => popVerifyFlowOrDashboard(context),
           ),
         ],
       ),
@@ -87,7 +88,7 @@ class RejectedScreen extends ConsumerWidget {
                           side: BorderSide(color: colors.borderDefault),
                           foregroundColor: colors.textSecondary,
                         ),
-                        onPressed: () => context.go('/dashboard'),
+                        onPressed: () => popVerifyFlowOrDashboard(context),
                         child: const Text('Về trang chủ'),
                       ),
                     ),

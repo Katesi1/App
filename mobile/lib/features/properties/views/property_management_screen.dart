@@ -10,7 +10,6 @@ import '../../../shared/widgets/loading_widget.dart';
 import '../../auth/controllers/auth_controller.dart';
 import '../../properties/controllers/property_controller.dart';
 import '../../verify/controllers/verify_flow_controller.dart';
-import '../../verify/data/models/verify_enums.dart';
 import '../../verify/views/paywall_modal.dart';
 import '../widgets/property_management_card.dart';
 
@@ -335,28 +334,24 @@ class _PropertyManagementScreenState
     final user = ref.read(currentUserProvider);
     final verifyState = ref.read(verifyFlowControllerProvider);
 
-    final needsVerify =
-        (user?.isOwner ?? false) && verifyState.status != VerifyStatus.approved;
-
-    if (!needsVerify) {
+    if (user == null) return;
+    if (!user.isOwner || user.isKycApproved) {
       context.push('/properties/new');
       return;
     }
 
-    // Routing theo status: pending → /verify/pending, rejected → /verify/rejected,
-    // còn lại → showPaywallModal → /verify/cccd-front (hoặc resume bước hiện tại).
-    if (verifyState.status == VerifyStatus.awaitingApproval) {
+    // Source of truth: user.kycStatus từ /auth/profile.
+    if (user.isKycPending) {
       context.push('/verify/pending');
       return;
     }
-    if (verifyState.status == VerifyStatus.rejected) {
+    if (user.isKycRejected) {
       context.push('/verify/rejected');
       return;
     }
 
     final ok = await showPaywallModal(context);
     if (ok == true && mounted) {
-      // Resume từ step cuối nếu có draft, ngược lại bắt đầu từ CCCD front.
       final step = verifyState.kycCurrentStep;
       final route = switch (step) {
         2 => '/verify/cccd-back',

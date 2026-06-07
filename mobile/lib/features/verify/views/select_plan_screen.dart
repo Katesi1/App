@@ -13,6 +13,7 @@ import '../data/models/plan.dart';
 import '../data/models/verify_enums.dart';
 import '../../../shared/widgets/app_toast.dart';
 import '../utils/payment_error_handler.dart';
+import '../utils/verify_flow_navigation.dart';
 import 'widgets/plan_card.dart';
 import 'widgets/verify_app_bar.dart';
 import 'widgets/verify_format.dart';
@@ -185,7 +186,7 @@ class _SelectPlanScreenState extends ConsumerState<SelectPlanScreen> {
                       enabled: !frozen,
                       onTap: () {
                         if (frozen && apiEx != null) {
-                          showPaymentApiError(context, apiEx);
+                          showPaymentApiError(context, apiEx, ref: ref);
                           return;
                         }
                         ref.invalidate(paymentQuoteProvider(quoteParams));
@@ -224,6 +225,10 @@ class _SelectPlanScreenState extends ConsumerState<SelectPlanScreen> {
     notifier.selectPlan(plan, _cycle, quote: quote);
 
     if (quote.isDowngrade) {
+      if (!ensureKycApprovedForPayment(context, ref)) {
+        if (mounted) setState(() => _submitting = false);
+        return;
+      }
       try {
         await notifier.initiatePayment(PaymentMethod.bankTransfer);
       } on VerifyApiException catch (e) {
@@ -231,10 +236,10 @@ class _SelectPlanScreenState extends ConsumerState<SelectPlanScreen> {
         if (e.isDowngradeScheduled) {
           await ref.read(authProvider.notifier).refreshProfile();
           if (!mounted) return;
-          showPaymentApiError(context, e);
+          showPaymentApiError(context, e, ref: ref);
           context.go('/verify/subscription-detail');
         } else {
-          showPaymentApiError(context, e);
+          showPaymentApiError(context, e, ref: ref);
         }
       } catch (e) {
         if (mounted) {

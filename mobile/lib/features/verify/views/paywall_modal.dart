@@ -96,7 +96,7 @@ class _PaywallModalState extends ConsumerState<PaywallModal> {
           ),
           const SizedBox(height: 6),
           Text(
-            'Để bắt đầu nhận booking, bạn cần xác thực CCCD và mua gói đăng ký.',
+            'Để bắt đầu nhận booking, bạn cần xác minh tài khoản (CCCD + selfie).',
             textAlign: TextAlign.center,
             style: TextStyle(
               fontSize: 13,
@@ -204,7 +204,7 @@ class _PaywallModalState extends ConsumerState<PaywallModal> {
     ('Chụp CCCD mặt trước', 'Quét QR hoặc chụp ảnh rõ nét'),
     ('Chụp CCCD mặt sau', 'Đọc mã QR trên thẻ'),
     ('Selfie xác minh', 'So khớp khuôn mặt với CCCD'),
-    ('Chờ admin duyệt', 'Phản hồi trong vòng 24 giờ'),
+    ('Chờ duyệt hồ sơ', 'Admin xét duyệt trong vòng 24 giờ'),
   ];
 }
 

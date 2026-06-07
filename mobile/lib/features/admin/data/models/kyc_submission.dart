@@ -32,6 +32,9 @@ class KYCSubmission extends Equatable {
   final DateTime submittedAt;
   final VerifyStatus status;
 
+  /// Tab gom từ BE: 1=chờ duyệt | 2=đã duyệt | 3=đã từ chối (v1.11).
+  final int? statusFilter;
+
   /// Reason nếu admin reject (null nếu chưa quyết định).
   final String? rejectReason;
   final List<RejectableItem> rejectedItems;
@@ -54,15 +57,26 @@ class KYCSubmission extends Equatable {
     required this.expectedRooms,
     required this.submittedAt,
     required this.status,
+    this.statusFilter,
     this.rejectReason,
     this.rejectedItems = const [],
     this.handledByAdmin,
     this.handledAt,
   });
 
-  bool get isPending => status == VerifyStatus.awaitingApproval;
-  bool get isApproved => status == VerifyStatus.approved;
-  bool get isRejected => status == VerifyStatus.rejected;
+  /// Tab chờ duyệt — gom `kyc_submitted`, `payment_pending`, `awaiting_approval`.
+  bool get isPending =>
+      statusFilter == 1 ||
+      status == VerifyStatus.awaitingApproval ||
+      status == VerifyStatus.kycSubmitted ||
+      status == VerifyStatus.paymentPending;
+
+  bool get isApproved =>
+      statusFilter == 2 ||
+      status == VerifyStatus.approved ||
+      status == VerifyStatus.refunded;
+
+  bool get isRejected => statusFilter == 3 || status == VerifyStatus.rejected;
 
   /// Số giờ kể từ lúc submit (để hiển thị "5h trước" / "Quá 24h").
   Duration get age => DateTime.now().difference(submittedAt);
@@ -102,6 +116,7 @@ class KYCSubmission extends Equatable {
         id,
         ownerId,
         status,
+        statusFilter,
         rejectReason,
         rejectedItems,
         handledByAdmin,

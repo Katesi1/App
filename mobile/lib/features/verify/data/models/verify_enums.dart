@@ -6,7 +6,7 @@ enum VerifyStatus {
   draft, // Owner đang fill, chưa upload đủ
   kycSubmitted, // Đã upload CCCD + selfie
   paymentPending, // Chưa thanh toán
-  awaitingApproval, // Payment OK, chờ admin duyệt
+  awaitingApproval, // Đã nộp hồ sơ, chờ admin duyệt (Option A)
   approved, // Admin đã duyệt → trial active
   rejected, // Admin reject (toàn bộ hoặc một phần)
   refunded, // Đã hoàn tiền

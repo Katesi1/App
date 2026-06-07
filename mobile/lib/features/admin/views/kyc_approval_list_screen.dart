@@ -8,7 +8,6 @@ import '../../../core/theme/app_color_scheme.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../shared/widgets/loading_widget.dart';
-import '../../verify/data/models/verify_enums.dart';
 import '../../verify/views/widgets/verify_format.dart';
 import '../controllers/kyc_approval_controller.dart';
 import '../data/models/kyc_submission.dart';
@@ -24,7 +23,7 @@ class KYCApprovalListScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final colors = context.colors;
     final filter = ref.watch(kycQueueFilterProvider);
-    final listAsync = ref.watch(filteredKycSubmissionsProvider);
+    final listAsync = ref.watch(sortedKycSubmissionsProvider(filter));
     final pendingCount = ref.watch(pendingKycCountProvider).valueOrNull ?? 0;
 
     return Scaffold(
@@ -124,6 +123,9 @@ class KYCApprovalListScreen extends ConsumerWidget {
           ),
           _FilterTabs(
             current: filter,
+            pendingCount: pendingCount,
+            currentTabTotal:
+                ref.watch(kycQueueProvider(filter)).valueOrNull?.total,
             onChanged: (f) =>
                 ref.read(kycQueueFilterProvider.notifier).state = f,
           ),
@@ -137,7 +139,8 @@ class KYCApprovalListScreen extends ConsumerWidget {
                 }
                 return RefreshIndicator(
                   color: colors.brand,
-                  onRefresh: () async => ref.invalidate(kycSubmissionsProvider),
+                  onRefresh: () async =>
+                      ref.invalidate(kycQueueProvider(filter)),
                   child: ListView.separated(
                     padding: const EdgeInsets.all(AppSpacing.md),
                     itemCount: list.length,
@@ -162,25 +165,27 @@ class KYCApprovalListScreen extends ConsumerWidget {
   }
 }
 
-class _FilterTabs extends ConsumerWidget {
+class _FilterTabs extends StatelessWidget {
   final KYCQueueFilter current;
+  final int pendingCount;
+  final int? currentTabTotal;
   final ValueChanged<KYCQueueFilter> onChanged;
 
-  const _FilterTabs({required this.current, required this.onChanged});
+  const _FilterTabs({
+    required this.current,
+    required this.pendingCount,
+    required this.currentTabTotal,
+    required this.onChanged,
+  });
+
+  int? _countFor(KYCQueueFilter f) {
+    if (f == KYCQueueFilter.pending) return pendingCount;
+    if (f == current) return currentTabTotal;
+    return null;
+  }
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final all = ref.watch(kycSubmissionsProvider).valueOrNull ?? const [];
-    final counts = {
-      KYCQueueFilter.pending:
-          all.where((s) => s.status == VerifyStatus.awaitingApproval).length,
-      KYCQueueFilter.approved:
-          all.where((s) => s.status == VerifyStatus.approved).length,
-      KYCQueueFilter.rejected:
-          all.where((s) => s.status == VerifyStatus.rejected).length,
-      KYCQueueFilter.all: all.length,
-    };
-
+  Widget build(BuildContext context) {
     return Container(
       padding: const EdgeInsets.fromLTRB(AppSpacing.md, 6, AppSpacing.md, 10),
       color: context.colors.bgSurface,
@@ -191,7 +196,7 @@ class _FilterTabs extends ConsumerWidget {
             for (final f in KYCQueueFilter.values) ...[
               _FilterChip(
                 label: _label(f),
-                count: counts[f] ?? 0,
+                count: _countFor(f),
                 isActive: current == f,
                 onTap: () => onChanged(f),
               ),
@@ -213,7 +218,7 @@ class _FilterTabs extends ConsumerWidget {
 
 class _FilterChip extends StatelessWidget {
   final String label;
-  final int count;
+  final int? count;
   final bool isActive;
   final VoidCallback onTap;
 
@@ -250,24 +255,26 @@ class _FilterChip extends StatelessWidget {
                 color: isActive ? AppColors.darkBg : colors.textPrimary,
               ),
             ),
-            const SizedBox(width: 6),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
-              decoration: BoxDecoration(
-                color: isActive
-                    ? AppColors.darkBg.withValues(alpha: 0.15)
-                    : colors.borderDefault,
-                borderRadius: BorderRadius.circular(100),
-              ),
-              child: Text(
-                '$count',
-                style: TextStyle(
-                  fontSize: 10,
-                  fontWeight: FontWeight.w700,
-                  color: isActive ? AppColors.darkBg : colors.textTertiary,
+            if (count != null) ...[
+              const SizedBox(width: 6),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
+                decoration: BoxDecoration(
+                  color: isActive
+                      ? AppColors.darkBg.withValues(alpha: 0.15)
+                      : colors.borderDefault,
+                  borderRadius: BorderRadius.circular(100),
+                ),
+                child: Text(
+                  '$count',
+                  style: TextStyle(
+                    fontSize: 10,
+                    fontWeight: FontWeight.w700,
+                    color: isActive ? AppColors.darkBg : colors.textTertiary,
+                  ),
                 ),
               ),
-            ),
+            ],
           ],
         ),
       ),
@@ -449,13 +456,19 @@ class _StatusPill extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = context.colors;
-    final (label, fg, bg) = switch (submission.status) {
-      VerifyStatus.approved => (
+    final (label, fg, bg) = switch (submission.statusFilter) {
+      2 => ('Đã duyệt', colors.success, AppColors.successBgDark),
+      3 => ('Từ chối', colors.error, AppColors.errorBgDark),
+      _ when submission.isApproved => (
           'Đã duyệt',
           colors.success,
           AppColors.successBgDark
         ),
-      VerifyStatus.rejected => ('Từ chối', colors.error, AppColors.errorBgDark),
+      _ when submission.isRejected => (
+          'Từ chối',
+          colors.error,
+          AppColors.errorBgDark
+        ),
       _ => submission.isOverdue
           ? ('Quá hạn', colors.error, AppColors.errorBgDark)
           : ('Chờ duyệt', colors.brandSecondary, AppColors.goldBg),

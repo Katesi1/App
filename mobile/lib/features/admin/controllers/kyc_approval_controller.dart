@@ -1,61 +1,54 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../verify/data/models/verify_enums.dart';
+import '../data/models/kyc_queue_page.dart';
 import '../data/models/kyc_submission.dart';
 import '../data/repositories/admin_kyc_repository.dart';
 
-/// Filter cho admin KYC list.
-enum KYCQueueFilter { pending, all, approved, rejected }
+export '../data/repositories/admin_kyc_repository.dart'
+    show KYCQueueFilter, KYCQueueFilterX;
 
 /// State của filter (UI controlled).
 final kycQueueFilterProvider =
     StateProvider<KYCQueueFilter>((_) => KYCQueueFilter.pending);
 
-/// Toàn bộ submissions (pre-filter).
-final kycSubmissionsProvider = FutureProvider<List<KYCSubmission>>(
-  (ref) => ref.watch(adminKYCRepositoryProvider).fetchAll(),
+/// Queue theo tab — một request `GET /admin/kyc/queue?filter=0|1|2|3`.
+final kycQueueProvider = FutureProvider.family<KycQueuePage, KYCQueueFilter>(
+  (ref, filter) => ref.watch(adminKYCRepositoryProvider).fetchQueue(filter),
 );
 
-/// Submissions sau khi áp filter — sort overdue/oldest pending lên đầu.
-final filteredKycSubmissionsProvider =
-    Provider<AsyncValue<List<KYCSubmission>>>((ref) {
-  final filter = ref.watch(kycQueueFilterProvider);
-  final all = ref.watch(kycSubmissionsProvider);
-  return all.whenData((list) {
-    final filtered = switch (filter) {
-      KYCQueueFilter.pending =>
-        list.where((s) => s.status == VerifyStatus.awaitingApproval).toList(),
-      KYCQueueFilter.approved =>
-        list.where((s) => s.status == VerifyStatus.approved).toList(),
-      KYCQueueFilter.rejected =>
-        list.where((s) => s.status == VerifyStatus.rejected).toList(),
-      KYCQueueFilter.all => List<KYCSubmission>.from(list),
-    };
-
-    // Pending: overdue lên đầu, sau đó oldest first (FIFO).
-    // Resolved (approved/rejected): newest first.
-    if (filter == KYCQueueFilter.pending) {
-      filtered.sort((a, b) {
-        if (a.isOverdue != b.isOverdue) return a.isOverdue ? -1 : 1;
-        return a.submittedAt.compareTo(b.submittedAt);
-      });
-    } else {
-      filtered.sort((a, b) {
-        final ah = a.handledAt ?? a.submittedAt;
-        final bh = b.handledAt ?? b.submittedAt;
-        return bh.compareTo(ah);
-      });
-    }
-    return filtered;
-  });
+/// Items đã sort theo quy tắc từng tab.
+final sortedKycSubmissionsProvider =
+    Provider.family<AsyncValue<List<KYCSubmission>>, KYCQueueFilter>(
+        (ref, filter) {
+  final queue = ref.watch(kycQueueProvider(filter));
+  return queue.whenData((page) => _sortSubmissions(page.items, filter));
 });
 
-/// Số submission pending (cho badge counter trên admin home).
+List<KYCSubmission> _sortSubmissions(
+  List<KYCSubmission> items,
+  KYCQueueFilter filter,
+) {
+  final sorted = List<KYCSubmission>.from(items);
+  if (filter == KYCQueueFilter.pending) {
+    sorted.sort((a, b) {
+      if (a.isOverdue != b.isOverdue) return a.isOverdue ? -1 : 1;
+      return a.submittedAt.compareTo(b.submittedAt);
+    });
+  } else {
+    sorted.sort((a, b) {
+      final ah = a.handledAt ?? a.submittedAt;
+      final bh = b.handledAt ?? b.submittedAt;
+      return bh.compareTo(ah);
+    });
+  }
+  return sorted;
+}
+
+/// Badge sidebar — `pendingCount` từ BE, không đếm client-side.
 final pendingKycCountProvider = Provider<AsyncValue<int>>((ref) {
-  final all = ref.watch(kycSubmissionsProvider);
-  return all.whenData(
-    (list) => list.where((s) => s.isPending).length,
-  );
+  final queue = ref.watch(kycQueueProvider(KYCQueueFilter.pending));
+  return queue.whenData((page) => page.pendingCount);
 });
 
 /// Detail của 1 submission.
@@ -75,7 +68,7 @@ class KYCApprovalActionsNotifier extends StateNotifier<AsyncValue<void>> {
       await _ref
           .read(adminKYCRepositoryProvider)
           .approve(id, adminName: adminName);
-      _ref.invalidate(kycSubmissionsProvider);
+      _ref.invalidate(kycQueueProvider);
       _ref.invalidate(kycSubmissionProvider(id));
       state = const AsyncValue.data(null);
       return true;
@@ -99,7 +92,7 @@ class KYCApprovalActionsNotifier extends StateNotifier<AsyncValue<void>> {
             reason: reason,
             items: items,
           );
-      _ref.invalidate(kycSubmissionsProvider);
+      _ref.invalidate(kycQueueProvider);
       _ref.invalidate(kycSubmissionProvider(id));
       state = const AsyncValue.data(null);
       return true;

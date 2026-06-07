@@ -8,6 +8,7 @@ import '../../../verify/data/models/ocr_result.dart';
 import '../../../verify/data/models/payment_session.dart';
 import '../../../verify/data/models/selfie_upload.dart';
 import '../../../verify/data/models/verify_enums.dart';
+import '../models/kyc_queue_page.dart';
 import '../models/kyc_submission.dart';
 import 'admin_kyc_repository.dart';
 
@@ -17,32 +18,34 @@ class AdminKycRepositoryImpl implements AdminKycRepository {
   AdminKycRepositoryImpl({Dio? dio}) : _dio = dio ?? ApiClient.instance;
 
   @override
-  Future<List<KYCSubmission>> fetchAll() async {
+  Future<KycQueuePage> fetchQueue(
+    KYCQueueFilter filter, {
+    int page = 1,
+    int pageSize = 20,
+  }) async {
     try {
-      final results = await Future.wait([
-        _fetchPage('awaiting_approval'),
-        _fetchPage('approved'),
-        _fetchPage('rejected'),
-      ]);
-      return [...results[0], ...results[1], ...results[2]];
+      final res = await _dio.get(
+        ApiConstants.adminKycQueue,
+        queryParameters: {
+          'filter': filter.apiFilter,
+          'page': page,
+          'pageSize': pageSize,
+        },
+      );
+      final dataBlock = res.data['data'] as Map<String, dynamic>? ?? {};
+      final items =
+          ((dataBlock['items'] as List?) ?? []).cast<Map<String, dynamic>>();
+      return KycQueuePage(
+        filter: (dataBlock['filter'] as num?)?.toInt() ?? filter.apiFilter,
+        pendingCount: (dataBlock['pendingCount'] as num?)?.toInt() ?? 0,
+        total: (dataBlock['total'] as num?)?.toInt() ?? items.length,
+        page: (dataBlock['page'] as num?)?.toInt() ?? page,
+        pageSize: (dataBlock['pageSize'] as num?)?.toInt() ?? pageSize,
+        items: items.map(_listItemToSubmission).toList(),
+      );
     } on DioException catch (e) {
       throw Exception(parseDioError(e));
     }
-  }
-
-  Future<List<KYCSubmission>> _fetchPage(String status) async {
-    final res = await _dio.get(
-      ApiConstants.adminKycQueue,
-      queryParameters: {
-        'page': 1,
-        'pageSize': 100,
-        'status': status,
-      },
-    );
-    final dataBlock = res.data['data'] as Map<String, dynamic>?;
-    final items =
-        ((dataBlock?['items'] as List?) ?? []).cast<Map<String, dynamic>>();
-    return items.map(_listItemToSubmission).toList();
   }
 
   @override
@@ -65,13 +68,11 @@ class AdminKycRepositoryImpl implements AdminKycRepository {
         ApiConstants.adminKycApprove(id),
         data: {'trialDays': 7},
       );
-      // Backend trả `{submissionId, status, approvedAt, trialEndsAt}` —
-      // build minimal KYCSubmission từ response, controller sẽ invalidate
-      // `kycSubmissionsProvider` ngay sau đó nên UI sẽ refetch full data.
       final data = (res.data['data'] as Map<String, dynamic>?) ?? {};
       return _ackSubmission(
         id: id,
         status: VerifyStatus.approved,
+        statusFilter: 2,
         adminName: adminName,
         handledAt: _parseDate(data['approvedAt']) ?? DateTime.now(),
       );
@@ -98,6 +99,7 @@ class AdminKycRepositoryImpl implements AdminKycRepository {
       return _ackSubmission(
         id: id,
         status: VerifyStatus.rejected,
+        statusFilter: 3,
         adminName: adminName,
         handledAt: DateTime.now(),
         rejectReason: reason,
@@ -111,6 +113,7 @@ class AdminKycRepositoryImpl implements AdminKycRepository {
   KYCSubmission _ackSubmission({
     required String id,
     required VerifyStatus status,
+    required int statusFilter,
     required String adminName,
     required DateTime handledAt,
     String? rejectReason,
@@ -129,6 +132,7 @@ class AdminKycRepositoryImpl implements AdminKycRepository {
       expectedRooms: 0,
       submittedAt: handledAt,
       status: status,
+      statusFilter: statusFilter,
       rejectReason: rejectReason,
       rejectedItems: rejectedItems,
       handledByAdmin: adminName,
@@ -158,6 +162,7 @@ class AdminKycRepositoryImpl implements AdminKycRepository {
           _parseDate(json['createdAt']) ??
           DateTime.now(),
       status: verifyStatusFromApi(json['status'] as String),
+      statusFilter: (json['statusFilter'] as num?)?.toInt(),
       rejectReason: json['rejectReason'] as String?,
       rejectedItems: rejectedRaw
           .map(RejectableItemX.fromId)
@@ -225,9 +230,6 @@ class AdminKycRepositoryImpl implements AdminKycRepository {
     );
   }
 
-  // ─── Helpers ────────────────────────────────────────────────────────────────
-
-  /// Format `"professional"` + `"yearly"` → `"Professional · Hàng năm"`.
   String _formatPlanName(String? planId, {String? cycle}) {
     final name = switch (planId) {
       'starter' => 'Starter',
@@ -249,8 +251,6 @@ class AdminKycRepositoryImpl implements AdminKycRepository {
     return DateTime.tryParse(raw);
   }
 
-  // Backend đôi khi không trả image (vd OCR pending) — render placeholder
-  // thay vì crash UI.
   CCCDUpload _emptyCccd() => CCCDUpload(
         id: '',
         imageUrl: '',

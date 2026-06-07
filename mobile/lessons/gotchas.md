@@ -58,4 +58,23 @@ Ghi lại các lỗi, edge case, bài học từ quá trình phát triển. Form
 
 ---
 
+## Selfie KYC — ML Kit không nhận mặt (kẹt "Đặt khuôn mặt vào khung")
+
+**Vấn đề**: Màn quét selfie/liveness không detect khuôn mặt, pill luôn hiện "Đặt khuôn mặt vào khung".
+
+**Nguyên nhân**:
+1. `selfie_scanner_screen` concat **tất cả** `image.planes` vào một buffer → bytes sai format NV21 → `FaceDetector` trả `faces.isEmpty` mọi frame.
+2. Một số thiết bị Android (`camera_android_camerax`) vẫn trả YUV_420_888 (3 plane) dù đã set `ImageFormatGroup.nv21`.
+3. `deviceOrientation == null` bỏ qua frame; UI không `setState` khi `_processing == true` nên progress không cập nhật.
+
+**Giải pháp**: Dùng `cameraImageToMlKitInput()` (`lib/features/verify/utils/camera_mlkit_input.dart`) — plane đầu cho NV21/BGRA, convert YUV→NV21 khi 3 plane, fallback orientation `0`. CCCD scanner cũng dùng helper này.
+
+**Tiếp theo (kẹt "Căn giữa khuôn mặt" dù log `detectFaces` chạy)**: ML Kit đã detect nhưng so center bằng `image.width/height` thô (landscape) trong khi box nằm trong không gian đã xoay; preview front cam mirror ngang. Dùng `FaceAnalysisSpace` — swap W/H khi rotation 90°/270°, mirror X cho front camera.
+
+**Liveness trái/phải ngược**: Prompt "TRÁI/PHẢI" + mũi tên phải theo **góc nhìn user trên preview mirror** (TRÁI → `arrow_forward`); yaw match đảo: `lookLeft => yaw > threshold`, `lookRight => yaw < -threshold`.
+
+**Sau selfie Option A**: `context.go('/verify/pending')` — không về dashboard; màn pending có timeline + "Liên hệ admin" / "Trang tổng quan".
+
+---
+
 _(Thêm gotcha mới vào đây khi phát hiện)_

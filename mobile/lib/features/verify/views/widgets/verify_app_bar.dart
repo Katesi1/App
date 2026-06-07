@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:go_router/go_router.dart';
 
 import '../../../../core/theme/app_color_scheme.dart';
 import '../../../../core/theme/app_spacing.dart';
+import '../../utils/kyc_access.dart';
 import 'stepper_progress.dart';
 
 /// AppBar custom cho các screen verify flow.
@@ -51,16 +51,7 @@ class VerifyAppBar extends StatelessWidget implements PreferredSizeWidget {
               Row(
                 children: [
                   _BackButton(
-                    onTap: onBack ??
-                        () {
-                          // Verify flow thường được vào qua pushReplacement
-                          // → stack có thể rỗng. Fallback /dashboard.
-                          if (context.canPop()) {
-                            context.pop();
-                          } else {
-                            context.go('/dashboard');
-                          }
-                        },
+                    onTap: onBack ?? () => popVerifyFlowOrDashboard(context),
                   ),
                   const SizedBox(width: 12),
                   Expanded(

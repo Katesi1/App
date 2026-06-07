@@ -148,7 +148,7 @@ lib/
     admin/
       controllers/
         user_controller.dart     # userListProvider, UserActionsNotifier
-        kyc_approval_controller.dart  # kycSubmissionsProvider, KYCApprovalActionsNotifier (approve/reject)
+        kyc_approval_controller.dart  # kycQueueProvider, KYCApprovalActionsNotifier (approve/reject)
       data/
         models/
           kyc_submission.dart    # KYCSubmission view-model cho admin queue

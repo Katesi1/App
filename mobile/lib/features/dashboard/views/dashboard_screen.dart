@@ -13,6 +13,7 @@ import '../../bookings/controllers/booking_controller.dart';
 import '../../dashboard/controllers/dashboard_controller.dart';
 import '../../verify/data/models/verify_enums.dart';
 import '../../verify/views/paywall_modal.dart';
+import '../../../shared/utils/dashboard_refresh.dart';
 import '../../../shared/widgets/app_scaffold.dart';
 import '../../../shared/widgets/loading_widget.dart';
 import '../../../shared/widgets/pagination_bar.dart';
@@ -60,13 +61,7 @@ class DashboardScreen extends ConsumerWidget {
         ),
         data: (stats) => RefreshIndicator(
           color: colors.brand,
-          onRefresh: () async {
-            // Refresh stats + user profile cùng lúc để bắt KYC/subscription
-            // status thay đổi từ backend (vd: admin vừa approve KYC).
-            ref.invalidate(dashboardStatsProvider);
-            ref.invalidate(bookingListProvider(null));
-            await ref.read(authProvider.notifier).refreshProfile();
-          },
+          onRefresh: () => refreshDashboardData(ref),
           child: SingleChildScrollView(
             physics: const AlwaysScrollableScrollPhysics(),
             child: Column(
@@ -1227,6 +1222,8 @@ class _SubscriptionBanner extends ConsumerWidget {
   final UserModel user;
   const _SubscriptionBanner({required this.user});
 
+  bool get _needsFirstPurchase => user.subscriptionStatus == 'none';
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final colors = context.colors;
@@ -1248,7 +1245,13 @@ class _SubscriptionBanner extends ConsumerWidget {
     ) = _resolveVariant(colors);
 
     return InkWell(
-      onTap: () => _showDetailSheet(context),
+      onTap: () {
+        if (_needsFirstPurchase) {
+          context.push(UserModel.subscriptionEntryRoute);
+          return;
+        }
+        _showDetailSheet(context);
+      },
       borderRadius: BorderRadius.circular(14),
       child: Container(
         padding: const EdgeInsets.all(14),
@@ -1393,7 +1396,11 @@ class _SubscriptionBanner extends ConsumerWidget {
               child: ElevatedButton.icon(
                 onPressed: () {
                   Navigator.of(sheetCtx).maybePop();
-                  context.push('/profile/help');
+                  if (_needsFirstPurchase) {
+                    context.push(UserModel.subscriptionEntryRoute);
+                  } else {
+                    context.push('/profile/help');
+                  }
                 },
                 icon: const Icon(Icons.support_agent_rounded, size: 18),
                 label: Text(ctaLabel),
@@ -1452,6 +1459,14 @@ class _SubscriptionBanner extends ConsumerWidget {
             'Tài khoản đã bị tạm ngưng nhận booking. Liên hệ hỗ trợ để kích '
             'hoạt lại.',
         'Liên hệ hỗ trợ',
+      );
+    }
+    if (_needsFirstPurchase) {
+      return (
+        'KYC đã duyệt — chọn gói',
+        'Hồ sơ xác minh đã được phê duyệt. Chọn gói subscription và thanh '
+            'toán để bắt đầu dùng thử 7 ngày.',
+        'Chọn gói thanh toán',
       );
     }
     return (
@@ -1519,7 +1534,21 @@ class _SubscriptionBanner extends ConsumerWidget {
         'Liên hệ hỗ trợ nếu muốn tiếp tục sử dụng.',
       );
     }
-    // Fallback (subscription_status='none' nhưng KYC approved — edge case)
+    // KYC approved, chưa mua gói — Option A: chọn plan + thanh toán
+    if (_needsFirstPurchase) {
+      return (
+        LinearGradient(
+          colors: [AppColors.infoBgDark, AppColors.goldBg],
+        ),
+        colors.brandSecondary.withValues(alpha: 0.35),
+        Icons.shopping_bag_outlined,
+        colors.brandSecondary,
+        colors.textPrimary,
+        colors.textSecondary,
+        'KYC đã duyệt — chọn gói',
+        'Thanh toán gói để kích hoạt trial 7 ngày.',
+      );
+    }
     return (
       LinearGradient(
         colors: [AppColors.infoBgDark, AppColors.infoBgDark],
@@ -1590,9 +1619,9 @@ class _VerifyCTABanner extends StatelessWidget {
           colors.borderGold.withValues(alpha: 0.3),
           Icons.workspace_premium,
           colors.textBrandAccent,
-          'Verify để bắt đầu nhận booking',
-          '4 bước · Trial 7 ngày miễn phí khi xong.',
-          'Bắt đầu',
+          'Cần xác minh tài khoản',
+          'Xác minh CCCD và selfie để đăng phòng.',
+          'Xác minh ngay',
           '/verify/cccd-front',
           true,
         ),

@@ -1040,14 +1040,14 @@ Paywall modal (`paywall_modal.dart`) — không có route; hydrate từ `GET /ky
 | `/admin/users/new` | ADMIN | `POST /users` |
 | `/admin/users/:id/edit` | ADMIN | GET/PUT/DELETE user |
 | `/admin/users/:id/trial` | ADMIN | subscription + grant/revoke trial |
-| `/admin/kyc` | ADMIN | `GET /admin/kyc/queue?status=&page=&pageSize=` |
+| `/admin/kyc` | ADMIN | `GET /admin/kyc/queue?filter=0\|1\|2\|3&page=&pageSize=` |
 | `/admin/kyc/:id` | ADMIN | GET detail, approve, reject |
 | `/admin/abuse-reports` | ADMIN | **Mock** — `MockAbuseReportRepository` (4 tab: Chờ xử lý / Tất cả / Đã xử lý / Bỏ qua) |
 | `/admin/abuse-reports/:id` | ADMIN | **Mock** — detail + actions: điều tra, bỏ qua, xử lý xong (ẩn nội dung / khóa user) |
 | `/admin/moderation-audit` | ADMIN | **UI placeholder** — hiển thị tên **Lịch sử hệ thống** (nhật ký moderation); chờ `GET /admin/audit-log` |
 | `/admin/role-permissions` | ADMIN | **Local SharedPreferences only** |
 
-KYC queue FE gọi 3 lần parallel: `status=awaiting_approval`, `approved`, `rejected` (pageSize 100).
+KYC queue FE gọi **một API** khi đổi tab: `filter=0|1|2|3` (0=Tất cả, 1=Chờ duyệt, 2=Đã duyệt, 3=Từ chối). Badge sidebar = `pendingCount` trong response — không gọi `count-pending`.
 
 **Báo cáo vi phạm — file chính:**
 

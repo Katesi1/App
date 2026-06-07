@@ -234,7 +234,7 @@ void main() {
         );
         expect(user.hasEverPurchasedSubscription, false);
         expect(user.subscriptionPlanActionLabel, 'Mua gói');
-        expect(user.subscriptionManageRoute, '/verify/select-plan');
+        expect(user.subscriptionManageRoute, UserModel.subscriptionEntryRoute);
       });
 
       test('trial shows Nâng cấp gói and detail route', () {

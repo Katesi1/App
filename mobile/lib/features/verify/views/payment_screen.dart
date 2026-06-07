@@ -9,6 +9,7 @@ import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../shared/widgets/app_toast.dart';
 import '../../../shared/widgets/status_strip.dart';
+import '../../auth/controllers/auth_controller.dart';
 import '../controllers/verify_flow_controller.dart';
 import '../data/models/payment_session.dart';
 import '../data/models/verify_enums.dart';
@@ -79,7 +80,7 @@ class _PaymentScreenState extends ConsumerState<PaymentScreen>
     try {
       await ref.read(verifyFlowControllerProvider.notifier).ensureFreshQuote();
     } on VerifyApiException catch (e) {
-      if (mounted) showPaymentApiError(context, e);
+      if (mounted) showPaymentApiError(context, e, ref: ref);
     } finally {
       if (mounted) setState(() => _syncingQuote = false);
     }
@@ -113,7 +114,7 @@ class _PaymentScreenState extends ConsumerState<PaymentScreen>
     try {
       session = await notifier.syncActivePaymentFromApi();
     } on VerifyApiException catch (e) {
-      if (mounted) showPaymentApiError(context, e);
+      if (mounted) showPaymentApiError(context, e, ref: ref);
       return;
     }
     if (session == null) return;
@@ -145,6 +146,10 @@ class _PaymentScreenState extends ConsumerState<PaymentScreen>
   }
 
   Future<void> _handlePay() async {
+    if (!ensureKycApprovedForPayment(context, ref)) {
+      return;
+    }
+
     AnalyticsService.logEvent('verify_payment_submit', params: {
       'method': _selected.name,
     });
@@ -191,7 +196,7 @@ class _PaymentScreenState extends ConsumerState<PaymentScreen>
         });
         return;
       }
-      showPaymentApiError(context, e);
+      showPaymentApiError(context, e, ref: ref);
       AnalyticsService.logEvent('verify_payment_session_failed', params: {
         'method': _selected.name,
       });
@@ -294,6 +299,7 @@ class _PaymentScreenState extends ConsumerState<PaymentScreen>
           _processing = v;
           _awaitingReconcile = v;
         }),
+        successRoute: _onboardingSuccessRoute(ref),
       );
     } catch (_) {
       // silent retry — poller schedule tiếp
@@ -343,7 +349,7 @@ class _PaymentScreenState extends ConsumerState<PaymentScreen>
       if (context.canPop()) {
         context.pop();
       } else {
-        context.go('/dashboard');
+        popVerifyFlowOrDashboard(context);
       }
       return;
     }
@@ -547,4 +553,14 @@ class _PaymentScreenState extends ConsumerState<PaymentScreen>
       ),
     );
   }
+}
+
+/// Subscription đầu tiên sau KYC approved → trial screen; còn lại → chi tiết gói.
+String _onboardingSuccessRoute(WidgetRef ref) {
+  final user = ref.read(currentUserProvider);
+  final isFirstSubscription =
+      user?.isKycApproved == true && user?.subscriptionStatus == 'none';
+  return isFirstSubscription
+      ? '/verify/approved'
+      : '/verify/subscription-detail';
 }

@@ -15,6 +15,7 @@ import '../../../shared/widgets/app_toast.dart';
 import '../data/models/ocr_result.dart';
 import '../data/models/scanner_result.dart';
 import '../data/models/verify_enums.dart';
+import '../utils/camera_mlkit_input.dart';
 import '../utils/cccd_front_ocr_parser.dart';
 import '../utils/cccd_image_cropper.dart';
 import '../utils/cccd_image_validator.dart';
@@ -64,14 +65,6 @@ class _CCCDScannerScreenState extends State<CCCDScannerScreen>
   static const double _frameWidthFraction = 0.86;
 
   bool get _isFront => widget.side == CCCDSide.front;
-
-  // Map device orientation → degrees (Android cần để compute rotation).
-  static const _orientationDegrees = <DeviceOrientation, int>{
-    DeviceOrientation.portraitUp: 0,
-    DeviceOrientation.landscapeLeft: 90,
-    DeviceOrientation.portraitDown: 180,
-    DeviceOrientation.landscapeRight: 270,
-  };
 
   @override
   void initState() {
@@ -185,7 +178,7 @@ class _CCCDScannerScreenState extends State<CCCDScannerScreen>
     _processing = true;
 
     try {
-      final input = _toInputImage(image);
+      final input = cameraImageToMlKitInput(_controller!, image);
       if (input == null) return;
 
       final hit = _isFront
@@ -285,43 +278,6 @@ class _CCCDScannerScreenState extends State<CCCDScannerScreen>
       }
     }
     return false;
-  }
-
-  InputImage? _toInputImage(CameraImage image) {
-    final controller = _controller;
-    if (controller == null) return null;
-    final cam = controller.description;
-
-    InputImageRotation? rotation;
-    if (Platform.isIOS) {
-      rotation = InputImageRotationValue.fromRawValue(cam.sensorOrientation);
-    } else {
-      final deviceRotation =
-          _orientationDegrees[controller.value.deviceOrientation];
-      if (deviceRotation == null) return null;
-      var rot = cam.lensDirection == CameraLensDirection.front
-          ? (cam.sensorOrientation + deviceRotation) % 360
-          : (cam.sensorOrientation - deviceRotation + 360) % 360;
-      rotation = InputImageRotationValue.fromRawValue(rot);
-    }
-    if (rotation == null) return null;
-
-    final format = InputImageFormatValue.fromRawValue(image.format.raw);
-    if (format == null) return null;
-    if (Platform.isAndroid && format != InputImageFormat.nv21) return null;
-    if (Platform.isIOS && format != InputImageFormat.bgra8888) return null;
-    if (image.planes.isEmpty) return null;
-
-    final plane = image.planes.first;
-    return InputImage.fromBytes(
-      bytes: plane.bytes,
-      metadata: InputImageMetadata(
-        size: Size(image.width.toDouble(), image.height.toDouble()),
-        rotation: rotation,
-        format: format,
-        bytesPerRow: plane.bytesPerRow,
-      ),
-    );
   }
 
   // ─── Capture + crop ──────────────────────────────────────────────────

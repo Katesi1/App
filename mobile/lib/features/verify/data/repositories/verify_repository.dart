@@ -166,6 +166,7 @@ class VerifyApiException implements Exception {
   bool get isNoActiveSubscription => code == 'noActiveSubscription';
   bool get isAmountMismatch => code == 'amountMismatch';
   bool get isPaymentPending => code == 'paymentPending';
+  bool get isKycNotApproved => code == 'payment.kycNotApproved';
 
   /// Message hiển thị cho user — ưu tiên tiếng Việt.
   String get vietnameseMessage {
@@ -189,6 +190,8 @@ class VerifyApiException implements Exception {
         return 'Đã đặt lịch hạ gói. Gói mới sẽ áp dụng từ kỳ tiếp theo.';
       case 'planNotFound':
         return 'Gói không tồn tại hoặc đã ngừng bán.';
+      case 'payment.kycNotApproved':
+        return 'Cần xác minh tài khoản trước khi thanh toán.';
     }
 
     final lower = message.toLowerCase();
