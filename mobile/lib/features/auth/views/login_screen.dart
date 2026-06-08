@@ -9,6 +9,7 @@ import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 import '../../../core/storage/secure_storage.dart';
+import '../../../core/theme/app_color_scheme.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../controllers/auth_controller.dart';
@@ -94,7 +95,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
               Expanded(child: Text(error)),
             ],
           ),
-          backgroundColor: AppColors.coral,
+          backgroundColor: context.colors.error,
           behavior: SnackBarBehavior.floating,
           shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(AppRadius.sm)),
@@ -167,7 +168,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(message),
-            backgroundColor: AppColors.coral,
+            backgroundColor: context.colors.error,
             behavior: SnackBarBehavior.floating,
             shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(AppRadius.sm)),
@@ -179,6 +180,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.colors;
     final size = MediaQuery.of(context).size;
     final topPadding = MediaQuery.of(context).padding.top;
     final bottomInset = MediaQuery.of(context).viewPadding.bottom;
@@ -201,7 +203,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
                   ),
                 ],
               ),
-              backgroundColor: AppColors.coral,
+              backgroundColor: context.colors.error,
               behavior: SnackBarBehavior.floating,
               duration: const Duration(seconds: 4),
             ),
@@ -221,10 +223,10 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
                 colors: [
-                  AppColors.oceanDeep,
+                  AppColors.jade900,
                   Color(
                       0xFF0A3D5C), // custom interpolation, không thuộc token brand
-                  AppColors.ocean,
+                  AppColors.jade500,
                 ],
                 stops: [0.0, 0.5, 1.0],
               ),
@@ -287,7 +289,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
                                   boxShadow: [
                                     BoxShadow(
                                       color:
-                                          AppColors.teal.withValues(alpha: 0.3),
+                                          AppColors.jade300.withValues(alpha: 0.3),
                                       blurRadius: 30,
                                       spreadRadius: 5,
                                     ),
@@ -329,7 +331,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
                                   TextSpan(text: 'Halong'),
                                   TextSpan(
                                     text: '24h',
-                                    style: TextStyle(color: AppColors.gold),
+                                    style: TextStyle(color: AppColors.gold500),
                                   ),
                                 ],
                               ),
@@ -402,7 +404,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
                                         margin:
                                             const EdgeInsets.only(bottom: 24),
                                         decoration: BoxDecoration(
-                                          color: AppColors.border,
+                                          color: colors.borderDefault,
                                           borderRadius:
                                               BorderRadius.circular(2),
                                         ),
@@ -414,7 +416,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
                                       style: GoogleFonts.beVietnamPro(
                                         fontSize: 22,
                                         fontWeight: FontWeight.w700,
-                                        color: AppColors.navy,
+                                        color: colors.textPrimary,
                                       ),
                                     )
                                         .animate(delay: 400.ms)
@@ -427,7 +429,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
                                       'Đăng nhập để tiếp tục quản lý',
                                       style: GoogleFonts.beVietnamPro(
                                         fontSize: 13,
-                                        color: AppColors.slate,
+                                        color: colors.textSecondary,
                                       ),
                                     )
                                         .animate(delay: 450.ms)
@@ -443,8 +445,10 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
                                         keyboardType: TextInputType.text,
                                         textInputAction: TextInputAction.next,
                                         style: GoogleFonts.beVietnamPro(
-                                            fontSize: 15, color: AppColors.ink),
+                                            fontSize: 15,
+                                            color: colors.textPrimary),
                                         decoration: _inputDecor(
+                                          context: context,
                                           label: 'Email / Số điện thoại',
                                           hint: '',
                                           icon: Icons.email_outlined,
@@ -467,8 +471,10 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
                                         textInputAction: TextInputAction.done,
                                         onFieldSubmitted: (_) => _login(),
                                         style: GoogleFonts.beVietnamPro(
-                                            fontSize: 15, color: AppColors.ink),
+                                            fontSize: 15,
+                                            color: colors.textPrimary),
                                         decoration: _inputDecor(
+                                          context: context,
                                           label: 'Mật khẩu',
                                           hint: '',
                                           icon: Icons.lock_outline_rounded,
@@ -478,7 +484,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
                                                   ? Icons.visibility_outlined
                                                   : Icons
                                                       .visibility_off_outlined,
-                                              color: AppColors.slate,
+                                              color: colors.textTertiary,
                                               size: 20,
                                             ),
                                             onPressed: () => setState(() =>
@@ -518,7 +524,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
                                                         () => _rememberMe =
                                                             v ?? false),
                                                     activeColor:
-                                                        AppColors.ocean,
+                                                        AppColors.jade500,
                                                     shape:
                                                         RoundedRectangleBorder(
                                                       borderRadius:
@@ -538,7 +544,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
                                                   style:
                                                       GoogleFonts.beVietnamPro(
                                                     fontSize: 13,
-                                                    color: AppColors.slate,
+                                                    color: colors.textSecondary,
                                                     fontWeight: FontWeight.w500,
                                                   ),
                                                 ),
@@ -558,7 +564,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
                                             'Quên mật khẩu?',
                                             style: GoogleFonts.beVietnamPro(
                                               fontSize: 13,
-                                              color: AppColors.oceanMid,
+                                              color: AppColors.jade300,
                                               fontWeight: FontWeight.w500,
                                             ),
                                           ),
@@ -582,9 +588,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
                                     // Divider
                                     Row(
                                       children: [
-                                        const Expanded(
+                                        Expanded(
                                             child: Divider(
-                                                color: AppColors.border,
+                                                color: colors.borderDefault,
                                                 thickness: 1)),
                                         Padding(
                                           padding: const EdgeInsets.symmetric(
@@ -593,13 +599,13 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
                                             'hoặc',
                                             style: GoogleFonts.beVietnamPro(
                                               fontSize: 12,
-                                              color: AppColors.slate,
+                                              color: colors.textSecondary,
                                             ),
                                           ),
                                         ),
-                                        const Expanded(
+                                        Expanded(
                                             child: Divider(
-                                                color: AppColors.border,
+                                                color: colors.borderDefault,
                                                 thickness: 1)),
                                       ],
                                     )
@@ -641,7 +647,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
                                             'Chưa có tài khoản? ',
                                             style: GoogleFonts.beVietnamPro(
                                               fontSize: 13,
-                                              color: AppColors.slate,
+                                              color: colors.textSecondary,
                                             ),
                                           ),
                                           GestureDetector(
@@ -652,7 +658,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
                                               style: GoogleFonts.beVietnamPro(
                                                 fontSize: 13,
                                                 fontWeight: FontWeight.w700,
-                                                color: AppColors.oceanMid,
+                                                color: AppColors.jade300,
                                               ),
                                             ),
                                           ),
@@ -678,7 +684,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
                                               Icon(
                                                 Icons.qr_code_2_rounded,
                                                 size: 14,
-                                                color: AppColors.muted,
+                                                color: colors.textTertiary,
                                               ),
                                               const SizedBox(width: 6),
                                               Text(
@@ -686,7 +692,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
                                                 style: GoogleFonts.beVietnamPro(
                                                   fontSize: 12,
                                                   fontWeight: FontWeight.w600,
-                                                  color: AppColors.muted,
+                                                  color: colors.textTertiary,
                                                 ),
                                               ),
                                             ],
@@ -719,46 +725,48 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
   }
 
   InputDecoration _inputDecor({
+    required BuildContext context,
     required String label,
     required String hint,
     required IconData icon,
     Widget? suffixIcon,
   }) {
+    final colors = context.colors;
     return InputDecoration(
       labelText: label,
       hintText: hint,
       labelStyle: GoogleFonts.beVietnamPro(
         fontSize: 14,
-        color: AppColors.slate,
+        color: colors.textSecondary,
       ),
       hintStyle: GoogleFonts.beVietnamPro(
         fontSize: 14,
-        color: AppColors.slate.withValues(alpha: 0.6),
+        color: colors.textTertiary,
       ),
-      prefixIcon: Icon(icon, color: AppColors.slate, size: 20),
+      prefixIcon: Icon(icon, color: colors.textSecondary, size: 20),
       suffixIcon: suffixIcon,
       filled: true,
-      fillColor: AppColors.background,
+      fillColor: colors.bgCanvas,
       contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
       border: OutlineInputBorder(
         borderRadius: BorderRadius.circular(14),
-        borderSide: const BorderSide(color: AppColors.border),
+        borderSide: BorderSide(color: colors.borderDefault),
       ),
       enabledBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(14),
-        borderSide: const BorderSide(color: AppColors.border, width: 1),
+        borderSide: BorderSide(color: colors.borderDefault, width: 1),
       ),
       focusedBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(14),
-        borderSide: const BorderSide(color: AppColors.ocean, width: 1.5),
+        borderSide: const BorderSide(color: AppColors.jade500, width: 1.5),
       ),
       errorBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(14),
-        borderSide: const BorderSide(color: AppColors.coral, width: 1),
+        borderSide: BorderSide(color: colors.error, width: 1),
       ),
       focusedErrorBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(14),
-        borderSide: const BorderSide(color: AppColors.coral, width: 1.5),
+        borderSide: BorderSide(color: colors.error, width: 1.5),
       ),
     );
   }
@@ -793,7 +801,7 @@ class _WavePainter extends CustomPainter {
     );
 
     // Small teal accent — tần số 2 (2 vòng, nhanh hơn)
-    paint.color = AppColors.jadeBright.withValues(alpha: 0.07);
+    paint.color = AppColors.jadeMuted.withValues(alpha: 0.07);
     canvas.drawCircle(
       Offset(size.width * 0.7 + math.sin(t * 2) * 18,
           size.height * 0.25 + math.cos(t * 2) * 14),
@@ -889,14 +897,14 @@ class _LoginButtonState extends State<_LoginButton>
           height: 54,
           decoration: BoxDecoration(
             gradient: const LinearGradient(
-              colors: [AppColors.ocean, AppColors.oceanMid],
+              colors: [AppColors.jade500, AppColors.jade300],
               begin: Alignment.centerLeft,
               end: Alignment.centerRight,
             ),
             borderRadius: BorderRadius.circular(14),
             boxShadow: [
               BoxShadow(
-                color: AppColors.ocean.withValues(alpha: 0.4),
+                color: AppColors.jade500.withValues(alpha: 0.4),
                 blurRadius: 20,
                 offset: const Offset(0, 6),
               ),
@@ -975,6 +983,7 @@ class _GoogleButtonState extends State<_GoogleButton>
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.colors;
     return GestureDetector(
       onTapDown: (_) => _pressCtrl.reverse(),
       onTapUp: (_) {
@@ -990,9 +999,9 @@ class _GoogleButtonState extends State<_GoogleButton>
           width: double.infinity,
           height: 52,
           decoration: BoxDecoration(
-            color: Colors.white,
+            color: colors.bgSurface,
             borderRadius: BorderRadius.circular(14),
-            border: Border.all(color: AppColors.border, width: 1.5),
+            border: Border.all(color: colors.borderDefault, width: 1.5),
             boxShadow: [
               BoxShadow(
                 color: Colors.black.withValues(alpha: 0.05),
@@ -1015,7 +1024,7 @@ class _GoogleButtonState extends State<_GoogleButton>
                 style: GoogleFonts.beVietnamPro(
                   fontSize: 14,
                   fontWeight: FontWeight.w500,
-                  color: AppColors.ink,
+                  color: colors.textPrimary,
                 ),
               ),
             ],

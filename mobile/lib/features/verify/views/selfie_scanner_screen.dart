@@ -390,36 +390,38 @@ class _SelfieScannerScreenState extends State<SelfieScannerScreen>
   }
 
   /// Status pill text + color theo phase hiện tại.
-  (String, Color) get _statusPillInfo {
-    if (_capturing) return ('Đang chụp…', AppColors.emerald);
+  (String, Color) _statusPillInfo(BuildContext context) {
+    final success = AppColors.success;
+    final warning = AppColors.warning;
+    if (_capturing) return ('Đang chụp…', success);
     if (_phase == _Phase.searching) {
       return switch (_positionHint) {
         _PositionHint.searching => (
             'Đặt khuôn mặt vào khung',
-            AppColors.amber,
+            warning,
           ),
-        _PositionHint.tooFar => ('Đưa lại gần hơn', AppColors.amber),
-        _PositionHint.offCenter => ('Căn giữa khuôn mặt', AppColors.amber),
+        _PositionHint.tooFar => ('Đưa lại gần hơn', warning),
+        _PositionHint.offCenter => ('Căn giữa khuôn mặt', warning),
         _PositionHint.notStraight => (
             'Nhìn thẳng vào camera',
-            AppColors.amber,
+            warning,
           ),
-        _PositionHint.eyesClosed => ('Mở mắt', AppColors.amber),
+        _PositionHint.eyesClosed => ('Mở mắt', warning),
         _PositionHint.multipleFaces => (
             'Chỉ chụp 1 khuôn mặt',
-            AppColors.amber,
+            warning,
           ),
       };
     }
     if (_phase == _Phase.challenge) {
       final c = _challenges[_currentIdx];
-      return (c.prompt, AppColors.emerald);
+      return (c.prompt, success);
     }
     // _Phase.neutral
     if (!_minDurationMet) {
-      return ('Tốt! Giữ nguyên · còn $_remainingSeconds s', AppColors.emerald);
+      return ('Tốt! Giữ nguyên · còn $_remainingSeconds s', success);
     }
-    return ('Nhìn thẳng để chụp', AppColors.emerald);
+    return ('Nhìn thẳng để chụp', success);
   }
 
   /// 0..1 progress của challenge/neutral hold hiện tại.
@@ -471,8 +473,8 @@ class _SelfieScannerScreenState extends State<SelfieScannerScreen>
                     ),
 
                     _OvalFrameOverlay(
-                      pillLabel: _statusPillInfo.$1,
-                      pillColor: _statusPillInfo.$2,
+                      pillLabel: _statusPillInfo(context).$1,
+                      pillColor: _statusPillInfo(context).$2,
                       progress: _holdProgress,
                       challengeIcon: _phase == _Phase.challenge
                           ? _challenges[_currentIdx].icon
@@ -865,9 +867,9 @@ class _ProgressDots extends StatelessWidget {
         final isDone = i < completed;
         final isActive = activeIdx == i;
         final color = isDone
-            ? AppColors.emerald
+            ? AppColors.success
             : isActive
-                ? AppColors.amber
+                ? AppColors.warning
                 : Colors.white24;
         return Container(
           width: isActive ? 28 : 18,

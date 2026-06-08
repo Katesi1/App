@@ -6,7 +6,7 @@ import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 
-import '../../../core/theme/app_colors.dart';
+import '../../../core/theme/app_color_scheme.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../core/utils/phone_input.dart';
 import '../../../shared/widgets/loading_widget.dart';
@@ -154,7 +154,7 @@ class _InviteAcceptScreenState extends ConsumerState<InviteAcceptScreen> {
     await showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
-      backgroundColor: AppColors.surface,
+      backgroundColor: context.colors.bgSurface,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
@@ -174,8 +174,9 @@ class _InviteAcceptScreenState extends ConsumerState<InviteAcceptScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.colors;
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: colors.bgCanvas,
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
@@ -184,11 +185,11 @@ class _InviteAcceptScreenState extends ConsumerState<InviteAcceptScreen> {
           style: GoogleFonts.beVietnamPro(
             fontSize: 16,
             fontWeight: FontWeight.w700,
-            color: AppColors.navy,
+            color: colors.textPrimary,
           ),
         ),
         leading: IconButton(
-          icon: const Icon(Icons.close_rounded, color: AppColors.navy),
+          icon: Icon(Icons.close_rounded, color: colors.textPrimary),
           onPressed: () {
             if (context.canPop()) {
               context.pop();
@@ -209,6 +210,7 @@ class _InviteAcceptScreenState extends ConsumerState<InviteAcceptScreen> {
 
   // ── State 1: nhập mã ────────────────────────────────────────────────────────
   Widget _buildEnterToken() {
+    final colors = context.colors;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -218,7 +220,7 @@ class _InviteAcceptScreenState extends ConsumerState<InviteAcceptScreen> {
           style: GoogleFonts.beVietnamPro(
             fontSize: 22,
             fontWeight: FontWeight.w700,
-            color: AppColors.navy,
+            color: colors.textPrimary,
           ),
         ),
         const SizedBox(height: AppSpacing.xs),
@@ -226,7 +228,7 @@ class _InviteAcceptScreenState extends ConsumerState<InviteAcceptScreen> {
           'Mã có dạng HL-XXXXXX, được gửi trong email mời.',
           style: GoogleFonts.beVietnamPro(
             fontSize: 13,
-            color: AppColors.muted,
+            color: colors.textSecondary,
           ),
         ),
         const SizedBox(height: AppSpacing.xl),
@@ -240,7 +242,7 @@ class _InviteAcceptScreenState extends ConsumerState<InviteAcceptScreen> {
           style: GoogleFonts.firaCode(
             fontSize: 16,
             fontWeight: FontWeight.w600,
-            color: AppColors.navy,
+            color: colors.textPrimary,
             letterSpacing: 1.5,
           ),
           decoration: InputDecoration(
@@ -255,7 +257,7 @@ class _InviteAcceptScreenState extends ConsumerState<InviteAcceptScreen> {
         FilledButton(
           onPressed: _verifying ? null : _verifyToken,
           style: FilledButton.styleFrom(
-            backgroundColor: AppColors.ocean,
+            backgroundColor: colors.brand,
             padding: const EdgeInsets.symmetric(vertical: 14),
           ),
           child: _verifying
@@ -275,6 +277,7 @@ class _InviteAcceptScreenState extends ConsumerState<InviteAcceptScreen> {
 
   // ── State 2: confirm + chọn cách đăng ký ────────────────────────────────────
   Widget _buildPreview() {
+    final colors = context.colors;
     final preview = _preview!;
     final dateFmt = DateFormat('dd/MM/yyyy');
 
@@ -305,7 +308,7 @@ class _InviteAcceptScreenState extends ConsumerState<InviteAcceptScreen> {
             textAlign: TextAlign.center,
             style: GoogleFonts.beVietnamPro(
               fontSize: 12,
-              color: AppColors.muted,
+              color: colors.textSecondary,
             ),
           ),
           const SizedBox(height: AppSpacing.xl),
@@ -313,14 +316,14 @@ class _InviteAcceptScreenState extends ConsumerState<InviteAcceptScreen> {
             Container(
               padding: const EdgeInsets.all(AppSpacing.sm),
               decoration: BoxDecoration(
-                color: AppColors.coral.withValues(alpha: 0.12),
+                color: colors.error.withValues(alpha: 0.12),
                 borderRadius: BorderRadius.circular(AppRadius.sm),
               ),
               child: Text(
                 _errorMessage!,
                 style: GoogleFonts.beVietnamPro(
                   fontSize: 12,
-                  color: AppColors.coral,
+                  color: colors.error,
                 ),
               ),
             ),
@@ -329,7 +332,7 @@ class _InviteAcceptScreenState extends ConsumerState<InviteAcceptScreen> {
           FilledButton.icon(
             onPressed: _accepting ? null : _acceptWithGoogle,
             style: FilledButton.styleFrom(
-              backgroundColor: AppColors.ocean,
+              backgroundColor: colors.brand,
               padding: const EdgeInsets.symmetric(vertical: 14),
             ),
             icon: _accepting
@@ -355,15 +358,15 @@ class _InviteAcceptScreenState extends ConsumerState<InviteAcceptScreen> {
             onPressed: _accepting ? null : _openPasswordSheet,
             style: OutlinedButton.styleFrom(
               padding: const EdgeInsets.symmetric(vertical: 14),
-              side: const BorderSide(color: AppColors.ocean),
+              side: BorderSide(color: colors.brand),
             ),
-            icon: const Icon(Icons.email_outlined, color: AppColors.ocean),
+            icon: Icon(Icons.email_outlined, color: colors.brand),
             label: Text(
               'Đăng ký bằng email/mật khẩu',
               style: GoogleFonts.beVietnamPro(
                 fontSize: 14,
                 fontWeight: FontWeight.w600,
-                color: AppColors.ocean,
+                color: colors.brand,
               ),
             ),
           ),
@@ -373,7 +376,7 @@ class _InviteAcceptScreenState extends ConsumerState<InviteAcceptScreen> {
             textAlign: TextAlign.center,
             style: GoogleFonts.beVietnamPro(
               fontSize: 11,
-              color: AppColors.muted,
+              color: colors.textSecondary,
             ),
           ),
         ],
@@ -388,12 +391,13 @@ class _OwnerCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.colors;
     return Container(
       padding: const EdgeInsets.all(AppSpacing.lg),
       decoration: BoxDecoration(
-        color: AppColors.surface,
+        color: colors.bgSurface,
         borderRadius: BorderRadius.circular(AppRadius.md),
-        border: Border.all(color: AppColors.border),
+        border: Border.all(color: colors.borderDefault),
       ),
       child: Column(
         children: [
@@ -407,10 +411,10 @@ class _OwnerCard extends StatelessWidget {
                         height: 80,
                         fit: BoxFit.cover,
                         memCacheWidth: 160,
-                        placeholder: (_, __) => _avatarPlaceholder(),
-                        errorWidget: (_, __, ___) => _avatarPlaceholder(),
+                        placeholder: (_, __) => _avatarPlaceholder(colors),
+                        errorWidget: (_, __, ___) => _avatarPlaceholder(colors),
                       )
-                    : _avatarPlaceholder(),
+                    : _avatarPlaceholder(colors),
           ),
           const SizedBox(height: AppSpacing.md),
           Text(
@@ -418,7 +422,7 @@ class _OwnerCard extends StatelessWidget {
             style: GoogleFonts.beVietnamPro(
               fontSize: 18,
               fontWeight: FontWeight.w700,
-              color: AppColors.navy,
+              color: colors.textPrimary,
             ),
           ),
           if (preview.homestayName != null &&
@@ -428,7 +432,7 @@ class _OwnerCard extends StatelessWidget {
               preview.homestayName!,
               style: GoogleFonts.beVietnamPro(
                 fontSize: 13,
-                color: AppColors.muted,
+                color: colors.textSecondary,
               ),
             ),
           ],
@@ -436,7 +440,7 @@ class _OwnerCard extends StatelessWidget {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
             decoration: BoxDecoration(
-              color: AppColors.ocean.withValues(alpha: 0.08),
+              color: colors.brand.withValues(alpha: 0.08),
               borderRadius: BorderRadius.circular(20),
             ),
             child: Text(
@@ -444,7 +448,7 @@ class _OwnerCard extends StatelessWidget {
               style: GoogleFonts.beVietnamPro(
                 fontSize: 12,
                 fontWeight: FontWeight.w600,
-                color: AppColors.ocean,
+                color: colors.brand,
               ),
             ),
           ),
@@ -453,7 +457,7 @@ class _OwnerCard extends StatelessWidget {
             preview.email,
             style: GoogleFonts.beVietnamPro(
               fontSize: 13,
-              color: AppColors.navy,
+              color: colors.textPrimary,
             ),
           ),
         ],
@@ -461,11 +465,11 @@ class _OwnerCard extends StatelessWidget {
     );
   }
 
-  Widget _avatarPlaceholder() => Container(
+  Widget _avatarPlaceholder(AppColorScheme colors) => Container(
         width: 80,
         height: 80,
-        color: AppColors.background,
-        child: const Icon(Icons.person, size: 40, color: AppColors.muted),
+        color: colors.bgCanvas,
+        child: Icon(Icons.person, size: 40, color: colors.textSecondary),
       );
 }
 
@@ -513,6 +517,7 @@ class _PasswordSheetState extends State<_PasswordSheet> {
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.colors;
     final viewInsets = MediaQuery.of(context).viewInsets;
 
     return Padding(
@@ -533,7 +538,7 @@ class _PasswordSheetState extends State<_PasswordSheet> {
                 width: 40,
                 height: 4,
                 decoration: BoxDecoration(
-                  color: AppColors.border,
+                  color: colors.borderDefault,
                   borderRadius: BorderRadius.circular(2),
                 ),
               ),
@@ -544,7 +549,7 @@ class _PasswordSheetState extends State<_PasswordSheet> {
               style: GoogleFonts.beVietnamPro(
                 fontSize: 16,
                 fontWeight: FontWeight.w700,
-                color: AppColors.navy,
+                color: colors.textPrimary,
               ),
             ),
             const SizedBox(height: AppSpacing.lg),
@@ -596,7 +601,7 @@ class _PasswordSheetState extends State<_PasswordSheet> {
             FilledButton(
               onPressed: _submit,
               style: FilledButton.styleFrom(
-                backgroundColor: AppColors.ocean,
+                backgroundColor: colors.brand,
                 padding: const EdgeInsets.symmetric(vertical: 14),
               ),
               child: const Text('Hoàn tất đăng ký'),

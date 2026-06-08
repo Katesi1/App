@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 
+import '../../core/theme/app_color_scheme.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_spacing.dart';
 import '../../core/utils/subscription_gating.dart';
@@ -33,19 +34,19 @@ class _FrozenBanner extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.colors;
     return Container(
       padding: const EdgeInsets.all(14),
       margin: const EdgeInsets.only(bottom: 12),
       decoration: BoxDecoration(
-        color: AppColors.coralLight,
+        color: colors.errorBg,
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: AppColors.coral.withValues(alpha: 0.35)),
+        border: Border.all(color: colors.error.withValues(alpha: 0.35)),
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Icon(Icons.lock_person_outlined,
-              color: AppColors.coral, size: 22),
+          Icon(Icons.lock_person_outlined, color: colors.error, size: 22),
           const SizedBox(width: 10),
           Expanded(
             child: Column(
@@ -56,7 +57,7 @@ class _FrozenBanner extends StatelessWidget {
                   style: GoogleFonts.beVietnamPro(
                     fontSize: 13,
                     fontWeight: FontWeight.w700,
-                    color: AppColors.coral,
+                    color: colors.error,
                   ),
                 ),
                 const SizedBox(height: 4),
@@ -64,7 +65,7 @@ class _FrozenBanner extends StatelessWidget {
                   SubscriptionGating.frozenBannerMessage(user),
                   style: GoogleFonts.beVietnamPro(
                     fontSize: 11,
-                    color: AppColors.brownDark,
+                    color: colors.textSecondary,
                     height: 1.4,
                   ),
                 ),
@@ -100,7 +101,7 @@ class StaffSlotUsageChip extends StatelessWidget {
       ),
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       decoration: BoxDecoration(
-        color: AppColors.oceanPale,
+        color: AppColors.jade50,
         borderRadius: BorderRadius.circular(AppRadius.sm),
       ),
       child: Text(
@@ -108,7 +109,7 @@ class StaffSlotUsageChip extends StatelessWidget {
         style: GoogleFonts.beVietnamPro(
           fontSize: 12,
           fontWeight: FontWeight.w600,
-          color: AppColors.oceanDeep,
+          color: AppColors.jade900,
         ),
       ),
     );

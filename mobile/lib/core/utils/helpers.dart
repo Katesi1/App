@@ -25,15 +25,15 @@ class AppHelpers {
   static Color roleColor(int? role) {
     switch (role) {
       case 0:
-        return AppColors.coral;
+        return AppColors.coral500;
       case 1:
-        return AppColors.amber;
+        return AppColors.warning;
       case 2:
-        return AppColors.ocean;
+        return AppColors.jade500;
       case 3:
-        return AppColors.teal;
+        return AppColors.jade300;
       default:
-        return AppColors.ocean;
+        return AppColors.jade500;
     }
   }
 
@@ -42,15 +42,15 @@ class AppHelpers {
   static Color bookingStatusColor(int? status) {
     switch (status) {
       case 0:
-        return AppColors.hold;
+        return AppColors.statusHold;
       case 1:
-        return AppColors.confirmed;
+        return AppColors.statusConfirmed;
       case 2:
-        return AppColors.cancelled;
+        return AppColors.statusCancelled;
       case 3:
-        return AppColors.completed;
+        return AppColors.statusCompleted;
       default:
-        return AppColors.primary;
+        return AppColors.jade500;
     }
   }
 

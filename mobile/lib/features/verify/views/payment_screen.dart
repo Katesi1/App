@@ -437,11 +437,11 @@ class _PaymentScreenState extends ConsumerState<PaymentScreen>
         body: Stack(
           children: [
             ListView(
-              padding: const EdgeInsets.fromLTRB(
+              padding: EdgeInsets.fromLTRB(
                 AppSpacing.md,
                 AppSpacing.md,
                 AppSpacing.md,
-                120,
+                hasPending ? AppSpacing.md : 120,
               ),
               children: [
                 if (hasPending) ...[
@@ -525,20 +525,19 @@ class _PaymentScreenState extends ConsumerState<PaymentScreen>
                 ],
               ],
             ),
-            Positioned(
-              left: 0,
-              right: 0,
-              bottom: 0,
-              child: _BottomBar(
-                hasPending: hasPending,
-                processing: _processing,
-                quoteReady: quoteReady,
-                syncingQuote: _syncingQuote,
-                total: total,
-                onPay: _handlePay,
-                onViewQR: _reopenPaymentDialog,
+            if (!hasPending)
+              Positioned(
+                left: 0,
+                right: 0,
+                bottom: 0,
+                child: _BottomBar(
+                  processing: _processing,
+                  quoteReady: quoteReady,
+                  syncingQuote: _syncingQuote,
+                  total: total,
+                  onPay: _handlePay,
+                ),
               ),
-            ),
           ],
         ),
       ),
@@ -766,28 +765,23 @@ class _InfoCell extends StatelessWidget {
 // ─── Bottom Bar ──────────────────────────────────────────────────────────────
 
 class _BottomBar extends StatelessWidget {
-  final bool hasPending;
   final bool processing;
   final bool quoteReady;
   final bool syncingQuote;
   final int total;
   final VoidCallback onPay;
-  final VoidCallback onViewQR;
 
   const _BottomBar({
-    required this.hasPending,
     required this.processing,
     required this.quoteReady,
     required this.syncingQuote,
     required this.total,
     required this.onPay,
-    required this.onViewQR,
   });
 
   @override
   Widget build(BuildContext context) {
     final colors = context.colors;
-    final isDark = Theme.of(context).brightness == Brightness.dark;
     final bottomInset = MediaQuery.of(context).padding.bottom;
 
     return Container(
@@ -801,43 +795,7 @@ class _BottomBar extends StatelessWidget {
         color: colors.bgSurface,
         border: Border(top: BorderSide(color: colors.borderDefault)),
       ),
-      child: hasPending
-          ? _buildPendingButton(context, colors, isDark)
-          : _buildPayButton(context, colors),
-    );
-  }
-
-  Widget _buildPendingButton(
-    BuildContext context,
-    AppColorScheme colors,
-    bool isDark,
-  ) {
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        SizedBox(
-          height: 52,
-          width: double.infinity,
-          child: FilledButton.icon(
-            onPressed: onViewQR,
-            icon: const Icon(Icons.qr_code_2_rounded, size: 18),
-            label: const Text('Xem mã QR & Chuyển khoản'),
-            style: FilledButton.styleFrom(
-              backgroundColor: colors.warning,
-              foregroundColor: isDark ? colors.bgCanvas : Colors.white,
-            ),
-          ),
-        ),
-        const SizedBox(height: 6),
-        Text(
-          'Đơn này do bạn tạo trước đó — không phải đơn mới',
-          style: TextStyle(
-            fontSize: 11,
-            color: colors.textTertiary,
-          ),
-          textAlign: TextAlign.center,
-        ),
-      ],
+      child: _buildPayButton(context, colors),
     );
   }
 

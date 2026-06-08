@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-import '../../core/theme/app_colors.dart';
+import '../../core/theme/app_color_scheme.dart';
 
 class GuestCounter extends StatelessWidget {
   final String label;
@@ -16,12 +16,13 @@ class GuestCounter extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.colors;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
       decoration: BoxDecoration(
-        color: AppColors.surface,
+        color: colors.bgSurface,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppColors.border, width: 1.5),
+        border: Border.all(color: colors.borderDefault, width: 1.5),
       ),
       child: Row(
         children: [
@@ -31,7 +32,7 @@ class GuestCounter extends StatelessWidget {
               style: GoogleFonts.beVietnamPro(
                 fontSize: 13,
                 fontWeight: FontWeight.w500,
-                color: AppColors.ink,
+                color: colors.textPrimary,
               ),
             ),
           ),
@@ -41,7 +42,7 @@ class GuestCounter extends StatelessWidget {
               width: 28,
               height: 28,
               decoration: BoxDecoration(
-                color: value > 0 ? AppColors.ocean : AppColors.border,
+                color: value > 0 ? colors.brand : colors.borderDefault,
                 shape: BoxShape.circle,
               ),
               child: const Icon(Icons.remove_rounded,
@@ -56,7 +57,7 @@ class GuestCounter extends StatelessWidget {
               style: GoogleFonts.beVietnamPro(
                 fontSize: 14,
                 fontWeight: FontWeight.w600,
-                color: AppColors.ink,
+                color: colors.textPrimary,
               ),
             ),
           ),
@@ -65,12 +66,11 @@ class GuestCounter extends StatelessWidget {
             child: Container(
               width: 28,
               height: 28,
-              decoration: const BoxDecoration(
-                color: AppColors.ocean,
+              decoration: BoxDecoration(
+                color: colors.brand,
                 shape: BoxShape.circle,
               ),
-              child:
-                  const Icon(Icons.add_rounded, size: 14, color: Colors.white),
+              child: const Icon(Icons.add_rounded, size: 14, color: Colors.white),
             ),
           ),
         ],

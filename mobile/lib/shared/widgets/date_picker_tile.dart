@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-import '../../core/theme/app_colors.dart';
+import '../../core/theme/app_color_scheme.dart';
 
 class DatePickerTile extends StatelessWidget {
   final String label;
@@ -18,15 +18,18 @@ class DatePickerTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.colors;
     return GestureDetector(
       onTap: onTap,
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
         decoration: BoxDecoration(
-          color: hasValue ? AppColors.oceanPale : AppColors.surface,
+          color: hasValue
+              ? colors.brand.withValues(alpha: 0.08)
+              : colors.bgSurface,
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
-            color: hasValue ? AppColors.ocean : AppColors.border,
+            color: hasValue ? colors.brand : colors.borderDefault,
             width: 1.5,
           ),
         ),
@@ -35,7 +38,7 @@ class DatePickerTile extends StatelessWidget {
             Icon(
               Icons.calendar_today_rounded,
               size: 16,
-              color: hasValue ? AppColors.ocean : AppColors.muted,
+              color: hasValue ? colors.brand : colors.textSecondary,
             ),
             const SizedBox(width: 10),
             Expanded(
@@ -47,7 +50,7 @@ class DatePickerTile extends StatelessWidget {
                     style: GoogleFonts.beVietnamPro(
                       fontSize: 10,
                       fontWeight: FontWeight.w500,
-                      color: AppColors.muted,
+                      color: colors.textSecondary,
                     ),
                   ),
                   const SizedBox(height: 2),
@@ -56,7 +59,7 @@ class DatePickerTile extends StatelessWidget {
                     style: GoogleFonts.beVietnamPro(
                       fontSize: 13,
                       fontWeight: FontWeight.w500,
-                      color: hasValue ? AppColors.ink : AppColors.slate,
+                      color: hasValue ? colors.textPrimary : colors.textTertiary,
                     ),
                   ),
                 ],

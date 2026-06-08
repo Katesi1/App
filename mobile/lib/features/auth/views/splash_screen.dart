@@ -118,10 +118,10 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
                 colors: [
-                  AppColors.oceanDeep,
+                  AppColors.jade900,
                   Color(
                       0xFF083550), // custom interpolation, không thuộc token brand
-                  AppColors.ocean,
+                  AppColors.jade500,
                 ],
                 stops: [0.0, 0.5, 1.0],
               ),
@@ -164,7 +164,7 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
                               decoration: BoxDecoration(
                                 shape: BoxShape.circle,
                                 border: Border.all(
-                                  color: AppColors.teal.withValues(
+                                  color: AppColors.jade300.withValues(
                                       alpha: 0.15 * (1 - _pulseCtrl.value)),
                                   width: 2,
                                 ),
@@ -184,7 +184,7 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
                               ),
                               boxShadow: [
                                 BoxShadow(
-                                  color: AppColors.teal.withValues(alpha: 0.25),
+                                  color: AppColors.jade300.withValues(alpha: 0.25),
                                   blurRadius: 40,
                                   spreadRadius: 8,
                                 ),
@@ -239,7 +239,7 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
                       TextSpan(text: 'Halong'),
                       TextSpan(
                         text: '24h',
-                        style: TextStyle(color: AppColors.gold),
+                        style: TextStyle(color: AppColors.gold500),
                       ),
                     ],
                   ),
@@ -304,7 +304,7 @@ class _SplashWavePainter extends CustomPainter {
         paint);
 
     // Tần số 2, phase +π/2
-    paint.color = AppColors.jadeBright.withValues(alpha: 0.06);
+    paint.color = AppColors.jadeMuted.withValues(alpha: 0.06);
     canvas.drawCircle(
         Offset(size.width * 0.6 + math.sin(t * 2 + math.pi / 2) * 25,
             size.height * 0.75 + math.cos(t * 2 + math.pi / 2) * 15),

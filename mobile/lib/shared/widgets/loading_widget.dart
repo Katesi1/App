@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:shimmer/shimmer.dart';
-import '../../core/theme/app_colors.dart';
+import '../../core/theme/app_color_scheme.dart';
 import '../../core/theme/app_spacing.dart';
 import 'app_toast.dart';
 
@@ -11,9 +11,12 @@ class LoadingWidget extends StatelessWidget {
   const LoadingWidget({super.key});
 
   @override
-  Widget build(BuildContext context) => const Center(
-        child: CircularProgressIndicator(color: AppColors.ocean),
-      );
+  Widget build(BuildContext context) {
+    final colors = context.colors;
+    return Center(
+      child: CircularProgressIndicator(color: colors.brand),
+    );
+  }
 }
 
 // ─── Shimmer helper ───────────────────────────────────────────────────────────
@@ -60,7 +63,7 @@ class RoomCardSkeleton extends StatelessWidget {
         context: context,
         child: Container(
           decoration: BoxDecoration(
-            color: AppColors.surface,
+            color: Colors.white,
             borderRadius: BorderRadius.circular(AppRadius.lg),
           ),
           clipBehavior: Clip.antiAlias,
@@ -398,6 +401,7 @@ class EmptyStateWidget extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.colors;
     return Center(
       child: Padding(
         padding: const EdgeInsets.all(AppSpacing.xxl),
@@ -408,13 +412,13 @@ class EmptyStateWidget extends StatelessWidget {
               width: 96,
               height: 96,
               decoration: BoxDecoration(
-                color: AppColors.oceanLight,
+                color: colors.brandLight.withValues(alpha: 0.15),
                 shape: BoxShape.circle,
               ),
               child: Icon(
                 icon,
                 size: 48,
-                color: AppColors.ocean.withValues(alpha: 0.5),
+                color: colors.brand.withValues(alpha: 0.5),
               ),
             )
                 .animate()
@@ -430,7 +434,7 @@ class EmptyStateWidget extends StatelessWidget {
               style: GoogleFonts.beVietnamPro(
                 fontSize: 16,
                 fontWeight: FontWeight.w700,
-                color: AppColors.navy,
+                color: colors.textPrimary,
               ),
               textAlign: TextAlign.center,
             )
@@ -443,7 +447,7 @@ class EmptyStateWidget extends StatelessWidget {
                 subMessage!,
                 style: GoogleFonts.beVietnamPro(
                   fontSize: 13,
-                  color: AppColors.muted,
+                  color: colors.textSecondary,
                 ),
                 textAlign: TextAlign.center,
               ).animate(delay: 150.ms).fadeIn(duration: 300.ms),
@@ -474,6 +478,7 @@ class ErrorStateWidget extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.colors;
     return Center(
       child: Padding(
         padding: const EdgeInsets.all(AppSpacing.xxl),
@@ -484,13 +489,13 @@ class ErrorStateWidget extends StatelessWidget {
               width: 96,
               height: 96,
               decoration: BoxDecoration(
-                color: AppColors.coralLight,
+                color: colors.errorBg,
                 shape: BoxShape.circle,
               ),
               child: Icon(
                 Icons.cloud_off_rounded,
                 size: 48,
-                color: AppColors.coral.withValues(alpha: 0.7),
+                color: colors.error.withValues(alpha: 0.7),
               ),
             )
                 .animate()
@@ -506,7 +511,7 @@ class ErrorStateWidget extends StatelessWidget {
               style: GoogleFonts.beVietnamPro(
                 fontSize: 16,
                 fontWeight: FontWeight.w700,
-                color: AppColors.navy,
+                color: colors.textPrimary,
               ),
               textAlign: TextAlign.center,
             ).animate(delay: 100.ms).fadeIn(duration: 300.ms),
@@ -515,7 +520,7 @@ class ErrorStateWidget extends StatelessWidget {
               message,
               style: GoogleFonts.beVietnamPro(
                 fontSize: 13,
-                color: AppColors.muted,
+                color: colors.textSecondary,
               ),
               textAlign: TextAlign.center,
             ).animate(delay: 150.ms).fadeIn(duration: 300.ms),
@@ -526,7 +531,7 @@ class ErrorStateWidget extends StatelessWidget {
                 icon: const Icon(Icons.refresh_rounded),
                 label: const Text('Thử lại'),
                 style: FilledButton.styleFrom(
-                  backgroundColor: AppColors.coral,
+                  backgroundColor: colors.error,
                   foregroundColor: Colors.white,
                 ),
               )

@@ -88,7 +88,12 @@ class _BookingCalendarScreenState extends ConsumerState<BookingCalendarScreen> {
           status: _mapStatus(day.status),
         );
       }
-      return CalendarRoom(id: row.id, code: row.code, dayCells: cells);
+      return CalendarRoom(
+        id: row.id,
+        code: row.code,
+        ownerPhone: row.ownerPhone,
+        dayCells: cells,
+      );
     }).toList();
   }
 
@@ -109,7 +114,6 @@ class _BookingCalendarScreenState extends ConsumerState<BookingCalendarScreen> {
     );
 
     final gridAsync = ref.watch(calendarGridProvider(gridParams));
-    final adminContact = ref.watch(adminContactProvider).valueOrNull;
 
     return AppScaffold(
       title: '',
@@ -196,8 +200,8 @@ class _BookingCalendarScreenState extends ConsumerState<BookingCalendarScreen> {
                       viewMode: _viewMode,
                       weekStart: _weekStart,
                       monthStart: _monthStart,
-                      onCellTap: (room, date, cell) => _showContactModal(
-                          context, room, date, cell, adminContact),
+                      onCellTap: (room, date, cell) =>
+                          _showContactModal(context, room, date, cell),
                       legendTapHint: 'Tap ô = liên hệ',
                     ),
                   ),
@@ -215,7 +219,6 @@ class _BookingCalendarScreenState extends ConsumerState<BookingCalendarScreen> {
     CalendarRoom room,
     DateTime date,
     DayCell cell,
-    AdminContact? contact,
   ) {
     showModalBottomSheet(
       context: context,
@@ -354,10 +357,12 @@ class _BookingCalendarScreenState extends ConsumerState<BookingCalendarScreen> {
                 width: double.infinity,
                 height: 48,
                 child: ElevatedButton.icon(
-                  onPressed: () {
-                    Navigator.pop(ctx);
-                    _openZalo(contact);
-                  },
+                  onPressed: room.ownerPhone?.isNotEmpty == true
+                      ? () {
+                          Navigator.pop(ctx);
+                          _openZalo(room.ownerPhone);
+                        }
+                      : null,
                   icon: const Icon(Icons.chat_rounded, size: 20),
                   label: Text(
                     'Liên hệ qua Zalo',
@@ -376,6 +381,17 @@ class _BookingCalendarScreenState extends ConsumerState<BookingCalendarScreen> {
                   ),
                 ),
               ),
+              if (room.ownerPhone?.isNotEmpty != true) ...[
+                const SizedBox(height: 6),
+                Text(
+                  'Chủ nhà chưa cập nhật số điện thoại',
+                  style: GoogleFonts.beVietnamPro(
+                    fontSize: 11,
+                    color: colors.textTertiary,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+              ],
               const SizedBox(height: 10),
               SizedBox(
                 width: double.infinity,
@@ -383,7 +399,7 @@ class _BookingCalendarScreenState extends ConsumerState<BookingCalendarScreen> {
                 child: OutlinedButton.icon(
                   onPressed: () {
                     Navigator.pop(ctx);
-                    _callAdmin(contact);
+                    _callAdmin();
                   },
                   icon: const Icon(Icons.phone_rounded, size: 20),
                   label: Text(
@@ -416,23 +432,18 @@ class _BookingCalendarScreenState extends ConsumerState<BookingCalendarScreen> {
     return '${(price / 1000).toInt()}k đ/đêm';
   }
 
-  Future<void> _openZalo(AdminContact? contact) async {
-    if (contact == null) return;
-    final zaloUrl = contact.zaloUrl;
-    final url = (zaloUrl != null && zaloUrl.isNotEmpty)
-        ? zaloUrl
-        : 'https://zalo.me/${contact.phone}';
-    if (contact.phone.isEmpty && (zaloUrl == null || zaloUrl.isEmpty)) return;
-    final uri = Uri.parse(url);
+  Future<void> _openZalo(String? ownerPhone) async {
+    final phone = ownerPhone ?? '';
+    if (phone.isEmpty) return;
+    final uri = Uri.parse('https://zalo.me/$phone');
     if (await canLaunchUrl(uri)) {
       await launchUrl(uri, mode: LaunchMode.externalApplication);
     }
   }
 
-  Future<void> _callAdmin(AdminContact? contact) async {
-    final phone = contact?.phone ?? '';
-    if (phone.isEmpty) return;
-    final uri = Uri.parse('tel:$phone');
+  Future<void> _callAdmin() async {
+    const adminPhone = '0976982240';
+    final uri = Uri.parse('tel:$adminPhone');
     if (await canLaunchUrl(uri)) {
       await launchUrl(uri);
     }

@@ -3,6 +3,7 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
+import '../../../core/theme/app_color_scheme.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../controllers/auth_controller.dart';
@@ -62,7 +63,7 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
             Expanded(child: Text(message)),
           ],
         ),
-        backgroundColor: isError ? AppColors.coral : AppColors.emerald,
+        backgroundColor: isError ? context.colors.error : context.colors.success,
         behavior: SnackBarBehavior.floating,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(AppSpacing.sm),
@@ -74,8 +75,9 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.colors;
     return Scaffold(
-      backgroundColor: AppColors.surface,
+      backgroundColor: colors.bgSurface,
       body: SingleChildScrollView(
         child: Column(
           children: [
@@ -91,7 +93,7 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
                 gradient: LinearGradient(
                   begin: Alignment(-0.4, -1),
                   end: Alignment(0.4, 1),
-                  colors: [AppColors.oceanDeep, AppColors.ocean],
+                  colors: [AppColors.jade900, AppColors.jade500],
                 ),
               ),
               child: Column(
@@ -139,7 +141,9 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
               padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
               child: AnimatedSwitcher(
                 duration: const Duration(milliseconds: 300),
-                child: _emailSent ? _buildEmailSent() : _buildIdentifierForm(),
+                child: _emailSent
+                    ? _buildEmailSent(context)
+                    : _buildIdentifierForm(context),
               ),
             )
                 .animate(delay: 300.ms)
@@ -151,7 +155,8 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
     );
   }
 
-  Widget _buildIdentifierForm() {
+  Widget _buildIdentifierForm(BuildContext context) {
+    final colors = context.colors;
     return Form(
       key: _identifierFormKey,
       child: Column(
@@ -163,13 +168,13 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
               width: 80,
               height: 80,
               decoration: BoxDecoration(
-                color: AppColors.oceanPale,
+                color: AppColors.jade50,
                 borderRadius: BorderRadius.circular(AppRadius.xl),
               ),
               child: const Icon(
                 Icons.lock_reset_rounded,
                 size: 40,
-                color: AppColors.ocean,
+                color: AppColors.jade500,
               ),
             ),
           ),
@@ -181,8 +186,10 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
             keyboardType: TextInputType.emailAddress,
             textInputAction: TextInputAction.done,
             onFieldSubmitted: (_) => _sendResetLink(),
-            style: GoogleFonts.beVietnamPro(fontSize: 15),
+            style: GoogleFonts.beVietnamPro(
+                fontSize: 15, color: colors.textPrimary),
             decoration: _inputDecoration(
+              context: context,
               hint: 'manager@halong24h.vn',
               icon: Icons.person_outline_rounded,
             ),
@@ -196,7 +203,7 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
             'Tài khoản chỉ có số điện thoại cần dùng email đã liên kết.',
             style: GoogleFonts.beVietnamPro(
               fontSize: 12,
-              color: AppColors.muted,
+              color: colors.textTertiary,
               height: 1.4,
             ),
           ),
@@ -213,7 +220,7 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
                 'Quay lại đăng nhập',
                 style: GoogleFonts.beVietnamPro(
                   fontSize: 14,
-                  color: AppColors.oceanMid,
+                  color: AppColors.jade300,
                   fontWeight: FontWeight.w500,
                 ),
               ),
@@ -224,7 +231,8 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
     );
   }
 
-  Widget _buildEmailSent() {
+  Widget _buildEmailSent(BuildContext context) {
+    final colors = context.colors;
     return Column(
       key: const ValueKey('email-sent'),
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -234,13 +242,13 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
             width: 80,
             height: 80,
             decoration: BoxDecoration(
-              color: AppColors.emeraldLight,
+              color: colors.successBg,
               borderRadius: BorderRadius.circular(AppRadius.xl),
             ),
-            child: const Icon(
+            child: Icon(
               Icons.mark_email_read_outlined,
               size: 40,
-              color: AppColors.emerald,
+              color: colors.success,
             ),
           ),
         ),
@@ -248,9 +256,9 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
         Container(
           padding: const EdgeInsets.all(AppSpacing.md),
           decoration: BoxDecoration(
-            color: AppColors.oceanPale,
+            color: AppColors.jade50,
             borderRadius: BorderRadius.circular(AppRadius.md),
-            border: Border.all(color: AppColors.oceanLight),
+            border: Border.all(color: AppColors.jade50),
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -260,7 +268,7 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
                 '${_identifierCtrl.text.trim()}.',
                 style: GoogleFonts.beVietnamPro(
                   fontSize: 13,
-                  color: AppColors.oceanDeep,
+                  color: AppColors.jade900,
                   height: 1.4,
                 ),
               ),
@@ -270,7 +278,7 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
                 '10 phút.',
                 style: GoogleFonts.beVietnamPro(
                   fontSize: 12,
-                  color: AppColors.muted,
+                  color: colors.textTertiary,
                   height: 1.4,
                 ),
               ),
@@ -292,19 +300,21 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
                 'Gửi lại link',
                 style: GoogleFonts.beVietnamPro(
                   fontSize: 13,
-                  color: AppColors.oceanMid,
+                  color: AppColors.jade300,
                   fontWeight: FontWeight.w500,
                 ),
               ),
             ),
-            Text('|', style: TextStyle(color: AppColors.border, fontSize: 13)),
+            Text('|',
+                style:
+                    TextStyle(color: colors.borderDefault, fontSize: 13)),
             TextButton(
               onPressed: () => setState(() => _emailSent = false),
               child: Text(
                 'Đổi tài khoản',
                 style: GoogleFonts.beVietnamPro(
                   fontSize: 13,
-                  color: AppColors.muted,
+                  color: colors.textTertiary,
                   fontWeight: FontWeight.w500,
                 ),
               ),
@@ -319,7 +329,7 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
               'Quay lại đăng nhập',
               style: GoogleFonts.beVietnamPro(
                 fontSize: 14,
-                color: AppColors.oceanMid,
+                color: AppColors.jade300,
                 fontWeight: FontWeight.w500,
               ),
             ),
@@ -342,7 +352,7 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
                 child: Center(
                   child: CircularProgressIndicator(
                     strokeWidth: 3,
-                    color: AppColors.ocean,
+                    color: AppColors.jade500,
                   ),
                 ),
               ),
@@ -354,12 +364,12 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
               child: DecoratedBox(
                 decoration: BoxDecoration(
                   gradient: const LinearGradient(
-                    colors: [AppColors.oceanMid, AppColors.ocean],
+                    colors: [AppColors.jade300, AppColors.jade500],
                   ),
                   borderRadius: BorderRadius.circular(AppRadius.md),
                   boxShadow: [
                     BoxShadow(
-                      color: AppColors.ocean.withValues(alpha: 0.3),
+                      color: AppColors.jade500.withValues(alpha: 0.3),
                       blurRadius: 16,
                       offset: const Offset(0, 4),
                     ),
@@ -388,27 +398,29 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
   }
 
   InputDecoration _inputDecoration({
+    required BuildContext context,
     required String hint,
     required IconData icon,
     Widget? suffixIcon,
   }) {
+    final colors = context.colors;
     return InputDecoration(
       hintText: hint,
-      prefixIcon: Icon(icon, color: AppColors.slate),
+      prefixIcon: Icon(icon, color: colors.textSecondary),
       suffixIcon: suffixIcon,
       filled: true,
-      fillColor: AppColors.background,
+      fillColor: colors.bgCanvas,
       border: OutlineInputBorder(
         borderRadius: BorderRadius.circular(AppRadius.md),
-        borderSide: const BorderSide(color: AppColors.border),
+        borderSide: BorderSide(color: colors.borderDefault),
       ),
       enabledBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(AppRadius.md),
-        borderSide: const BorderSide(color: AppColors.border),
+        borderSide: BorderSide(color: colors.borderDefault),
       ),
       focusedBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(AppRadius.md),
-        borderSide: const BorderSide(color: AppColors.oceanMid, width: 1.5),
+        borderSide: const BorderSide(color: AppColors.jade300, width: 1.5),
       ),
     );
   }
@@ -425,7 +437,7 @@ class _FieldLabel extends StatelessWidget {
       style: GoogleFonts.beVietnamPro(
         fontSize: 12,
         fontWeight: FontWeight.w600,
-        color: AppColors.muted,
+        color: context.colors.textTertiary,
         letterSpacing: 0.5,
       ),
     );

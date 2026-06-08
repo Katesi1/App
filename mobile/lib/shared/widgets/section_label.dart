@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-import '../../core/theme/app_colors.dart';
+import '../../core/theme/app_color_scheme.dart';
 
 class SectionLabel extends StatelessWidget {
   final String label;
@@ -16,7 +16,7 @@ class SectionLabel extends StatelessWidget {
           fontSize: 11,
           fontWeight: FontWeight.w600,
           letterSpacing: 1,
-          color: AppColors.muted,
+          color: context.colors.textTertiary,
         ),
       ),
     );

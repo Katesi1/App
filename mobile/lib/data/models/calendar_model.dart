@@ -38,6 +38,7 @@ class CalendarRoomRow {
   final int? type;
   final String? address;
   final String? view; // "sea", "city", null
+  final String? ownerPhone;
   final List<CalendarDay> days;
 
   const CalendarRoomRow({
@@ -47,6 +48,7 @@ class CalendarRoomRow {
     this.type,
     this.address,
     this.view,
+    this.ownerPhone,
     this.days = const [],
   });
 
@@ -58,6 +60,7 @@ class CalendarRoomRow {
         type: json['type'] as int?,
         address: json['address'],
         view: json['view'],
+        ownerPhone: json['ownerPhone'] as String?,
         days: (json['days'] as List<dynamic>?)
                 ?.map((e) => CalendarDay.fromJson(e))
                 .toList() ??

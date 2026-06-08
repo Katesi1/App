@@ -8,6 +8,7 @@ import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 import '../../../core/constants/app_constants.dart';
+import '../../../core/theme/app_color_scheme.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../controllers/auth_controller.dart';
@@ -80,7 +81,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen>
               Expanded(child: Text(error)),
             ],
           ),
-          backgroundColor: AppColors.coral,
+          backgroundColor: context.colors.error,
           behavior: SnackBarBehavior.floating,
           shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(AppRadius.sm)),
@@ -117,7 +118,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen>
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(message),
-            backgroundColor: AppColors.coral,
+            backgroundColor: context.colors.error,
             behavior: SnackBarBehavior.floating,
             shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(AppRadius.sm)),
@@ -129,6 +130,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen>
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.colors;
     final size = MediaQuery.of(context).size;
     final bottomInset = MediaQuery.of(context).viewPadding.bottom;
 
@@ -142,10 +144,10 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen>
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
                 colors: [
-                  AppColors.oceanDeep,
+                  AppColors.jade900,
                   Color(
                       0xFF0A3D5C), // custom interpolation, không thuộc token brand
-                  AppColors.ocean,
+                  AppColors.jade500,
                 ],
                 stops: [0.0, 0.5, 1.0],
               ),
@@ -254,7 +256,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen>
                                   TextSpan(text: 'Halong'),
                                   TextSpan(
                                     text: '24h',
-                                    style: TextStyle(color: AppColors.gold),
+                                    style: TextStyle(color: AppColors.gold500),
                                   ),
                                 ],
                               ),
@@ -311,7 +313,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen>
                                   height: 4,
                                   margin: const EdgeInsets.only(bottom: 24),
                                   decoration: BoxDecoration(
-                                    color: AppColors.border,
+                                    color: colors.borderDefault,
                                     borderRadius: BorderRadius.circular(2),
                                   ),
                                 ),
@@ -325,11 +327,11 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen>
                                     horizontal: 14, vertical: 14),
                                 decoration: BoxDecoration(
                                   color:
-                                      AppColors.ocean.withValues(alpha: 0.06),
+                                      AppColors.jade500.withValues(alpha: 0.06),
                                   borderRadius: BorderRadius.circular(14),
                                   border: Border.all(
                                     color:
-                                        AppColors.ocean.withValues(alpha: 0.3),
+                                        AppColors.jade500.withValues(alpha: 0.3),
                                   ),
                                 ),
                                 child: Row(
@@ -338,14 +340,14 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen>
                                       width: 40,
                                       height: 40,
                                       decoration: BoxDecoration(
-                                        color: AppColors.ocean
+                                        color: AppColors.jade500
                                             .withValues(alpha: 0.12),
                                         borderRadius:
                                             BorderRadius.circular(10),
                                       ),
                                       child: const Icon(
                                         Icons.home_work_rounded,
-                                        color: AppColors.ocean,
+                                        color: AppColors.jade500,
                                         size: 22,
                                       ),
                                     ),
@@ -360,7 +362,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen>
                                             style: GoogleFonts.beVietnamPro(
                                               fontSize: 14,
                                               fontWeight: FontWeight.w700,
-                                              color: AppColors.ocean,
+                                              color: AppColors.jade500,
                                             ),
                                           ),
                                           const SizedBox(height: 2),
@@ -368,7 +370,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen>
                                             'Đăng phòng & quản lý booking',
                                             style: GoogleFonts.beVietnamPro(
                                               fontSize: 12,
-                                              color: AppColors.muted,
+                                              color: colors.textTertiary,
                                             ),
                                           ),
                                         ],
@@ -390,8 +392,10 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen>
                                   controller: _nameCtrl,
                                   textInputAction: TextInputAction.next,
                                   style: GoogleFonts.beVietnamPro(
-                                      fontSize: 15, color: AppColors.ink),
+                                      fontSize: 15,
+                                      color: colors.textPrimary),
                                   decoration: _inputDecor(
+                                    context: context,
                                     label: 'Họ và tên',
                                     hint: 'Nguyễn Văn A',
                                     icon: Icons.person_outline_rounded,
@@ -418,8 +422,10 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen>
                                   keyboardType: TextInputType.emailAddress,
                                   textInputAction: TextInputAction.next,
                                   style: GoogleFonts.beVietnamPro(
-                                      fontSize: 15, color: AppColors.ink),
+                                      fontSize: 15,
+                                      color: colors.textPrimary),
                                   decoration: _inputDecor(
+                                    context: context,
                                     label: 'Email',
                                     hint: 'example@gmail.com',
                                     icon: Icons.email_outlined,
@@ -447,8 +453,10 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen>
                                   obscureText: _obscurePassword,
                                   textInputAction: TextInputAction.next,
                                   style: GoogleFonts.beVietnamPro(
-                                      fontSize: 15, color: AppColors.ink),
+                                      fontSize: 15,
+                                      color: colors.textPrimary),
                                   decoration: _inputDecor(
+                                    context: context,
                                     label: 'Mật khẩu',
                                     hint: '••••••••',
                                     icon: Icons.lock_outline_rounded,
@@ -457,7 +465,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen>
                                         _obscurePassword
                                             ? Icons.visibility_outlined
                                             : Icons.visibility_off_outlined,
-                                        color: AppColors.slate,
+                                        color: colors.textTertiary,
                                         size: 20,
                                       ),
                                       onPressed: () => setState(() =>
@@ -487,8 +495,10 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen>
                                   textInputAction: TextInputAction.done,
                                   onFieldSubmitted: (_) => _register(),
                                   style: GoogleFonts.beVietnamPro(
-                                      fontSize: 15, color: AppColors.ink),
+                                      fontSize: 15,
+                                      color: colors.textPrimary),
                                   decoration: _inputDecor(
+                                    context: context,
                                     label: 'Xác nhận mật khẩu',
                                     hint: '••••••••',
                                     icon: Icons.lock_outline_rounded,
@@ -497,7 +507,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen>
                                         _obscureConfirm
                                             ? Icons.visibility_outlined
                                             : Icons.visibility_off_outlined,
-                                        color: AppColors.slate,
+                                        color: colors.textTertiary,
                                         size: 20,
                                       ),
                                       onPressed: () => setState(() =>
@@ -532,9 +542,9 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen>
                               // Divider
                               Row(
                                 children: [
-                                  const Expanded(
+                                  Expanded(
                                       child: Divider(
-                                          color: AppColors.border,
+                                          color: colors.borderDefault,
                                           thickness: 1)),
                                   Padding(
                                     padding: const EdgeInsets.symmetric(
@@ -543,13 +553,13 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen>
                                       'hoặc',
                                       style: GoogleFonts.beVietnamPro(
                                         fontSize: 12,
-                                        color: AppColors.slate,
+                                        color: colors.textSecondary,
                                       ),
                                     ),
                                   ),
-                                  const Expanded(
+                                  Expanded(
                                       child: Divider(
-                                          color: AppColors.border,
+                                          color: colors.borderDefault,
                                           thickness: 1)),
                                 ],
                               ).animate(delay: 680.ms).fadeIn(duration: 400.ms),
@@ -576,7 +586,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen>
                                       'Đã có tài khoản? ',
                                       style: GoogleFonts.beVietnamPro(
                                         fontSize: 13,
-                                        color: AppColors.slate,
+                                        color: colors.textSecondary,
                                       ),
                                     ),
                                     GestureDetector(
@@ -586,7 +596,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen>
                                         style: GoogleFonts.beVietnamPro(
                                           fontSize: 13,
                                           fontWeight: FontWeight.w700,
-                                          color: AppColors.oceanMid,
+                                          color: AppColors.jade300,
                                         ),
                                       ),
                                     ),
@@ -620,46 +630,48 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen>
   }
 
   InputDecoration _inputDecor({
+    required BuildContext context,
     required String label,
     required String hint,
     required IconData icon,
     Widget? suffixIcon,
   }) {
+    final colors = context.colors;
     return InputDecoration(
       labelText: label,
       hintText: hint,
       labelStyle: GoogleFonts.beVietnamPro(
         fontSize: 14,
-        color: AppColors.slate,
+        color: colors.textSecondary,
       ),
       hintStyle: GoogleFonts.beVietnamPro(
         fontSize: 14,
-        color: AppColors.slate.withValues(alpha: 0.6),
+        color: colors.textTertiary,
       ),
-      prefixIcon: Icon(icon, color: AppColors.slate, size: 20),
+      prefixIcon: Icon(icon, color: colors.textSecondary, size: 20),
       suffixIcon: suffixIcon,
       filled: true,
-      fillColor: AppColors.background,
+      fillColor: colors.bgCanvas,
       contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
       border: OutlineInputBorder(
         borderRadius: BorderRadius.circular(14),
-        borderSide: const BorderSide(color: AppColors.border),
+        borderSide: BorderSide(color: colors.borderDefault),
       ),
       enabledBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(14),
-        borderSide: const BorderSide(color: AppColors.border, width: 1),
+        borderSide: BorderSide(color: colors.borderDefault, width: 1),
       ),
       focusedBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(14),
-        borderSide: const BorderSide(color: AppColors.ocean, width: 1.5),
+        borderSide: const BorderSide(color: AppColors.jade500, width: 1.5),
       ),
       errorBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(14),
-        borderSide: const BorderSide(color: AppColors.coral, width: 1),
+        borderSide: BorderSide(color: colors.error, width: 1),
       ),
       focusedErrorBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(14),
-        borderSide: const BorderSide(color: AppColors.coral, width: 1.5),
+        borderSide: BorderSide(color: colors.error, width: 1.5),
       ),
     );
   }
@@ -717,14 +729,14 @@ class _RegisterButtonState extends State<_RegisterButton>
           height: 54,
           decoration: BoxDecoration(
             gradient: const LinearGradient(
-              colors: [AppColors.ocean, AppColors.oceanMid],
+              colors: [AppColors.jade500, AppColors.jade300],
               begin: Alignment.centerLeft,
               end: Alignment.centerRight,
             ),
             borderRadius: BorderRadius.circular(14),
             boxShadow: [
               BoxShadow(
-                color: AppColors.ocean.withValues(alpha: 0.4),
+                color: AppColors.jade500.withValues(alpha: 0.4),
                 blurRadius: 20,
                 offset: const Offset(0, 6),
               ),
@@ -803,6 +815,7 @@ class _GoogleRegisterButtonState extends State<_GoogleRegisterButton>
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.colors;
     return GestureDetector(
       onTapDown: (_) => _pressCtrl.reverse(),
       onTapUp: (_) {
@@ -818,9 +831,9 @@ class _GoogleRegisterButtonState extends State<_GoogleRegisterButton>
           width: double.infinity,
           height: 52,
           decoration: BoxDecoration(
-            color: Colors.white,
+            color: colors.bgSurface,
             borderRadius: BorderRadius.circular(14),
-            border: Border.all(color: AppColors.border, width: 1.5),
+            border: Border.all(color: colors.borderDefault, width: 1.5),
             boxShadow: [
               BoxShadow(
                 color: Colors.black.withValues(alpha: 0.05),
@@ -843,7 +856,7 @@ class _GoogleRegisterButtonState extends State<_GoogleRegisterButton>
                 style: GoogleFonts.beVietnamPro(
                   fontSize: 14,
                   fontWeight: FontWeight.w500,
-                  color: AppColors.ink,
+                  color: colors.textPrimary,
                 ),
               ),
             ],
@@ -882,7 +895,7 @@ class _RegisterWavePainter extends CustomPainter {
         paint);
 
     // Tần số 2
-    paint.color = AppColors.jadeBright.withValues(alpha: 0.05);
+    paint.color = AppColors.jadeMuted.withValues(alpha: 0.05);
     canvas.drawCircle(
         Offset(size.width * 0.5 + math.sin(t * 2) * 20,
             size.height * 0.18 + math.cos(t * 2) * 10),

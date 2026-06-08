@@ -390,23 +390,21 @@ class _SubscriptionDetailScreenState
   List<TimelineStep> _timelineSteps(UserModel user) {
     if (user.isInTrial) {
       return [
-        TimelineStep(
-          title: 'Đăng ký gói',
-          subtitle: user.subscriptionPlanLabel,
+        const TimelineStep(
+          title: 'KYC & thanh toán',
+          subtitle: 'Đã hoàn tất',
           status: TimelineStepStatus.done,
         ),
         TimelineStep(
-          title: 'Đang dùng thử',
-          subtitle: user.trialEndsAt != null
-              ? 'Đến ${VerifyFormat.dateVN(user.trialEndsAt!)}'
-              : 'Miễn phí 7 ngày',
+          title: 'Gói đang hoạt động',
+          subtitle: user.subscriptionPlanLabel,
           status: TimelineStepStatus.current,
         ),
         TimelineStep(
-          title: 'Thu phí đầu tiên',
+          title: 'Gia hạn tiếp theo',
           subtitle: user.nextChargeAt != null
               ? VerifyFormat.dateVN(user.nextChargeAt!)
-              : 'Sau khi trial kết thúc',
+              : 'Theo chu kỳ đã chọn',
           status: TimelineStepStatus.pending,
         ),
       ];
@@ -790,7 +788,7 @@ class _MetricsGrid extends StatelessWidget {
         crossAxisCount: 2,
         crossAxisSpacing: AppSpacing.sm,
         mainAxisSpacing: AppSpacing.sm,
-        childAspectRatio: 1.45,
+        childAspectRatio: 1.15,
       ),
       itemCount: metrics.length,
       itemBuilder: (_, i) {

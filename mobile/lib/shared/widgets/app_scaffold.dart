@@ -82,7 +82,7 @@ class AppScaffold extends ConsumerWidget {
                           decoration: const BoxDecoration(
                             shape: BoxShape.circle,
                             gradient: LinearGradient(
-                              colors: [AppColors.teal, AppColors.gold],
+                              colors: [AppColors.jade300, AppColors.gold500],
                             ),
                           ),
                           child: Center(
@@ -195,7 +195,7 @@ class _BottomNavState extends ConsumerState<_BottomNav> {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Container(
-      color: isDark ? AppColors.darkBackground : AppColors.background,
+      color: isDark ? AppColors.darkBg : AppColors.slate50,
       child: SafeArea(
         top: false,
         child: Padding(
@@ -209,14 +209,14 @@ class _BottomNavState extends ConsumerState<_BottomNav> {
                 BoxShadow(
                   color: isDark
                       ? Colors.black.withValues(alpha: 0.4)
-                      : AppColors.ink.withValues(alpha: 0.1),
+                      : AppColors.slate900.withValues(alpha: 0.1),
                   blurRadius: 24,
                   offset: const Offset(0, 6),
                 ),
                 BoxShadow(
                   color: isDark
                       ? Colors.black.withValues(alpha: 0.15)
-                      : AppColors.ocean.withValues(alpha: 0.06),
+                      : AppColors.jade500.withValues(alpha: 0.06),
                   blurRadius: 8,
                   offset: const Offset(0, 2),
                 ),
@@ -236,8 +236,8 @@ class _BottomNavState extends ConsumerState<_BottomNav> {
   Widget _buildNavItem(int index, _NavItem item) {
     final isSelected = _current == index;
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final activeColor = isDark ? AppColors.oceanBright : AppColors.ocean;
-    final inactiveColor = isDark ? AppColors.darkHint : AppColors.slate;
+    final activeColor = isDark ? AppColors.jadeText : AppColors.jade500;
+    final inactiveColor = isDark ? AppColors.darkHint : AppColors.slate400;
 
     return Expanded(
       child: GestureDetector(
@@ -256,8 +256,8 @@ class _BottomNavState extends ConsumerState<_BottomNav> {
               decoration: BoxDecoration(
                 color: isSelected
                     ? isDark
-                        ? AppColors.oceanBright.withValues(alpha: 0.15)
-                        : AppColors.oceanLight
+                        ? AppColors.jadeText.withValues(alpha: 0.15)
+                        : AppColors.jade50
                     : Colors.transparent,
                 borderRadius: BorderRadius.circular(14),
               ),
@@ -302,7 +302,7 @@ class _NotificationBell extends ConsumerWidget {
               child: Container(
                 padding: const EdgeInsets.all(2),
                 decoration: const BoxDecoration(
-                  color: AppColors.coral,
+                  color: AppColors.coral500,
                   shape: BoxShape.circle,
                 ),
                 constraints: const BoxConstraints(

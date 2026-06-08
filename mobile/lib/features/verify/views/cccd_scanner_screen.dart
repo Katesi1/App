@@ -574,10 +574,11 @@ class _FrameOverlayState extends State<_FrameOverlay>
         final left = (size.width - frameW) / 2;
         final top = (size.height - frameH) / 2;
 
+        final colors = context.colors;
         final cornerColor = switch (widget.status) {
-          _Status.searching => AppColors.amber,
-          _Status.detected => AppColors.emerald,
-          _Status.capturing => AppColors.emerald,
+          _Status.searching => colors.warning,
+          _Status.detected => colors.success,
+          _Status.capturing => colors.success,
         };
 
         return IgnorePointer(
@@ -704,10 +705,11 @@ class _StatusPill extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.colors;
     final (label, color) = switch (status) {
-      _Status.searching => ('Đang tìm CCCD…', AppColors.amber),
-      _Status.detected => ('Đã thấy — Giữ yên', AppColors.emerald),
-      _Status.capturing => ('Đang chụp…', AppColors.emerald),
+      _Status.searching => ('Đang tìm CCCD…', colors.warning),
+      _Status.detected => ('Đã thấy — Giữ yên', colors.success),
+      _Status.capturing => ('Đang chụp…', colors.success),
     };
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),

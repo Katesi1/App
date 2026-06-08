@@ -6,6 +6,7 @@ import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 import '../../../core/constants/app_constants.dart';
+import '../../../core/theme/app_color_scheme.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../controllers/auth_controller.dart';
@@ -94,7 +95,7 @@ class _RolePickerScreenState extends ConsumerState<RolePickerScreen> {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(message),
-        backgroundColor: AppColors.coral,
+        backgroundColor: context.colors.error,
         behavior: SnackBarBehavior.floating,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(AppRadius.sm),
@@ -106,17 +107,18 @@ class _RolePickerScreenState extends ConsumerState<RolePickerScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.colors;
     final profile = widget.args.profile;
 
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: colors.bgCanvas,
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
         leading: _isLoading
             ? null
             : IconButton(
-                icon: const Icon(Icons.close_rounded, color: AppColors.navy),
+                icon: Icon(Icons.close_rounded, color: colors.textPrimary),
                 onPressed: () => context.pop(),
               ),
       ),
@@ -132,7 +134,7 @@ class _RolePickerScreenState extends ConsumerState<RolePickerScreen> {
                 style: GoogleFonts.beVietnamPro(
                   fontSize: 24,
                   fontWeight: FontWeight.w700,
-                  color: AppColors.navy,
+                  color: colors.textPrimary,
                 ),
               ),
               const SizedBox(height: AppSpacing.xs),
@@ -140,7 +142,7 @@ class _RolePickerScreenState extends ConsumerState<RolePickerScreen> {
                 'Bạn muốn dùng Halong24h với vai trò nào?',
                 style: GoogleFonts.beVietnamPro(
                   fontSize: 14,
-                  color: AppColors.muted,
+                  color: colors.textTertiary,
                 ),
               ),
               const SizedBox(height: AppSpacing.md),
@@ -152,7 +154,7 @@ class _RolePickerScreenState extends ConsumerState<RolePickerScreen> {
                 subtitle:
                     'Quản lý phòng, giữ booking cho khách & theo dõi doanh thu '
                     '(cần xác minh CCCD).',
-                color: AppColors.ocean,
+                color: AppColors.jade500,
                 isLoading: _submittingRole == UserRole.owner,
                 disabled: _isLoading && _submittingRole != UserRole.owner,
                 onTap: () => _onPickRole(UserRole.owner),
@@ -164,7 +166,7 @@ class _RolePickerScreenState extends ConsumerState<RolePickerScreen> {
                 textAlign: TextAlign.center,
                 style: GoogleFonts.beVietnamPro(
                   fontSize: 12,
-                  color: AppColors.muted,
+                  color: colors.textTertiary,
                 ),
               ),
               const SizedBox(height: AppSpacing.md),
@@ -183,12 +185,13 @@ class _GoogleAvatar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.colors;
     return Container(
       padding: const EdgeInsets.all(AppSpacing.md),
       decoration: BoxDecoration(
-        color: AppColors.surface,
+        color: colors.bgSurface,
         borderRadius: BorderRadius.circular(AppRadius.md),
-        border: Border.all(color: AppColors.border),
+        border: Border.all(color: colors.borderDefault),
       ),
       child: Row(
         children: [
@@ -204,20 +207,20 @@ class _GoogleAvatar extends StatelessWidget {
                     placeholder: (_, __) => Container(
                       width: 48,
                       height: 48,
-                      color: AppColors.background,
+                      color: colors.bgCanvas,
                     ),
                     errorWidget: (_, __, ___) => Container(
                       width: 48,
                       height: 48,
-                      color: AppColors.background,
-                      child: const Icon(Icons.person, color: AppColors.muted),
+                      color: colors.bgCanvas,
+                      child: Icon(Icons.person, color: colors.textTertiary),
                     ),
                   )
                 : Container(
                     width: 48,
                     height: 48,
-                    color: AppColors.background,
-                    child: const Icon(Icons.person, color: AppColors.muted),
+                    color: colors.bgCanvas,
+                    child: Icon(Icons.person, color: colors.textTertiary),
                   ),
           ),
           const SizedBox(width: AppSpacing.md),
@@ -230,7 +233,7 @@ class _GoogleAvatar extends StatelessWidget {
                   style: GoogleFonts.beVietnamPro(
                     fontSize: 13,
                     fontWeight: FontWeight.w600,
-                    color: AppColors.navy,
+                    color: colors.textPrimary,
                   ),
                   overflow: TextOverflow.ellipsis,
                 ),
@@ -238,7 +241,7 @@ class _GoogleAvatar extends StatelessWidget {
                   'Đăng nhập qua Google',
                   style: GoogleFonts.beVietnamPro(
                     fontSize: 11,
-                    color: AppColors.muted,
+                    color: colors.textTertiary,
                   ),
                 ),
               ],
@@ -271,10 +274,11 @@ class _RoleOption extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.colors;
     return Opacity(
       opacity: disabled ? 0.5 : 1.0,
       child: Material(
-        color: AppColors.surface,
+        color: colors.bgSurface,
         borderRadius: BorderRadius.circular(AppRadius.md),
         child: InkWell(
           onTap: disabled ? null : onTap,
@@ -306,7 +310,7 @@ class _RoleOption extends StatelessWidget {
                         style: GoogleFonts.beVietnamPro(
                           fontSize: 15,
                           fontWeight: FontWeight.w700,
-                          color: AppColors.navy,
+                          color: colors.textPrimary,
                         ),
                       ),
                       const SizedBox(height: 2),
@@ -314,7 +318,7 @@ class _RoleOption extends StatelessWidget {
                         subtitle,
                         style: GoogleFonts.beVietnamPro(
                           fontSize: 12,
-                          color: AppColors.muted,
+                          color: colors.textTertiary,
                           height: 1.4,
                         ),
                       ),

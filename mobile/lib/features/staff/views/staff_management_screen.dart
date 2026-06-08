@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 
+import '../../../core/theme/app_color_scheme.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../core/utils/staff_entitlement.dart';
@@ -82,7 +83,7 @@ class _StaffManagementScreenState extends ConsumerState<StaffManagementScreen>
     final created = await showModalBottomSheet<bool>(
       context: context,
       isScrollControlled: true,
-      backgroundColor: AppColors.surface,
+      backgroundColor: context.colors.bgSurface,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
@@ -114,6 +115,7 @@ class _StaffManagementScreenState extends ConsumerState<StaffManagementScreen>
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.colors;
     final user = ref.watch(currentUserProvider);
     final canInvite = user?.canInviteStaff ?? false;
 
@@ -130,12 +132,12 @@ class _StaffManagementScreenState extends ConsumerState<StaffManagementScreen>
               _StaffSlotUsageBanner(user: user),
           ],
           Container(
-            color: AppColors.surface,
+            color: colors.bgSurface,
             child: TabBar(
               controller: _tabCtrl,
-              labelColor: AppColors.ocean,
-              unselectedLabelColor: AppColors.muted,
-              indicatorColor: AppColors.ocean,
+              labelColor: colors.brand,
+              unselectedLabelColor: colors.textSecondary,
+              indicatorColor: colors.brand,
               labelStyle: GoogleFonts.beVietnamPro(
                 fontSize: 13,
                 fontWeight: FontWeight.w600,
@@ -164,14 +166,14 @@ class _StaffManagementScreenState extends ConsumerState<StaffManagementScreen>
                   onPressed: _openInviteSheet,
                   icon: const Icon(Icons.person_add_rounded),
                   label: const Text('Mời nhân viên'),
-                  backgroundColor: AppColors.ocean,
+                  backgroundColor: colors.brand,
                 )
               : user != null
                   ? FloatingActionButton.extended(
                       onPressed: () => _onUpgradeFabTapped(user),
                       icon: const Icon(Icons.lock_outline_rounded),
                       label: const Text('Nâng cấp gói'),
-                      backgroundColor: AppColors.slate,
+                      backgroundColor: AppColors.slate400,
                     )
                   : null,
     );
@@ -259,18 +261,19 @@ class _StaffListTab extends ConsumerWidget {
       BuildContext context, WidgetRef ref, String userId, String name) async {
     final confirmed = await showDialog<bool>(
       context: context,
-      builder: (_) => AlertDialog(
+      builder: (dialogContext) => AlertDialog(
         title: const Text('Xoá nhân viên?'),
         content: Text(
             'Nhân viên "$name" sẽ bị vô hiệu hoá. Bạn có thể mời lại sau.'),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(context, false),
+            onPressed: () => Navigator.pop(dialogContext, false),
             child: const Text('Huỷ'),
           ),
           FilledButton(
-            style: FilledButton.styleFrom(backgroundColor: AppColors.coral),
-            onPressed: () => Navigator.pop(context, true),
+            style: FilledButton.styleFrom(
+                backgroundColor: dialogContext.colors.error),
+            onPressed: () => Navigator.pop(dialogContext, true),
             child: const Text('Xoá'),
           ),
         ],
@@ -304,12 +307,13 @@ class _StaffTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.colors;
     return Container(
       padding: const EdgeInsets.all(AppSpacing.md),
       decoration: BoxDecoration(
-        color: AppColors.surface,
+        color: colors.bgSurface,
         borderRadius: BorderRadius.circular(AppRadius.md),
-        border: Border.all(color: AppColors.border),
+        border: Border.all(color: colors.borderDefault),
       ),
       child: Row(
         children: [
@@ -317,10 +321,10 @@ class _StaffTile extends StatelessWidget {
             width: 44,
             height: 44,
             decoration: BoxDecoration(
-              color: AppColors.ocean.withValues(alpha: 0.1),
+              color: colors.brand.withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(12),
             ),
-            child: const Icon(Icons.person_rounded, color: AppColors.ocean),
+            child: Icon(Icons.person_rounded, color: colors.brand),
           ),
           const SizedBox(width: AppSpacing.md),
           Expanded(
@@ -332,7 +336,7 @@ class _StaffTile extends StatelessWidget {
                   style: GoogleFonts.beVietnamPro(
                     fontSize: 14,
                     fontWeight: FontWeight.w700,
-                    color: AppColors.navy,
+                    color: colors.textPrimary,
                   ),
                 ),
                 const SizedBox(height: 2),
@@ -340,7 +344,7 @@ class _StaffTile extends StatelessWidget {
                   email,
                   style: GoogleFonts.beVietnamPro(
                     fontSize: 12,
-                    color: AppColors.muted,
+                    color: colors.textSecondary,
                   ),
                 ),
                 if (phone.isNotEmpty)
@@ -348,7 +352,7 @@ class _StaffTile extends StatelessWidget {
                     phone,
                     style: GoogleFonts.beVietnamPro(
                       fontSize: 12,
-                      color: AppColors.muted,
+                      color: colors.textSecondary,
                     ),
                   ),
               ],
@@ -356,8 +360,7 @@ class _StaffTile extends StatelessWidget {
           ),
           IconButton(
             onPressed: onRemove,
-            icon: const Icon(Icons.delete_outline_rounded,
-                color: AppColors.coral),
+            icon: Icon(Icons.delete_outline_rounded, color: colors.error),
             tooltip: 'Xoá nhân viên',
           ),
         ],
@@ -409,15 +412,16 @@ class _InviteTile extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final colors = context.colors;
     final dateFmt = DateFormat('dd/MM/yyyy');
     final canCancel = invite.status == StaffInviteStatus.pending;
 
     return Container(
       padding: const EdgeInsets.all(AppSpacing.md),
       decoration: BoxDecoration(
-        color: AppColors.surface,
+        color: colors.bgSurface,
         borderRadius: BorderRadius.circular(AppRadius.md),
-        border: Border.all(color: AppColors.border),
+        border: Border.all(color: colors.borderDefault),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -430,7 +434,7 @@ class _InviteTile extends ConsumerWidget {
                   style: GoogleFonts.beVietnamPro(
                     fontSize: 14,
                     fontWeight: FontWeight.w700,
-                    color: AppColors.navy,
+                    color: colors.textPrimary,
                   ),
                 ),
               ),
@@ -440,15 +444,15 @@ class _InviteTile extends ConsumerWidget {
           const SizedBox(height: AppSpacing.sm),
           Row(
             children: [
-              const Icon(Icons.qr_code_2_rounded,
-                  size: 14, color: AppColors.muted),
+              Icon(Icons.qr_code_2_rounded,
+                  size: 14, color: colors.textSecondary),
               const SizedBox(width: 4),
               Text(
                 invite.shortCode,
                 style: GoogleFonts.firaCode(
                   fontSize: 13,
                   fontWeight: FontWeight.w600,
-                  color: AppColors.ocean,
+                  color: colors.brand,
                 ),
               ),
               const SizedBox(width: AppSpacing.sm),
@@ -457,8 +461,8 @@ class _InviteTile extends ConsumerWidget {
                 padding: EdgeInsets.zero,
                 constraints: const BoxConstraints(),
                 onPressed: () => _copy(context, invite.shortCode),
-                icon: const Icon(Icons.copy_rounded,
-                    size: 16, color: AppColors.muted),
+                icon: Icon(Icons.copy_rounded,
+                    size: 16, color: colors.textSecondary),
                 tooltip: 'Sao chép mã',
               ),
               const Spacer(),
@@ -466,7 +470,7 @@ class _InviteTile extends ConsumerWidget {
                 'HSD ${dateFmt.format(invite.expiresAt)}',
                 style: GoogleFonts.beVietnamPro(
                   fontSize: 11,
-                  color: AppColors.muted,
+                  color: colors.textSecondary,
                 ),
               ),
             ],
@@ -477,13 +481,13 @@ class _InviteTile extends ConsumerWidget {
               alignment: Alignment.centerRight,
               child: TextButton.icon(
                 onPressed: () => _confirmCancel(context, ref),
-                icon: const Icon(Icons.cancel_outlined,
-                    size: 16, color: AppColors.coral),
+                icon: Icon(Icons.cancel_outlined,
+                    size: 16, color: colors.error),
                 label: Text(
                   'Huỷ lời mời',
                   style: GoogleFonts.beVietnamPro(
                     fontSize: 12,
-                    color: AppColors.coral,
+                    color: colors.error,
                   ),
                 ),
               ),
@@ -502,17 +506,18 @@ class _InviteTile extends ConsumerWidget {
   Future<void> _confirmCancel(BuildContext context, WidgetRef ref) async {
     final confirmed = await showDialog<bool>(
       context: context,
-      builder: (_) => AlertDialog(
+      builder: (dialogContext) => AlertDialog(
         title: const Text('Huỷ lời mời?'),
         content: Text('Lời mời tới ${invite.email} sẽ bị huỷ.'),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(context, false),
+            onPressed: () => Navigator.pop(dialogContext, false),
             child: const Text('Không'),
           ),
           FilledButton(
-            style: FilledButton.styleFrom(backgroundColor: AppColors.coral),
-            onPressed: () => Navigator.pop(context, true),
+            style: FilledButton.styleFrom(
+                backgroundColor: dialogContext.colors.error),
+            onPressed: () => Navigator.pop(dialogContext, true),
             child: const Text('Huỷ'),
           ),
         ],
@@ -537,26 +542,27 @@ class _StatusBadge extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.colors;
     final (Color bg, Color fg) = switch (status) {
       StaffInviteStatus.pending => (
-          AppColors.amber.withValues(alpha: 0.15),
-          AppColors.amber,
+          colors.warning.withValues(alpha: 0.15),
+          colors.warning,
         ),
       StaffInviteStatus.accepted => (
-          AppColors.emerald.withValues(alpha: 0.15),
-          AppColors.emerald,
+          colors.success.withValues(alpha: 0.15),
+          colors.success,
         ),
       StaffInviteStatus.expired => (
-          AppColors.muted.withValues(alpha: 0.15),
-          AppColors.muted,
+          colors.textSecondary.withValues(alpha: 0.15),
+          colors.textSecondary,
         ),
       StaffInviteStatus.cancelled => (
-          AppColors.coral.withValues(alpha: 0.15),
-          AppColors.coral,
+          colors.error.withValues(alpha: 0.15),
+          colors.error,
         ),
       StaffInviteStatus.unknown => (
-          AppColors.muted.withValues(alpha: 0.15),
-          AppColors.muted,
+          colors.textSecondary.withValues(alpha: 0.15),
+          colors.textSecondary,
         ),
     };
     return Container(
@@ -636,12 +642,14 @@ class _InviteStaffSheetState extends ConsumerState<_InviteStaffSheet> {
   ) async {
     await showDialog<void>(
       context: context,
-      builder: (dialogContext) => AlertDialog(
+      builder: (dialogContext) {
+        final dColors = dialogContext.colors;
+        return AlertDialog(
         title: Text(
           'Đã gửi lời mời',
           style: GoogleFonts.beVietnamPro(
             fontWeight: FontWeight.w700,
-            color: AppColors.navy,
+            color: dColors.textPrimary,
           ),
         ),
         content: Column(
@@ -652,7 +660,7 @@ class _InviteStaffSheetState extends ConsumerState<_InviteStaffSheet> {
               message,
               style: GoogleFonts.beVietnamPro(
                 fontSize: 13,
-                color: AppColors.muted,
+                color: dColors.textSecondary,
               ),
             ),
             const SizedBox(height: AppSpacing.md),
@@ -661,7 +669,7 @@ class _InviteStaffSheetState extends ConsumerState<_InviteStaffSheet> {
               style: GoogleFonts.beVietnamPro(
                 fontSize: 12,
                 fontWeight: FontWeight.w600,
-                color: AppColors.muted,
+                color: dColors.textSecondary,
               ),
             ),
             const SizedBox(height: AppSpacing.xs),
@@ -672,9 +680,9 @@ class _InviteStaffSheetState extends ConsumerState<_InviteStaffSheet> {
                 vertical: AppSpacing.sm,
               ),
               decoration: BoxDecoration(
-                color: AppColors.ocean.withValues(alpha: 0.08),
+                color: dColors.brand.withValues(alpha: 0.08),
                 borderRadius: BorderRadius.circular(AppRadius.sm),
-                border: Border.all(color: AppColors.oceanLight),
+                border: Border.all(color: AppColors.jade50),
               ),
               child: Row(
                 children: [
@@ -684,7 +692,7 @@ class _InviteStaffSheetState extends ConsumerState<_InviteStaffSheet> {
                       style: GoogleFonts.firaCode(
                         fontSize: 16,
                         fontWeight: FontWeight.w700,
-                        color: AppColors.ocean,
+                        color: dColors.brand,
                         letterSpacing: 1.2,
                       ),
                     ),
@@ -704,7 +712,7 @@ class _InviteStaffSheetState extends ConsumerState<_InviteStaffSheet> {
                 'Email cũng chứa link trực tiếp cho nhân viên.',
                 style: GoogleFonts.beVietnamPro(
                   fontSize: 11,
-                  color: AppColors.muted,
+                  color: dColors.textSecondary,
                 ),
               ),
             ],
@@ -716,7 +724,8 @@ class _InviteStaffSheetState extends ConsumerState<_InviteStaffSheet> {
             child: const Text('Đóng'),
           ),
         ],
-      ),
+      );
+      },
     );
   }
 
@@ -727,6 +736,7 @@ class _InviteStaffSheetState extends ConsumerState<_InviteStaffSheet> {
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.colors;
     final viewInsets = MediaQuery.of(context).viewInsets;
 
     return Padding(
@@ -747,7 +757,7 @@ class _InviteStaffSheetState extends ConsumerState<_InviteStaffSheet> {
                 width: 40,
                 height: 4,
                 decoration: BoxDecoration(
-                  color: AppColors.border,
+                  color: colors.borderDefault,
                   borderRadius: BorderRadius.circular(2),
                 ),
               ),
@@ -758,7 +768,7 @@ class _InviteStaffSheetState extends ConsumerState<_InviteStaffSheet> {
               style: GoogleFonts.beVietnamPro(
                 fontSize: 18,
                 fontWeight: FontWeight.w700,
-                color: AppColors.navy,
+                color: colors.textPrimary,
               ),
             ),
             const SizedBox(height: AppSpacing.xs),
@@ -766,7 +776,7 @@ class _InviteStaffSheetState extends ConsumerState<_InviteStaffSheet> {
               'Nhập email nhân viên — họ sẽ nhận email kèm mã mời để đăng ký.',
               style: GoogleFonts.beVietnamPro(
                 fontSize: 12,
-                color: AppColors.muted,
+                color: colors.textSecondary,
               ),
             ),
             const SizedBox(height: AppSpacing.lg),
@@ -792,7 +802,7 @@ class _InviteStaffSheetState extends ConsumerState<_InviteStaffSheet> {
             FilledButton(
               onPressed: _submitting ? null : _submit,
               style: FilledButton.styleFrom(
-                backgroundColor: AppColors.ocean,
+                backgroundColor: colors.brand,
                 padding: const EdgeInsets.symmetric(vertical: 14),
               ),
               child: _submitting

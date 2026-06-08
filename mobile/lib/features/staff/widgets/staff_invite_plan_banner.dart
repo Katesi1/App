@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 
-import '../../../core/theme/app_colors.dart';
+import '../../../core/theme/app_color_scheme.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../core/utils/staff_entitlement.dart';
 import '../../../data/models/user_model.dart';
@@ -16,6 +16,7 @@ class StaffInvitePlanBanner extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.colors;
     final canInvite = user.canInviteStaff;
     final reason = user.staffInviteBlockReason;
     if (canInvite || reason.isEmpty) return const SizedBox.shrink();
@@ -32,9 +33,9 @@ class StaffInvitePlanBanner extends StatelessWidget {
       ),
       padding: const EdgeInsets.all(AppSpacing.md),
       decoration: BoxDecoration(
-        color: AppColors.amberLight,
+        color: colors.warningBg,
         borderRadius: BorderRadius.circular(AppRadius.md),
-        border: Border.all(color: AppColors.amber.withValues(alpha: 0.4)),
+        border: Border.all(color: colors.warning.withValues(alpha: 0.4)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -42,10 +43,10 @@ class StaffInvitePlanBanner extends StatelessWidget {
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Icon(
+              Icon(
                 Icons.lock_outline_rounded,
                 size: 20,
-                color: AppColors.amber,
+                color: colors.warning,
               ),
               const SizedBox(width: AppSpacing.sm),
               Expanded(
@@ -57,7 +58,7 @@ class StaffInvitePlanBanner extends StatelessWidget {
                       style: GoogleFonts.beVietnamPro(
                         fontSize: 13,
                         fontWeight: FontWeight.w700,
-                        color: AppColors.brownDark,
+                        color: colors.textPrimary,
                       ),
                     ),
                     const SizedBox(height: 4),
@@ -65,7 +66,7 @@ class StaffInvitePlanBanner extends StatelessWidget {
                       reason,
                       style: GoogleFonts.beVietnamPro(
                         fontSize: 12,
-                        color: AppColors.brownDark,
+                        color: colors.textPrimary,
                         height: 1.4,
                       ),
                     ),
@@ -81,7 +82,7 @@ class StaffInvitePlanBanner extends StatelessWidget {
               'email + mã HL-XXXXXX.',
               style: GoogleFonts.beVietnamPro(
                 fontSize: 11,
-                color: AppColors.muted,
+                color: colors.textSecondary,
                 height: 1.35,
               ),
             ),
@@ -109,7 +110,7 @@ class StaffInvitePlanBanner extends StatelessWidget {
                 style: GoogleFonts.beVietnamPro(
                   fontSize: 12,
                   fontWeight: FontWeight.w600,
-                  color: AppColors.ocean,
+                  color: colors.brand,
                 ),
               ),
             ),
