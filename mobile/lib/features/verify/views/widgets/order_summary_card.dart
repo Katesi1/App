@@ -86,7 +86,7 @@ class OrderSummaryCard extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'CHI TIẾT ĐƠN HÀNG',
+            hasPendingPaymentSession ? 'ĐƠN ĐÃ TẠO' : 'CHI TIẾT ĐƠN HÀNG',
             style: TextStyle(
               fontSize: 11,
               fontWeight: FontWeight.w700,

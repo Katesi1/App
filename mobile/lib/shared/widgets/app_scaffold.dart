@@ -67,7 +67,6 @@ class AppScaffold extends ConsumerWidget {
                               ? Icons.light_mode_rounded
                               : Icons.dark_mode_rounded,
                           key: ValueKey(isDark),
-                          color: isDark ? AppColors.oceanBright : Colors.white,
                         ),
                       ),
                       onPressed: () =>
@@ -290,17 +289,12 @@ class _NotificationBell extends ConsumerWidget {
     final unreadAsync = ref.watch(unreadCountProvider);
     final count = unreadAsync.valueOrNull ?? 0;
 
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-
     return IconButton(
       tooltip: 'Thông báo',
       icon: Stack(
         clipBehavior: Clip.none,
         children: [
-          Icon(
-            Icons.notifications_outlined,
-            color: isDark ? AppColors.oceanBright : Colors.white,
-          ),
+          const Icon(Icons.notifications_outlined),
           if (count > 0)
             Positioned(
               top: -4,

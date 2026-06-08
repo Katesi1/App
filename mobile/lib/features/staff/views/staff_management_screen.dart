@@ -7,9 +7,13 @@ import 'package:intl/intl.dart';
 
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
+import '../../../core/utils/staff_entitlement.dart';
 import '../../../data/models/user_model.dart';
 import '../../auth/controllers/auth_controller.dart';
+import '../../verify/controllers/verify_flow_controller.dart';
+import '../../verify/data/models/verify_enums.dart';
 import '../../../shared/widgets/app_scaffold.dart';
+import '../../../shared/widgets/app_toast.dart';
 import '../../../shared/widgets/loading_widget.dart';
 import '../controllers/staff_controller.dart';
 import '../data/models/staff_invite.dart';
@@ -34,6 +38,31 @@ class _StaffManagementScreenState extends ConsumerState<StaffManagementScreen>
     super.dispose();
   }
 
+  void _onUpgradeFabTapped(UserModel user) {
+    final verifyStatus = ref.read(verifyFlowControllerProvider).status;
+    if (verifyStatus == VerifyStatus.paymentPending) {
+      AppToast.show(
+        context,
+        message:
+            'Bạn đang có thanh toán chờ xử lý. Hoàn tất trước khi mua gói mới.',
+        type: AppToastType.warning,
+        actionLabel: 'Xem đơn →',
+        onAction: () => context.push('/verify/payment'),
+      );
+      return;
+    }
+    final slots = StaffEntitlement.maxSlotsForPlanId(user.subscriptionPlanId);
+    AppToast.show(
+      context,
+      message: slots == 0
+          ? 'Để mời nhân viên, bạn cần tối thiểu gói ${StaffEntitlement.minPlanLabel}.'
+          : user.staffInviteBlockReason,
+      type: AppToastType.info,
+      actionLabel: 'Nâng cấp ngay →',
+      onAction: () => context.push(user.subscriptionPlanPickerRoute),
+    );
+  }
+
   Future<void> _openInviteSheet() async {
     final user = ref.read(currentUserProvider);
     if (user == null) return;
@@ -44,6 +73,7 @@ class _StaffManagementScreenState extends ConsumerState<StaffManagementScreen>
     }
 
     final limitMsg = await _staffInviteLimitMessage(user);
+    if (!mounted) return;
     if (limitMsg != null) {
       AppSnackBar.error(context, limitMsg);
       return;
@@ -89,6 +119,8 @@ class _StaffManagementScreenState extends ConsumerState<StaffManagementScreen>
 
     return AppScaffold(
       title: 'Quản lý nhân viên',
+      showBottomNav: false,
+      customAppBar: AppBar(title: const Text('Quản lý nhân viên')),
       body: Column(
         children: [
           if (user != null) ...[
@@ -136,15 +168,9 @@ class _StaffManagementScreenState extends ConsumerState<StaffManagementScreen>
                 )
               : user != null
                   ? FloatingActionButton.extended(
-                      onPressed: user.canOpenPlanPicker
-                          ? () => context.push(user.subscriptionPlanPickerRoute)
-                          : null,
+                      onPressed: () => _onUpgradeFabTapped(user),
                       icon: const Icon(Icons.lock_outline_rounded),
-                      label: Text(
-                        user.canOpenPlanPicker
-                            ? 'Nâng cấp gói'
-                            : 'Liên hệ hỗ trợ',
-                      ),
+                      label: const Text('Nâng cấp gói'),
                       backgroundColor: AppColors.slate,
                     )
                   : null,

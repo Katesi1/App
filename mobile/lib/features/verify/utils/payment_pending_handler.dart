@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 import '../../../core/theme/app_color_scheme.dart';
@@ -8,10 +9,58 @@ import '../../../core/theme/app_spacing.dart';
 import '../controllers/verify_flow_controller.dart';
 import '../data/models/payment_history_item.dart';
 import '../data/models/payment_session.dart';
+import '../data/repositories/verify_repository.dart';
+import 'billing_preflight.dart';
 import 'payment_error_handler.dart';
 import '../views/widgets/verify_format.dart';
 
 enum _PaymentPendingChoice { resume, cancelAndRetry }
+
+/// Chặn mua mới khi BE còn session pending (`GET /payments/active`).
+///
+/// Trả `true` nếu được phép tạo session mới (không pending / user đã huỷ).
+/// Trả `false` nếu user chọn tiếp tục đơn cũ hoặc đóng dialog.
+Future<bool> guardActivePendingPayment({
+  required BuildContext context,
+  required WidgetRef ref,
+  void Function(PaymentSession session)? onResume,
+}) async {
+  PaymentSession? session;
+  try {
+    session = await fetchActivePendingSession(ref);
+  } on VerifyApiException catch (e) {
+    if (context.mounted) showPaymentApiError(context, e, ref: ref);
+    return false;
+  }
+
+  if (session == null) return true;
+
+  final error = VerifyApiException.fromActiveSession(session);
+  final choice = await _showPaymentPendingDialog(context, error);
+  if (!context.mounted || choice == null) return false;
+
+  if (choice == _PaymentPendingChoice.resume) {
+    await hydratePendingSession(ref, session);
+    if (!context.mounted) return false;
+    if (onResume != null) {
+      onResume(session);
+    } else {
+      context.replace('/verify/payment');
+    }
+    return false;
+  }
+
+  try {
+    await ref
+        .read(verifyFlowControllerProvider.notifier)
+        .cancelPaymentById(session.sessionId);
+  } on VerifyApiException catch (e) {
+    if (context.mounted) showPaymentApiError(context, e, ref: ref);
+    return false;
+  }
+
+  return true;
+}
 
 /// Xử lý 409 `paymentPending` — cho user tiếp tục phiên cũ hoặc huỷ & tạo mới.
 ///

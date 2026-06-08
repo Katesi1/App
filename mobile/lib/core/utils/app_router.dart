@@ -237,7 +237,10 @@ final routerProvider = Provider<GoRouter>((ref) {
       // OWNER quản lý nhân viên (mời + danh sách)
       GoRoute(
         path: '/staff/manage',
-        builder: (_, __) => const StaffManagementScreen(),
+        pageBuilder: (_, state) => slideUpPage(
+          key: state.pageKey,
+          child: const StaffManagementScreen(),
+        ),
       ),
 
       // ── Notifications ────────────────────────────────────────────────

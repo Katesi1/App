@@ -198,6 +198,27 @@ class VerifyApiException implements Exception {
   bool get isPaymentPending => code == 'paymentPending';
   bool get isKycNotApproved => code == 'payment.kycNotApproved';
 
+  /// Proactive gate — từ session `GET /payments/active` (không cần 409).
+  factory VerifyApiException.fromActiveSession(PaymentSession session) {
+    return VerifyApiException(
+      'Bạn đang có 1 đơn thanh toán chờ xử lý',
+      code: 'paymentPending',
+      sessionId: session.sessionId,
+      totalAmount: session.totalAmount,
+      expiresAt: session.expiresAt,
+      qrExpiresAt: session.qrExpiresAt,
+      pendingSession: PendingSessionSummary(
+        sessionId: session.sessionId,
+        kind: session.kind,
+        totalAmount: session.totalAmount,
+        planId: session.planId,
+        cycle: session.cycle,
+        method: session.method,
+        expiresAt: session.expiresAt,
+      ),
+    );
+  }
+
   /// Message hiển thị cho user — ưu tiên tiếng Việt.
   String get vietnameseMessage {
     switch (code) {

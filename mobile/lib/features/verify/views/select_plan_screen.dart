@@ -332,6 +332,16 @@ class _SelectPlanScreenState extends ConsumerState<SelectPlanScreen> {
 
   Future<void> _onContinue(Plan plan, PaymentQuote quote) async {
     setState(() => _submitting = true);
+
+    final redirected = await redirectToPendingPaymentIfNeeded(
+      context: context,
+      ref: ref,
+    );
+    if (redirected) {
+      if (mounted) setState(() => _submitting = false);
+      return;
+    }
+
     final notifier = ref.read(verifyFlowControllerProvider.notifier);
     notifier.selectPlan(plan, _cycle, quote: quote);
 

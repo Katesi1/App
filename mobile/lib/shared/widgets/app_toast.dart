@@ -40,13 +40,20 @@ class AppToast {
     BuildContext context, {
     required String message,
     AppToastType type = AppToastType.info,
-    Duration duration = const Duration(seconds: 4),
+    Duration? duration,
+    String? actionLabel,
+    VoidCallback? onAction,
   }) {
     if (!context.mounted) return;
     hide();
 
     final overlay = Overlay.maybeOf(context, rootOverlay: true);
     if (overlay == null) return;
+
+    final effectiveDuration = duration ??
+        (onAction != null
+            ? const Duration(seconds: 6)
+            : const Duration(seconds: 4));
 
     late OverlayEntry entry;
     entry = OverlayEntry(
@@ -57,11 +64,18 @@ class AppToast {
         onTapDismiss: () {
           if (_entry == entry) hide();
         },
+        actionLabel: actionLabel,
+        onAction: onAction != null
+            ? () {
+                hide();
+                onAction();
+              }
+            : null,
       ),
     );
     _entry = entry;
     overlay.insert(entry);
-    _timer = Timer(duration, hide);
+    _timer = Timer(effectiveDuration, hide);
   }
 }
 
@@ -70,12 +84,16 @@ class _ToastBanner extends StatelessWidget {
   final AppToastType type;
   final double topInset;
   final VoidCallback onTapDismiss;
+  final String? actionLabel;
+  final VoidCallback? onAction;
 
   const _ToastBanner({
     required this.message,
     required this.type,
     required this.topInset,
     required this.onTapDismiss,
+    this.actionLabel,
+    this.onAction,
   });
 
   ({
@@ -185,14 +203,33 @@ class _ToastBanner extends StatelessWidget {
                             Expanded(
                               child: Padding(
                                 padding: const EdgeInsets.only(top: 2),
-                                child: Text(
-                                  message,
-                                  style: GoogleFonts.beVietnamPro(
-                                    fontSize: 13,
-                                    fontWeight: FontWeight.w600,
-                                    height: 1.4,
-                                    color: colors.textPrimary,
-                                  ),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      message,
+                                      style: GoogleFonts.beVietnamPro(
+                                        fontSize: 13,
+                                        fontWeight: FontWeight.w600,
+                                        height: 1.4,
+                                        color: colors.textPrimary,
+                                      ),
+                                    ),
+                                    if (onAction != null) ...[
+                                      const SizedBox(height: 6),
+                                      GestureDetector(
+                                        onTap: onAction,
+                                        child: Text(
+                                          actionLabel ?? 'Xem',
+                                          style: GoogleFonts.beVietnamPro(
+                                            fontSize: 12,
+                                            fontWeight: FontWeight.w700,
+                                            color: style.accent,
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ],
                                 ),
                               ),
                             ),
