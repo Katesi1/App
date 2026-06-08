@@ -24,6 +24,14 @@ import 'widgets/status_donut_chart.dart';
 // gradient.brandHero stop "jade-mid" theo spec section 3.7
 const _jadeMidLight = Color(0xFF1B7E94);
 
+/// Ngày tối đa hợp lệ cho bộ lọc báo cáo = hôm nay theo giờ local (VN). BE đã
+/// validate/aggregate `to` theo timezone VN (Asia/Ho_Chi_Minh) nên gửi ngày
+/// local là chuẩn, không còn lệch ngày như khi cap theo UTC.
+DateTime _reportMaxDate() {
+  final now = DateTime.now();
+  return DateTime(now.year, now.month, now.day);
+}
+
 class ReportScreen extends ConsumerWidget {
   const ReportScreen({super.key});
 
@@ -150,14 +158,14 @@ class ReportScreen extends ConsumerWidget {
     WidgetRef ref,
     ReportParams params,
   ) async {
-    final now = DateTime.now();
+    final maxDate = _reportMaxDate();
     final picked = await showModalBottomSheet<DateTimeRange>(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (_) => _RangeFilterSheet(
-        initialFrom: params.from ?? now.subtract(const Duration(days: 7)),
-        initialTo: params.to ?? now,
+        initialFrom: params.from ?? maxDate.subtract(const Duration(days: 7)),
+        initialTo: params.to ?? maxDate,
       ),
     );
     if (picked == null) return;
@@ -191,20 +199,22 @@ class _RangeFilterSheetState extends State<_RangeFilterSheet> {
       '${x.day.toString().padLeft(2, '0')}/${x.month.toString().padLeft(2, '0')}/${x.year}';
 
   void _applyPreset(int days) {
-    final now = DateTime.now();
     setState(() {
-      _to = DateTime(now.year, now.month, now.day);
+      _to = _reportMaxDate();
       _from = _to.subtract(Duration(days: days));
     });
   }
 
   Future<void> _pickDate({required bool isFrom}) async {
-    final now = DateTime.now();
+    final maxDate = _reportMaxDate();
+    // initialDate phải nằm trong [firstDate, lastDate] — clamp tránh assert.
+    final base = isFrom ? _from : _to;
+    final initial = base.isAfter(maxDate) ? maxDate : base;
     final picked = await showDatePicker(
       context: context,
-      initialDate: isFrom ? _from : _to,
-      firstDate: DateTime(now.year - 3),
-      lastDate: now,
+      initialDate: initial,
+      firstDate: DateTime(maxDate.year - 3),
+      lastDate: maxDate,
       helpText: isFrom ? 'Chọn ngày bắt đầu' : 'Chọn ngày kết thúc',
     );
     if (picked == null) return;
@@ -701,22 +711,31 @@ class _KpiGrid extends StatelessWidget {
             .slideY(begin: 0.08, end: 0, curve: Curves.easeOutCubic))
         .toList();
 
+    // IntrinsicHeight + stretch so both cards in a row share the taller's
+    // height. Each row contains one card with a `fullValue` line, so all four
+    // cards end up the same height.
     return Column(
       children: [
-        Row(
-          children: [
-            Expanded(child: animated[0]),
-            const SizedBox(width: 10),
-            Expanded(child: animated[1]),
-          ],
+        IntrinsicHeight(
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Expanded(child: animated[0]),
+              const SizedBox(width: 10),
+              Expanded(child: animated[1]),
+            ],
+          ),
         ),
         const SizedBox(height: 10),
-        Row(
-          children: [
-            Expanded(child: animated[2]),
-            const SizedBox(width: 10),
-            Expanded(child: animated[3]),
-          ],
+        IntrinsicHeight(
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Expanded(child: animated[2]),
+              const SizedBox(width: 10),
+              Expanded(child: animated[3]),
+            ],
+          ),
         ),
       ],
     );

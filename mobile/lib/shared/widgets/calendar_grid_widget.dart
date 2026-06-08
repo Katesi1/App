@@ -14,11 +14,14 @@ enum PropertyCategory { all, villa, homestay, hotel }
 class CalendarRoom {
   final String id;
   final String code;
+  // SĐT chủ nhà — dùng cho nút Zalo trong modal liên hệ (null = chưa cài).
+  final String? ownerPhone;
   final Map<DateTime, DayCell> dayCells;
 
   const CalendarRoom({
     required this.id,
     required this.code,
+    this.ownerPhone,
     required this.dayCells,
   });
 }

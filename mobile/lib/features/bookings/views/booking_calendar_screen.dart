@@ -87,7 +87,12 @@ class _BookingCalendarScreenState extends ConsumerState<BookingCalendarScreen> {
           status: _mapStatus(day.status),
         );
       }
-      return CalendarRoom(id: row.id, code: row.code, dayCells: cells);
+      return CalendarRoom(
+        id: row.id,
+        code: row.code,
+        ownerPhone: row.ownerPhone,
+        dayCells: cells,
+      );
     }).toList();
   }
 
@@ -108,7 +113,6 @@ class _BookingCalendarScreenState extends ConsumerState<BookingCalendarScreen> {
     );
 
     final gridAsync = ref.watch(calendarGridProvider(gridParams));
-    final adminContact = ref.watch(adminContactProvider).valueOrNull;
 
     return AppScaffold(
       title: '',
@@ -196,8 +200,8 @@ class _BookingCalendarScreenState extends ConsumerState<BookingCalendarScreen> {
                       viewMode: _viewMode,
                       weekStart: _weekStart,
                       monthStart: _monthStart,
-                      onCellTap: (room, date, cell) => _showContactModal(
-                          context, room, date, cell, adminContact),
+                      onCellTap: (room, date, cell) =>
+                          _showContactModal(context, room, date, cell),
                       legendTapHint: 'Tap ô = liên hệ',
                     ),
                   ),
@@ -215,7 +219,6 @@ class _BookingCalendarScreenState extends ConsumerState<BookingCalendarScreen> {
     CalendarRoom room,
     DateTime date,
     DayCell cell,
-    AdminContact? contact,
   ) {
     showModalBottomSheet(
       context: context,
@@ -356,11 +359,18 @@ class _BookingCalendarScreenState extends ConsumerState<BookingCalendarScreen> {
                 child: ElevatedButton.icon(
                   onPressed: () {
                     Navigator.pop(ctx);
-                    _openZalo(contact);
+                    // Zalo = SĐT chủ nhà (room.ownerPhone từ API). Chưa cài →
+                    // modal cảnh báo.
+                    final phone = room.ownerPhone;
+                    if (_hasOwnerPhone(phone)) {
+                      _openZalo(phone!);
+                    } else {
+                      _showOwnerPhoneMissingModal(context);
+                    }
                   },
                   icon: const Icon(Icons.chat_rounded, size: 20),
                   label: Text(
-                    'Liên hệ qua Zalo',
+                    'Liên hệ Zalo chủ nhà',
                     style: GoogleFonts.beVietnamPro(
                       fontSize: 15,
                       fontWeight: FontWeight.w600,
@@ -383,7 +393,7 @@ class _BookingCalendarScreenState extends ConsumerState<BookingCalendarScreen> {
                 child: OutlinedButton.icon(
                   onPressed: () {
                     Navigator.pop(ctx);
-                    _callAdmin(contact);
+                    _callAdmin();
                   },
                   icon: const Icon(Icons.phone_rounded, size: 20),
                   label: Text(
@@ -416,21 +426,134 @@ class _BookingCalendarScreenState extends ConsumerState<BookingCalendarScreen> {
     return '${(price / 1000).toInt()}k đ/đêm';
   }
 
-  Future<void> _openZalo(AdminContact? contact) async {
-    final url = contact?.zaloUrl ?? 'https://zalo.me/${contact?.phone ?? ''}';
-    final uri = Uri.parse(url);
+  /// Chủ nhà đã cài SĐT để liên hệ Zalo chưa?
+  bool _hasOwnerPhone(String? phone) => phone != null && phone.trim().isNotEmpty;
+
+  Future<void> _openZalo(String phone) async {
+    final uri = Uri.parse('https://zalo.me/${phone.trim()}');
     if (await canLaunchUrl(uri)) {
       await launchUrl(uri, mode: LaunchMode.externalApplication);
     }
   }
 
-  Future<void> _callAdmin(AdminContact? contact) async {
-    final phone = contact?.phone ?? '';
-    if (phone.isEmpty) return;
-    final uri = Uri.parse('tel:$phone');
+  /// Gọi tổng đài admin — hotline cố định (KHÁC Zalo chủ nhà).
+  Future<void> _callAdmin() async {
+    final uri = Uri.parse('tel:${AppConstants.adminHotline}');
     if (await canLaunchUrl(uri)) {
       await launchUrl(uri);
     }
+  }
+
+  /// Cảnh báo khi chủ nhà chưa cài SĐT → không thể liên hệ Zalo. Gợi ý gọi
+  /// tổng đài admin thay thế.
+  void _showOwnerPhoneMissingModal(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) {
+        final colors = ctx.colors;
+        return Container(
+          decoration: BoxDecoration(
+            color: colors.bgSurface,
+            borderRadius: const BorderRadius.vertical(
+              top: Radius.circular(AppRadius.xl),
+            ),
+          ),
+          padding: const EdgeInsets.fromLTRB(24, 16, 24, 32),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: colors.borderDefault,
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+              const SizedBox(height: 24),
+              Container(
+                width: 56,
+                height: 56,
+                decoration: BoxDecoration(
+                  color: colors.warning.withValues(alpha: 0.14),
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(
+                  Icons.phone_disabled_rounded,
+                  color: colors.warning,
+                  size: 28,
+                ),
+              ),
+              const SizedBox(height: 16),
+              Text(
+                'Chủ nhà chưa cài số điện thoại',
+                textAlign: TextAlign.center,
+                style: GoogleFonts.beVietnamPro(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w700,
+                  color: colors.textPrimary,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'Hiện chưa thể liên hệ Zalo với chủ nhà của phòng này. '
+                'Bạn có thể gọi tổng đài admin để được hỗ trợ.',
+                textAlign: TextAlign.center,
+                style: GoogleFonts.beVietnamPro(
+                  fontSize: 13.5,
+                  height: 1.5,
+                  color: colors.textSecondary,
+                ),
+              ),
+              const SizedBox(height: 24),
+              SizedBox(
+                width: double.infinity,
+                height: 48,
+                child: ElevatedButton.icon(
+                  onPressed: () {
+                    Navigator.pop(ctx);
+                    _callAdmin();
+                  },
+                  icon: const Icon(Icons.phone_rounded, size: 20),
+                  label: Text(
+                    'Gọi điện cho Admin',
+                    style: GoogleFonts.beVietnamPro(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: colors.brand,
+                    foregroundColor: colors.textOnPrimary,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(AppRadius.md),
+                    ),
+                    elevation: 0,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 10),
+              SizedBox(
+                width: double.infinity,
+                height: 48,
+                child: TextButton(
+                  onPressed: () => Navigator.pop(ctx),
+                  child: Text(
+                    'Đóng',
+                    style: GoogleFonts.beVietnamPro(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w600,
+                      color: colors.textSecondary,
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
   }
 
   String get _rangeLabel {

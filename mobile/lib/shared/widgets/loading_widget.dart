@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:shimmer/shimmer.dart';
+import '../../core/theme/app_color_scheme.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_spacing.dart';
 import 'app_toast.dart';
@@ -410,6 +411,7 @@ class ErrorStateWidget extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.colors;
     return Center(
       child: Padding(
         padding: const EdgeInsets.all(AppSpacing.xxl),
@@ -442,7 +444,7 @@ class ErrorStateWidget extends StatelessWidget {
               style: GoogleFonts.beVietnamPro(
                 fontSize: 16,
                 fontWeight: FontWeight.w700,
-                color: AppColors.navy,
+                color: colors.textPrimary,
               ),
               textAlign: TextAlign.center,
             ).animate(delay: 100.ms).fadeIn(duration: 300.ms),
@@ -451,7 +453,7 @@ class ErrorStateWidget extends StatelessWidget {
               message,
               style: GoogleFonts.beVietnamPro(
                 fontSize: 13,
-                color: AppColors.muted,
+                color: colors.textSecondary,
               ),
               textAlign: TextAlign.center,
             ).animate(delay: 150.ms).fadeIn(duration: 300.ms),

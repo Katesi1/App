@@ -212,10 +212,11 @@ class _SubscriptionDetailScreenState
         title: const Text('Chi tiết gói đăng ký'),
         leading: IconButton(
           icon: const Icon(Icons.arrow_back),
-          // Khi mở trực tiếp (deep link / context.go) không có stack cũ để pop
-          // → fallback về trang quản lý thay vì kẹt không có nút back.
+          // Khi mở trực tiếp (deep link / context.go từ luồng thanh toán) không
+          // có stack cũ để pop → fallback về dashboard (home của mọi role),
+          // KHÔNG về /properties.
           onPressed: () =>
-              context.canPop() ? context.pop() : context.go('/properties'),
+              context.canPop() ? context.pop() : context.go('/dashboard'),
         ),
       ),
       body: ListView(

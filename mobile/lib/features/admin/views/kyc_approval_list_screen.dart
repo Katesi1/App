@@ -61,6 +61,7 @@ class KYCApprovalListScreen extends ConsumerWidget {
         children: [
           _FilterTabs(
             current: filter,
+            pendingCount: pendingCount,
             onChanged: (f) =>
                 ref.read(kycQueueFilterProvider.notifier).state = f,
           ),
@@ -74,7 +75,7 @@ class KYCApprovalListScreen extends ConsumerWidget {
                 }
                 return RefreshIndicator(
                   color: colors.brand,
-                  onRefresh: () async => ref.invalidate(kycSubmissionsProvider),
+                  onRefresh: () async => ref.invalidate(kycQueueProvider),
                   child: ListView.separated(
                     padding: const EdgeInsets.all(AppSpacing.md),
                     itemCount: list.length,
@@ -99,25 +100,21 @@ class KYCApprovalListScreen extends ConsumerWidget {
   }
 }
 
-class _FilterTabs extends ConsumerWidget {
+class _FilterTabs extends StatelessWidget {
   final KYCQueueFilter current;
+  final int pendingCount;
   final ValueChanged<KYCQueueFilter> onChanged;
 
-  const _FilterTabs({required this.current, required this.onChanged});
+  const _FilterTabs({
+    required this.current,
+    required this.pendingCount,
+    required this.onChanged,
+  });
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final all = ref.watch(kycSubmissionsProvider).valueOrNull ?? const [];
-    final counts = {
-      KYCQueueFilter.pending:
-          all.where((s) => s.status == VerifyStatus.awaitingApproval).length,
-      KYCQueueFilter.approved:
-          all.where((s) => s.status == VerifyStatus.approved).length,
-      KYCQueueFilter.rejected:
-          all.where((s) => s.status == VerifyStatus.rejected).length,
-      KYCQueueFilter.all: all.length,
-    };
-
+  Widget build(BuildContext context) {
+    // Single-endpoint queue (API v1.11): we only know `pendingCount`, so the
+    // badge shows on the "Chờ duyệt" tab only. Other tabs are label-only.
     return Container(
       padding: const EdgeInsets.fromLTRB(AppSpacing.md, 6, AppSpacing.md, 10),
       color: context.colors.bgSurface,
@@ -128,7 +125,7 @@ class _FilterTabs extends ConsumerWidget {
             for (final f in KYCQueueFilter.values) ...[
               _FilterChip(
                 label: _label(f),
-                count: counts[f] ?? 0,
+                count: f == KYCQueueFilter.pending ? pendingCount : null,
                 isActive: current == f,
                 onTap: () => onChanged(f),
               ),
@@ -150,7 +147,9 @@ class _FilterTabs extends ConsumerWidget {
 
 class _FilterChip extends StatelessWidget {
   final String label;
-  final int count;
+
+  /// Badge count — `null` hides the badge entirely (label-only chip).
+  final int? count;
   final bool isActive;
   final VoidCallback onTap;
 
@@ -187,24 +186,26 @@ class _FilterChip extends StatelessWidget {
                 color: isActive ? AppColors.darkBg : colors.textPrimary,
               ),
             ),
-            const SizedBox(width: 6),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
-              decoration: BoxDecoration(
-                color: isActive
-                    ? AppColors.darkBg.withValues(alpha: 0.15)
-                    : colors.borderDefault,
-                borderRadius: BorderRadius.circular(100),
-              ),
-              child: Text(
-                '$count',
-                style: TextStyle(
-                  fontSize: 10,
-                  fontWeight: FontWeight.w700,
-                  color: isActive ? AppColors.darkBg : colors.textTertiary,
+            if (count != null) ...[
+              const SizedBox(width: 6),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
+                decoration: BoxDecoration(
+                  color: isActive
+                      ? AppColors.darkBg.withValues(alpha: 0.15)
+                      : colors.borderDefault,
+                  borderRadius: BorderRadius.circular(100),
+                ),
+                child: Text(
+                  '$count',
+                  style: TextStyle(
+                    fontSize: 10,
+                    fontWeight: FontWeight.w700,
+                    color: isActive ? AppColors.darkBg : colors.textTertiary,
+                  ),
                 ),
               ),
-            ),
+            ],
           ],
         ),
       ),

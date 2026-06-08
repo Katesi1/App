@@ -315,7 +315,10 @@ class VerifyRepositoryImpl implements VerifyRepository {
         status: verifyStatusFromApi(data['status'] as String),
         approvedAt: _parseDate(data['approvedAt']),
         trialEndsAt: _parseDate(data['trialEndsAt']),
-        chargeStartsAt: _parseDate(data['chargeStartsAt']),
+        // BE trả `nextChargeAt` (ngày thu phí kế tiếp, KHÁC trialEndsAt sau khi
+        // BE fix bug "cùng ngày"). Fallback `chargeStartsAt` cho schema cũ.
+        chargeStartsAt:
+            _parseDate(data['nextChargeAt'] ?? data['chargeStartsAt']),
         rejectReason: data['rejectReason'] as String?,
         rejectedItems: rejectedItemsRaw
             .map(RejectableItemX.fromId)
@@ -500,6 +503,10 @@ class VerifyApiException implements Exception {
   bool get isDowngradeScheduled => code == 'downgradeScheduled';
   bool get isSubscriptionFrozen => code == 'subscriptionFrozen';
   bool get isPaymentPending => code == 'paymentPending';
+
+  /// BE 403 `payment.kycNotApproved` — user cố mua gói khi KYC chưa được admin
+  /// duyệt (vd profile cũ lọt qua gate ở payment_screen).
+  bool get isKycNotApproved => code == 'payment.kycNotApproved';
 
   @override
   String toString() => message;

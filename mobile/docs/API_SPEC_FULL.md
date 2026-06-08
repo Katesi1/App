@@ -813,6 +813,7 @@ Base path: `/calendar`.
   "properties": [
     {
       "id": "uuid", "name": "...", "type": 0,
+      "ownerPhone": "0912345678",
       "days": [
         { "date": "2026-06-15", "status": "available", "note": null, "bookingId": null },
         { "date": "2026-06-16", "status": "hold", "note": "Nguyễn Văn A", "bookingId": "..." },
@@ -825,6 +826,8 @@ Base path: `/calendar`.
 ```
 
 Status string: `available | hold | booked | locked`.
+
+`ownerPhone`: số điện thoại owner của property (lấy từ `User.phone` qua `Property.ownerId`). Có thể `null` nếu owner chưa cập nhật phone — FE phải handle gracefully (vd nút Zalo no-op). Trả về ở cả `/calendar/grid` và `/calendar/public-grid`.
 
 ### 6.3 Bulk response
 
@@ -919,6 +922,8 @@ Endpoints KPI cho Owner/Sale/Admin. Auth: Bearer. Roles: ADMIN, OWNER, SALE.
 | `year` | Năm dương lịch hiện tại |
 | `custom` | `[from 00:00, to 23:59]` inclusive |
 
+> ⏱ **Timezone**: Mọi ranh giới ngày (today/week/month/year/custom, validation `to`, label `revenueByDay`, `dayOfWeekOccupancy`) đều tính theo **Asia/Ho_Chi_Minh (UTC+7)**, không phụ thuộc TZ của server. `from`/`to` định dạng `YYYY-MM-DD` được hiểu là ngày VN.
+
 **`previousPeriod`** = kỳ ngay trước cùng độ dài. `custom` N ngày → N ngày trước `from`.
 
 ### 7A.3 Validation 400 (mới v1.10)
@@ -927,7 +932,7 @@ Endpoints KPI cho Owner/Sale/Admin. Auth: Bearer. Roles: ADMIN, OWNER, SALE.
 |---|---|---|
 | `period=custom` thiếu `from` hoặc `to` | `dashboard.missingDateRange` | "Vui lòng cung cấp from và to khi dùng period=custom" |
 | `from >= to` hoặc date parse fail | `dashboard.invalidDateRange` | "Ngày from phải trước ngày to" |
-| `to` ở tương lai (sau cuối ngày hôm nay) | `dashboard.toInFuture` | "Ngày to không được ở tương lai" |
+| `to` ở tương lai (sau ngày hôm nay theo giờ VN) | `dashboard.toInFuture` | "Ngày to không được ở tương lai" |
 | `period` không thuộc 5 giá trị hợp lệ | `dashboard.invalidPeriod` | "Giá trị period không hợp lệ (today \| week \| month \| year \| custom)" |
 
 ### 7A.4 Response data shape

@@ -166,6 +166,16 @@ class _PaymentScreenState extends ConsumerState<PaymentScreen> {
         setState(() => _frozen = true);
       } else if (e.isPaymentPending) {
         _onPaymentPending(e);
+      } else if (e.isKycNotApproved) {
+        // Profile cũ lọt qua gate → BE chặn vì KYC chưa duyệt. Đồng bộ lại
+        // profile rồi đưa về màn chờ duyệt thay vì báo lỗi khó hiểu.
+        ref.read(authProvider.notifier).refreshProfile();
+        AppToast.warning(
+          context,
+          'Hồ sơ KYC chưa được duyệt. Vui lòng chờ admin duyệt trước khi '
+          'thanh toán.',
+        );
+        context.go('/verify/pending');
       } else {
         _showError('Khởi tạo thanh toán thất bại: ${e.message}');
       }
@@ -238,40 +248,7 @@ class _PaymentScreenState extends ConsumerState<PaymentScreen> {
     final pending = e.pendingSession;
     final choice = await showDialog<String>(
       context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Đang có phiên chờ thanh toán'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(e.message),
-            if (pending != null) ...[
-              const SizedBox(height: 10),
-              Text(
-                '${pending.planLabel ?? ''} · '
-                '${VerifyFormat.priceVND(pending.totalAmount)}',
-                style: const TextStyle(fontWeight: FontWeight.w700),
-              ),
-              if (pending.expiresAt != null)
-                Text(
-                  'Hết hạn: ${VerifyFormat.dateVN(pending.expiresAt!)}',
-                  style: TextStyle(
-                      fontSize: 12, color: context.colors.textTertiary),
-                ),
-            ],
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop('cancel'),
-            child: const Text('Huỷ phiên cũ'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.of(ctx).pop('wait'),
-            child: const Text('Tiếp tục đợi'),
-          ),
-        ],
-      ),
+      builder: (_) => PendingPaymentDialog(pending: pending),
     );
     if (!mounted || choice == null) return;
 

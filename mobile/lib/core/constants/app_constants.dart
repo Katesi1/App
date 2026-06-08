@@ -18,6 +18,10 @@ class AppConstants {
   // needs to reach the Halong24h team.
   static const String supportEmail = 'halong24h.team@gmail.com';
   static const String supportPhone = '0983692497';
+
+  // Hotline tổng đài admin — dùng cho nút "Gọi điện cho Admin" ở lịch booking
+  // (cố định, KHÁC với Zalo chủ nhà — Zalo dùng SĐT chủ nhà từ API).
+  static const String adminHotline = '0976982240';
 }
 
 // B2B app for homestay OWNER + SALE only. ADMIN exists on backend but cannot

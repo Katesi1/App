@@ -4,12 +4,13 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../../core/theme/app_color_scheme.dart';
-import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../core/utils/helpers.dart';
+import '../../../core/utils/staff_entitlement.dart';
 import '../../../data/models/user_model.dart';
 import '../../../shared/widgets/app_scaffold.dart';
 import '../../../shared/widgets/loading_widget.dart';
+import '../../../shared/widgets/staff_upsell_view.dart';
 import '../../auth/controllers/auth_controller.dart';
 import '../controllers/user_controller.dart';
 
@@ -28,223 +29,141 @@ class _UserListScreenState extends ConsumerState<UserListScreen> {
   static const _filterRoles = [2, 1];
   static const _filterLabels = ['Sale', 'Chủ nhà'];
 
+  /// OWNER's add-staff eligibility — mirrors backend `StaffEntitlement` so a
+  /// nick without KYC/plan sees an upsell instead of an add button. ADMIN
+  /// always passes (bypass inside [StaffEntitlement.evaluate]).
+  InviteEligibility _eligibility(UserModel? user) {
+    final staff = ref.watch(staffListProvider).valueOrNull;
+    final used = staff?.where((u) => !u.isAdmin).length ?? 0;
+    return StaffEntitlement.evaluate(
+      isAdmin: user?.isAdmin ?? false,
+      isOwner: user?.isOwner ?? false,
+      isKycApproved: user?.isKycApproved ?? false,
+      subscriptionStatus: user?.subscriptionStatus ?? 'none',
+      planId: user?.subscriptionPlanId,
+      usedSlots: used,
+      enforceSlotLimit: staff != null,
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final colors = context.colors;
     final currentUser = ref.watch(currentUserProvider);
     final isAdmin = currentUser?.isAdmin ?? false;
-    final userName = currentUser?.name ?? currentUser?.phone ?? '';
+
+    final eligibility = _eligibility(currentUser);
+    final blocked = !eligibility.allowed;
 
     final usersAsync = ref.watch(staffListProvider);
 
     return AppScaffold(
-      title: 'Nhân viên',
-      selectedIndex: 4,
-      showAppBar: false,
-      floatingActionButton: _buildFab(context, isAdmin),
-      body: Column(
-        children: [
-          // ── Gradient header ──────────────────────────────────────
-          _buildHeader(context, userName, isAdmin),
+      title: isAdmin ? 'Quản lý nhân viên' : 'Nhân viên của tôi',
+      showBottomNav: false,
+      customAppBar: _buildAppBar(context, isAdmin),
+      floatingActionButton: blocked ? null : _buildFab(context, isAdmin),
+      // Blocked OWNER (no KYC / no plan / Mini) → upsell instead of the list.
+      body: blocked
+          ? StaffUpsellView(eligibility: eligibility, user: currentUser)
+          : Column(
+              children: [
+                // ── Filter chips (ADMIN only) ───────────────────────────
+                if (isAdmin) _buildFilterChips(context),
 
-          // ── Filter chips (ADMIN only) ───────────────────────────
-          if (isAdmin) _buildFilterChips(context),
-
-          // ── List ────────────────────────────────────────────────
-          Expanded(
-            child: usersAsync.when(
-              loading: () => SkeletonList(
-                skeleton: const _UserCardSkeleton(),
-                count: 6,
-              ),
-              error: (e, _) => ErrorStateWidget(
-                message: e.toString().replaceAll('Exception: ', ''),
-                onRetry: () => ref.invalidate(staffListProvider),
-              ),
-              data: (allUsers) {
-                // Exclude Admin from management list.
-                final users = allUsers
-                    .where((u) => !u.isAdmin)
-                    .where((u) => _roleFilter == null || u.role == _roleFilter)
-                    .toList();
-
-                if (users.isEmpty) {
-                  return EmptyStateWidget(
-                    icon: Icons.people_outline_rounded,
-                    message: isAdmin
-                        ? (_roleFilter == null
-                            ? 'Chưa có nhân viên nào'
-                            : 'Không có ${AppHelpers.roleLabel(_roleFilter)} nào')
-                        : 'Chưa có nhân viên trong đội',
-                    onAction: isAdmin
-                        ? () => context.push('/admin/users/new')
-                        : () => _showAvailableStaffSheet(context),
-                    actionLabel: isAdmin ? 'Thêm nhân viên' : 'Thêm vào đội',
-                  );
-                }
-
-                return RefreshIndicator(
-                  color: colors.brand,
-                  onRefresh: () async => ref.invalidate(staffListProvider),
-                  child: ListView.separated(
-                    padding: const EdgeInsets.fromLTRB(
-                      AppSpacing.md,
-                      AppSpacing.sm,
-                      AppSpacing.md,
-                      AppSpacing.xxl,
+                // ── List ────────────────────────────────────────────────
+                Expanded(
+                  child: usersAsync.when(
+                    loading: () => SkeletonList(
+                      skeleton: const _UserCardSkeleton(),
+                      count: 6,
                     ),
-                    itemCount: users.length,
-                    separatorBuilder: (_, __) =>
-                        const SizedBox(height: AppSpacing.sm),
-                    itemBuilder: (_, i) => _UserCard(
-                      user: users[i],
-                      animIndex: i,
-                      isAdmin: isAdmin,
-                      onTap: isAdmin
-                          ? () =>
-                              context.push('/admin/users/${users[i].id}/edit')
-                          : null,
-                      onToggleActive: isAdmin
-                          ? () => _toggleActive(context, users[i])
-                          : null,
-                      onRemoveStaff: !isAdmin
-                          ? () => _removeStaff(context, users[i])
-                          : null,
+                    error: (e, _) => ErrorStateWidget(
+                      message: e.toString().replaceAll('Exception: ', ''),
+                      onRetry: () => ref.invalidate(staffListProvider),
                     ),
+                    data: (allUsers) {
+                      // Exclude Admin from management list.
+                      final users = allUsers
+                          .where((u) => !u.isAdmin)
+                          .where((u) =>
+                              _roleFilter == null || u.role == _roleFilter)
+                          .toList();
+
+                      if (users.isEmpty) {
+                        return EmptyStateWidget(
+                          icon: Icons.people_outline_rounded,
+                          message: isAdmin
+                              ? (_roleFilter == null
+                                  ? 'Chưa có nhân viên nào'
+                                  : 'Không có ${AppHelpers.roleLabel(_roleFilter)} nào')
+                              : 'Chưa có nhân viên trong đội',
+                          onAction: isAdmin
+                              ? () => context.push('/admin/users/new')
+                              : () => _showAvailableStaffSheet(context),
+                          actionLabel:
+                              isAdmin ? 'Thêm nhân viên' : 'Thêm vào đội',
+                        );
+                      }
+
+                      return RefreshIndicator(
+                        color: colors.brand,
+                        onRefresh: () async =>
+                            ref.invalidate(staffListProvider),
+                        child: ListView.separated(
+                          padding: const EdgeInsets.fromLTRB(
+                            AppSpacing.md,
+                            AppSpacing.sm,
+                            AppSpacing.md,
+                            AppSpacing.xxl,
+                          ),
+                          itemCount: users.length,
+                          separatorBuilder: (_, __) =>
+                              const SizedBox(height: AppSpacing.sm),
+                          itemBuilder: (_, i) => _UserCard(
+                            user: users[i],
+                            animIndex: i,
+                            isAdmin: isAdmin,
+                            onTap: isAdmin
+                                ? () => context
+                                    .push('/admin/users/${users[i].id}/edit')
+                                : null,
+                            onToggleActive: isAdmin
+                                ? () => _toggleActive(context, users[i])
+                                : null,
+                            onRemoveStaff: !isAdmin
+                                ? () => _removeStaff(context, users[i])
+                                : null,
+                          ),
+                        ),
+                      );
+                    },
                   ),
-                );
-              },
+                ),
+              ],
             ),
-          ),
-        ],
-      ),
     );
   }
 
-  Widget _buildHeader(BuildContext context, String userName, bool isAdmin) {
-    return Container(
-      width: double.infinity,
-      padding: EdgeInsets.only(
-        top: MediaQuery.of(context).padding.top + 8,
-        left: 20,
-        right: 20,
-        bottom: 24,
+  /// Minimal app bar (back + title) — replaces the old gradient header; the
+  /// bottom nav is hidden on this screen for a focused sub-page feel.
+  PreferredSizeWidget _buildAppBar(BuildContext context, bool isAdmin) {
+    final colors = context.colors;
+    return AppBar(
+      backgroundColor: colors.bgSurface,
+      elevation: 0,
+      leading: IconButton(
+        icon: const Icon(Icons.arrow_back_rounded),
+        onPressed: () => context.canPop()
+            ? context.pop()
+            : context.go(isAdmin ? '/admin' : '/dashboard'),
       ),
-      decoration: const BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [AppColors.jade900, AppColors.jade500],
+      title: Text(
+        isAdmin ? 'Quản lý nhân viên' : 'Nhân viên của tôi',
+        style: GoogleFonts.beVietnamPro(
+          fontSize: 16,
+          fontWeight: FontWeight.w700,
+          color: colors.textPrimary,
         ),
-      ),
-      child: Stack(
-        clipBehavior: Clip.none,
-        children: [
-          // Decorative circles
-          Positioned(
-            right: -50,
-            top: -40,
-            child: Container(
-              width: 160,
-              height: 160,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: AppColors.jade300.withValues(alpha: 0.10),
-              ),
-            ),
-          ),
-          Positioned(
-            left: -30,
-            bottom: -40,
-            child: Container(
-              width: 100,
-              height: 100,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: AppColors.gold500.withValues(alpha: 0.08),
-              ),
-            ),
-          ),
-          Row(
-            children: [
-              GestureDetector(
-                // /admin/users is top-level — fallback to /admin if stack empty.
-                onTap: () {
-                  if (context.canPop()) {
-                    context.pop();
-                  } else {
-                    context.go('/admin');
-                  }
-                },
-                child: Container(
-                  width: 36,
-                  height: 36,
-                  margin: const EdgeInsets.only(right: 12),
-                  decoration: BoxDecoration(
-                    color: Colors.white.withValues(alpha: 0.12),
-                    shape: BoxShape.circle,
-                    border:
-                        Border.all(color: Colors.white.withValues(alpha: 0.18)),
-                  ),
-                  child: const Icon(Icons.arrow_back_rounded,
-                      color: Colors.white, size: 18),
-                ),
-              ),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      isAdmin ? 'Quản lý nhân viên' : 'Nhân viên của tôi',
-                      style: GoogleFonts.beVietnamPro(
-                        fontSize: 20,
-                        fontWeight: FontWeight.w700,
-                        color: Colors.white,
-                      ),
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      isAdmin
-                          ? 'Gán vai trò · Kích hoạt tài khoản'
-                          : 'Thêm nhân viên bằng số điện thoại',
-                      style: GoogleFonts.beVietnamPro(
-                        fontSize: 12,
-                        color: Colors.white.withValues(alpha: 0.65),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              GestureDetector(
-                onTap: () => context.push('/profile'),
-                child: Container(
-                  width: 40,
-                  height: 40,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    gradient: const LinearGradient(
-                      colors: [AppColors.jade300, AppColors.gold500],
-                    ),
-                    border: Border.all(
-                      color: Colors.white.withValues(alpha: 0.3),
-                      width: 1.5,
-                    ),
-                  ),
-                  child: Center(
-                    child: Text(
-                      userName.isNotEmpty ? userName[0].toUpperCase() : 'A',
-                      style: GoogleFonts.beVietnamPro(
-                        color: Colors.white,
-                        fontWeight: FontWeight.w700,
-                        fontSize: 15,
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ],
       ),
     );
   }

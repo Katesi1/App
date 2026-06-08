@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../../core/theme/app_color_scheme.dart';
 import '../../../core/theme/app_spacing.dart';
+import '../../auth/controllers/auth_controller.dart';
 import '../controllers/verify_flow_controller.dart';
 import '../data/models/plan.dart';
 import '../data/models/verify_enums.dart';
@@ -20,9 +21,14 @@ class TrialActiveScreen extends ConsumerWidget {
     final colors = context.colors;
     final state = ref.watch(verifyFlowControllerProvider);
     final plan = state.selectedPlan;
-    final trialEnds =
-        state.trialEndsAt ?? DateTime.now().add(const Duration(days: 7));
-    final chargeStarts = state.chargeStartsAt ?? trialEnds;
+    // Nguồn chuẩn là profile (/auth/profile) — BE đảm bảo trialEndsAt ≠
+    // nextChargeAt. Verify-state chỉ là fallback (hydrate chưa set chargeStartsAt).
+    final user = ref.watch(currentUserProvider);
+    final trialEnds = user?.trialEndsAt ??
+        state.trialEndsAt ??
+        DateTime.now().add(const Duration(days: 7));
+    final chargeStarts =
+        user?.nextChargeAt ?? state.chargeStartsAt ?? trialEnds;
     final total =
         plan == null ? 0 : PlanPriceCalculator.total(plan, state.billingCycle);
 

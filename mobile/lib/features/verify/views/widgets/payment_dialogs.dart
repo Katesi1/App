@@ -505,3 +505,164 @@ class _BankTransferDialogState extends State<BankTransferDialog>
     return '$m:$s';
   }
 }
+
+/// Dialog hiển thị khi BE trả 409 `paymentPending` — user đã có một phiên chờ
+/// thanh toán. Thay cho `AlertDialog` thô (vốn show thẳng message tiếng Anh từ
+/// BE). Trả về qua [Navigator.pop]:
+///  - `'wait'`   → tiếp tục đợi (resume QR cũ)
+///  - `'cancel'` → huỷ phiên cũ rồi tạo phiên mới
+///  - `null`     → đóng, không làm gì
+class PendingPaymentDialog extends StatelessWidget {
+  final PendingSessionInfo? pending;
+
+  const PendingPaymentDialog({super.key, this.pending});
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.colors;
+    final p = pending;
+    final expiry = p?.expiresAt;
+    return Dialog(
+      backgroundColor: colors.bgSurfaceElevated,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(20, 20, 20, 16),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            // Header — icon đồng hồ chờ + tiêu đề.
+            Row(
+              children: [
+                Container(
+                  width: 38,
+                  height: 38,
+                  decoration: BoxDecoration(
+                    color: AppColors.warning.withValues(alpha: 0.14),
+                    borderRadius: BorderRadius.circular(11),
+                  ),
+                  child: Icon(Icons.hourglass_top_rounded,
+                      size: 21, color: AppColors.warningText),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    'Đang có phiên chờ thanh toán',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w800,
+                      color: colors.textPrimary,
+                      height: 1.25,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 14),
+            Text(
+              'Bạn đã có một mã thanh toán đang chờ chuyển khoản. Vui lòng hoàn '
+              'tất phiên này, hoặc huỷ để tạo mã mới.',
+              style: TextStyle(
+                fontSize: 13.5,
+                fontWeight: FontWeight.w500,
+                color: colors.textSecondary,
+                height: 1.5,
+              ),
+            ),
+            if (p != null) ...[
+              const SizedBox(height: 16),
+              // Chi tiết phiên cũ — card nổi bật giống order summary.
+              Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                decoration: BoxDecoration(
+                  color: colors.bgSurfaceContainer,
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(color: colors.borderDefault),
+                ),
+                child: Column(
+                  children: [
+                    _detailRow(
+                      colors,
+                      label: 'Gói đăng ký',
+                      value: p.planLabel?.isNotEmpty == true
+                          ? p.planLabel!
+                          : (p.kind?.label ?? 'Thanh toán'),
+                    ),
+                    const SizedBox(height: 10),
+                    _detailRow(
+                      colors,
+                      label: 'Số tiền',
+                      value: VerifyFormat.priceVND(p.totalAmount),
+                      emphasize: true,
+                    ),
+                    if (expiry != null) ...[
+                      const SizedBox(height: 10),
+                      _detailRow(
+                        colors,
+                        label: 'Hết hạn',
+                        value: VerifyFormat.dateVN(expiry),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+            ],
+            const SizedBox(height: 18),
+            SizedBox(
+              height: 48,
+              child: FilledButton.icon(
+                onPressed: () => Navigator.of(context).pop('wait'),
+                icon: const Icon(Icons.qr_code_2_rounded, size: 18),
+                label: const Text('Tiếp tục thanh toán'),
+              ),
+            ),
+            const SizedBox(height: 8),
+            SizedBox(
+              height: 44,
+              child: TextButton(
+                onPressed:
+                    p == null ? null : () => Navigator.of(context).pop('cancel'),
+                style: TextButton.styleFrom(foregroundColor: colors.error),
+                child: const Text('Huỷ phiên cũ & tạo mã mới'),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _detailRow(
+    AppColorScheme colors, {
+    required String label,
+    required String value,
+    bool emphasize = false,
+  }) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label,
+          style: TextStyle(
+            fontSize: 12.5,
+            fontWeight: FontWeight.w600,
+            color: colors.textTertiary,
+          ),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Text(
+            value,
+            textAlign: TextAlign.right,
+            style: TextStyle(
+              fontSize: emphasize ? 16 : 13.5,
+              fontWeight: emphasize ? FontWeight.w900 : FontWeight.w700,
+              color: emphasize ? colors.textBrand : colors.textPrimary,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}

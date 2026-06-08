@@ -4,58 +4,64 @@ import '../../verify/data/models/verify_enums.dart';
 import '../data/models/kyc_submission.dart';
 import '../data/repositories/admin_kyc_repository.dart';
 
-/// Filter for the admin KYC list.
+/// Filter for the admin KYC list. Maps to the backend `?filter=` query param
+/// (API v1.11): `0`=all, `1`=pending, `2`=approved, `3`=rejected.
 enum KYCQueueFilter { pending, all, approved, rejected }
 
-/// Filter state (UI-controlled).
+extension KYCQueueFilterApi on KYCQueueFilter {
+  /// Backend `filter` query value (see §9 — admin KYC queue).
+  int get apiValue => switch (this) {
+        KYCQueueFilter.all => 0,
+        KYCQueueFilter.pending => 1,
+        KYCQueueFilter.approved => 2,
+        KYCQueueFilter.rejected => 3,
+      };
+}
+
+/// Filter state (UI-controlled). Changing it re-fetches [kycQueueProvider].
 final kycQueueFilterProvider =
     StateProvider<KYCQueueFilter>((_) => KYCQueueFilter.pending);
 
-/// All submissions (pre-filter).
-final kycSubmissionsProvider = FutureProvider<List<KYCSubmission>>(
-  (ref) => ref.read(adminKYCRepositoryProvider).fetchAll(),
-);
-
-/// Submissions after applying the filter — sort overdue/oldest pending first.
-final filteredKycSubmissionsProvider =
-    Provider<AsyncValue<List<KYCSubmission>>>((ref) {
+/// Queue for the active tab — single backend call `GET /queue?filter=…`.
+/// Items come pre-filtered by the server; we only sort them client-side.
+final kycQueueProvider = FutureProvider<KycQueueResult>((ref) async {
   final filter = ref.watch(kycQueueFilterProvider);
-  final all = ref.watch(kycSubmissionsProvider);
-  return all.whenData((list) {
-    final filtered = switch (filter) {
-      KYCQueueFilter.pending =>
-        list.where((s) => s.status == VerifyStatus.awaitingApproval).toList(),
-      KYCQueueFilter.approved =>
-        list.where((s) => s.status == VerifyStatus.approved).toList(),
-      KYCQueueFilter.rejected =>
-        list.where((s) => s.status == VerifyStatus.rejected).toList(),
-      KYCQueueFilter.all => List<KYCSubmission>.from(list),
-    };
+  final result = await ref
+      .read(adminKYCRepositoryProvider)
+      .fetchQueue(filter: filter.apiValue);
 
-    // Pending: overdue first, then oldest first (FIFO).
-    // Resolved (approved/rejected): newest first.
-    if (filter == KYCQueueFilter.pending) {
-      filtered.sort((a, b) {
-        if (a.isOverdue != b.isOverdue) return a.isOverdue ? -1 : 1;
-        return a.submittedAt.compareTo(b.submittedAt);
-      });
-    } else {
-      filtered.sort((a, b) {
-        final ah = a.handledAt ?? a.submittedAt;
-        final bh = b.handledAt ?? b.submittedAt;
-        return bh.compareTo(ah);
-      });
-    }
-    return filtered;
-  });
+  final items = List<KYCSubmission>.from(result.items);
+  // Pending: overdue first, then oldest first (FIFO).
+  // Resolved (approved/rejected/all): newest first.
+  if (filter == KYCQueueFilter.pending) {
+    items.sort((a, b) {
+      if (a.isOverdue != b.isOverdue) return a.isOverdue ? -1 : 1;
+      return a.submittedAt.compareTo(b.submittedAt);
+    });
+  } else {
+    items.sort((a, b) {
+      final ah = a.handledAt ?? a.submittedAt;
+      final bh = b.handledAt ?? b.submittedAt;
+      return bh.compareTo(ah);
+    });
+  }
+  return KycQueueResult(
+    items: items,
+    pendingCount: result.pendingCount,
+    total: result.total,
+  );
 });
 
-/// Number of pending submissions (for the badge counter on admin home).
+/// Submissions for the active tab (sorted) — convenience view of [kycQueueProvider].
+final filteredKycSubmissionsProvider =
+    Provider<AsyncValue<List<KYCSubmission>>>((ref) {
+  return ref.watch(kycQueueProvider).whenData((r) => r.items);
+});
+
+/// Number of pending submissions (badge counter) — read straight from the
+/// queue response's `pendingCount`; no separate `/count-pending` call.
 final pendingKycCountProvider = Provider<AsyncValue<int>>((ref) {
-  final all = ref.watch(kycSubmissionsProvider);
-  return all.whenData(
-    (list) => list.where((s) => s.isPending).length,
-  );
+  return ref.watch(kycQueueProvider).whenData((r) => r.pendingCount);
 });
 
 /// Detail of a single submission.
@@ -75,7 +81,7 @@ class KYCApprovalActionsNotifier extends StateNotifier<AsyncValue<void>> {
       await _ref
           .read(adminKYCRepositoryProvider)
           .approve(id, adminName: adminName);
-      _ref.invalidate(kycSubmissionsProvider);
+      _ref.invalidate(kycQueueProvider);
       _ref.invalidate(kycSubmissionProvider(id));
       state = const AsyncValue.data(null);
       return true;
@@ -99,7 +105,7 @@ class KYCApprovalActionsNotifier extends StateNotifier<AsyncValue<void>> {
             reason: reason,
             items: items,
           );
-      _ref.invalidate(kycSubmissionsProvider);
+      _ref.invalidate(kycQueueProvider);
       _ref.invalidate(kycSubmissionProvider(id));
       state = const AsyncValue.data(null);
       return true;

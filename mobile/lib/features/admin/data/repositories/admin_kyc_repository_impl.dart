@@ -17,34 +17,31 @@ class AdminKycRepositoryImpl implements AdminKycRepository {
   AdminKycRepositoryImpl({Dio? dio}) : _dio = dio ?? ApiClient.instance;
 
   @override
-  Future<List<KYCSubmission>> fetchAll() async {
+  Future<KycQueueResult> fetchQueue({int filter = 1}) async {
     try {
-      final results = await Future.wait([
-        _fetchPage('awaiting_approval'),
-        _fetchPage('approved'),
-        _fetchPage('rejected'),
-      ]);
-      return [...results[0], ...results[1], ...results[2]];
+      // Single endpoint (API v1.11) — backend filters by tab and returns
+      // `pendingCount` in the same payload. No more 3× parallel `?status=`.
+      final res = await _dio.get(
+        ApiConstants.adminKycQueue,
+        queryParameters: {
+          'page': 1,
+          'pageSize': 100,
+          'filter': filter,
+        },
+      );
+      final data = res.data['data'] as Map<String, dynamic>;
+      final items = (data['items'] as List).cast<Map<String, dynamic>>();
+      return KycQueueResult(
+        items: items.map(_listItemToSubmission).toList(),
+        pendingCount: (data['pendingCount'] as num?)?.toInt() ?? 0,
+        total: (data['total'] as num?)?.toInt() ?? items.length,
+      );
     } on DioException catch (e) {
       throw Exception(parseDioError(e));
     } on TypeError catch (_) {
       // BE returned 200 but body has wrong schema → avoid UI crash.
       throw Exception('Phản hồi máy chủ không hợp lệ. Vui lòng thử lại sau.');
     }
-  }
-
-  Future<List<KYCSubmission>> _fetchPage(String status) async {
-    final res = await _dio.get(
-      ApiConstants.adminKycQueue,
-      queryParameters: {
-        'page': 1,
-        'pageSize': 100,
-        'status': status,
-      },
-    );
-    final items =
-        (res.data['data']['items'] as List).cast<Map<String, dynamic>>();
-    return items.map(_listItemToSubmission).toList();
   }
 
   @override
@@ -68,7 +65,7 @@ class AdminKycRepositoryImpl implements AdminKycRepository {
       );
       // Backend returns `{submissionId, status, approvedAt, trialEndsAt}` —
       // build minimal KYCSubmission from response; controller will invalidate
-      // `kycSubmissionsProvider` right after so UI refetches full data.
+      // `kycQueueProvider` right after so UI refetches full data.
       final data = res.data['data'] as Map<String, dynamic>;
       return _ackSubmission(
         id: id,

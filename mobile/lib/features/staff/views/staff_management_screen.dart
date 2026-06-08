@@ -4,10 +4,15 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 
+import '../../../core/theme/app_color_scheme.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
+import '../../../core/utils/staff_entitlement.dart';
+import '../../../data/models/user_model.dart';
 import '../../../shared/widgets/app_scaffold.dart';
 import '../../../shared/widgets/loading_widget.dart';
+import '../../../shared/widgets/staff_upsell_view.dart';
+import '../../auth/controllers/auth_controller.dart';
 import '../controllers/staff_controller.dart';
 import '../data/models/staff_invite.dart';
 
@@ -44,12 +49,47 @@ class _StaffManagementScreenState extends ConsumerState<StaffManagementScreen>
     }
   }
 
+  /// Owner's invite quota for the active plan — mirrors backend
+  /// `StaffEntitlement` so the FAB + upsell reflect the limit before the user
+  /// hits a server-side 403/409.
+  InviteEligibility _eligibility(UserModel? user) {
+    final staff = ref.watch(staffListProvider).valueOrNull;
+    final invites = ref.watch(staffInvitesProvider).valueOrNull;
+    final pending =
+        invites?.where((i) => i.status == StaffInviteStatus.pending).length;
+    final slotsKnown = staff != null && pending != null;
+
+    return StaffEntitlement.evaluate(
+      isAdmin: user?.isAdmin ?? false,
+      isOwner: user?.isOwner ?? false,
+      isKycApproved: user?.isKycApproved ?? false,
+      subscriptionStatus: user?.subscriptionStatus ?? 'none',
+      planId: user?.subscriptionPlanId,
+      usedSlots: (staff?.length ?? 0) + (pending ?? 0),
+      enforceSlotLimit: slotsKnown,
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
+    final user = ref.watch(currentUserProvider);
+    final eligibility = _eligibility(user);
+
+    // Blocked (Mini / chưa có gói / chưa KYC / quá hạn...) → full-screen upsell
+    // telling the owner exactly what to buy/upgrade to unlock staff invites.
+    if (!eligibility.allowed) {
+      return AppScaffold(
+        title: 'Quản lý nhân viên',
+        body: StaffUpsellView(eligibility: eligibility, user: user),
+      );
+    }
+
     return AppScaffold(
       title: 'Quản lý nhân viên',
       body: Column(
         children: [
+          if (eligibility.remaining != null)
+            _RemainingHint(remaining: eligibility.remaining!),
           Container(
             color: AppColors.surface,
             child: TabBar(
@@ -83,6 +123,37 @@ class _StaffManagementScreenState extends ConsumerState<StaffManagementScreen>
         icon: const Icon(Icons.person_add_rounded),
         label: const Text('Mời nhân viên'),
         backgroundColor: AppColors.ocean,
+      ),
+    );
+  }
+}
+
+/// Shows how many SALE slots remain on a finite plan (Starter/Standard).
+class _RemainingHint extends StatelessWidget {
+  final int remaining;
+  const _RemainingHint({required this.remaining});
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.colors;
+    return Container(
+      width: double.infinity,
+      padding:
+          const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: 8),
+      color: colors.brand.withValues(alpha: 0.08),
+      child: Row(
+        children: [
+          Icon(Icons.info_outline_rounded, size: 14, color: colors.brand),
+          const SizedBox(width: 6),
+          Text(
+            'Còn $remaining lượt mời nhân viên trong gói hiện tại',
+            style: GoogleFonts.beVietnamPro(
+              fontSize: 11,
+              fontWeight: FontWeight.w500,
+              color: colors.brand,
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -134,7 +205,8 @@ class _StaffListTabState extends ConsumerState<_StaffListTab>
                 name: user.name.isEmpty ? user.email ?? 'Nhân viên' : user.name,
                 email: user.email ?? '',
                 phone: user.phone,
-                onRemove: () => _confirmRemove(context, ref, user.id, user.name),
+                onRemove: () =>
+                    _confirmRemove(context, ref, user.id, user.name),
               );
             },
           );
