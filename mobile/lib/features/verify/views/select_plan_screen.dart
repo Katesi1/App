@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:google_fonts/google_fonts.dart';
 
 import '../../../core/theme/app_color_scheme.dart';
 import '../../../core/theme/app_colors.dart';
@@ -12,6 +13,8 @@ import '../data/models/payment_quote.dart';
 import '../data/models/plan.dart';
 import '../data/models/verify_enums.dart';
 import '../../../shared/widgets/app_toast.dart';
+import '../../../shared/widgets/status_strip.dart';
+import '../utils/billing_preflight.dart';
 import '../utils/payment_error_handler.dart';
 import '../utils/verify_flow_navigation.dart';
 import 'widgets/plan_card.dart';
@@ -38,6 +41,7 @@ class _SelectPlanScreenState extends ConsumerState<SelectPlanScreen> {
   late BillingCycle _cycle;
   Tier? _selected;
   bool _submitting = false;
+  bool _checkingPending = true;
 
   @override
   void initState() {
@@ -48,6 +52,16 @@ class _SelectPlanScreenState extends ConsumerState<SelectPlanScreen> {
     _selected = verifyState.selectedPlan?.tier ??
         Plan.tierFromPlanId(user?.subscriptionPlanId) ??
         Tier.rooms5;
+    WidgetsBinding.instance.addPostFrameCallback((_) => _preflightPending());
+  }
+
+  Future<void> _preflightPending() async {
+    final redirected = await redirectToPendingPaymentIfNeeded(
+      context: context,
+      ref: ref,
+    );
+    if (mounted) setState(() => _checkingPending = false);
+    if (redirected) return;
   }
 
   BillingCycle _initialCycle(BillingCycle draft, String? userCycle) {
@@ -59,8 +73,85 @@ class _SelectPlanScreenState extends ConsumerState<SelectPlanScreen> {
   @override
   Widget build(BuildContext context) {
     final colors = context.colors;
+    final user = ref.watch(currentUserProvider);
     final plansAsync = ref.watch(verifyPlansProvider);
     final isUpgrade = widget.isUpgrade;
+
+    if (user != null && user.isSubscriptionFrozen) {
+      return Scaffold(
+        backgroundColor: colors.bgCanvas,
+        appBar: VerifyAppBar(
+          overline: 'GÓI SUBSCRIPTION',
+          title: 'Không thể mua gói',
+          currentStep: 1,
+          totalSteps: 2,
+        ),
+        body: Padding(
+          padding: const EdgeInsets.all(AppSpacing.lg),
+          child: Center(
+            child: Text(
+              user.subscriptionFrozenReason?.trim().isNotEmpty == true
+                  ? user.subscriptionFrozenReason!.trim()
+                  : 'Tài khoản tạm khoá. Vui lòng liên hệ hỗ trợ.',
+              textAlign: TextAlign.center,
+              style: GoogleFonts.beVietnamPro(
+                fontSize: 14,
+                color: colors.textSecondary,
+              ),
+            ),
+          ),
+        ),
+      );
+    }
+
+    if (_checkingPending) {
+      return Scaffold(
+        backgroundColor: colors.bgCanvas,
+        appBar: VerifyAppBar(
+          overline: isUpgrade ? 'NÂNG CẤP GÓI' : 'BƯỚC 1/2 · MUA GÓI',
+          title: isUpgrade ? 'Chọn gói mới' : 'Chọn gói phù hợp',
+          currentStep: 1,
+          totalSteps: 2,
+        ),
+        body: const Center(child: CircularProgressIndicator()),
+      );
+    }
+
+    if (!isUpgrade &&
+        user != null &&
+        user.isOwner &&
+        !user.canInitiateFirstPurchase) {
+      return Scaffold(
+        backgroundColor: colors.bgCanvas,
+        appBar: VerifyAppBar(
+          overline: 'BƯỚC 1/2 · MUA GÓI',
+          title: 'Hoàn tất xác minh trước',
+          currentStep: 1,
+          totalSteps: 2,
+        ),
+        body: Padding(
+          padding: const EdgeInsets.all(AppSpacing.lg),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Text(
+                'Cần KYC được duyệt trước khi mua gói lần đầu.',
+                textAlign: TextAlign.center,
+                style: GoogleFonts.beVietnamPro(
+                  fontSize: 14,
+                  color: colors.textSecondary,
+                ),
+              ),
+              const SizedBox(height: AppSpacing.lg),
+              FilledButton(
+                onPressed: () => context.push('/verify/cccd-front'),
+                child: const Text('Tiếp tục xác minh'),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
 
     return Scaffold(
       backgroundColor: colors.bgCanvas,
@@ -139,6 +230,18 @@ class _SelectPlanScreenState extends ConsumerState<SelectPlanScreen> {
                   120,
                 ),
                 children: [
+                  if (user?.hasPendingDowngrade == true &&
+                      user?.pendingEffectiveAt != null) ...[
+                    StatusStrip(
+                      icon: Icons.trending_down,
+                      label: 'Đang chờ hạ gói',
+                      subtitle: 'Gói ${user!.pendingPlanLabel} áp dụng từ '
+                          '${VerifyFormat.dateVN(user.pendingEffectiveAt!)}. '
+                          'Không thể hạ gói thêm.',
+                      variant: StatusStripVariant.brand,
+                    ),
+                    const SizedBox(height: AppSpacing.md),
+                  ],
                   _BillingToggle(
                     cycle: _cycle,
                     onChanged: (c) => setState(() => _cycle = c),
@@ -193,19 +296,27 @@ class _SelectPlanScreenState extends ConsumerState<SelectPlanScreen> {
                       },
                     );
                   },
-                  data: (quote) => _CTABar(
-                    planName: selectedPlan.tier.displayName,
-                    totalLabel: quote.isDowngrade
-                        ? 'Áp dụng từ ${VerifyFormat.dateVN(quote.effectiveAt ?? DateTime.now())}'
-                        : '${VerifyFormat.priceVND(quote.totalAmount)}'
-                            '${quote.isCatalogFallback ? ' (tạm tính)' : ''}',
-                    label: quote.isDowngrade
-                        ? 'Đặt lịch hạ gói'
-                        : (isUpgrade ? 'Nâng cấp' : 'Tiếp tục'),
-                    enabled: !_submitting,
-                    loading: _submitting,
-                    onTap: () => _onContinue(selectedPlan, quote),
-                  ),
+                  data: (quote) {
+                    final downgradeBlocked =
+                        user?.hasPendingDowngrade == true && quote.isDowngrade;
+                    return _CTABar(
+                      planName: selectedPlan.tier.displayName,
+                      totalLabel: downgradeBlocked
+                          ? 'Đã có lịch hạ gói'
+                          : quote.isDowngrade
+                              ? 'Áp dụng từ ${VerifyFormat.dateVN(quote.effectiveAt ?? DateTime.now())}'
+                              : '${VerifyFormat.priceVND(quote.totalAmount)}'
+                                  '${quote.isCatalogFallback ? ' (tạm tính)' : ''}',
+                      label: downgradeBlocked
+                          ? 'Đã đặt lịch hạ gói'
+                          : quote.isDowngrade
+                              ? 'Đặt lịch hạ gói'
+                              : (isUpgrade ? 'Nâng cấp' : 'Tiếp tục'),
+                      enabled: !_submitting && !downgradeBlocked,
+                      loading: _submitting,
+                      onTap: () => _onContinue(selectedPlan, quote),
+                    );
+                  },
                 ),
               ),
             ],
@@ -236,7 +347,8 @@ class _SelectPlanScreenState extends ConsumerState<SelectPlanScreen> {
         if (e.isDowngradeScheduled) {
           await ref.read(authProvider.notifier).refreshProfile();
           if (!mounted) return;
-          showPaymentApiError(context, e, ref: ref);
+          await showDowngradeScheduledDialog(context, e);
+          if (!mounted) return;
           context.go('/verify/subscription-detail');
         } else {
           showPaymentApiError(context, e, ref: ref);

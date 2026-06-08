@@ -115,8 +115,9 @@ class ApiConstants {
   // Staff (OWNER mời nhân viên qua email)
   static const String staffInvites = '/staff/invites';
   static String staffInviteDetail(String id) => '/staff/invites/$id';
-  static String staffInviteVerify(String token) =>
-      '/staff/invites/verify/$token';
+
+  /// `:code` — full token (64 hex) hoặc short code `HL-XXXXXX`.
+  static String staffInviteVerify(String code) => '/staff/invites/verify/$code';
   static const String staffInviteAccept = '/staff/invites/accept';
   static const String staff = '/staff';
   static String staffDetail(String userId) => '/staff/$userId';
@@ -126,8 +127,7 @@ class ApiConstants {
       '/properties/$propertyId/reviews';
   static String propertyReviewReply(String propertyId, String reviewId) =>
       '/properties/$propertyId/reviews/$reviewId/reply';
-  static String adminHideReview(String reviewId) =>
-      '/admin/reviews/$reviewId';
+  static String adminHideReview(String reviewId) => '/admin/reviews/$reviewId';
 
   // App version metadata cho force-update flow.
   // BE trả: { latestVersion, minSupportedVersion, releaseNotes, storeUrl{ ios, android } }

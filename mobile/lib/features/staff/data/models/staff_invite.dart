@@ -89,8 +89,7 @@ class StaffInvite extends Equatable {
       );
 
   bool get isExpired =>
-      status == StaffInviteStatus.expired ||
-      DateTime.now().isAfter(expiresAt);
+      status == StaffInviteStatus.expired || DateTime.now().isAfter(expiresAt);
 
   @override
   List<Object?> get props => [

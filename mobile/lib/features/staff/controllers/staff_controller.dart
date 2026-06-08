@@ -41,16 +41,16 @@ class StaffActionsNotifier extends StateNotifier<AsyncValue<void>> {
   StaffActionsNotifier(this._repo, this._ref)
       : super(const AsyncValue.data(null));
 
-  Future<(bool, String)> invite(String email) async {
+  Future<(bool, String, StaffInvite?)> invite(String email) async {
     state = const AsyncValue.loading();
     final result = await _repo.createInvite(email);
     if (result.success) {
       _ref.invalidate(staffInvitesProvider);
       state = const AsyncValue.data(null);
-      return (true, result.message);
+      return (true, result.message, result.data);
     }
     state = AsyncValue.error(result.message, StackTrace.current);
-    return (false, result.message);
+    return (false, result.message, null);
   }
 
   Future<(bool, String)> cancelInvite(String inviteId) async {

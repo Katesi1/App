@@ -461,7 +461,12 @@ class _PaymentScreenState extends ConsumerState<PaymentScreen>
                   ),
                   const SizedBox(height: AppSpacing.md),
                 ],
-                OrderSummaryCard.fromQuote(plan: plan, quote: quote)
+                OrderSummaryCard.fromQuote(
+                  plan: plan,
+                  quote: quote,
+                  user: ref.watch(currentUserProvider),
+                  hasPendingPaymentSession: _hasPendingPayment(),
+                )
                     .animate()
                     .fadeIn(duration: 320.ms),
                 const SizedBox(height: AppSpacing.md),

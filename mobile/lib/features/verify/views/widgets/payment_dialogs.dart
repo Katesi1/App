@@ -263,7 +263,9 @@ class _BankTransferDialogState extends State<BankTransferDialog> {
   }
 
   void _recalc() {
-    _remaining = widget.session.expiresAt.difference(DateTime.now());
+    final deadline =
+        widget.session.qrExpiresAt ?? widget.session.expiresAt;
+    _remaining = deadline.difference(DateTime.now());
     if (_remaining.isNegative) _remaining = Duration.zero;
   }
 
@@ -562,7 +564,11 @@ class _BankTransferDialogState extends State<BankTransferDialog> {
                     Text(
                       expired
                           ? 'Phiên đã hết hạn — tạo phiên mới'
-                          : 'Hết hạn sau ${formatPaymentCountdown(_remaining)}',
+                          : widget.session.qrExpiresAt != null
+                              ? 'QR hết hạn sau '
+                                  '${formatPaymentCountdown(_remaining)}'
+                              : 'Hết hạn sau '
+                                  '${formatPaymentCountdown(_remaining)}',
                       style: TextStyle(
                         fontSize: 11,
                         fontWeight: FontWeight.w700,

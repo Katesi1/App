@@ -15,6 +15,7 @@ import '../../features/admin/views/user_form_screen.dart';
 import '../../features/admin/views/user_list_screen.dart';
 import '../../features/auth/controllers/auth_controller.dart';
 import '../../features/auth/views/forgot_password_screen.dart';
+import '../../features/auth/views/reset_password_screen.dart';
 import '../../features/auth/views/login_screen.dart';
 import '../../features/auth/views/register_screen.dart';
 import '../../features/auth/views/role_picker_screen.dart';
@@ -92,6 +93,7 @@ String? resolveRedirectPath({
     '/login',
     '/register',
     '/forgot-password',
+    '/auth/reset-password',
     '/auth/role-picker',
     '/staff/accept',
   ];
@@ -204,6 +206,13 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
           path: '/forgot-password',
           builder: (_, __) => const ForgotPasswordScreen()),
+      GoRoute(
+        path: '/auth/reset-password',
+        builder: (_, state) {
+          final token = state.uri.queryParameters['token'];
+          return ResetPasswordScreen(initialToken: token);
+        },
+      ),
       GoRoute(
         path: '/auth/role-picker',
         builder: (_, state) {

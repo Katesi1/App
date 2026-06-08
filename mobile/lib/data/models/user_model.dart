@@ -2,6 +2,10 @@ import 'dart:convert';
 
 import 'package:json_annotation/json_annotation.dart';
 
+import '../../core/utils/room_entitlement.dart';
+import '../../core/utils/staff_entitlement.dart';
+import '../../core/utils/subscription_gating.dart';
+
 part 'user_model.g.dart';
 
 /// Model chính cho user. Tất cả 3 endpoint auth (login/register/google) +
@@ -30,10 +34,12 @@ class UserModel {
   // ── KYC + Subscription (BE trả từ /auth/profile) ──
   @JsonKey(defaultValue: 'none')
   final String kycStatus; // none | pending | approved | rejected
+  @JsonKey(defaultValue: false)
+  final bool kycBypass;
   final String? kycSubmissionId;
   @JsonKey(defaultValue: 'none')
   final String
-      subscriptionStatus; // none | trial | active | past_due | cancelled
+      subscriptionStatus; // none | trial | active | past_due | cancelled | frozen | expired
   final String? subscriptionPlanId; // starter | professional | enterprise
   final String? subscriptionCycle; // monthly | yearly
   final DateTime? trialEndsAt;
@@ -43,6 +49,8 @@ class UserModel {
   final String? pendingPlanId;
   final String? pendingCycle;
   final DateTime? pendingEffectiveAt;
+  final DateTime? subscriptionFrozenAt;
+  final String? subscriptionFrozenReason;
 
   const UserModel({
     required this.id,
@@ -58,6 +66,7 @@ class UserModel {
     this.ownerId,
     this.saleMembershipStatus,
     this.kycStatus = 'none',
+    this.kycBypass = false,
     this.kycSubmissionId,
     this.subscriptionStatus = 'none',
     this.subscriptionPlanId,
@@ -69,6 +78,8 @@ class UserModel {
     this.pendingPlanId,
     this.pendingCycle,
     this.pendingEffectiveAt,
+    this.subscriptionFrozenAt,
+    this.subscriptionFrozenReason,
   });
 
   /// Defensive fromJson — bao quanh `_$UserModelFromJson` để xử lý các field
@@ -133,8 +144,8 @@ class UserModel {
   bool get isKycNone => kycStatus == 'none';
 
   /// OWNER chưa hoàn thành KYC → bị chặn tạo/sửa property.
-  /// ADMIN, SALE không yêu cầu KYC. CUSTOMER không quan tâm.
-  bool get needsKyc => isOwner && !isKycApproved;
+  /// ADMIN có thể cấp `kycBypass` để skip.
+  bool get needsKyc => isOwner && !isKycApproved && !kycBypass;
 
   /// Quyền mutate trong management:
   /// - ADMIN/OWNER luôn được
@@ -149,6 +160,36 @@ class UserModel {
   bool get isSubscriptionCancelled => subscriptionStatus == 'cancelled';
   bool get isSubscriptionFrozen => subscriptionStatus == 'frozen';
   bool get isSubscriptionExpired => subscriptionStatus == 'expired';
+
+  /// BE gộp `expired` vào luồng past_due — UI dùng chung banner gia hạn.
+  bool get isSubscriptionPastDueEffective =>
+      SubscriptionGating.isPastDueEffective(this);
+
+  bool get canInitiateFirstPurchase =>
+      SubscriptionGating.canInitiateFirstPurchase(this);
+
+  bool get canRenewOrUpgradeSubscription =>
+      SubscriptionGating.canRenewOrUpgrade(this);
+
+  bool get canOpenPlanPicker => SubscriptionGating.canOpenPlanPicker(this);
+
+  /// `null` = unlimited rooms (enterprise).
+  int? get maxRoomsForPlan =>
+      RoomEntitlement.maxRoomsForPlanId(subscriptionPlanId);
+
+  bool canAddMoreRooms(int currentRoomCount, {int adding = 1}) =>
+      RoomEntitlement.canAddRooms(
+        planId: subscriptionPlanId,
+        currentRoomCount: currentRoomCount,
+        adding: adding,
+      );
+
+  String roomQuotaAtLimitMessage(int currentCount) =>
+      RoomEntitlement.atLimitMessage(
+        planId: subscriptionPlanId,
+        currentCount: currentCount,
+        planLabel: subscriptionPlanLabel,
+      );
 
   /// Số ngày còn lại của trial (null nếu không trong trial). Làm tròn xuống.
   int? get trialDaysLeft {
@@ -196,8 +237,11 @@ class UserModel {
     if (isSubscriptionActive) {
       return 'Đang dùng $subscriptionPlanLabel';
     }
-    if (isSubscriptionPastDue) {
+    if (isSubscriptionPastDueEffective) {
       return 'Quá hạn thanh toán · $subscriptionPlanLabel';
+    }
+    if (isSubscriptionFrozen) {
+      return 'Tài khoản tạm khoá';
     }
     if (isSubscriptionCancelled) {
       return 'Gói đã huỷ · Mua lại để tiếp tục';
@@ -209,7 +253,8 @@ class UserModel {
   String get subscriptionTrailingLabel {
     if (isInTrial) return 'Trial';
     if (isSubscriptionActive) return subscriptionPlanLabel;
-    if (isSubscriptionPastDue) return 'Quá hạn';
+    if (isSubscriptionPastDueEffective) return 'Quá hạn';
+    if (isSubscriptionFrozen) return 'Tạm khoá';
     if (isSubscriptionCancelled) return 'Đã huỷ';
     return 'Chưa có';
   }
@@ -232,6 +277,28 @@ class UserModel {
       ? '/verify/select-plan?mode=upgrade'
       : '/verify/select-plan';
 
+  // ── Staff invite entitlement (theo gói subscription) ──
+
+  /// Trial hoặc active — mirror BE POST /staff/invites.
+  bool get hasStaffInviteSubscription => isInTrial || isSubscriptionActive;
+
+  /// `null` = không giới hạn slot. `0` = gói không hỗ trợ mời.
+  int? get maxStaffInviteSlots =>
+      StaffEntitlement.maxSlotsForPlanId(subscriptionPlanId);
+
+  bool get canInviteStaff => SubscriptionGating.canInviteStaff(this);
+
+  /// Lý do bị khóa mời nhân viên — rỗng nếu được phép mời.
+  String get staffInviteBlockReason =>
+      SubscriptionGating.staffInviteBlockReason(this);
+
+  String staffInviteAtLimitMessage(int currentCount) {
+    final slots = maxStaffInviteSlots;
+    if (slots == null) return '';
+    return 'Đã dùng $currentCount/$slots slot nhân viên của gói '
+        '$subscriptionPlanLabel. Nâng cấp lên Pro để mời không giới hạn.';
+  }
+
   UserModel copyWith({
     String? id,
     String? name,
@@ -246,6 +313,7 @@ class UserModel {
     String? ownerId,
     String? saleMembershipStatus,
     String? kycStatus,
+    bool? kycBypass,
     String? kycSubmissionId,
     String? subscriptionStatus,
     String? subscriptionPlanId,
@@ -257,6 +325,8 @@ class UserModel {
     String? pendingPlanId,
     String? pendingCycle,
     DateTime? pendingEffectiveAt,
+    DateTime? subscriptionFrozenAt,
+    String? subscriptionFrozenReason,
   }) =>
       UserModel(
         id: id ?? this.id,
@@ -272,6 +342,7 @@ class UserModel {
         ownerId: ownerId ?? this.ownerId,
         saleMembershipStatus: saleMembershipStatus ?? this.saleMembershipStatus,
         kycStatus: kycStatus ?? this.kycStatus,
+        kycBypass: kycBypass ?? this.kycBypass,
         kycSubmissionId: kycSubmissionId ?? this.kycSubmissionId,
         subscriptionStatus: subscriptionStatus ?? this.subscriptionStatus,
         subscriptionPlanId: subscriptionPlanId ?? this.subscriptionPlanId,
@@ -283,5 +354,8 @@ class UserModel {
         pendingPlanId: pendingPlanId ?? this.pendingPlanId,
         pendingCycle: pendingCycle ?? this.pendingCycle,
         pendingEffectiveAt: pendingEffectiveAt ?? this.pendingEffectiveAt,
+        subscriptionFrozenAt: subscriptionFrozenAt ?? this.subscriptionFrozenAt,
+        subscriptionFrozenReason:
+            subscriptionFrozenReason ?? this.subscriptionFrozenReason,
       );
 }

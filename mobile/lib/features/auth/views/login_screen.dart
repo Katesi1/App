@@ -682,9 +682,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
                                               ),
                                               const SizedBox(width: 6),
                                               Text(
-                                                'Tôi có mã mời nhân viên',
-                                                style:
-                                                    GoogleFonts.beVietnamPro(
+                                                'Tôi có mã nhân viên',
+                                                style: GoogleFonts.beVietnamPro(
                                                   fontSize: 12,
                                                   fontWeight: FontWeight.w600,
                                                   color: AppColors.muted,

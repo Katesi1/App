@@ -24,6 +24,7 @@ class AdminScreen extends ConsumerWidget {
     final colors = context.colors;
     final user = ref.watch(currentUserProvider);
     final isAdmin = user?.isAdmin ?? false;
+    final isOwner = user?.isOwner ?? false;
     final usersAsync = ref.watch(staffListProvider);
     final homestaysAsync = ref.watch(homestayListProvider(true));
     final bookingsAsync = ref.watch(bookingListProvider(null));
@@ -219,11 +220,13 @@ class AdminScreen extends ConsumerWidget {
                     title: isAdmin ? 'Quản lý nhân viên' : 'Nhân viên của tôi',
                     subtitle: isAdmin
                         ? 'Thêm, sửa, vô hiệu hoá tài khoản'
-                        : 'Thêm, gỡ nhân viên khỏi đội',
+                        : 'Mời qua email, chia sẻ mã HL-XXXXXX',
                     trailing: usersAsync.whenOrNull(
                       data: (users) => '${users.length} người',
                     ),
-                    onTap: () => context.push('/admin/users'),
+                    onTap: () => context.push(
+                      isOwner && !isAdmin ? '/staff/manage' : '/admin/users',
+                    ),
                   ),
 
                   const SizedBox(height: 10),
@@ -353,6 +356,17 @@ class AdminScreen extends ConsumerWidget {
                         ),
                         const SizedBox(width: 10),
                       ],
+                      if (isOwner && !isAdmin) ...[
+                        Expanded(
+                          child: _QuickAction(
+                            icon: Icons.mail_outline_rounded,
+                            label: 'Mời\nnhân viên',
+                            color: colors.brand,
+                            onTap: () => context.push('/staff/manage'),
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                      ],
                       Expanded(
                         child: _QuickAction(
                           icon: Icons.add_home_work_rounded,
@@ -440,7 +454,11 @@ class AdminScreen extends ConsumerWidget {
                             ? Padding(
                                 padding: const EdgeInsets.only(top: 8),
                                 child: TextButton(
-                                  onPressed: () => context.push('/admin/users'),
+                                  onPressed: () => context.push(
+                                    isOwner && !isAdmin
+                                        ? '/staff/manage'
+                                        : '/admin/users',
+                                  ),
                                   child: Text(
                                     'Xem tất cả ${users.length} nhân viên →',
                                     style: GoogleFonts.beVietnamPro(

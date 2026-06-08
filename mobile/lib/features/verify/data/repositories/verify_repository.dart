@@ -127,29 +127,59 @@ class VerifyApiException implements Exception {
   final String? pendingPlanId;
   final PendingSessionSummary? pendingSession;
 
+  /// Root body 409 `paymentPending` — BE trả flat (§ payment.service).
+  final String? sessionId;
+  final int? totalAmount;
+  final DateTime? expiresAt;
+  final DateTime? qrExpiresAt;
+
   const VerifyApiException(
     this.message, {
     this.code,
     this.effectiveAt,
     this.pendingPlanId,
     this.pendingSession,
+    this.sessionId,
+    this.totalAmount,
+    this.expiresAt,
+    this.qrExpiresAt,
   });
 
   factory VerifyApiException.fromDio(DioException e) {
     final status = e.response?.statusCode;
     final data = e.response?.data;
     if (data is Map) {
+      final map = Map<String, dynamic>.from(data);
       PendingSessionSummary? pendingSession;
-      final pendingRaw = data['pendingSession'];
+      final pendingRaw = map['pendingSession'];
       if (pendingRaw is Map<String, dynamic>) {
         pendingSession = PendingSessionSummary.fromJson(pendingRaw);
+      } else if (map['code'] == 'paymentPending') {
+        final sessionId = map['sessionId'] as String?;
+        final expiresRaw = map['expiresAt'] as String?;
+        if (sessionId != null &&
+            sessionId.isNotEmpty &&
+            expiresRaw != null &&
+            expiresRaw.isNotEmpty) {
+          pendingSession = PendingSessionSummary(
+            sessionId: sessionId,
+            totalAmount: (map['totalAmount'] as num?)?.toInt() ?? 0,
+            planId: map['planId'] as String?,
+            expiresAt: DateTime.parse(expiresRaw),
+            method: PaymentMethod.bankTransfer,
+          );
+        }
       }
       return VerifyApiException(
-        data['message']?.toString() ?? parseDioError(e),
-        code: data['code'] as String?,
-        effectiveAt: _parseApiDate(data['effectiveAt']),
-        pendingPlanId: data['pendingPlanId'] as String?,
+        map['message']?.toString() ?? parseDioError(e),
+        code: map['code'] as String?,
+        effectiveAt: _parseApiDate(map['effectiveAt']),
+        pendingPlanId: map['pendingPlanId'] as String?,
         pendingSession: pendingSession,
+        sessionId: map['sessionId'] as String?,
+        totalAmount: (map['totalAmount'] as num?)?.toInt(),
+        expiresAt: _parseApiDate(map['expiresAt']),
+        qrExpiresAt: _parseApiDate(map['qrExpiresAt']),
       );
     }
     if (status == 404) {

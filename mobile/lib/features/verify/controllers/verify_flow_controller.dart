@@ -201,6 +201,25 @@ class VerifyFlowController extends StateNotifier<VerifyFlowState> {
     }
   }
 
+  /// Hydrate plan + quote từ session pending (pre-flight `/payments/active`).
+  void hydrateFromActiveSession({
+    required PaymentSession session,
+    required Plan plan,
+    required BillingCycle cycle,
+    PaymentQuote? quote,
+  }) {
+    state = state.copyWith(
+      selectedPlan: plan,
+      billingCycle: cycle,
+      paymentSession: session,
+      paymentQuote: quote,
+      paymentStatus: PaymentStatus.pending,
+      status: VerifyStatus.paymentPending,
+      expectedRooms: plan.rooms > 0 ? plan.rooms : state.expectedRooms,
+    );
+    _persistDraft();
+  }
+
   /// `GET /payments/active` — source of truth cho phiên pending (QR + bankInfo).
   ///
   /// Cập nhật runtime cache trong state; trả `null` nếu BE không có session pending.

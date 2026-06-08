@@ -12,6 +12,7 @@ import '../../../data/models/user_model.dart';
 import '../../../shared/widgets/loading_widget.dart';
 import '../../../shared/widgets/app_toast.dart';
 import '../../../shared/widgets/status_strip.dart';
+import '../../../shared/widgets/subscription_status_banner.dart';
 import '../../auth/controllers/auth_controller.dart';
 import '../controllers/verify_flow_controller.dart';
 import '../data/models/payment_session.dart';
@@ -588,6 +589,10 @@ class _SubscriptionDetailScreenState
                   ),
                   const SizedBox(height: AppSpacing.md),
                 ],
+                if (user.isSubscriptionFrozen) ...[
+                  SubscriptionStatusBanner(user: user),
+                  const SizedBox(height: AppSpacing.md),
+                ],
                 if (user.hasPendingDowngrade &&
                     user.pendingEffectiveAt != null) ...[
                   StatusStrip(
@@ -645,6 +650,7 @@ class _SubscriptionDetailScreenState
                     planActionLabel: planActionLabel,
                     planActionRoute: planActionRoute,
                     planActionIcon: planActionIcon,
+                    canOpenPlanPicker: user.canOpenPlanPicker,
                     renewValidation: renewValidation,
                     renewing: _renewing,
                     plan: plan,
@@ -858,6 +864,7 @@ class _ActionsSection extends StatelessWidget {
   final String planActionLabel;
   final String planActionRoute;
   final IconData planActionIcon;
+  final bool canOpenPlanPicker;
   final RenewValidation renewValidation;
   final bool renewing;
   final Plan? plan;
@@ -868,6 +875,7 @@ class _ActionsSection extends StatelessWidget {
     required this.planActionLabel,
     required this.planActionRoute,
     required this.planActionIcon,
+    required this.canOpenPlanPicker,
     required this.renewValidation,
     required this.renewing,
     required this.plan,
@@ -893,7 +901,8 @@ class _ActionsSection extends StatelessWidget {
         SizedBox(
           height: 48,
           child: FilledButton.icon(
-            onPressed: () => context.push(planActionRoute),
+            onPressed:
+                canOpenPlanPicker ? () => context.push(planActionRoute) : null,
             icon: Icon(planActionIcon, size: 18),
             label: Text(planActionLabel),
           ),

@@ -44,7 +44,7 @@ class Plan extends Equatable {
   }
 
   static Tier _tierFromId(String id) => switch (id) {
-        'rooms_1' || 'mini' => Tier.rooms1,
+        'rooms_1' || 'mini' || 'starter_test' => Tier.rooms1,
         'rooms_5' || 'starter' => Tier.rooms5,
         'rooms_10' || 'standard' => Tier.rooms10,
         'rooms_20' || 'pro' || 'professional' => Tier.rooms20,

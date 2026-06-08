@@ -16,7 +16,7 @@ import '../data/models/staff_invite.dart';
 
 /// Public screen — không yêu cầu login. Có 2 entry:
 /// 1. Deep link `https://halong24h.com/staff/accept?token=xxx` → token prefilled
-/// 2. User mở app → bấm "Tôi có mã mời" → nhập short code thủ công
+/// 2. User mở app → bấm "Tôi có mã nhân viên" → nhập short code thủ công
 class InviteAcceptScreen extends ConsumerStatefulWidget {
   /// Token đầy đủ (64 hex) hoặc short code (HL-XXXXXX) — nếu null thì user nhập tay.
   final String? initialToken;
@@ -24,8 +24,7 @@ class InviteAcceptScreen extends ConsumerStatefulWidget {
   const InviteAcceptScreen({super.key, this.initialToken});
 
   @override
-  ConsumerState<InviteAcceptScreen> createState() =>
-      _InviteAcceptScreenState();
+  ConsumerState<InviteAcceptScreen> createState() => _InviteAcceptScreenState();
 }
 
 class _InviteAcceptScreenState extends ConsumerState<InviteAcceptScreen> {
@@ -400,18 +399,18 @@ class _OwnerCard extends StatelessWidget {
         children: [
           ClipRRect(
             borderRadius: BorderRadius.circular(40),
-            child: preview.ownerAvatar != null &&
-                    preview.ownerAvatar!.isNotEmpty
-                ? CachedNetworkImage(
-                    imageUrl: preview.ownerAvatar!,
-                    width: 80,
-                    height: 80,
-                    fit: BoxFit.cover,
-                    memCacheWidth: 160,
-                    placeholder: (_, __) => _avatarPlaceholder(),
-                    errorWidget: (_, __, ___) => _avatarPlaceholder(),
-                  )
-                : _avatarPlaceholder(),
+            child:
+                preview.ownerAvatar != null && preview.ownerAvatar!.isNotEmpty
+                    ? CachedNetworkImage(
+                        imageUrl: preview.ownerAvatar!,
+                        width: 80,
+                        height: 80,
+                        fit: BoxFit.cover,
+                        memCacheWidth: 160,
+                        placeholder: (_, __) => _avatarPlaceholder(),
+                        errorWidget: (_, __, ___) => _avatarPlaceholder(),
+                      )
+                    : _avatarPlaceholder(),
           ),
           const SizedBox(height: AppSpacing.md),
           Text(
@@ -435,8 +434,7 @@ class _OwnerCard extends StatelessWidget {
           ],
           const SizedBox(height: AppSpacing.md),
           Container(
-            padding:
-                const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
             decoration: BoxDecoration(
               color: AppColors.ocean.withValues(alpha: 0.08),
               borderRadius: BorderRadius.circular(20),
@@ -557,8 +555,9 @@ class _PasswordSheetState extends State<_PasswordSheet> {
                 labelText: 'Họ và tên',
                 prefixIcon: Icon(Icons.person_outline),
               ),
-              validator: (v) =>
-                  (v == null || v.trim().isEmpty) ? 'Vui lòng nhập họ tên' : null,
+              validator: (v) => (v == null || v.trim().isEmpty)
+                  ? 'Vui lòng nhập họ tên'
+                  : null,
             ),
             const SizedBox(height: AppSpacing.md),
             TextFormField(
@@ -569,8 +568,8 @@ class _PasswordSheetState extends State<_PasswordSheet> {
                 labelText: 'Mật khẩu',
                 prefixIcon: const Icon(Icons.lock_outline),
                 suffixIcon: IconButton(
-                  icon: Icon(
-                      _obscure ? Icons.visibility : Icons.visibility_off),
+                  icon:
+                      Icon(_obscure ? Icons.visibility : Icons.visibility_off),
                   onPressed: () => setState(() => _obscure = !_obscure),
                 ),
               ),

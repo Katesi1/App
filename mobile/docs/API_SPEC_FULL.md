@@ -155,8 +155,8 @@ Retry request gốc
 | `POST` | `/auth/google` | Public | `{ idToken, role? }` (`role` bắt buộc cho user mới) |
 | `POST` | `/auth/apple` | Public | `{ idToken, role?, email?, name?, identityToken? }` |
 | `POST` | `/auth/refresh` | Public | `{ refreshToken }` |
-| `POST` | `/auth/forgot-password` | Public | `{ identifier }` |
-| `POST` | `/auth/reset-password` | Public | `{ token, newPassword }` |
+| `POST` | `/auth/forgot-password` | Public | `{ identifier }` — `identifier` = email **hoặc** phone đã đăng ký. BE gửi link reset (hết hạn **10 phút**) qua email nếu user có email + SMTP đã cấu hình. Luôn trả `200 success` kể cả khi user không tồn tại (chống enumeration). SMS chưa hỗ trợ — user chỉ có phone phải dùng email khác để reset. |
+| `POST` | `/auth/reset-password` | Public | `{ token, newPassword }` — `token` là JWT (purpose='reset') lấy từ query `?token=...` trong link email. `newPassword` ≥ 6 ký tự. Sau khi reset BE clear `refreshToken` → mọi device bị logout. |
 | `POST` | `/auth/logout` | Bearer | — |
 | `GET` | `/auth/profile` | Bearer | — |
 | `POST` | `/auth/change-password` | Bearer | `{ currentPassword, newPassword }` |
@@ -1368,7 +1368,6 @@ Session response (trên hai endpoint này) trả thêm so với spec cũ:
 | `downgradeScheduled` | 409 | `POST /payments/initiate` với tier thấp hơn. Body kèm `effectiveAt` + `pendingPlanId` |
 | `cannotDowngradeInTrial` | 409 | (reserved) Trial chưa hết mà muốn hạ gói |
 | `paymentPending` | 409 | User đã có session `pending` đang chờ duyệt/đối soát. Body kèm `pendingSession` (xem §10.2.6) |
-| `payment.kycNotApproved` | 403 | `POST /payments/initiate` subscription khi `user.kycStatus ≠ approved` |
 | `markPaidDuplicate` | 409 | Đã paid trước đó |
 
 ### 10.2.6 Chặn tạo session khi đang có pending (v1.8+)
@@ -1559,6 +1558,34 @@ Base path: `/staff`.
 | `DELETE` | `/staff/:userId` | OWNER/ADMIN | Remove SALE |
 
 ADMIN dùng `?ownerId=` để filter theo OWNER cụ thể, không truyền → xem tất cả.
+
+### 11.1.1 Quota mời nhân viên theo gói (plan entitlement)
+
+`POST /staff/invites` enforce quota server-side, **mirror FE `StaffEntitlement`** trong `app/lib/core/utils/staff_entitlement.dart`. Khi đổi quota, phải sửa cả 2 nơi.
+
+| planId | Tên gói | Tối đa SALE |
+|---|---|---|
+| `rooms_1` | Mini | **0** — không cho mời |
+| `rooms_5` | Starter | 3 |
+| `rooms_10` | Standard | 3 |
+| `rooms_20` | Pro | không giới hạn |
+| `rooms_50` | Business | không giới hạn |
+| `enterprise` | Enterprise | không giới hạn |
+
+Điều kiện được mời (enforce trong `createInvite`):
+1. `user.role = OWNER` (ADMIN có thể thay mặt qua `ownerId`).
+2. KYC approved hoặc `kycBypass=true`.
+3. `subscriptionStatus ∈ { trial, active }` — `past_due | cancelled | expired | frozen | none` đều bị chặn.
+4. `subscriptionPlanId` cho phép mời (`maxSlots > 0`).
+5. Tổng `SALE active + invite pending chưa hết hạn < maxSlots` (nếu `maxSlots != null`).
+
+**ADMIN bypass toàn bộ 4 check trên** (để seed/khắc phục thủ công).
+
+Lỗi quota:
+- `403 staffNotAllowedOnPlan` — gói hiện tại không có quyền mời (Mini hoặc planId lạ).
+- `409 staffSlotLimitReached` — gói Starter/Standard đã đạt 3 slot.
+
+Message i18n nhúng tên gói + số slot để FE hiện thị trực tiếp.
 
 ### 11.2 Public endpoints (cho landing page accept invite)
 

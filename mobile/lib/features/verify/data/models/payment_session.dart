@@ -173,6 +173,9 @@ class PaymentSession extends Equatable {
 
   final DateTime expiresAt;
 
+  /// QR hết hạn sau 15 phút — countdown trên UI (session vẫn 24h).
+  final DateTime? qrExpiresAt;
+
   /// Loại giao dịch — BE trả từ initiate/renew (§10.2.4).
   final PaymentHistoryKind? kind;
   final String? planId;
@@ -189,6 +192,7 @@ class PaymentSession extends Equatable {
     this.redirectUrl,
     this.payUrl,
     required this.expiresAt,
+    this.qrExpiresAt,
     this.kind,
     this.planId,
     this.cycle,
@@ -213,6 +217,7 @@ class PaymentSession extends Equatable {
       expiresAt: DateTime.parse(
         (json['expiresAt'] ?? json['expires_at']) as String,
       ),
+      qrExpiresAt: _parseOptionalDate(json['qrExpiresAt'] ?? json['qr_expires_at']),
       kind: _sessionKindFromApi(json['kind'] as String?),
       planId: json['planId'] as String?,
       cycle: _cycleFromApi(json['cycle'] as String?),
@@ -234,6 +239,8 @@ class PaymentSession extends Equatable {
         'redirectUrl': redirectUrl,
         'payUrl': payUrl,
         'expiresAt': expiresAt.toIso8601String(),
+        if (qrExpiresAt != null)
+          'qrExpiresAt': qrExpiresAt!.toIso8601String(),
         if (kind != null) 'kind': kind!.name,
         if (planId != null) 'planId': planId,
         if (cycle != null) 'cycle': cycle!.name,
@@ -251,6 +258,7 @@ class PaymentSession extends Equatable {
         redirectUrl,
         payUrl,
         expiresAt,
+        qrExpiresAt,
         kind,
         planId,
         cycle,

@@ -35,7 +35,8 @@ void main() {
   });
 
   group('AppHelpers.bookingStatusColor', () {
-    test('returns correct colors (0=HOLD, 1=CONFIRMED, 2=CANCELLED, 3=COMPLETED)',
+    test(
+        'returns correct colors (0=HOLD, 1=CONFIRMED, 2=CANCELLED, 3=COMPLETED)',
         () {
       expect(AppHelpers.bookingStatusColor(0), AppColors.hold);
       expect(AppHelpers.bookingStatusColor(1), AppColors.confirmed);

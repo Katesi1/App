@@ -2,10 +2,12 @@ import 'package:flutter/material.dart';
 
 import '../../../../core/theme/app_color_scheme.dart';
 import '../../../../core/theme/app_colors.dart';
+import '../../../../data/models/user_model.dart';
 import '../../data/models/payment_history_item.dart';
 import '../../data/models/payment_quote.dart';
 import '../../data/models/plan.dart';
 import '../../data/models/verify_enums.dart';
+import '../../utils/billing_quote_helper.dart';
 import 'verify_format.dart';
 
 /// Order summary — hiển thị `breakdown` từ BE (quote / session).
@@ -15,6 +17,8 @@ class OrderSummaryCard extends StatelessWidget {
   final PaymentBreakdown breakdown;
   final PaymentHistoryKind? kind;
   final int totalAmount;
+  final UserModel? user;
+  final bool hasPendingPaymentSession;
 
   const OrderSummaryCard({
     super.key,
@@ -23,11 +27,15 @@ class OrderSummaryCard extends StatelessWidget {
     required this.breakdown,
     required this.totalAmount,
     this.kind,
+    this.user,
+    this.hasPendingPaymentSession = false,
   });
 
   factory OrderSummaryCard.fromQuote({
     required Plan plan,
     required PaymentQuote quote,
+    UserModel? user,
+    bool hasPendingPaymentSession = false,
   }) =>
       OrderSummaryCard(
         plan: plan,
@@ -35,6 +43,8 @@ class OrderSummaryCard extends StatelessWidget {
         breakdown: quote.breakdown,
         totalAmount: quote.totalAmount,
         kind: quote.kind,
+        user: user,
+        hasPendingPaymentSession: hasPendingPaymentSession,
       );
 
   @override
@@ -43,6 +53,27 @@ class OrderSummaryCard extends StatelessWidget {
     final isYearly = cycle == BillingCycle.yearly;
     final periodLabel = isYearly ? '12 tháng' : '1 tháng';
     final showTrialBadge = kind == PaymentHistoryKind.subscription;
+    final quote = PaymentQuote(
+      kind: kind ?? PaymentHistoryKind.subscription,
+      planId: plan.id,
+      cycle: cycle,
+      rooms: plan.rooms > 0 ? plan.rooms : 1,
+      totalAmount: totalAmount,
+      breakdown: breakdown,
+    );
+    final renewNote = BillingQuoteHelper.renewStackNote(
+      quote: quote,
+      user: user,
+      hasPendingPaymentSession: hasPendingPaymentSession,
+    );
+    final upgradeNote = BillingQuoteHelper.upgradeCreditNote(
+      breakdown: breakdown,
+      user: user,
+    );
+    final cycleNote = BillingQuoteHelper.cycleDeferNote(
+      quote: quote,
+      user: user,
+    );
 
     return Container(
       padding: const EdgeInsets.all(14),
@@ -75,6 +106,15 @@ class OrderSummaryCard extends StatelessWidget {
               ),
             ),
           ],
+          if (kind == PaymentHistoryKind.renew) ...[
+            const SizedBox(height: 8),
+            _infoChip(
+              context,
+              icon: Icons.add_circle_outline,
+              text: 'Cộng dồn vào kỳ hiện tại',
+              color: colors.success,
+            ),
+          ],
           const SizedBox(height: 12),
           _line(
             context,
@@ -85,8 +125,10 @@ class OrderSummaryCard extends StatelessWidget {
             const SizedBox(height: 8),
             _line(
               context,
-              label: breakdown.remainingDays != null
-                  ? 'Credit gói cũ (${breakdown.remainingDays} ngày)'
+              label: breakdown.remainingDays != null &&
+                      breakdown.totalDays != null
+                  ? 'Trừ gói cũ (còn ${breakdown.remainingDays}/'
+                      '${breakdown.totalDays} ngày)'
                   : 'Credit gói cũ',
               value: '-${VerifyFormat.priceVND(breakdown.creditApplied)}',
               valueColor: colors.success,
@@ -124,59 +166,98 @@ class OrderSummaryCard extends StatelessWidget {
               ),
             ],
           ),
+          if (upgradeNote != null) ...[
+            const SizedBox(height: 10),
+            _footnote(context, upgradeNote),
+          ],
+          if (renewNote != null) ...[
+            const SizedBox(height: 10),
+            _footnote(context, renewNote),
+          ],
+          if (cycleNote != null) ...[
+            const SizedBox(height: 8),
+            _footnote(context, cycleNote, icon: Icons.info_outline),
+          ],
           if (breakdown.periodExtension != null &&
-              breakdown.periodExtension!.months > 0) ...[
+              breakdown.periodExtension!.months > 0 &&
+              kind != PaymentHistoryKind.upgrade) ...[
             const SizedBox(height: 12),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-              decoration: BoxDecoration(
-                color: AppColors.successBgDark,
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(Icons.event_available, size: 14, color: colors.success),
-                  const SizedBox(width: 6),
-                  Text(
-                    'Gia hạn thêm ${breakdown.periodExtension!.months} tháng',
-                    style: TextStyle(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w700,
-                      color: colors.success,
-                    ),
-                  ),
-                ],
-              ),
+            _infoChip(
+              context,
+              icon: Icons.event_available,
+              text: 'Gia hạn thêm ${breakdown.periodExtension!.months} tháng',
+              color: colors.success,
             ),
           ],
           if (showTrialBadge) ...[
             const SizedBox(height: 12),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-              decoration: BoxDecoration(
-                color: AppColors.successBgDark,
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(Icons.check_circle, size: 14, color: colors.success),
-                  const SizedBox(width: 6),
-                  Text(
-                    '7 ngày trial · Tính từ ngày được duyệt',
-                    style: TextStyle(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w700,
-                      color: colors.success,
-                    ),
-                  ),
-                ],
-              ),
+            _infoChip(
+              context,
+              icon: Icons.check_circle,
+              text: '7 ngày trial · Tính từ ngày được duyệt',
+              color: colors.success,
             ),
           ],
         ],
       ),
+    );
+  }
+
+  Widget _infoChip(
+    BuildContext context, {
+    required IconData icon,
+    required String text,
+    required Color color,
+  }) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: AppColors.successBgDark,
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 14, color: color),
+          const SizedBox(width: 6),
+          Flexible(
+            child: Text(
+              text,
+              style: TextStyle(
+                fontSize: 11,
+                fontWeight: FontWeight.w700,
+                color: color,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _footnote(
+    BuildContext context,
+    String text, {
+    IconData icon = Icons.lightbulb_outline,
+  }) {
+    final colors = context.colors;
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Icon(icon, size: 14, color: colors.textTertiary),
+        const SizedBox(width: 6),
+        Expanded(
+          child: Text(
+            text,
+            style: TextStyle(
+              fontSize: 11,
+              height: 1.4,
+              fontWeight: FontWeight.w500,
+              color: colors.textSecondary,
+            ),
+          ),
+        ),
+      ],
     );
   }
 

@@ -48,7 +48,7 @@ Future<PaymentSession?> resolvePaymentPendingConflict({
     }
   }
 
-  final sessionId = error.pendingSession?.sessionId;
+  final sessionId = error.pendingSession?.sessionId ?? error.sessionId;
   if (sessionId == null || sessionId.isEmpty) {
     if (context.mounted) {
       showRenewBlockedMessage(

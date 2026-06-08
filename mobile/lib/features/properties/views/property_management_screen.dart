@@ -8,6 +8,7 @@ import '../../../core/theme/app_colors.dart';
 import '../../../data/models/homestay_model.dart';
 import '../../../shared/widgets/loading_widget.dart';
 import '../../auth/controllers/auth_controller.dart';
+import '../../../core/utils/property_room_counter.dart';
 import '../../properties/controllers/property_controller.dart';
 import '../../verify/controllers/verify_flow_controller.dart';
 import '../../verify/views/paywall_modal.dart';
@@ -335,7 +336,26 @@ class _PropertyManagementScreenState
     final verifyState = ref.read(verifyFlowControllerProvider);
 
     if (user == null) return;
-    if (!user.isOwner || user.isKycApproved) {
+
+    if (user.isOwner && !user.needsKyc) {
+      try {
+        final homestays = await ref.read(homestayListProvider(true).future);
+        final count = PropertyRoomCounter.fromHomestays(homestays);
+        if (!user.canAddMoreRooms(count)) {
+          if (mounted) {
+            AppSnackBar.error(
+              context,
+              user.roomQuotaAtLimitMessage(count),
+            );
+          }
+          return;
+        }
+      } catch (_) {}
+      if (mounted) context.push('/properties/new');
+      return;
+    }
+
+    if (!user.isOwner) {
       context.push('/properties/new');
       return;
     }

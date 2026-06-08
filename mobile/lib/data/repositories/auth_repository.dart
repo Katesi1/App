@@ -458,7 +458,8 @@ class AuthRepository {
       );
       return ApiResponse(
         success: true,
-        message: response.data['message'] ?? 'Đã gửi mã xác nhận',
+        message: response.data['message'] ??
+            'Nếu tài khoản tồn tại, link đặt lại mật khẩu đã được gửi qua email',
       );
     } on DioException catch (e) {
       return ApiResponse(success: false, message: parseDioError(e));

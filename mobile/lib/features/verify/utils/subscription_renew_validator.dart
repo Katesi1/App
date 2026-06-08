@@ -47,11 +47,14 @@ class SubscriptionRenewValidator {
     Object? quoteError,
   }) {
     if (user.isSubscriptionFrozen) {
+      final msg = user.subscriptionFrozenReason?.trim().isNotEmpty == true
+          ? user.subscriptionFrozenReason!.trim()
+          : 'Tài khoản tạm khoá. Vui lòng liên hệ hỗ trợ.';
       return RenewValidation(
         showRenewButton: true,
         canTap: false,
-        blockMessage: 'Tài khoản đang bị đóng băng. Vui lòng liên hệ hỗ trợ.',
-        disabledHint: 'Không thể gia hạn khi tài khoản bị đóng băng',
+        blockMessage: msg,
+        disabledHint: 'Không thể gia hạn khi tài khoản bị khoá',
       );
     }
 
@@ -70,13 +73,12 @@ class SubscriptionRenewValidator {
       );
     }
 
-    if (user.subscriptionStatus == 'expired') {
-      return RenewValidation(
+    if (user.isSubscriptionExpired) {
+      return const RenewValidation(
         showRenewButton: true,
-        canTap: false,
-        blockMessage:
-            'Gói đã hết hạn. Vui lòng dùng nút "Nâng cấp gói" để đăng ký lại.',
-        disabledHint: 'Gói hết hạn — đăng ký lại qua "Nâng cấp gói"',
+        canTap: true,
+        path: RenewPaymentPath.renewEndpoint,
+        disabledHint: 'Gói hết hạn — gia hạn ngay',
       );
     }
 

@@ -17,6 +17,9 @@ import '../../../shared/utils/dashboard_refresh.dart';
 import '../../../shared/widgets/app_scaffold.dart';
 import '../../../shared/widgets/loading_widget.dart';
 import '../../../shared/widgets/pagination_bar.dart';
+import '../../../shared/widgets/subscription_status_banner.dart';
+import '../../../core/utils/property_room_counter.dart';
+import '../../properties/controllers/property_controller.dart';
 
 // gradient.brandHero stop "jade-mid" theo spec section 3.7
 const _jadeMidLight = Color(0xFF1B7E94);
@@ -87,12 +90,23 @@ class DashboardScreen extends ConsumerWidget {
                     ),
                   ),
 
+                // ── Frozen banner (ADMIN ép) — khoá mua/gia hạn/mời NV ──
+                if (user != null && user.isOwner && user.isSubscriptionFrozen)
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 0, 16, 0),
+                    child: Transform.translate(
+                      offset: const Offset(0, -16),
+                      child: SubscriptionStatusBanner(user: user),
+                    ),
+                  ),
+
                 // ── Subscription banner cho OWNER đã KYC approved ─────
-                // Trial / past_due / cancelled — active thì không hiện.
+                // Trial / past_due / cancelled — active/frozen thì không hiện.
                 if (user != null &&
                     user.isOwner &&
                     user.isKycApproved &&
-                    !user.isSubscriptionActive)
+                    !user.isSubscriptionActive &&
+                    !user.isSubscriptionFrozen)
                   Padding(
                     padding: const EdgeInsets.fromLTRB(16, 0, 16, 0),
                     child: Transform.translate(
@@ -294,14 +308,14 @@ class DashboardScreen extends ConsumerWidget {
                                 icon: Icons.add_home_rounded,
                                 label: 'Thêm phòng',
                                 color: colors.success,
-                                onTap: () => context.push('/properties/new'),
+                                onTap: () => _onAddProperty(context, ref, user),
                               ),
                             ],
                             if (user?.isOwner ?? false) ...[
                               const SizedBox(width: 10),
                               _QuickAction(
                                 icon: Icons.group_add_rounded,
-                                label: 'Nhân viên',
+                                label: 'Mời NV',
                                 color: colors.brandSecondary,
                                 onTap: () => context.push('/staff/manage'),
                               ),
@@ -1247,7 +1261,7 @@ class _SubscriptionBanner extends ConsumerWidget {
 
     return InkWell(
       onTap: () {
-        if (_needsFirstPurchase) {
+        if (_needsFirstPurchase || user.isSubscriptionPastDueEffective) {
           context.push(UserModel.subscriptionEntryRoute);
           return;
         }
@@ -1399,7 +1413,8 @@ class _SubscriptionBanner extends ConsumerWidget {
               child: ElevatedButton.icon(
                 onPressed: () {
                   Navigator.of(sheetCtx).maybePop();
-                  if (_needsFirstPurchase) {
+                  if (_needsFirstPurchase ||
+                      user.isSubscriptionPastDueEffective) {
                     context.push(UserModel.subscriptionEntryRoute);
                   } else {
                     context.push('/profile/help');
@@ -1446,13 +1461,13 @@ class _SubscriptionBanner extends ConsumerWidget {
         'Liên hệ hỗ trợ',
       );
     }
-    if (user.isSubscriptionPastDue) {
+    if (user.isSubscriptionPastDueEffective) {
       return (
-        'Thanh toán quá hạn',
+        'Gia hạn ngay',
         'Gói: $planText\n\n'
-            'Lần thanh toán gần nhất bị từ chối. Vui lòng cập nhật phương thức '
-            'thanh toán mới hoặc liên hệ hỗ trợ để tránh gián đoạn dịch vụ.',
-        'Liên hệ hỗ trợ ngay',
+            'Trial đã hết hoặc kỳ thanh toán quá hạn. Gia hạn ngay để tiếp tục '
+            'dùng đầy đủ tính năng.',
+        'Gia hạn ngay',
       );
     }
     if (user.isSubscriptionCancelled) {
@@ -1507,8 +1522,8 @@ class _SubscriptionBanner extends ConsumerWidget {
             : 'Hệ thống sẽ tự động charge theo gói đã chọn vào ngày mai.',
       );
     }
-    // Past due — payment fail, cần update (giữ đỏ — phải action)
-    if (user.isSubscriptionPastDue) {
+    // Past due / expired — banner đỏ, CTA gia hạn
+    if (user.isSubscriptionPastDueEffective) {
       return (
         LinearGradient(
           colors: [AppColors.errorBgDark, AppColors.errorBgDark],
@@ -1518,8 +1533,8 @@ class _SubscriptionBanner extends ConsumerWidget {
         colors.error,
         colors.textPrimary,
         colors.textSecondary,
-        'Thanh toán quá hạn',
-        'Tài khoản sẽ bị khoá nếu không cập nhật phương thức thanh toán.',
+        'Gia hạn ngay',
+        'Gói quá hạn — gia hạn để tiếp tục mời nhân viên và quản lý phòng.',
       );
     }
     // Cancelled — subscription đã huỷ
@@ -1754,4 +1769,27 @@ class _CTAButton extends StatelessWidget {
       ),
     );
   }
+}
+
+Future<void> _onAddProperty(
+  BuildContext context,
+  WidgetRef ref,
+  UserModel? user,
+) async {
+  if (user == null) return;
+  if (user.needsKyc) {
+    context.push('/verify/cccd-front');
+    return;
+  }
+  try {
+    final homestays = await ref.read(homestayListProvider(true).future);
+    final count = PropertyRoomCounter.fromHomestays(homestays);
+    if (!user.canAddMoreRooms(count)) {
+      AppSnackBar.error(context, user.roomQuotaAtLimitMessage(count));
+      return;
+    }
+  } catch (_) {
+    // Best-effort — list lỗi vẫn cho mở form; BE enforce ở payment.
+  }
+  if (context.mounted) context.push('/properties/new');
 }

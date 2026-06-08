@@ -1,15 +1,20 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
+import '../../../data/models/user_model.dart';
+import '../../auth/controllers/auth_controller.dart';
 import '../../../shared/widgets/app_scaffold.dart';
 import '../../../shared/widgets/loading_widget.dart';
 import '../controllers/staff_controller.dart';
 import '../data/models/staff_invite.dart';
+import '../widgets/staff_invite_plan_banner.dart';
+import '../../../shared/widgets/subscription_status_banner.dart';
 
 class StaffManagementScreen extends ConsumerStatefulWidget {
   const StaffManagementScreen({super.key});
@@ -30,6 +35,20 @@ class _StaffManagementScreenState extends ConsumerState<StaffManagementScreen>
   }
 
   Future<void> _openInviteSheet() async {
+    final user = ref.read(currentUserProvider);
+    if (user == null) return;
+
+    if (!user.canInviteStaff) {
+      AppSnackBar.info(context, user.staffInviteBlockReason);
+      return;
+    }
+
+    final limitMsg = await _staffInviteLimitMessage(user);
+    if (limitMsg != null) {
+      AppSnackBar.error(context, limitMsg);
+      return;
+    }
+
     final created = await showModalBottomSheet<bool>(
       context: context,
       isScrollControlled: true,
@@ -44,12 +63,40 @@ class _StaffManagementScreenState extends ConsumerState<StaffManagementScreen>
     }
   }
 
+  /// Trả message nếu đã hết slot theo gói (Starter/Standard = 3).
+  Future<String?> _staffInviteLimitMessage(UserModel user) async {
+    final max = user.maxStaffInviteSlots;
+    if (max == null) return null;
+
+    final staff = await ref.read(staffListProvider.future);
+    final invites = await ref.read(staffInvitesProvider.future);
+    final pendingInvites = invites
+        .where(
+          (i) => i.status == StaffInviteStatus.pending && !i.isExpired,
+        )
+        .length;
+    final used = staff.length + pendingInvites;
+    if (used >= max) {
+      return user.staffInviteAtLimitMessage(used);
+    }
+    return null;
+  }
+
   @override
   Widget build(BuildContext context) {
+    final user = ref.watch(currentUserProvider);
+    final canInvite = user?.canInviteStaff ?? false;
+
     return AppScaffold(
       title: 'Quản lý nhân viên',
       body: Column(
         children: [
+          if (user != null) ...[
+            SubscriptionStatusBanner(user: user),
+            StaffInvitePlanBanner(user: user),
+            if (user.canInviteStaff && user.maxStaffInviteSlots != null)
+              _StaffSlotUsageBanner(user: user),
+          ],
           Container(
             color: AppColors.surface,
             child: TabBar(
@@ -78,12 +125,60 @@ class _StaffManagementScreenState extends ConsumerState<StaffManagementScreen>
           ),
         ],
       ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: _openInviteSheet,
-        icon: const Icon(Icons.person_add_rounded),
-        label: const Text('Mời nhân viên'),
-        backgroundColor: AppColors.ocean,
-      ),
+      floatingActionButton: user != null && user.isSubscriptionFrozen
+          ? null
+          : canInvite
+              ? FloatingActionButton.extended(
+                  onPressed: _openInviteSheet,
+                  icon: const Icon(Icons.person_add_rounded),
+                  label: const Text('Mời nhân viên'),
+                  backgroundColor: AppColors.ocean,
+                )
+              : user != null
+                  ? FloatingActionButton.extended(
+                      onPressed: user.canOpenPlanPicker
+                          ? () => context.push(user.subscriptionPlanPickerRoute)
+                          : null,
+                      icon: const Icon(Icons.lock_outline_rounded),
+                      label: Text(
+                        user.canOpenPlanPicker
+                            ? 'Nâng cấp gói'
+                            : 'Liên hệ hỗ trợ',
+                      ),
+                      backgroundColor: AppColors.slate,
+                    )
+                  : null,
+    );
+  }
+}
+
+class _StaffSlotUsageBanner extends ConsumerWidget {
+  final UserModel user;
+  const _StaffSlotUsageBanner({required this.user});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final staffAsync = ref.watch(staffListProvider);
+    final invitesAsync = ref.watch(staffInvitesProvider);
+
+    return staffAsync.when(
+      data: (staff) {
+        final pending = invitesAsync.whenOrNull(
+              data: (invites) => invites
+                  .where(
+                    (i) =>
+                        i.status == StaffInviteStatus.pending && !i.isExpired,
+                  )
+                  .length,
+            ) ??
+            0;
+        return StaffSlotUsageChip(
+          used: staff.length + pending,
+          max: user.maxStaffInviteSlots,
+        );
+      },
+      loading: () => const SizedBox.shrink(),
+      error: (_, __) => const SizedBox.shrink(),
     );
   }
 }
@@ -124,7 +219,8 @@ class _StaffListTab extends ConsumerWidget {
                 name: user.name.isEmpty ? user.email ?? 'Nhân viên' : user.name,
                 email: user.email ?? '',
                 phone: user.phone,
-                onRemove: () => _confirmRemove(context, ref, user.id, user.name),
+                onRemove: () =>
+                    _confirmRemove(context, ref, user.id, user.name),
               );
             },
           );
@@ -477,21 +573,130 @@ class _InviteStaffSheetState extends ConsumerState<_InviteStaffSheet> {
 
   Future<void> _submit() async {
     if (!_formKey.currentState!.validate()) return;
+
+    final user = ref.read(currentUserProvider);
+    if (user == null || !user.canInviteStaff) {
+      AppSnackBar.error(
+        context,
+        user?.staffInviteBlockReason ?? 'Không thể mời nhân viên',
+      );
+      return;
+    }
+
     setState(() => _submitting = true);
 
-    final (ok, msg) = await ref
+    final (ok, msg, invite) = await ref
         .read(staffActionsProvider.notifier)
         .invite(_emailCtrl.text.trim());
 
     if (!mounted) return;
     setState(() => _submitting = false);
 
-    if (ok) {
+    if (ok && invite != null) {
+      Navigator.pop(context, true);
+      await _showInviteCreatedDialog(context, invite, msg);
+    } else if (ok) {
       AppSnackBar.success(context, msg);
       Navigator.pop(context, true);
     } else {
       AppSnackBar.error(context, msg);
     }
+  }
+
+  Future<void> _showInviteCreatedDialog(
+    BuildContext context,
+    StaffInvite invite,
+    String message,
+  ) async {
+    await showDialog<void>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: Text(
+          'Đã gửi lời mời',
+          style: GoogleFonts.beVietnamPro(
+            fontWeight: FontWeight.w700,
+            color: AppColors.navy,
+          ),
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              message,
+              style: GoogleFonts.beVietnamPro(
+                fontSize: 13,
+                color: AppColors.muted,
+              ),
+            ),
+            const SizedBox(height: AppSpacing.md),
+            Text(
+              'Mã nhân viên (chia sẻ qua chat/SMS):',
+              style: GoogleFonts.beVietnamPro(
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+                color: AppColors.muted,
+              ),
+            ),
+            const SizedBox(height: AppSpacing.xs),
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(
+                horizontal: AppSpacing.md,
+                vertical: AppSpacing.sm,
+              ),
+              decoration: BoxDecoration(
+                color: AppColors.ocean.withValues(alpha: 0.08),
+                borderRadius: BorderRadius.circular(AppRadius.sm),
+                border: Border.all(color: AppColors.oceanLight),
+              ),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      invite.shortCode,
+                      style: GoogleFonts.firaCode(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.ocean,
+                        letterSpacing: 1.2,
+                      ),
+                    ),
+                  ),
+                  IconButton(
+                    visualDensity: VisualDensity.compact,
+                    onPressed: () => _copyCode(dialogContext, invite.shortCode),
+                    icon: const Icon(Icons.copy_rounded, size: 18),
+                    tooltip: 'Sao chép mã',
+                  ),
+                ],
+              ),
+            ),
+            if (invite.inviteLink != null && invite.inviteLink!.isNotEmpty) ...[
+              const SizedBox(height: AppSpacing.sm),
+              Text(
+                'Email cũng chứa link trực tiếp cho nhân viên.',
+                style: GoogleFonts.beVietnamPro(
+                  fontSize: 11,
+                  color: AppColors.muted,
+                ),
+              ),
+            ],
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext),
+            child: const Text('Đóng'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _copyCode(BuildContext context, String code) {
+    Clipboard.setData(ClipboardData(text: code));
+    AppSnackBar.success(context, 'Đã sao chép mã $code');
   }
 
   @override
