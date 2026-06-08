@@ -4,6 +4,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:shimmer/shimmer.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_spacing.dart';
+import 'app_toast.dart';
 
 // ─── Loading Spinner ──────────────────────────────────────────────────────────
 class LoadingWidget extends StatelessWidget {
@@ -477,47 +478,17 @@ class ErrorStateWidget extends StatelessWidget {
 }
 
 // ─── App SnackBar helper ──────────────────────────────────────────────────────
+/// Thông báo dạng toast (toastify). Delegate sang [AppToast] để toàn bộ dự án
+/// (21+ nơi đang gọi `AppSnackBar.*`) dùng chung 1 kiểu toast nổi từ trên xuống.
 class AppSnackBar {
-  static void success(BuildContext context, String message) => _show(
-      context, message, AppColors.emerald, Icons.check_circle_outline_rounded);
+  static void success(BuildContext context, String message) =>
+      AppToast.success(context, message);
 
   static void error(BuildContext context, String message) =>
-      _show(context, message, AppColors.coral, Icons.error_outline_rounded);
+      AppToast.error(context, message);
 
   static void info(BuildContext context, String message) =>
-      _show(context, message, AppColors.ocean, Icons.info_outline_rounded);
-
-  static void _show(
-      BuildContext context, String message, Color color, IconData icon) {
-    ScaffoldMessenger.of(context)
-      ..hideCurrentSnackBar()
-      ..showSnackBar(
-        SnackBar(
-          content: Row(
-            children: [
-              Icon(icon, color: Colors.white, size: 20),
-              const SizedBox(width: AppSpacing.sm),
-              Expanded(
-                child: Text(
-                  message,
-                  style: GoogleFonts.beVietnamPro(
-                    color: Colors.white,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ),
-            ],
-          ),
-          backgroundColor: color,
-          behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(AppRadius.md),
-          ),
-          margin: const EdgeInsets.all(AppSpacing.md),
-          duration: const Duration(seconds: 3),
-        ),
-      );
-  }
+      AppToast.info(context, message);
 }
 
 // ─── Legacy aliases ───────────────────────────────────────────────────────────

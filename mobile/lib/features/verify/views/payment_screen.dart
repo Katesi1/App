@@ -9,7 +9,9 @@ import '../../../core/theme/app_color_scheme.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../core/monitoring/analytics_service.dart';
+import '../../../shared/widgets/app_toast.dart';
 import '../../../shared/widgets/status_strip.dart';
+import '../../auth/controllers/auth_controller.dart';
 import '../controllers/verify_flow_controller.dart';
 import '../data/models/payment_session.dart';
 import '../data/models/verify_enums.dart';
@@ -106,6 +108,31 @@ class _PaymentScreenState extends ConsumerState<PaymentScreen> {
       _loadQuote();
       return;
     }
+
+    // Mua gói lần đầu (kind == subscription) chỉ được mở thanh toán khi KYC đã
+    // được admin DUYỆT (luồng decoupled: nộp KYC → chờ duyệt → duyệt → mua gói).
+    // Source of truth là user.kycStatus (/auth/profile), KHÔNG dùng verify flow
+    // status (drift khi logout/login). Chưa duyệt → điều hướng theo trạng thái:
+    //   - none/rejected → luồng xác thực (chụp CCCD)
+    //   - pending       → màn chờ duyệt
+    if (quote.kind == TransactionKind.subscription) {
+      final user = ref.read(currentUserProvider);
+      if (user != null && !user.isKycApproved) {
+        if (user.isKycPending) {
+          AppToast.warning(
+            context,
+            'Hồ sơ KYC đang chờ duyệt. Vui lòng chờ được duyệt trước khi '
+            'thanh toán.',
+          );
+          context.go('/verify/pending');
+        } else {
+          AppToast.warning(context, 'Xác thực tài khoản để mua gói');
+          context.go('/verify/cccd-front');
+        }
+        return;
+      }
+    }
+
     final gen = ++_payGen;
     _pollTimer?.cancel(); // supersede any in-flight session before starting.
     AnalyticsService.logEvent('verify_payment_submit', params: const {
@@ -192,7 +219,9 @@ class _PaymentScreenState extends ConsumerState<PaymentScreen> {
           _dialogOpen = false;
           if (!mounted) return;
           setState(() => _processing = false);
-          _showInfo('Đã huỷ phiên chuyển khoản.');
+          // Huỷ phiên → về trang chi tiết gói.
+          context.go('/verify/subscription-detail');
+          AppToast.info(context, 'Đã huỷ phiên chuyển khoản.');
         },
       ),
     ).then((_) {
@@ -289,15 +318,13 @@ class _PaymentScreenState extends ConsumerState<PaymentScreen> {
     _dialogOpen = false;
     if (!mounted) return;
     setState(() => _processing = false);
-    _showInfo(
-      'Đã ghi nhận. Chúng tôi sẽ thông báo và kích hoạt gói ngay khi nhận '
-      'được chuyển khoản.',
+    // Đã chuyển & chờ → về trang chi tiết gói.
+    context.go('/verify/subscription-detail');
+    AppToast.success(
+      context,
+      'Đã ghi nhận. Chúng tôi sẽ thông báo và kích hoạt gói khi nhận được '
+      'chuyển khoản.',
     );
-    if (context.canPop()) {
-      context.pop();
-    } else {
-      context.go('/dashboard');
-    }
   }
 
   /// Poll interval grows with elapsed time so we don't hammer the backend for
@@ -373,24 +400,8 @@ class _PaymentScreenState extends ConsumerState<PaymentScreen> {
     context.pushReplacement(target);
   }
 
-  void _showInfo(String msg) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(msg),
-        duration: const Duration(seconds: 4),
-        backgroundColor: context.colors.brand,
-      ),
-    );
-  }
-
-  void _showError(String msg) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(msg),
-        backgroundColor: context.colors.error,
-      ),
-    );
-  }
+  void _showInfo(String msg) => AppToast.info(context, msg);
+  void _showError(String msg) => AppToast.error(context, msg);
 
   @override
   Widget build(BuildContext context) {
@@ -529,7 +540,7 @@ class _PaymentScreenState extends ConsumerState<PaymentScreen> {
                       ? 'Đang xử lý...'
                       : isDowngrade
                           ? 'Xác nhận hạ gói'
-                          : 'Tạo mã VietQR · ${VerifyFormat.priceVND(quote.totalAmount)}',
+                          : 'Tạo mã thanh toán · ${VerifyFormat.priceVND(quote.totalAmount)}',
                 ),
               ),
             ),

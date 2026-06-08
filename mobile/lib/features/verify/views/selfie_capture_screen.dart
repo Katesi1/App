@@ -48,6 +48,12 @@ class _SelfieCaptureScreenState extends ConsumerState<SelfieCaptureScreen> {
       // or the trial active screen after admin approval).
       await ref.read(verifyFlowControllerProvider.notifier).submitForApproval();
       if (!mounted) return;
+      // Đồng bộ lại profile để kycStatus → pending phản ánh ngay trên dashboard
+      // (banner "đang chờ duyệt") mà không cần user kéo refresh thủ công.
+      await ref
+          .read(verifyFlowControllerProvider.notifier)
+          .refreshUserProfile();
+      if (!mounted) return;
       context.pushReplacement('/verify/pending');
     } catch (e) {
       if (mounted) {

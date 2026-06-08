@@ -5,7 +5,9 @@ import 'package:flutter/services.dart';
 
 import '../../../../core/theme/app_color_scheme.dart';
 import '../../../../core/theme/app_colors.dart';
+import '../../../../shared/widgets/app_toast.dart';
 import '../../data/models/payment_session.dart';
+import '../../data/models/verify_enums.dart';
 import 'payment_qr_view.dart';
 import 'verify_format.dart';
 
@@ -94,13 +96,7 @@ class _BankTransferDialogState extends State<BankTransferDialog>
   Future<void> _copy(String label, String value) async {
     await Clipboard.setData(ClipboardData(text: value));
     if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('Đã sao chép $label'),
-        duration: const Duration(seconds: 1),
-        behavior: SnackBarBehavior.floating,
-      ),
-    );
+    AppToast.success(context, 'Đã sao chép $label');
   }
 
   /// Close handler for the bottom "Đóng" button. When an [onCancel] handler is
@@ -209,13 +205,27 @@ class _BankTransferDialogState extends State<BankTransferDialog>
                   ),
                   const SizedBox(width: 10),
                   Expanded(
-                    child: Text(
-                      'Chuyển khoản VietQR',
-                      style: TextStyle(
-                        fontSize: 15,
-                        fontWeight: FontWeight.w800,
-                        color: colors.textPrimary,
-                      ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Chuyển khoản VietQR',
+                          style: TextStyle(
+                            fontSize: 15,
+                            fontWeight: FontWeight.w800,
+                            color: colors.textPrimary,
+                          ),
+                        ),
+                        if (widget.session.kind != null)
+                          Text(
+                            widget.session.kind!.label,
+                            style: TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w600,
+                              color: colors.textTertiary,
+                            ),
+                          ),
+                      ],
                     ),
                   ),
                   Container(
@@ -266,24 +276,46 @@ class _BankTransferDialogState extends State<BankTransferDialog>
                   size: 188,
                 ),
               const SizedBox(height: 14),
-              // Amount — the single most important number, given top billing.
-              Text(
-                'SỐ TIỀN CẦN CHUYỂN',
-                style: TextStyle(
-                  fontSize: 10,
-                  fontWeight: FontWeight.w700,
-                  letterSpacing: 0.6,
-                  color: colors.textTertiary,
+              // Amount — the single most important number, highlighted card.
+              Container(
+                width: double.infinity,
+                padding:
+                    const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: [
+                      colors.brand.withValues(alpha: 0.12),
+                      colors.brandSecondary.withValues(alpha: 0.06),
+                    ],
+                  ),
+                  borderRadius: BorderRadius.circular(14),
+                  border:
+                      Border.all(color: colors.brand.withValues(alpha: 0.18)),
                 ),
-              ),
-              const SizedBox(height: 2),
-              Text(
-                VerifyFormat.priceVND(widget.session.totalAmount),
-                style: TextStyle(
-                  fontSize: 26,
-                  fontWeight: FontWeight.w800,
-                  color: colors.textBrand,
-                  height: 1.1,
+                child: Column(
+                  children: [
+                    Text(
+                      'SỐ TIỀN CẦN CHUYỂN',
+                      style: TextStyle(
+                        fontSize: 10,
+                        fontWeight: FontWeight.w700,
+                        letterSpacing: 0.6,
+                        color: colors.textTertiary,
+                      ),
+                    ),
+                    const SizedBox(height: 3),
+                    Text(
+                      VerifyFormat.priceVND(widget.session.totalAmount),
+                      style: TextStyle(
+                        fontSize: 28,
+                        fontWeight: FontWeight.w900,
+                        color: colors.textBrand,
+                        height: 1.05,
+                      ),
+                    ),
+                  ],
                 ),
               ),
               const SizedBox(height: 14),

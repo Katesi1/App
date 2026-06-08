@@ -10,6 +10,7 @@ import '../controllers/verify_flow_controller.dart';
 import '../data/models/payment_session.dart';
 import '../data/models/plan.dart';
 import '../data/models/verify_enums.dart';
+import '../../../shared/widgets/app_toast.dart';
 import '../data/repositories/verify_repository_impl.dart';
 import 'widgets/payment_dialogs.dart';
 import 'widgets/verify_format.dart';
@@ -64,12 +65,7 @@ class _SubscriptionDetailScreenState
 
   void _snack(String msg, {bool error = false}) {
     if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(msg),
-        backgroundColor: error ? context.colors.error : null,
-      ),
-    );
+    error ? AppToast.error(context, msg) : AppToast.info(context, msg);
   }
 
   /// 409 `paymentPending` khi gia hạn — hỏi tiếp tục đợi (resume) hay huỷ & tạo
@@ -140,13 +136,8 @@ class _SubscriptionDetailScreenState
         session: session,
         onCloseAndWait: () {
           if (!mounted) return;
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text(
-                'Đã ghi nhận. Gói sẽ gia hạn khi hệ thống xác nhận chuyển khoản.',
-              ),
-            ),
-          );
+          AppToast.success(context,
+              'Đã ghi nhận. Gói sẽ gia hạn khi hệ thống xác nhận chuyển khoản.');
         },
         onCreateNew: _handleRenew,
         // Abandon → confirm in-dialog, then void the pending bill server-side.
@@ -155,9 +146,7 @@ class _SubscriptionDetailScreenState
               .read(verifyFlowControllerProvider.notifier)
               .cancelPayment(session.sessionId);
           if (!mounted) return;
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Đã huỷ phiên chuyển khoản.')),
-          );
+          AppToast.info(context, 'Đã huỷ phiên chuyển khoản.');
           ref.invalidate(paymentHistoryProvider);
           ref.invalidate(paymentHistoryListProvider);
         },
@@ -219,7 +208,16 @@ class _SubscriptionDetailScreenState
 
     return Scaffold(
       backgroundColor: colors.bgCanvas,
-      appBar: AppBar(title: const Text('Chi tiết gói đăng ký')),
+      appBar: AppBar(
+        title: const Text('Chi tiết gói đăng ký'),
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back),
+          // Khi mở trực tiếp (deep link / context.go) không có stack cũ để pop
+          // → fallback về trang quản lý thay vì kẹt không có nút back.
+          onPressed: () =>
+              context.canPop() ? context.pop() : context.go('/properties'),
+        ),
+      ),
       body: ListView(
         padding: const EdgeInsets.all(AppSpacing.md),
         children: [
@@ -251,7 +249,8 @@ class _SubscriptionDetailScreenState
           if (plan != null) ...[
             _SectionLabel('CHI TIẾT GÓI'),
             const SizedBox(height: AppSpacing.sm),
-            ..._buildFacts(colors, plan, cycle, price, expiry).animateList(),
+            ..._buildFacts(colors, plan, cycle, price, expiry, kind, user)
+                .animateList(),
             const SizedBox(height: AppSpacing.lg),
             if (plan.features.isNotEmpty) ...[
               _SectionLabel('TÍNH NĂNG'),
@@ -282,13 +281,29 @@ class _SubscriptionDetailScreenState
     BillingCycle cycle,
     int price,
     DateTime? expiry,
+    _SubKind kind,
+    dynamic user,
   ) {
     final rooms = plan.tier.rooms;
+    final statusLabel = switch (kind) {
+      _SubKind.trial => 'Đang dùng thử',
+      _SubKind.active => 'Đang hoạt động',
+      _SubKind.pastDue => 'Quá hạn thanh toán',
+      _SubKind.cancelled => 'Đã huỷ',
+      _SubKind.none => 'Chưa đăng ký',
+    };
+    final periodStart = user?.currentPeriodStart as DateTime?;
+    final nextCharge = user?.nextChargeAt as DateTime?;
     return [
       _DetailItem(
         icon: Icons.workspace_premium_rounded,
         label: 'Tên gói',
         value: plan.tier.displayName,
+      ),
+      _DetailItem(
+        icon: Icons.verified_rounded,
+        label: 'Trạng thái',
+        value: statusLabel,
       ),
       _DetailItem(
         icon: Icons.meeting_room_rounded,
@@ -298,7 +313,9 @@ class _SubscriptionDetailScreenState
       _DetailItem(
         icon: Icons.event_repeat_rounded,
         label: 'Chu kỳ',
-        value: cycle == BillingCycle.yearly ? 'Hàng năm' : 'Hàng tháng',
+        value: cycle == BillingCycle.yearly
+            ? 'Hàng năm (cước năm)'
+            : 'Hàng tháng (cước tháng)',
       ),
       _DetailItem(
         icon: Icons.payments_rounded,
@@ -310,11 +327,23 @@ class _SubscriptionDetailScreenState
                 '/${cycle == BillingCycle.yearly ? 'năm' : 'tháng'}'
             : 'Liên hệ',
       ),
+      if (periodStart != null)
+        _DetailItem(
+          icon: Icons.play_circle_outline_rounded,
+          label: 'Bắt đầu kỳ',
+          value: VerifyFormat.dateVN(periodStart),
+        ),
       if (expiry != null)
         _DetailItem(
           icon: Icons.schedule_rounded,
-          label: 'Hết hạn',
+          label: kind == _SubKind.trial ? 'Trial đến' : 'Hết hạn kỳ',
           value: VerifyFormat.dateVN(expiry),
+        ),
+      if (nextCharge != null && kind != _SubKind.cancelled)
+        _DetailItem(
+          icon: Icons.event_available_rounded,
+          label: 'Thu phí tiếp theo',
+          value: VerifyFormat.dateVN(nextCharge),
         ),
     ];
   }

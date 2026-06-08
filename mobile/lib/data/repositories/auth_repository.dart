@@ -65,7 +65,7 @@ class AuthRepository {
   final _googleSignIn = GoogleSignIn(
     scopes: ['email', 'profile'],
     serverClientId:
-        '832659566372-25rp2ch2s7nqiho1057i1ho1g2i1ffmc.apps.googleusercontent.com',
+        '492063080427-ohk8k1tu4nhsdls0lhvh3ia0q4ghgioi.apps.googleusercontent.com',
   );
 
   Future<ApiResponse<UserModel>> register({

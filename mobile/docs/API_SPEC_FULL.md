@@ -155,8 +155,8 @@ Retry request gốc
 | `POST` | `/auth/google` | Public | `{ idToken, role? }` (`role` bắt buộc cho user mới) |
 | `POST` | `/auth/apple` | Public | `{ idToken, role?, email?, name?, identityToken? }` |
 | `POST` | `/auth/refresh` | Public | `{ refreshToken }` |
-| `POST` | `/auth/forgot-password` | Public | `{ identifier }` |
-| `POST` | `/auth/reset-password` | Public | `{ token, newPassword }` |
+| `POST` | `/auth/forgot-password` | Public | `{ identifier }` — `identifier` = email **hoặc** phone đã đăng ký. BE gửi link reset (hết hạn **10 phút**) qua email nếu user có email + SMTP đã cấu hình. Luôn trả `200 success` kể cả khi user không tồn tại (chống enumeration). SMS chưa hỗ trợ — user chỉ có phone phải dùng email khác để reset. |
+| `POST` | `/auth/reset-password` | Public | `{ token, newPassword }` — `token` là JWT (purpose='reset') lấy từ query `?token=...` trong link email. `newPassword` ≥ 6 ký tự. Sau khi reset BE clear `refreshToken` → mọi device bị logout. |
 | `POST` | `/auth/logout` | Bearer | — |
 | `GET` | `/auth/profile` | Bearer | — |
 | `POST` | `/auth/change-password` | Bearer | `{ currentPassword, newPassword }` |
@@ -434,7 +434,8 @@ FE flow xử lý 403:
 | `PATCH /users/:id/role, /:id/kyc-bypass` | Đổi role, cấp bypass |
 | `DELETE /users/:id` | Xoá user |
 | `POST /properties/:id/approve, /reject, /suspend` | Moderation cơ sở |
-| `GET /admin/kyc/queue, /count-pending` | Queue KYC |
+| `GET /admin/kyc/queue?filter=0\|1\|2\|3` | Danh sách KYC admin (một endpoint) |
+| `GET /admin/kyc/count-pending` | Badge (deprecated — dùng `pendingCount` trong queue) |
 | `POST /admin/kyc/submissions/:id/approve, /reject` | Duyệt KYC |
 | `GET /admin/subscriptions, /count-overdue, /sum-paid` | Báo cáo subscription |
 | `GET /admin/users/:id/subscription` | Snapshot |
@@ -1161,13 +1162,80 @@ Field `latestPayment` cho phép FE rehydrate paywall/modal QR mà không cần p
 
 Base path: `/admin/kyc`. Role: ADMIN.
 
-| Method | Path | Body |
+> **Một endpoint list — không gọi 3–4 API song song.** FE chỉ cần `GET /admin/kyc/queue?filter=0|1|2|3` khi đổi tab. Text tab hiển thị ở FE; BE nhận/trả số enum.
+
+#### Tab filter (`filter` query param)
+
+| `filter` | Tab FE (gợi ý) | DB `KycSubmission.status` gom vào |
+|---:|---|---|
+| `0` | Tất cả | Mọi status **trừ** `draft` |
+| `1` | Chờ duyệt | `kyc_submitted`, `payment_pending`, `awaiting_approval` |
+| `2` | Đã duyệt | `approved`, `refunded` |
+| `3` | Đã từ chối | `rejected` |
+
+Mặc định khi không truyền `filter`: **`1` (chờ duyệt)**.
+
+Query `status` string (vd. `awaiting_approval`) **deprecated** — map sang `filter` tương ứng để tương thích client cũ.
+
+#### Endpoints
+
+| Method | Path | Body / Query |
 |---|---|---|
-| `GET` | `/admin/kyc/queue?page&pageSize&status` | — |
-| `GET` | `/admin/kyc/count-pending` | Badge |
+| `GET` | `/admin/kyc/queue?page&pageSize&filter` | `filter`: 0–3 (xem bảng trên). Response kèm `pendingCount` (badge) — **không cần** gọi thêm API badge. |
+| `GET` | `/admin/kyc/count-pending` | **Deprecated** — dùng `data.pendingCount` từ `GET /queue`. |
 | `GET` | `/kyc/submissions/:id` | Detail (admin gọi được) |
 | `POST` | `/admin/kyc/submissions/:id/approve` | `{ trialDays? }` (default 7) |
 | `POST` | `/admin/kyc/submissions/:id/reject` | `{ reason, items?[] }` |
+
+#### Response `GET /admin/kyc/queue`
+
+```jsonc
+{
+  "success": true,
+  "message": "...",
+  "data": {
+    "filter": 1,              // tab đang lọc (0–3)
+    "pendingCount": 3,        // số hồ sơ chờ duyệt (filter=1), dùng badge sidebar
+    "total": 12,
+    "page": 1,
+    "pageSize": 20,
+    "items": [
+      {
+        "id": "uuid",
+        "status": "awaitingApproval",  // chi tiết nội bộ (camelCase)
+        "statusFilter": 1,             // 1=chờ duyệt | 2=đã duyệt | 3=đã từ chối — FE map text tab
+        "user": { "id", "name", "phone", "email" },
+        "submittedAt": "ISO",
+        "uploads": { "cccdFront", "cccdBack", "selfie" },
+        "expectedRooms": 1,
+        "plan": "starter_test | null",
+        "totalPaid": 0,
+        "createdAt": "ISO"
+      }
+    ]
+  }
+}
+```
+
+#### Luồng duyệt KYC (Option A — duyệt trước, thanh toán sau)
+
+```
+Owner upload + POST /kyc/submit  →  awaiting_approval  (user.kycStatus = pending)
+Admin approve                    →  approved             (user.kycStatus = approved, chưa có subscription)
+Owner POST /payments/initiate    →  payment_pending    (chỉ khi kycStatus = approved)
+Thanh toán thành công            →  approved + kích hoạt subscription/trial
+```
+
+Admin queue tab **Chờ duyệt** (`filter=1`) hiển thị mọi hồ sơ owner đã nộp đủ ảnh và chờ admin xử lý.
+
+#### Migration client (iOS / Android / Web)
+
+| Trước (sai pattern) | Sau |
+|---|---|
+| 3× `GET /queue?status=awaiting_approval` + `approved` + `rejected` song song | 1× `GET /queue?filter=0\|1\|2\|3` mỗi lần đổi tab |
+| `GET /count-pending` riêng | Dùng `data.pendingCount` từ response `GET /queue` |
+| Map text tab ở BE | FE tự map: `0→Tất cả`, `1→Chờ duyệt`, `2→Đã duyệt`, `3→Đã từ chối` |
+| Hiển thị `status` string | Ưu tiên `statusFilter` (1\|2\|3) cho badge/tab; `status` giữ cho màn chi tiết |
 
 ---
 
@@ -1201,7 +1269,7 @@ BE tự nhận diện loại giao dịch — FE chỉ gửi `planId + cycle + ro
 
 | Trạng thái user | Điều kiện | `kind` trả về | Charge | Side-effect khi paid |
 |---|---|---|---|---|
-| Chưa có subscription (`none`) | Cần KYC submission `kyc_submitted` | `subscription` | Full 1 kỳ | KYC → `awaiting_approval`, user kycStatus → `pending` |
+| Chưa có subscription (`none`) | KYC **đã được admin duyệt** (`user.kycStatus=approved`, submission `approved`) | `subscription` | Full 1 kỳ | Kích hoạt subscription/trial (không quay lại chờ duyệt) |
 | Active/trial/past_due, cùng `planId + cycle` | — | `renew` | Full 1 kỳ | `currentPeriodEnd = max(now, currentPeriodEnd) + 1 cycle` |
 | Active/trial/past_due, tier mới **cao hơn** | `tier(new) > tier(current)` | `upgrade` | **Prorate** (xem §10.2.2) | Đổi plan ngay, giữ nguyên `currentPeriodEnd` |
 | Active/trial/past_due, tier mới **thấp hơn** | `tier(new) < tier(current)` | — | — | **409 `downgradeScheduled`** + `effectiveAt` + `pendingPlanId`; ghi `User.pendingPlanId/Cycle/EffectiveAt` |
@@ -1490,6 +1558,34 @@ Base path: `/staff`.
 | `DELETE` | `/staff/:userId` | OWNER/ADMIN | Remove SALE |
 
 ADMIN dùng `?ownerId=` để filter theo OWNER cụ thể, không truyền → xem tất cả.
+
+### 11.1.1 Quota mời nhân viên theo gói (plan entitlement)
+
+`POST /staff/invites` enforce quota server-side, **mirror FE `StaffEntitlement`** trong `app/lib/core/utils/staff_entitlement.dart`. Khi đổi quota, phải sửa cả 2 nơi.
+
+| planId | Tên gói | Tối đa SALE |
+|---|---|---|
+| `rooms_1` | Mini | **0** — không cho mời |
+| `rooms_5` | Starter | 3 |
+| `rooms_10` | Standard | 3 |
+| `rooms_20` | Pro | không giới hạn |
+| `rooms_50` | Business | không giới hạn |
+| `enterprise` | Enterprise | không giới hạn |
+
+Điều kiện được mời (enforce trong `createInvite`):
+1. `user.role = OWNER` (ADMIN có thể thay mặt qua `ownerId`).
+2. KYC approved hoặc `kycBypass=true`.
+3. `subscriptionStatus ∈ { trial, active }` — `past_due | cancelled | expired | frozen | none` đều bị chặn.
+4. `subscriptionPlanId` cho phép mời (`maxSlots > 0`).
+5. Tổng `SALE active + invite pending chưa hết hạn < maxSlots` (nếu `maxSlots != null`).
+
+**ADMIN bypass toàn bộ 4 check trên** (để seed/khắc phục thủ công).
+
+Lỗi quota:
+- `403 staffNotAllowedOnPlan` — gói hiện tại không có quyền mời (Mini hoặc planId lạ).
+- `409 staffSlotLimitReached` — gói Starter/Standard đã đạt 3 slot.
+
+Message i18n nhúng tên gói + số slot để FE hiện thị trực tiếp.
 
 ### 11.2 Public endpoints (cho landing page accept invite)
 
@@ -1963,6 +2059,16 @@ CONVERSATION_MEMBER_ROLE = 'owner' | 'sale' | 'customer' | 'admin'
 
 ## 21. Changelog & Bug fixes
 
+### v1.11 — 2026-06-07 (KYC Option A + admin queue filter enum)
+
+| Thay đổi | Chi tiết |
+|---|---|
+| **Luồng KYC** | Duyệt trước → thanh toán sau. `POST /kyc/submit` → `awaiting_approval`. Admin approve → `approved` (chưa subscription). `POST /payments/initiate` yêu cầu `kycStatus=approved`. |
+| **Admin queue** | **Một endpoint** `GET /admin/kyc/queue?filter=0\|1\|2\|3` thay cho 3 request song song `status=...`. Response thêm `pendingCount`, mỗi item thêm `statusFilter` (1\|2\|3). |
+| **`GET /count-pending`** | Deprecated — dùng `data.pendingCount` từ queue. |
+| **Migration DB** | Hồ sơ legacy `kyc_submitted` + `user.kycStatus=pending` → `awaiting_approval`. |
+| **403 mới** | `payment.kycNotApproved` khi initiate subscription trước khi admin duyệt KYC. |
+
 ### v1.10 — 2026-06-06 (Reports validation + spec sync cho FE đa nền tảng)
 
 Đồng bộ spec với code sau khi FE mobile wire xong tab Báo cáo và ghép thêm KYC/Apple IAP.
@@ -2373,10 +2479,21 @@ GET/PATCH lead trả thêm:
 
 Web admin chỉ cần 4 state: `none | pending | approved | rejected`.
 
-8-state lifecycle mobile spec cũ (`draft | kyc_submitted | payment_pending | paid | awaiting_approval | approved | rejected | refunded`) là **internal BE state** cho mobile flow. Web UI map xuống:
-- `draft`, `kyc_submitted`, `payment_pending`, `paid`, `awaiting_approval` → web hiển thị **pending**
-- `approved` → **approved**
-- `rejected` → **rejected**
+Web admin KYC list: **một API** `GET /admin/kyc/queue?filter=0|1|2|3`.
+
+| `filter` | Tab web |
+|---:|---|
+| `0` | Tất cả |
+| `1` | Chờ duyệt |
+| `2` | Đã duyệt |
+| `3` | Đã từ chối |
+
+Mỗi item có `statusFilter` (1|2|3) — FE map text. Chi tiết nội bộ vẫn có field `status` (camelCase).
+
+8-state lifecycle DB (`draft | kyc_submitted | payment_pending | awaiting_approval | approved | rejected | refunded`) là **internal BE**. Admin tab gom:
+- `kyc_submitted`, `payment_pending`, `awaiting_approval` → **filter=1 (chờ duyệt)**
+- `approved`, `refunded` → **filter=2 (đã duyệt)**
+- `rejected` → **filter=3 (đã từ chối)**
 - `refunded` → **none** (đã thoái KYC)
 
 Field BE trả về web: `kycStatus: 'none' | 'pending' | 'approved' | 'rejected'` (4 state) — đã map sẵn ở `/auth/profile` và `/kyc/status`.

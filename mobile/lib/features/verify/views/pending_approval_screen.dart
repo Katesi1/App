@@ -106,6 +106,13 @@ class _PendingApprovalScreenState extends ConsumerState<PendingApprovalScreen>
       appBar: AppBar(
         backgroundColor: colors.bgSurface,
         elevation: 0,
+        // Màn này có thể vào không còn stack cũ (vd context.go từ payment gate /
+        // pushReplacement từ selfie) → back tự fallback về dashboard thay vì kẹt.
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back),
+          onPressed: () =>
+              context.canPop() ? context.pop() : context.go('/dashboard'),
+        ),
         title: Text(
           'Hồ sơ đã gửi',
           style: TextStyle(
