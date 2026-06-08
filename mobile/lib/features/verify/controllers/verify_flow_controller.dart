@@ -491,6 +491,31 @@ class VerifyFlowController extends StateNotifier<VerifyFlowState> {
     _persistDraft();
   }
 
+  /// Sau selfie — gửi hồ sơ admin duyệt. Nếu BE đã nhận trước đó thì hydrate
+  /// và coi như thành công (tránh kẹt ở bước 3).
+  Future<void> finishKycSubmission() async {
+    if (!state.hasCompleteKyc) {
+      throw StateError('Chưa upload đủ ảnh KYC');
+    }
+
+    final alreadySubmitted = state.status == VerifyStatus.awaitingApproval ||
+        (state.submissionId != null && state.submissionId!.isNotEmpty);
+
+    if (!alreadySubmitted) {
+      try {
+        await submitForApproval();
+      } on VerifyApiException catch (e) {
+        await hydrate();
+        if (state.status != VerifyStatus.awaitingApproval &&
+            (state.submissionId == null || state.submissionId!.isEmpty)) {
+          throw e;
+        }
+      }
+    } else {
+      await hydrate();
+    }
+  }
+
   /// Polling provider (Screen 6 gọi mỗi 30s).
   Future<VerifyStatus> checkApprovalStatus() async {
     final id = state.submissionId;

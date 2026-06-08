@@ -15,6 +15,7 @@ import '../controllers/verify_flow_controller.dart';
 import '../data/models/verify_enums.dart';
 import '../utils/kyc_access.dart';
 import 'widgets/status_timeline.dart';
+import 'widgets/verify_app_bar.dart';
 import 'widgets/verify_format.dart';
 
 /// Screen 6 — Pending approval.
@@ -35,8 +36,10 @@ class _PendingApprovalScreenState extends ConsumerState<PendingApprovalScreen> {
   @override
   void initState() {
     super.initState();
-    // Kick first poll sớm hơn 30s để mock cảm thấy responsive
-    Future.microtask(_check);
+    Future.microtask(() async {
+      await ref.read(verifyFlowControllerProvider.notifier).hydrate();
+      if (mounted) await _check();
+    });
     _poll = Timer.periodic(const Duration(seconds: 8), (_) => _check());
   }
 
@@ -81,21 +84,11 @@ class _PendingApprovalScreenState extends ConsumerState<PendingApprovalScreen> {
 
     return Scaffold(
       backgroundColor: colors.bgCanvas,
-      appBar: AppBar(
-        backgroundColor: colors.bgSurface,
-        elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back_rounded),
-          onPressed: () => returnToDashboardAfterKyc(context, ref),
-        ),
-        title: Text(
-          'Hồ sơ đã gửi',
-          style: TextStyle(
-            fontSize: 16,
-            fontWeight: FontWeight.w700,
-            color: colors.textPrimary,
-          ),
-        ),
+      appBar: VerifyAppBar(
+        overline: 'BƯỚC 4/4 · VERIFY CCCD',
+        title: 'Hồ sơ đã gửi',
+        currentStep: 4,
+        onBack: () => returnToDashboardAfterKyc(context, ref),
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(AppSpacing.md),

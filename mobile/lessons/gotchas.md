@@ -71,7 +71,7 @@ Ghi lại các lỗi, edge case, bài học từ quá trình phát triển. Form
 
 **Tiếp theo (kẹt "Căn giữa khuôn mặt" dù log `detectFaces` chạy)**: ML Kit đã detect nhưng so center bằng `image.width/height` thô (landscape) trong khi box nằm trong không gian đã xoay; preview front cam mirror ngang. Dùng `FaceAnalysisSpace` — swap W/H khi rotation 90°/270°, mirror X cho front camera.
 
-**Liveness trái/phải ngược**: Prompt "TRÁI/PHẢI" + mũi tên phải theo **góc nhìn user trên preview mirror** (TRÁI → `arrow_forward`); yaw match đảo: `lookLeft => yaw > threshold`, `lookRight => yaw < -threshold`.
+**Liveness trái/phải**: ML Kit yaw trên front cam đảo so với góc nhìn user — `lookLeft` enum match `yaw > threshold` nhưng hiển thị **"Quay PHẢI"** + `arrow_forward`; `lookRight` match `yaw < -threshold` hiển thị **"Quay TRÁI"** + `arrow_back`. Đừng gắn label theo tên enum.
 
 **Sau selfie Option A**: `context.go('/verify/pending')` — không về dashboard; màn pending có timeline + "Liên hệ admin" / "Trang tổng quan".
 

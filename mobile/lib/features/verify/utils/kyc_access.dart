@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../../data/models/user_model.dart';
 import '../../auth/controllers/auth_controller.dart';
+import '../controllers/verify_flow_controller.dart';
 import '../../../shared/utils/dashboard_refresh.dart';
 import '../../../shared/widgets/loading_widget.dart';
 
@@ -67,6 +68,18 @@ Future<void> returnToDashboardAfterKyc(
   await refreshDashboardData(ref);
   if (!context.mounted) return;
   context.go('/dashboard');
+}
+
+/// Upload selfie xong → submit (nếu cần) → màn chờ admin (bước 4/4).
+Future<void> completeKycAfterSelfie(
+  BuildContext context,
+  WidgetRef ref,
+) async {
+  await ref.read(verifyFlowControllerProvider.notifier).finishKycSubmission();
+  await ref.read(authProvider.notifier).refreshProfile();
+  syncUserKycPendingAfterSubmit(ref);
+  if (!context.mounted) return;
+  context.go('/verify/pending');
 }
 
 /// Đồng bộ `user.kycStatus = pending` sau submit nếu profile chưa kịp cập nhật.

@@ -356,6 +356,7 @@ class _PropertyManagementScreenState
       final route = switch (step) {
         2 => '/verify/cccd-back',
         3 => '/verify/selfie',
+        4 => '/verify/pending',
         _ => '/verify/cccd-front',
       };
       if (mounted) context.push(route);

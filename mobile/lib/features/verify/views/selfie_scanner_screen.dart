@@ -14,21 +14,19 @@ import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
 
 // ─── Pose thresholds (degrees) — top-level để `_Challenge.matches()` truy cập ───
-// ML Kit: yaw > 0 = face turned to image's right (= user turn head LEFT do
-// front-cam mirrored display). pitch > 0 = looking up.
-const double _yawThreshold = 18.0;
-const double _pitchThreshold = 12.0;
+const double _yawThreshold = 14.0;
+const double _pitchThreshold = 10.0;
 const double _neutralTolerance = 12.0;
 
-/// Full-screen selfie scanner với **liveness challenge** + min 5s gate.
+/// Full-screen selfie scanner với **liveness challenge** + min 3s gate.
 ///
 /// Anti-bot/anti-replay flow:
 /// 1. User vào → tìm khuôn mặt + đảm bảo quality (centered, large, eyes open).
 /// 2. 4 thao tác liveness được **shuffle ngẫu nhiên** mỗi lần (trái/phải/lên/xuống)
 ///    để bot pre-record không thể vượt.
-/// 3. Mỗi thao tác phải giữ pose ≥ 1.2s (6 frames) mới count → tránh false positive.
+/// 3. Mỗi thao tác giữ pose ~0.4s (3 frames @ 120ms) mới count.
 /// 4. Sau 4 thao tác → user về neutral pose → hệ thống chụp.
-/// 5. **Hard floor 5s**: nếu user qua nhanh hơn → wait countdown đến 5s mới
+/// 5. **Hard floor 3s**: nếu user qua nhanh hơn → chờ đến 3s mới
 ///    cho phép capture.
 ///
 /// Pop về parent với `File?` (raw selfie, không crop — face match cần vùng quanh).
@@ -57,16 +55,16 @@ class _SelfieScannerScreenState extends State<SelfieScannerScreen>
 
   // Min duration hard floor — start ngay khi screen open, không phụ thuộc
   // vào tốc độ thao tác. Nếu user xong sớm → countdown overlay.
-  static const Duration _minDuration = Duration(seconds: 5);
+  static const Duration _minDuration = Duration(seconds: 3);
   late final DateTime _startedAt;
   Timer? _minDurationTimer;
   bool _minDurationMet = false;
   Timer? _tickTimer; // 1 Hz tick để re-render countdown
 
   // ── Detection thresholds ────────────────────────────────────────────
-  static const Duration _processInterval = Duration(milliseconds: 200);
-  static const int _challengeHoldThreshold = 6; // ~1.2s giữ pose
-  static const int _neutralHoldThreshold = 5; // ~1s neutral final
+  static const Duration _processInterval = Duration(milliseconds: 120);
+  static const int _challengeHoldThreshold = 3; // ~0.36s giữ pose
+  static const int _neutralHoldThreshold = 3; // ~0.36s neutral final
 
   // Pose thresholds — declared top-level (xem `_yawThreshold` etc. đầu file)
   // để `_Challenge.matches()` enum cũng dùng được cùng giá trị.
@@ -89,7 +87,7 @@ class _SelfieScannerScreenState extends State<SelfieScannerScreen>
     _challenges = [..._Challenge.values]..shuffle(math.Random.secure());
     _startedAt = DateTime.now();
 
-    // Hard floor 30s: timer chạy độc lập với thao tác.
+    // Hard floor 3s: timer chạy độc lập với thao tác.
     _minDurationTimer = Timer(_minDuration, () {
       if (mounted) setState(() => _minDurationMet = true);
     });
@@ -110,8 +108,8 @@ class _SelfieScannerScreenState extends State<SelfieScannerScreen>
         enableLandmarks: false,
         enableContours: false,
         enableTracking: false,
-        performanceMode: FaceDetectorMode.accurate,
-        minFaceSize: 0.15,
+        performanceMode: FaceDetectorMode.fast,
+        minFaceSize: 0.12,
       ),
     );
     _initCamera();
@@ -155,8 +153,8 @@ class _SelfieScannerScreenState extends State<SelfieScannerScreen>
           enableLandmarks: false,
           enableContours: false,
           enableTracking: false,
-          performanceMode: FaceDetectorMode.accurate,
-          minFaceSize: 0.15,
+          performanceMode: FaceDetectorMode.fast,
+          minFaceSize: 0.12,
         ),
       );
       _initCamera();
@@ -384,7 +382,7 @@ class _SelfieScannerScreenState extends State<SelfieScannerScreen>
   int get _completedCount =>
       _phase == _Phase.neutral ? _challenges.length : _currentIdx;
 
-  /// Số giây còn lại của hard floor 30s (chỉ relevant khi sắp/đã xong challenges).
+  /// Số giây còn lại của hard floor 3s (chỉ relevant khi sắp/đã xong challenges).
   int get _remainingSeconds {
     if (_minDurationMet) return 0;
     final elapsed = DateTime.now().difference(_startedAt).inSeconds;
@@ -547,7 +545,7 @@ enum _Phase {
   /// Đang yêu cầu user thực hiện thao tác (look up/down/left/right).
   challenge,
 
-  /// 4 thao tác xong, chờ neutral pose + min 30s elapsed → capture.
+  /// 4 thao tác xong, chờ neutral pose + min 3s elapsed → capture.
   neutral,
 }
 
@@ -568,24 +566,22 @@ enum _Challenge {
   lookUp,
   lookDown;
 
+  /// Nhãn + mũi tên khớp [matches] trên front cam (ML Kit yaw đảo so với
+  /// góc nhìn user — label gắn theo thao tác thực tế, không theo tên enum).
   String get prompt => switch (this) {
-        _Challenge.lookLeft => 'Quay đầu sang TRÁI',
-        _Challenge.lookRight => 'Quay đầu sang PHẢI',
+        _Challenge.lookLeft => 'Quay đầu sang PHẢI',
+        _Challenge.lookRight => 'Quay đầu sang TRÁI',
         _Challenge.lookUp => 'Ngẩng đầu LÊN',
         _Challenge.lookDown => 'Cúi đầu XUỐNG',
       };
 
-  /// Mũi tên theo **màn hình mirror** (preview front cam): quay TRÁI của user
-  /// → mặt dịch sang phải trên màn → arrow_forward.
   IconData get icon => switch (this) {
-        _Challenge.lookLeft => Icons.arrow_forward_rounded,
-        _Challenge.lookRight => Icons.arrow_back_rounded,
+        _Challenge.lookLeft => Icons.arrow_back_rounded,
+        _Challenge.lookRight => Icons.arrow_forward_rounded,
         _Challenge.lookUp => Icons.arrow_upward_rounded,
         _Challenge.lookDown => Icons.arrow_downward_rounded,
       };
 
-  /// Pose match — yaw/pitch từ ML Kit trên ảnh front cam (không mirror).
-  /// Đã đảo trái/phải so với docs ML Kit để khớp thao tác user thực tế.
   bool matches(double yaw, double pitch) => switch (this) {
         _Challenge.lookLeft => yaw > _yawThreshold,
         _Challenge.lookRight => yaw < -_yawThreshold,

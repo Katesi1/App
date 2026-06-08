@@ -1233,6 +1233,7 @@ class _SubscriptionBanner extends ConsumerWidget {
     final dismissed = isTrial && ref.watch(trialBannerDismissedProvider);
     if (dismissed) return const SizedBox.shrink();
 
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     final (
       Gradient gradient,
       Color borderColor,
@@ -1242,7 +1243,7 @@ class _SubscriptionBanner extends ConsumerWidget {
       Color subtitleColor,
       String title,
       String subtitle,
-    ) = _resolveVariant(colors);
+    ) = _resolveVariant(colors, isDark);
 
     return InkWell(
       onTap: () {
@@ -1260,10 +1261,10 @@ class _SubscriptionBanner extends ConsumerWidget {
           gradient: gradient,
           border: Border.all(color: borderColor),
           borderRadius: BorderRadius.circular(14),
-          boxShadow: isTrial
+          boxShadow: isTrial || _needsFirstPurchase
               ? [
                   BoxShadow(
-                    color: iconColor.withValues(alpha: 0.12),
+                    color: iconColor.withValues(alpha: 0.14),
                     blurRadius: 12,
                     offset: const Offset(0, 4),
                   ),
@@ -1276,7 +1277,9 @@ class _SubscriptionBanner extends ConsumerWidget {
               width: 40,
               height: 40,
               decoration: BoxDecoration(
-                color: Colors.white.withValues(alpha: 0.7),
+                color: _needsFirstPurchase || isTrial
+                    ? colors.bgSurface.withValues(alpha: isDark ? 0.35 : 0.92)
+                    : Colors.white.withValues(alpha: 0.7),
                 borderRadius: BorderRadius.circular(10),
               ),
               child: Icon(icon, size: 22, color: iconColor),
@@ -1479,7 +1482,7 @@ class _SubscriptionBanner extends ConsumerWidget {
   /// Trả tuple: (gradient, borderColor, icon, iconColor, titleColor,
   /// subtitleColor, title, subtitle).
   (Gradient, Color, IconData, Color, Color, Color, String, String)
-      _resolveVariant(AppColorScheme colors) {
+      _resolveVariant(AppColorScheme colors, bool isDark) {
     // Trial — emerald/teal gradient (positive, fresh, premium feel)
     if (user.isInTrial) {
       final days = user.trialDaysLeft ?? 0;
@@ -1534,17 +1537,41 @@ class _SubscriptionBanner extends ConsumerWidget {
         'Liên hệ hỗ trợ nếu muốn tiếp tục sử dụng.',
       );
     }
-    // KYC approved, chưa mua gói — Option A: chọn plan + thanh toán
+    // KYC approved, chưa mua gói — gradient sáng (tránh infoBgDark/goldBg tối)
     if (_needsFirstPurchase) {
+      if (isDark) {
+        return (
+          const LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [
+              AppColors.darkElevated,
+              AppColors.darkSurface,
+            ],
+          ),
+          colors.borderGold.withValues(alpha: 0.5),
+          Icons.shopping_bag_outlined,
+          colors.textBrandAccent,
+          colors.textPrimary,
+          colors.textSecondary,
+          'KYC đã duyệt — chọn gói',
+          'Thanh toán gói để kích hoạt trial 7 ngày.',
+        );
+      }
       return (
-        LinearGradient(
-          colors: [AppColors.infoBgDark, AppColors.goldBg],
+        const LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            AppColors.gold50,
+            AppColors.jade50,
+          ],
         ),
-        colors.brandSecondary.withValues(alpha: 0.35),
+        AppColors.gold500.withValues(alpha: 0.4),
         Icons.shopping_bag_outlined,
-        colors.brandSecondary,
-        colors.textPrimary,
-        colors.textSecondary,
+        AppColors.gold700,
+        AppColors.jade500,
+        AppColors.slate600,
         'KYC đã duyệt — chọn gói',
         'Thanh toán gói để kích hoạt trial 7 ngày.',
       );

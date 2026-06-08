@@ -12,6 +12,7 @@ import '../../../shared/widgets/app_toast.dart';
 import '../../../shared/widgets/loading_widget.dart';
 import '../../auth/controllers/auth_controller.dart';
 import '../controllers/verify_flow_controller.dart';
+import '../data/models/verify_enums.dart';
 import '../utils/kyc_access.dart';
 import 'selfie_scanner_screen.dart';
 import 'widgets/camera_frame_overlay.dart';
@@ -44,11 +45,8 @@ class _SelfieCaptureScreenState extends ConsumerState<SelfieCaptureScreen> {
     setState(() => _uploading = true);
     try {
       await ref.read(verifyFlowControllerProvider.notifier).uploadSelfie(file);
-      await ref.read(verifyFlowControllerProvider.notifier).submitForApproval();
-      await ref.read(authProvider.notifier).refreshProfile();
-      syncUserKycPendingAfterSubmit(ref);
-      if (!mounted) return;
-      context.go('/verify/pending');
+      await completeKycAfterSelfie(context, ref);
+      return;
     } catch (e) {
       if (mounted) {
         final msg = e.toString().replaceAll('Exception: ', '');
@@ -64,6 +62,17 @@ class _SelfieCaptureScreenState extends ConsumerState<SelfieCaptureScreen> {
     final colors = context.colors;
     final state = ref.watch(verifyFlowControllerProvider);
     final ocr = state.cccdFront?.ocrResult;
+
+    ref.listen(currentUserProvider, (prev, next) {
+      if (next?.isKycPending == true && context.mounted) {
+        context.go('/verify/pending');
+      }
+    });
+    ref.listen(verifyFlowControllerProvider, (prev, next) {
+      if (next.status == VerifyStatus.awaitingApproval && context.mounted) {
+        context.go('/verify/pending');
+      }
+    });
 
     return Scaffold(
       backgroundColor: colors.bgCanvas,
