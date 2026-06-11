@@ -34,7 +34,7 @@ class UserModel {
       subscriptionStatus; // none | trial | active | past_due | cancelled
   final String? subscriptionPlanId; // rooms_1 | rooms_5 | ... | enterprise
   final String? subscriptionCycle; // monthly | yearly
-  final String? subscriptionProvider; // apple_iap | vnpay | pays2 | null
+  final String? subscriptionProvider; // bank_transfer | null (legacy: vnpay)
   final DateTime?
       subscriptionExpiresAt; // subscription/trial expiry from backend
   final DateTime? trialEndsAt;
@@ -155,10 +155,6 @@ class UserModel {
   bool get isSubscriptionPastDue => subscriptionStatus == 'past_due';
   bool get isSubscriptionCancelled => subscriptionStatus == 'cancelled';
   bool get isSubscriptionExpired => subscriptionStatus == 'expired';
-
-  /// True when the subscription is backed by Apple In-App Purchase (iOS).
-  /// Used to surface "manage in App Store" instead of an in-app cancel flow.
-  bool get isAppleSubscription => subscriptionProvider == 'apple_iap';
 
   /// Whole days left in the trial, or null when the user isn't in trial.
   int? get trialDaysLeft {

@@ -8,6 +8,7 @@ import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 import '../../../core/constants/app_constants.dart';
+import '../../../core/storage/secure_storage.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../controllers/auth_controller.dart';
@@ -124,6 +125,10 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen>
           margin: const EdgeInsets.all(AppSpacing.md),
         ),
       );
+    // Xoá credentials đã lưu (nếu trước đó có tài khoản remember-me) để màn
+    // login không tự điền email/mật khẩu cũ — user vừa tạo tài khoản mới.
+    await SecureStorage.clearCredentials();
+    if (!mounted) return;
     context.go('/login');
   }
 

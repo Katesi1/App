@@ -1,6 +1,6 @@
 # Halong24h — Điều khoản sử dụng / Terms of Service
 
-> **Version**: 1.0 — 2026-05-10
+> **Version**: 1.1 — 2026-06-09
 >
 > **Hành động cho team Web/BE**: Host file này tại
 > `https://halong24h.com/terms`. URL phải public — App Store reviewer
@@ -23,10 +23,10 @@ quan trọng sẽ thông báo trước 30 ngày.
 | Thuật ngữ | Nghĩa |
 |---|---|
 | **Dịch vụ** | App mobile Halong24h + web halong24h.com |
-| **Khách hàng / Customer** | User đặt phòng homestay/villa |
-| **Chủ homestay / Owner** | User đăng ký role OWNER, kinh doanh homestay |
+| **Khách hàng / Customer** | Người đặt phòng (đặt qua website halong24h.com — KHÔNG đặt trong app quản lý) |
+| **Chủ homestay / Owner** | User role OWNER — chủ hoặc người quản lý homestay, gồm cả cá nhân cho thuê 1–2 phòng nhỏ lẻ (không bắt buộc là doanh nghiệp) |
 | **Nhân viên / Sale** | User được Owner mời, role SALE |
-| **Booking** | Yêu cầu đặt phòng |
+| **Booking** | Yêu cầu/đơn đặt phòng |
 | **Subscription** | Gói trả phí cho Owner để mở khoá tính năng quản lý |
 
 ## 3. Tài khoản
@@ -51,12 +51,16 @@ Halong24h có quyền đình chỉ/chấm dứt tài khoản nếu:
 
 ## 4. Đặt phòng (Customer)
 
+> Khách **tự đặt phòng trên website** halong24h.com. Trong **app quản lý**,
+> Owner/Sale theo dõi lịch và có thể **tạo booking hộ khách** khi khách liên hệ
+> trực tiếp (qua điện thoại, Zalo, tại quầy…). App không có luồng khách tự đặt.
+
 ### 4.1 Quy trình
-1. Tìm kiếm property
+1. Tìm kiếm property (trên website)
 2. Chọn ngày, số khách
-3. Tap "Đặt phòng" → trạng thái HOLD trong **24 giờ**
-4. Thanh toán qua VNPay / chuyển khoản / thẻ tín dụng
-5. Sau khi Owner xác nhận thanh toán → trạng thái CONFIRMED
+3. Đặt phòng → trạng thái HOLD trong **24 giờ**
+4. Thanh toán cho booking theo hướng dẫn trên website
+5. Sau khi Owner xác nhận → trạng thái CONFIRMED
 6. Check-in tại homestay theo lịch
 
 ### 4.2 Huỷ booking
@@ -76,7 +80,7 @@ Halong24h có quyền đình chỉ/chấm dứt tài khoản nếu:
 ### 5.1 Đăng ký
 - Phải hoàn tất KYC: CCCD + selfie + admin duyệt (24-48h)
 - Sau approve, được hưởng **trial 7 ngày** miễn phí
-- Sau trial, tự động chuyển active subscription nếu có thanh toán
+- **Không tự động gia hạn**; muốn dùng tiếp thì chủ động mua gói qua chuyển khoản VietQR
 
 ### 5.2 Trách nhiệm Owner
 - Property là sở hữu hợp pháp hoặc có quyền cho thuê
@@ -87,10 +91,13 @@ Halong24h có quyền đình chỉ/chấm dứt tài khoản nếu:
 
 ### 5.3 Subscription
 - Phí subscription tính theo số phòng + chu kỳ (tháng/năm)
-- Thanh toán qua VNPay / bank transfer / credit card
-- Auto-renewal trừ khi huỷ trước ngày charge
+- Thanh toán **một lần cho mỗi kỳ** qua **chuyển khoản QR ngân hàng (VietQR)** —
+  đây là phương thức duy nhất; KHÔNG có tự động gia hạn, KHÔNG tự động trừ tiền
+- Mỗi giao dịch được **admin đối soát thủ công** trước khi kích hoạt gói
+- **Không bắt buộc gia hạn** — khi hết kỳ, nếu muốn tiếp tục dùng, Owner chủ
+  động **mua gói mới** qua chuyển khoản VietQR
 - **Hoàn tiền**: 100% trong 14 ngày đầu kể từ thanh toán nếu không hài lòng
-- Sau 14 ngày: không hoàn tiền cho phần subscription chưa dùng
+- Sau 14 ngày: không hoàn tiền cho phần kỳ chưa sử dụng
 
 ### 5.4 Đình chỉ Owner
 Halong24h có quyền đình chỉ Owner nếu:
@@ -114,12 +121,14 @@ Halong24h có quyền đình chỉ Owner nếu:
 ## 7. Thanh toán
 
 ### 7.1 Phương thức
-- **VNPay QR**: quét QR bằng app ngân hàng
-- **Bank transfer**: chuyển khoản với mã tham chiếu, đối soát qua Casso/Sepay
-- **Credit/Debit card**: Visa, Mastercard, JCB qua VNPay
+- **Chuyển khoản QR (VietQR)**: quét mã QR hoặc copy số tài khoản + nội dung
+  chuyển khoản trong app ngân hàng. Đây là phương thức **duy nhất** cho phí gói.
+- Giao dịch được **admin đối soát thủ công**; gói kích hoạt sau khi xác nhận đã
+  nhận được tiền.
+- Ứng dụng **KHÔNG** dùng In-App Purchase / thanh toán trong ứng dụng.
 
 ### 7.2 Hoá đơn
-- Tự động xuất sau khi thanh toán thành công
+- Xuất sau khi thanh toán được đối soát thành công
 - Định dạng: `INV-YYYY-NNNN`
 - Owner có thể yêu cầu hoá đơn VAT (cần đăng ký mã số thuế)
 
@@ -192,10 +201,10 @@ If you disagree, please do not use the Service.
 | Term | Meaning |
 |---|---|
 | Service | Halong24h mobile app + halong24h.com website |
-| Customer | User who books accommodations |
-| Owner | User registered as homestay business owner |
+| Customer | A guest who books accommodation (on the halong24h.com website — not inside the management app) |
+| Owner | OWNER role — a homestay host or manager, including individuals renting just 1–2 rooms (not limited to companies) |
 | Sale | Owner-invited employee |
-| Booking | Reservation request |
+| Booking | Reservation request/order |
 | Subscription | Owner's paid plan for management features |
 
 ## 3. Account
@@ -220,11 +229,16 @@ We may suspend/terminate accounts for:
 
 ## 4. Booking (Customer)
 
+> Guests **self-book on the halong24h.com website**. Inside the **management
+> app**, Owners/Sales staff track the calendar and can **create a booking on a
+> guest's behalf** when the guest contacts them directly (phone, Zalo, walk-in).
+> The app has no guest self-booking flow.
+
 ### 4.1 Process
-1. Search properties
+1. Search properties (on the website)
 2. Select dates, occupancy
-3. Tap "Book" → 24-hour HOLD status
-4. Pay via VNPay / bank / credit card
+3. Book → 24-hour HOLD status
+4. Pay for the booking per the website's instructions
 5. Owner confirms → CONFIRMED
 6. Check in per schedule
 
@@ -245,7 +259,7 @@ We may suspend/terminate accounts for:
 ### 5.1 Registration
 - Must complete KYC: ID + selfie + admin approval (24-48h)
 - 7-day free trial after approval
-- Auto-converts to paid subscription if payment processed
+- **No auto-renewal**; to keep using the app, buy a plan via VietQR bank transfer
 
 ### 5.2 Owner responsibilities
 - Legal property ownership/right to lease
@@ -256,10 +270,13 @@ We may suspend/terminate accounts for:
 
 ### 5.3 Subscription
 - Pricing based on room count + cycle (monthly/yearly)
-- Pay via VNPay / bank / card
-- Auto-renew unless cancelled
+- Paid **once per period** via **VietQR bank transfer (QR)** — the only method;
+  there is **no auto-renewal and no auto-charge**
+- Each payment is **manually reconciled by an admin** before the plan activates
+- **Renewal is optional** — at period end, if you want to keep using the app,
+  you buy a plan again via VietQR bank transfer
 - **Refund**: 100% within 14 days if unsatisfied
-- After 14 days: no refund for unused subscription
+- After 14 days: no refund for the unused portion of the period
 
 ### 5.4 Owner suspension
 - Fake property → suspension
@@ -281,12 +298,15 @@ We may suspend/terminate accounts for:
 ## 7. Payment
 
 ### 7.1 Methods
-- VNPay QR (mobile banking app scan)
-- Bank transfer with reference (Casso/Sepay reconciliation)
-- Credit/debit cards (Visa, Mastercard, JCB) via VNPay
+- **VietQR bank transfer (QR)**: scan the QR code or copy the account number +
+  transfer memo in your banking app. This is the **only** method for the
+  management subscription fee.
+- Transactions are **reconciled manually by an admin**; the plan activates once
+  the funds are confirmed.
+- The app does **NOT** use In-App Purchase / in-app payment.
 
 ### 7.2 Invoices
-- Auto-issued after successful payment
+- Issued after the payment is successfully reconciled
 - Format: `INV-YYYY-NNNN`
 - VAT invoice on Owner request (requires tax ID)
 

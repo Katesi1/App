@@ -11,6 +11,7 @@ import '../../../core/theme/app_color_scheme.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../shared/widgets/loading_widget.dart';
+import '../../../shared/widgets/subscription_locked_sheet.dart';
 import '../../rooms/controllers/room_controller.dart';
 import '../controllers/property_controller.dart';
 
@@ -230,9 +231,15 @@ class _PropertyAddScreenState extends ConsumerState<PropertyAddScreen> {
       context.pop();
     } else {
       setState(() => _isLoading = false);
+      final notifier = ref.read(homestayActionsProvider.notifier);
       final err = ref.read(homestayActionsProvider);
-      AppSnackBar.error(
-          context, err.hasError ? err.error.toString() : 'Có lỗi xảy ra');
+      final msg = err.hasError ? err.error.toString() : 'Có lỗi xảy ra';
+      // BE 403 subscription.featureLocked → platform-aware sheet (iOS: contact
+      // support, no payment wording; Android: route to plan picker).
+      if (!SubscriptionLock.maybeHandle(context,
+          code: notifier.lastErrorCode, message: msg)) {
+        AppSnackBar.error(context, msg);
+      }
     }
   }
 

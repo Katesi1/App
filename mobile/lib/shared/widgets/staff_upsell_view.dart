@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 
+import '../../core/config/app_config.dart';
 import '../../core/theme/app_color_scheme.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_spacing.dart';
@@ -14,6 +15,17 @@ import '../../data/models/user_model.dart';
 /// Shared between the OWNER staff list ([/admin/users]) and the invite screen
 /// ([/staff/manage]) so both surfaces show the same "Starter+ to add staff"
 /// message and CTA.
+/// Block reasons rooted in the subscription/payment state — on iOS these are
+/// surfaced as a neutral "feature unavailable" card (no purchase CTA) to comply
+/// with App Store Guideline 3.1.1.
+const _kSubscriptionBlockReasons = {
+  InviteBlockReason.subscriptionInactive,
+  InviteBlockReason.subscriptionPastDue,
+  InviteBlockReason.subscriptionFrozen,
+  InviteBlockReason.planNotAllowed,
+  InviteBlockReason.slotLimitReached,
+};
+
 class StaffUpsellView extends StatelessWidget {
   final InviteEligibility eligibility;
   final UserModel? user;
@@ -62,7 +74,10 @@ class StaffUpsellView extends StatelessWidget {
           ),
           const SizedBox(height: AppSpacing.sm),
           Text(
-            eligibility.reason ?? '',
+            (AppConfig.hidePaidUpgradeUI &&
+                    _kSubscriptionBlockReasons.contains(eligibility.blockReason))
+                ? 'Tài khoản của bạn hiện chưa có quyền dùng tính năng này.'
+                : (eligibility.reason ?? ''),
             textAlign: TextAlign.center,
             style: GoogleFonts.beVietnamPro(
               fontSize: 13,
@@ -72,8 +87,9 @@ class StaffUpsellView extends StatelessWidget {
           ),
           const SizedBox(height: AppSpacing.lg),
 
-          // Plans that unlock staff — when buying/upgrading (or KYC) is involved.
-          if (eligibility.showsPlanOptions) ...[
+          // Plans that unlock staff — when buying/upgrading (or KYC) is
+          // involved. Hidden on iOS (Guideline 3.1.1: no plan-price UI).
+          if (AppConfig.showPaidUpgradeUI && eligibility.showsPlanOptions) ...[
             const _PlanPerksCard(),
             const SizedBox(height: AppSpacing.lg),
           ],
@@ -230,6 +246,22 @@ class _UpsellSpec {
   });
 
   factory _UpsellSpec.of(InviteBlockReason reason, UserModel? user) {
+    // iOS (Guideline 3.1.1): no "mua/nâng cấp/gia hạn gói" CTA may be shown.
+    // For every subscription-driven block, fall back to a neutral
+    // "feature unavailable" card with no purchase route. KYC / notOwner keep
+    // their normal (non-payment) handling below.
+    if (AppConfig.hidePaidUpgradeUI &&
+        _kSubscriptionBlockReasons.contains(reason)) {
+      return const _UpsellSpec(
+        icon: Icons.lock_outline_rounded,
+        title: 'Tính năng chưa khả dụng',
+        accent: AppColors.slate,
+        ctaLabel: '',
+        ctaIcon: Icons.lock_outline_rounded,
+        route: null,
+      );
+    }
+
     switch (reason) {
       case InviteBlockReason.kycRequired:
         final pending = user?.isKycPending ?? false;

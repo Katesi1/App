@@ -47,7 +47,11 @@ class HomestayRepository {
         message: response.data['message'] ?? '',
       );
     } on DioException catch (e) {
-      return ApiResponse(success: false, message: parseDioError(e));
+      return ApiResponse(
+        success: false,
+        message: parseDioError(e),
+        code: parseDioErrorCode(e),
+      );
     }
   }
 
@@ -62,7 +66,11 @@ class HomestayRepository {
         message: response.data['message'] ?? '',
       );
     } on DioException catch (e) {
-      return ApiResponse(success: false, message: parseDioError(e));
+      return ApiResponse(
+        success: false,
+        message: parseDioError(e),
+        code: parseDioErrorCode(e),
+      );
     }
   }
 

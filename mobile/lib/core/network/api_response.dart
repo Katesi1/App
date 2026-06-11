@@ -5,7 +5,27 @@ class ApiResponse<T> {
   final T? data;
   final String message;
 
-  ApiResponse({required this.success, this.data, required this.message});
+  /// Machine-readable error code from the BE error envelope root (`code`),
+  /// e.g. `subscription.featureLocked`, `paymentPending`. Null on success or
+  /// when BE returns no code. Lets the UI branch without parsing localized text.
+  final String? code;
+
+  ApiResponse({
+    required this.success,
+    this.data,
+    required this.message,
+    this.code,
+  });
+}
+
+/// Extracts the machine-readable `code` from a Dio error envelope root body
+/// (see API_SPEC §10.2.7). Returns null when absent.
+String? parseDioErrorCode(DioException e) {
+  final data = e.response?.data;
+  if (data is Map && data['code'] != null) {
+    return data['code'].toString();
+  }
+  return null;
 }
 
 // Helper to parse Dio errors into user-facing messages.

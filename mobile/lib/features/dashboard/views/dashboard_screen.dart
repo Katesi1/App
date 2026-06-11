@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
+import '../../../core/config/app_config.dart';
 import '../../../core/constants/app_constants.dart';
 import '../../../core/theme/app_color_scheme.dart';
 import '../../../core/theme/app_colors.dart';
@@ -77,9 +78,11 @@ class DashboardScreen extends ConsumerWidget {
                   formattedDate: formattedDate,
                 ),
 
-                // Verify CTA for unverified Owner.
-                // Source of truth: user.kycStatus from /auth/profile (backend),
-                // NOT verifyFlowController (local, non-persisted).
+                // Verify CTA for unverified Owner — KYC is the only gate to
+                // create rooms. Source of truth: user.kycStatus from
+                // /auth/profile (backend), NOT verifyFlowController (local).
+                // The banner itself drops all payment/trial wording on iOS
+                // (see _VerifyCTABanner).
                 if (user != null && user.isOwner && !user.isKycApproved)
                   Padding(
                     padding: const EdgeInsets.fromLTRB(16, 0, 16, 0),
@@ -93,7 +96,9 @@ class DashboardScreen extends ConsumerWidget {
 
                 // Subscription banner for OWNER with approved KYC.
                 // Trial / past_due / cancelled — hidden when active.
-                if (user != null &&
+                // Hidden entirely on iOS (Guideline 3.1.1: no paid-upgrade UI).
+                if (AppConfig.showPaidUpgradeUI &&
+                    user != null &&
                     user.isOwner &&
                     user.isKycApproved &&
                     !user.isSubscriptionActive)
@@ -1597,17 +1602,23 @@ class _VerifyCTABanner extends StatelessWidget {
           '/verify/rejected',
           false,
         ),
+      // Default (kycStatus none): prompt identity verification. On iOS no
+      // trial/payment wording and no paywall modal — straight to CCCD capture.
       _ => (
           colors.bgWarm,
           colors.borderGold,
           colors.borderGold.withValues(alpha: 0.3),
           Icons.workspace_premium,
           colors.textBrandAccent,
-          'Verify để bắt đầu nhận booking',
-          '4 bước · Trial 7 ngày miễn phí khi xong.',
-          'Bắt đầu',
+          AppConfig.hidePaidUpgradeUI
+              ? 'Xác thực danh tính để đăng phòng'
+              : 'Verify để bắt đầu nhận booking',
+          AppConfig.hidePaidUpgradeUI
+              ? 'Xác minh CCCD + selfie · admin duyệt trong 24h.'
+              : '4 bước · Trial 7 ngày miễn phí khi xong.',
+          AppConfig.hidePaidUpgradeUI ? 'Xác thực' : 'Bắt đầu',
           '/verify/cccd-front',
-          true,
+          AppConfig.showPaidUpgradeUI, // useModal: false on iOS → direct capture
         ),
     };
 

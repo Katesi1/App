@@ -71,16 +71,16 @@
 		<key>UISupportedInterfaceOrientations</key>
 		<array>
 			<string>UIInterfaceOrientationPortrait</string>
-			<string>UIInterfaceOrientationLandscapeLeft</string>
-			<string>UIInterfaceOrientationLandscapeRight</string>
 		</array>
 		<key>UISupportedInterfaceOrientations~ipad</key>
 		<array>
 			<string>UIInterfaceOrientationPortrait</string>
-			<string>UIInterfaceOrientationPortraitUpsideDown</string>
-			<string>UIInterfaceOrientationLandscapeLeft</string>
-			<string>UIInterfaceOrientationLandscapeRight</string>
 		</array>
+		<!-- App chạy portrait-only (kiểu mobile). Opt-out iPad multitasking
+		     (Slide Over/Split View) để được phép chỉ Portrait — nếu không Apple
+		     bắt buộc khai báo đủ 4 hướng cho iPad. -->
+		<key>UIRequiresFullScreen</key>
+		<true/>
 		<!-- ── Permissions cho image_picker ──────────────────────────────
 	     Verify flow cần camera (chụp CCCD + selfie) và thư viện ảnh
 	     (option upload ảnh sẵn nếu camera permission denied).

@@ -23,6 +23,23 @@ void main() {
     });
   });
 
+  group('StaffEntitlement.effectiveMaxSlotsFor (trial im lặng)', () {
+    test('trial chưa gắn gói được trialMaxSaleStaff slot', () {
+      expect(StaffEntitlement.trialMaxSaleStaff, 1);
+      expect(StaffEntitlement.effectiveMaxSlotsFor(null, 'trial'),
+          StaffEntitlement.trialMaxSaleStaff);
+    });
+
+    test('trial đã gắn gói thì theo quota gói', () {
+      expect(StaffEntitlement.effectiveMaxSlotsFor('rooms_5', 'trial'), 3);
+    });
+
+    test('null plan ngoài trial vẫn = 0', () {
+      expect(StaffEntitlement.effectiveMaxSlotsFor(null, 'active'), 0);
+      expect(StaffEntitlement.effectiveMaxSlotsFor(null, 'none'), 0);
+    });
+  });
+
   group('StaffEntitlement.evaluate', () {
     InviteEligibility eval({
       bool isAdmin = false,
@@ -82,6 +99,21 @@ void main() {
       expect(eval(planId: 'rooms_5', usedSlots: 3).allowed, isFalse);
     });
 
+    test('trial im lặng (planId=null) được mời đúng 1 SALE', () {
+      final r0 = eval(planId: null, status: 'trial', usedSlots: 0);
+      expect(r0.allowed, isTrue);
+      expect(r0.remaining, 1);
+      final r1 = eval(planId: null, status: 'trial', usedSlots: 1);
+      expect(r1.allowed, isFalse);
+      expect(r1.blockReason, InviteBlockReason.slotLimitReached);
+    });
+
+    test('null plan ngoài trial bị chặn planNotAllowed', () {
+      final r = eval(planId: null, status: 'active');
+      expect(r.allowed, isFalse);
+      expect(r.blockReason, InviteBlockReason.planNotAllowed);
+    });
+
     test('does not block on limit while counts unknown', () {
       final r = eval(planId: 'rooms_5', usedSlots: 5, enforceSlotLimit: false);
       expect(r.allowed, isTrue);
@@ -117,6 +149,29 @@ void main() {
       expect(eval(planId: 'rooms_5', usedSlots: 3).isPlanUpgradeFix, isTrue);
       expect(eval(isKycApproved: false).isPlanUpgradeFix, isFalse);
       expect(eval(status: 'frozen').isPlanUpgradeFix, isFalse);
+    });
+  });
+
+  group('StaffEntitlement.inviteErrorMessage', () {
+    // Test host không phải iOS → luôn passthrough message BE (tiếng Việt).
+    // Nhánh override trung tính iOS phụ thuộc Platform.isIOS, kiểm thủ công.
+    test('giữ nguyên message BE ngoài iOS', () {
+      const be = 'Nâng cấp lên Starter để mời thêm nhân viên.';
+      expect(
+        StaffEntitlement.inviteErrorMessage(
+          code: 'staff.staffSlotLimitReached',
+          beMessage: be,
+        ),
+        be,
+      );
+    });
+
+    test('code khác slot-limit luôn passthrough', () {
+      const be = 'Lỗi khác.';
+      expect(
+        StaffEntitlement.inviteErrorMessage(code: 'whatever', beMessage: be),
+        be,
+      );
     });
   });
 }

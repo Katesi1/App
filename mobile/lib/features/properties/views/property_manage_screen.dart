@@ -8,6 +8,7 @@ import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import '../../../shared/widgets/loading_widget.dart';
+import '../../../shared/widgets/subscription_locked_sheet.dart';
 import '../../rooms/controllers/room_controller.dart';
 import '../../auth/controllers/auth_controller.dart';
 import '../controllers/property_controller.dart';
@@ -321,15 +322,19 @@ class _PropertyManageScreenState extends ConsumerState<PropertyManageScreen> {
 
   Future<void> _toggleActive(bool value) async {
     setState(() => _togglingActive = true);
-    final ok = await ref
-        .read(homestayActionsProvider.notifier)
-        .toggleActive(widget.homestayId, value);
+    final notifier = ref.read(homestayActionsProvider.notifier);
+    final ok = await notifier.toggleActive(widget.homestayId, value);
     if (mounted) {
       setState(() => _togglingActive = false);
       if (ok) {
         ref.invalidate(roomDetailProvider(widget.homestayId));
       } else {
-        AppSnackBar.error(context, 'Không thể cập nhật trạng thái');
+        // BE 403 subscription.featureLocked → platform-aware sheet.
+        final msg = ref.read(homestayActionsProvider).error?.toString();
+        if (!SubscriptionLock.maybeHandle(context,
+            code: notifier.lastErrorCode, message: msg)) {
+          AppSnackBar.error(context, 'Không thể cập nhật trạng thái');
+        }
       }
     }
   }

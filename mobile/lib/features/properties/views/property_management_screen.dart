@@ -341,6 +341,7 @@ class _PropertyManagementScreenState
     final needsVerify =
         (user?.isOwner ?? false) && !(user?.isKycApproved ?? false);
 
+    // KYC (identity) is the only gate — no subscription/payment requirement.
     if (!needsVerify) {
       context.push('/properties/new');
       return;

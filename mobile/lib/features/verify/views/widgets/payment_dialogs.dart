@@ -139,12 +139,10 @@ class _BankTransferDialogState extends State<BankTransferDialog>
     } catch (e) {
       if (!mounted) return;
       setState(() => _cancelling = false);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Huỷ phiên thất bại: '
-              '${e.toString().replaceAll('Exception: ', '')}'),
-          backgroundColor: context.colors.error,
-        ),
+      AppToast.error(
+        context,
+        'Huỷ phiên thất bại: '
+        '${e.toString().replaceAll('Exception: ', '')}',
       );
     }
   }

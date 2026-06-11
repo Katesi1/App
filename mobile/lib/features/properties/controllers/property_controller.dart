@@ -36,6 +36,11 @@ class HomestayActionsNotifier extends StateNotifier<AsyncValue<void>> {
   final HomestayRepository _repo;
   final Ref _ref;
 
+  /// Machine-readable `code` of the last failed action (BE error envelope),
+  /// e.g. `subscription.featureLocked`. Lets the UI branch to the locked sheet
+  /// without parsing localized text. Reset to null on each action start.
+  String? lastErrorCode;
+
   HomestayActionsNotifier(this._repo, this._ref)
       : super(const AsyncValue.data(null));
 
@@ -55,36 +60,42 @@ class HomestayActionsNotifier extends StateNotifier<AsyncValue<void>> {
   /// Returns the newly created property ID, or null on error.
   Future<String?> create(Map<String, dynamic> data) async {
     state = const AsyncValue.loading();
+    lastErrorCode = null;
     final result = await _repo.createHomestay(data);
     if (result.success) {
       _refreshAll();
       state = const AsyncValue.data(null);
       return result.data?.id ?? (throw Exception('Dữ liệu trả về trống'));
     }
+    lastErrorCode = result.code;
     state = AsyncValue.error(result.message, StackTrace.current);
     return null;
   }
 
   Future<bool> update(String id, Map<String, dynamic> data) async {
     state = const AsyncValue.loading();
+    lastErrorCode = null;
     final result = await _repo.updateHomestay(id, data);
     if (result.success) {
       _refreshAll(id: id);
       state = const AsyncValue.data(null);
       return true;
     }
+    lastErrorCode = result.code;
     state = AsyncValue.error(result.message, StackTrace.current);
     return false;
   }
 
   Future<bool> toggleActive(String id, bool isActive) async {
     state = const AsyncValue.loading();
+    lastErrorCode = null;
     final result = await _repo.updateHomestay(id, {'isActive': isActive});
     if (result.success) {
       _refreshAll(id: id);
       state = const AsyncValue.data(null);
       return true;
     }
+    lastErrorCode = result.code;
     state = AsyncValue.error(result.message, StackTrace.current);
     return false;
   }

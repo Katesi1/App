@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../../../core/config/app_config.dart';
 import '../../../core/constants/app_constants.dart';
 import '../../../core/theme/app_color_scheme.dart';
 import '../../../core/theme/app_colors.dart';
@@ -168,7 +169,8 @@ class _PendingApprovalScreenState extends ConsumerState<PendingApprovalScreen>
             ).animate().fadeIn(delay: 320.ms, duration: 320.ms),
             const SizedBox(height: AppSpacing.lg),
 
-            // Timeline
+            // Timeline. On iOS (Guideline 3.1.1) KYC is decoupled from payment,
+            // so the payment/trial steps are dropped — identity-only timeline.
             StatusTimeline(
               steps: [
                 TimelineStep(
@@ -176,19 +178,22 @@ class _PendingApprovalScreenState extends ConsumerState<PendingApprovalScreen>
                   subtitle: '$paidAt hôm nay',
                   status: TimelineStepStatus.done,
                 ),
-                TimelineStep(
-                  title: 'Thanh toán đã nhận',
-                  subtitle:
-                      '${state.selectedPlan?.tier.displayName ?? "Pro"} ${state.billingCycle == BillingCycle.yearly ? "1 năm" : "1 tháng"} · $paidAt',
-                  status: TimelineStepStatus.done,
-                ),
+                if (AppConfig.showPaidUpgradeUI)
+                  TimelineStep(
+                    title: 'Thanh toán đã nhận',
+                    subtitle:
+                        '${state.selectedPlan?.tier.displayName ?? "Pro"} ${state.billingCycle == BillingCycle.yearly ? "1 năm" : "1 tháng"} · $paidAt',
+                    status: TimelineStepStatus.done,
+                  ),
                 const TimelineStep(
                   title: 'Admin đang xét duyệt',
                   subtitle: 'Dự kiến hoàn tất trong 24h',
                   status: TimelineStepStatus.current,
                 ),
-                const TimelineStep(
-                  title: 'Bắt đầu trial 7 ngày',
+                TimelineStep(
+                  title: AppConfig.hidePaidUpgradeUI
+                      ? 'Hoàn tất xác minh'
+                      : 'Bắt đầu trial 7 ngày',
                   subtitle: 'Sau khi được duyệt',
                   status: TimelineStepStatus.pending,
                 ),

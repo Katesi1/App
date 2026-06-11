@@ -4,6 +4,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../../core/theme/app_color_scheme.dart';
+import '../../../shared/widgets/app_toast.dart';
 
 /// Wraps [ImagePicker] to handle permission-denied flows in a user-friendly way.
 ///
@@ -130,12 +131,6 @@ class CameraPicker {
   }
 
   static void _showError(BuildContext context, String msg) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(msg),
-        backgroundColor: context.colors.error,
-        behavior: SnackBarBehavior.floating,
-      ),
-    );
+    AppToast.error(context, msg);
   }
 }

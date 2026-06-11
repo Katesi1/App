@@ -12,6 +12,7 @@ import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../data/models/ocr_result.dart';
 import '../data/models/scanner_result.dart';
+import '../../../shared/widgets/app_toast.dart';
 import '../data/models/verify_enums.dart';
 import '../utils/cccd_front_ocr_parser.dart';
 import '../utils/cccd_image_cropper.dart';
@@ -370,9 +371,7 @@ class _CCCDScannerScreenState extends State<CCCDScannerScreen>
       if (!mounted) return;
       _capturing = false;
       _setStatus(_Status.searching);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Chụp lỗi: $e')),
-      );
+      AppToast.error(context, 'Chụp lỗi: $e');
       // Restart the stream so the user can try again.
       try {
         await c.startImageStream(_onFrame);

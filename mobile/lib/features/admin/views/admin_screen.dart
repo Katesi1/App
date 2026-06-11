@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
+import '../../../core/config/app_config.dart';
 import '../../../core/theme/app_color_scheme.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
@@ -262,10 +263,10 @@ class AdminScreen extends ConsumerWidget {
                   ),
 
                   // OWNER subscription entry — visible only for OWNER (admins
-                  // don't subscribe). Tap → /verify/subscription-detail which
-                  // hosts the "Chọn gói + Mua qua App Store" CTA (iOS) or the
-                  // renew flow (Android).
-                  if (user?.isOwner ?? false) ...[
+                  // don't subscribe). Tap → /verify/subscription-detail (chọn
+                  // gói + gia hạn qua chuyển khoản VietQR — không IAP).
+                  // Hidden on iOS (Guideline 3.1.1: no paid-upgrade UI).
+                  if (AppConfig.showPaidUpgradeUI && (user?.isOwner ?? false)) ...[
                     const SizedBox(height: 10),
                     _MenuCard(
                       icon: Icons.workspace_premium_rounded,

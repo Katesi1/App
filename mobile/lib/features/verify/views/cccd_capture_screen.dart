@@ -8,6 +8,7 @@ import 'package:go_router/go_router.dart';
 import '../../../core/theme/app_color_scheme.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
+import '../../../shared/widgets/app_toast.dart';
 import '../../../shared/widgets/loading_widget.dart';
 import '../../../shared/widgets/status_strip.dart';
 import '../controllers/verify_flow_controller.dart';
@@ -129,14 +130,11 @@ class _CCCDCaptureScreenState extends ConsumerState<CCCDCaptureScreen> {
   }
 
   void _showSnack(String msg, {required bool isWarning}) {
-    final colors = context.colors;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(msg),
-        backgroundColor: isWarning ? colors.warning : colors.error,
-        behavior: SnackBarBehavior.floating,
-      ),
-    );
+    if (isWarning) {
+      AppToast.warning(context, msg);
+    } else {
+      AppToast.error(context, msg);
+    }
   }
 
   @override

@@ -3,8 +3,10 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../core/config/app_config.dart';
 import '../../../core/theme/app_color_scheme.dart';
 import '../../../core/theme/app_spacing.dart';
+import '../../../shared/widgets/app_toast.dart';
 import '../../../shared/widgets/status_strip.dart';
 import '../controllers/verify_flow_controller.dart';
 import '../data/models/verify_enums.dart';
@@ -65,6 +67,14 @@ class RejectedScreen extends ConsumerWidget {
                           'Tiền sẽ về phương thức thanh toán gốc trong 3-7 ngày làm việc.',
                       variant: StatusStripVariant.success,
                     )
+                  else if (AppConfig.hidePaidUpgradeUI)
+                    const StatusStrip(
+                      icon: Icons.shield_outlined,
+                      label: 'Bổ sung hồ sơ để tiếp tục',
+                      subtitle:
+                          'Chụp lại mục bị từ chối và gửi để admin duyệt lại.',
+                      variant: StatusStripVariant.brand,
+                    )
                   else
                     const StatusStrip(
                       icon: Icons.shield_outlined,
@@ -96,6 +106,9 @@ class RejectedScreen extends ConsumerWidget {
             ),
             if (!state.refundProcessed)
               _ActionBar(
+                // iOS (Guideline 3.1.1): no payment was taken in-app → no
+                // refund CTA. Only the resubmit action is shown.
+                showRefund: AppConfig.showPaidUpgradeUI,
                 onRefund: () => _confirmRefund(context, ref),
                 onResubmit: () {
                   final firstRejected = state.rejectedItems.firstOrNull;
@@ -148,7 +161,7 @@ class RejectedScreen extends ConsumerWidget {
     } catch (e) {
       if (!context.mounted) return;
       final msg = e.toString().replaceAll('Exception: ', '');
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
+      AppToast.error(context, msg);
     }
   }
 }
@@ -373,8 +386,13 @@ class _ItemRow extends StatelessWidget {
 class _ActionBar extends StatelessWidget {
   final VoidCallback onRefund;
   final VoidCallback onResubmit;
+  final bool showRefund;
 
-  const _ActionBar({required this.onRefund, required this.onResubmit});
+  const _ActionBar({
+    required this.onRefund,
+    required this.onResubmit,
+    this.showRefund = true,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -392,21 +410,23 @@ class _ActionBar extends StatelessWidget {
       ),
       child: Row(
         children: [
-          Expanded(
-            child: SizedBox(
-              height: 48,
-              child: OutlinedButton(
-                style: OutlinedButton.styleFrom(
-                  side: BorderSide(color: colors.borderDefault),
-                  foregroundColor: colors.textPrimary,
-                  backgroundColor: colors.borderDefault,
+          if (showRefund) ...[
+            Expanded(
+              child: SizedBox(
+                height: 48,
+                child: OutlinedButton(
+                  style: OutlinedButton.styleFrom(
+                    side: BorderSide(color: colors.borderDefault),
+                    foregroundColor: colors.textPrimary,
+                    backgroundColor: colors.borderDefault,
+                  ),
+                  onPressed: onRefund,
+                  child: const Text('Yêu cầu hoàn tiền'),
                 ),
-                onPressed: onRefund,
-                child: const Text('Yêu cầu hoàn tiền'),
               ),
             ),
-          ),
-          const SizedBox(width: 10),
+            const SizedBox(width: 10),
+          ],
           Expanded(
             flex: 2,
             child: SizedBox(

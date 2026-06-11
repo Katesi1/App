@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:url_launcher/url_launcher.dart';
+import '../../../core/config/app_config.dart';
 import '../../../core/constants/app_constants.dart';
 import '../../../core/theme/app_color_scheme.dart';
 import '../../../core/theme/app_colors.dart';
@@ -85,13 +86,17 @@ class ProfileScreen extends ConsumerWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    _SectionLabel('XÁC THỰC + GÓI ĐĂNG KÝ'),
+                    _SectionLabel(AppConfig.hidePaidUpgradeUI
+                        ? 'XÁC THỰC DANH TÍNH'
+                        : 'XÁC THỰC + GÓI ĐĂNG KÝ'),
                     const SizedBox(height: 8),
                     _MenuCard(
                       isDark: isDark,
                       items: [
                         _kycMenuItem(context, user!.kycStatus, colors),
-                        _subscriptionMenuItem(context, user, colors),
+                        // iOS (Guideline 3.1.1): no paid-upgrade entry point.
+                        if (AppConfig.showPaidUpgradeUI)
+                          _subscriptionMenuItem(context, user, colors),
                       ],
                     ),
                   ],
@@ -357,6 +362,17 @@ class ProfileScreen extends ConsumerWidget {
           onTap: () => context.push('/verify/rejected'),
         );
       default:
+        // iOS (Guideline 3.1.1): KYC stays available for identity, but with no
+        // trial/plan/payment language and no paywall — straight to capture.
+        if (AppConfig.hidePaidUpgradeUI) {
+          return _MenuItemData(
+            icon: Icons.verified_user_outlined,
+            label: 'Xác thực danh tính',
+            subtitle: 'Xác minh CCCD chủ nhà',
+            iconColor: AppColors.goldText,
+            onTap: () => context.push('/verify/cccd-front'),
+          );
+        }
         return _MenuItemData(
           icon: Icons.verified_user_outlined,
           label: 'Xác thực CCCD để đăng phòng',

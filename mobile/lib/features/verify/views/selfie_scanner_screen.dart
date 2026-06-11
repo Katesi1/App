@@ -9,6 +9,7 @@ import 'package:google_mlkit_face_detection/google_mlkit_face_detection.dart';
 
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
+import '../../../shared/widgets/app_toast.dart';
 
 // Pose thresholds (degrees) — top-level so `_Challenge.matches()` can use them.
 // ML Kit: yaw > 0 = face turned to image's right (= user turn head LEFT do
@@ -366,9 +367,7 @@ class _SelfieScannerScreenState extends State<SelfieScannerScreen>
     } catch (e) {
       if (!mounted) return;
       _capturing = false;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Chụp lỗi: $e')),
-      );
+      AppToast.error(context, 'Chụp lỗi: $e');
       try {
         await c.startImageStream(_onFrame);
       } catch (_) {}

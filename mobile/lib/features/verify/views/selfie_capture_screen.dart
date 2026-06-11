@@ -9,6 +9,7 @@ import '../../../core/theme/app_color_scheme.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../shared/widgets/loading_widget.dart';
+import '../../auth/controllers/auth_controller.dart';
 import '../controllers/verify_flow_controller.dart';
 import 'selfie_scanner_screen.dart';
 import 'widgets/camera_frame_overlay.dart';
@@ -56,12 +57,30 @@ class _SelfieCaptureScreenState extends ConsumerState<SelfieCaptureScreen> {
       if (!mounted) return;
       context.pushReplacement('/verify/pending');
     } catch (e) {
-      if (mounted) {
-        final msg = e.toString().replaceAll('Exception: ', '');
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(msg)),
-        );
+      // Submit có thể fail vì hồ sơ ĐÃ tồn tại và đang chờ duyệt (user lọt lại
+      // vào flow → backend chặn "pending review and cannot be re-submitted").
+      // Đồng bộ profile từ server rồi điều hướng theo kycStatus thật thay vì dí
+      // toast lỗi — nếu đã pending thì coi như đã nộp xong, vào màn chờ.
+      if (!mounted) return;
+      await ref
+          .read(verifyFlowControllerProvider.notifier)
+          .refreshUserProfile();
+      if (!mounted) return;
+      final status = ref.read(currentUserProvider)?.kycStatus;
+      switch (status) {
+        case 'pending':
+          context.pushReplacement('/verify/pending');
+          return;
+        case 'rejected':
+          context.pushReplacement('/verify/rejected');
+          return;
+        case 'approved':
+          context.pushReplacement('/verify/approved');
+          return;
       }
+      // Lỗi thật (vẫn none) → toast lỗi (AppToast), không dùng SnackBar đáy.
+      final msg = e.toString().replaceAll('Exception: ', '');
+      AppSnackBar.error(context, msg);
     } finally {
       if (mounted) setState(() => _uploading = false);
     }

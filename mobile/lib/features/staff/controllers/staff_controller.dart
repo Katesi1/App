@@ -38,17 +38,24 @@ class StaffActionsNotifier extends StateNotifier<AsyncValue<void>> {
   final StaffRepository _repo;
   final Ref _ref;
 
+  /// Machine-readable `code` of the last failed action (e.g.
+  /// `subscription.featureLocked`) so the UI can show the locked sheet instead
+  /// of a plain snackbar. Reset on each action start.
+  String? lastErrorCode;
+
   StaffActionsNotifier(this._repo, this._ref)
       : super(const AsyncValue.data(null));
 
   Future<(bool, String)> invite(String email) async {
     state = const AsyncValue.loading();
+    lastErrorCode = null;
     final result = await _repo.createInvite(email);
     if (result.success) {
       _ref.invalidate(staffInvitesProvider);
       state = const AsyncValue.data(null);
       return (true, result.message);
     }
+    lastErrorCode = result.code;
     state = AsyncValue.error(result.message, StackTrace.current);
     return (false, result.message);
   }

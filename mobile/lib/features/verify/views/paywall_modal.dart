@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/config/app_config.dart';
 import '../../../core/theme/app_color_scheme.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
@@ -96,7 +97,9 @@ class _PaywallModalState extends ConsumerState<PaywallModal> {
           ),
           const SizedBox(height: 6),
           Text(
-            'Xác minh CCCD để mở khoá tính năng quản lý. Bạn có thể chọn gói thanh toán sau khi admin duyệt.',
+            AppConfig.hidePaidUpgradeUI
+                ? 'Xác minh CCCD + selfie để mở khoá tính năng quản lý.'
+                : 'Xác minh CCCD để mở khoá tính năng quản lý. Bạn có thể chọn gói thanh toán sau khi admin duyệt.',
             textAlign: TextAlign.center,
             style: TextStyle(
               fontSize: 13,
@@ -120,7 +123,7 @@ class _PaywallModalState extends ConsumerState<PaywallModal> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'QUY TRÌNH 3 BƯỚC',
+                  'QUY TRÌNH ${_visibleSteps.length} BƯỚC',
                   style: TextStyle(
                     fontSize: 10,
                     fontWeight: FontWeight.w700,
@@ -129,10 +132,10 @@ class _PaywallModalState extends ConsumerState<PaywallModal> {
                   ),
                 ),
                 const SizedBox(height: 12),
-                ..._steps.asMap().entries.map(
+                ..._visibleSteps.asMap().entries.map(
                       (e) => Padding(
                         padding: EdgeInsets.only(
-                          bottom: e.key == _steps.length - 1 ? 0 : 10,
+                          bottom: e.key == _visibleSteps.length - 1 ? 0 : 10,
                         ),
                         child: _StepRow(
                           index: e.key + 1,
@@ -211,13 +214,14 @@ class _PaywallModalState extends ConsumerState<PaywallModal> {
     );
   }
 
-  /// 3 KYC steps — plan purchase is decoupled and happens post-approval
-  /// from the trial-active or subscription-detail screen.
-  static const List<(String, String)> _steps = [
-    ('Chụp CCCD + Selfie', 'Xác minh danh tính cá nhân'),
-    ('Chờ admin duyệt', 'Trong vòng 24 giờ'),
-    ('Chọn gói thanh toán', 'Sau khi duyệt — chọn gói phù hợp số phòng'),
-  ];
+  /// Steps shown in the verify intro. iOS (Guideline 3.1.1) drops the
+  /// "Chọn gói thanh toán" step — KYC alone unlocks management, no payment.
+  static List<(String, String)> get _visibleSteps => [
+        ('Chụp CCCD + Selfie', 'Xác minh danh tính cá nhân'),
+        ('Chờ admin duyệt', 'Trong vòng 24 giờ'),
+        if (AppConfig.showPaidUpgradeUI)
+          ('Chọn gói thanh toán', 'Sau khi duyệt — chọn gói phù hợp số phòng'),
+      ];
 }
 
 class _StepRow extends StatelessWidget {

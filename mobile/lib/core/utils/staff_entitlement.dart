@@ -1,3 +1,5 @@
+import '../config/app_config.dart';
+
 /// Staff (SALE) invite quota per subscription plan — **frontend mirror** of the
 /// backend `StaffEntitlement` (`API_SPEC_FULL.md` §11.1.1).
 ///
@@ -13,12 +15,23 @@
 /// | rooms_20  | Pro       | không giới hạn   |
 /// | rooms_50  | Business  | không giới hạn   |
 /// | enterprise| Enterprise| không giới hạn   |
+///
+/// Ngoại lệ **trial im lặng**: OWNER vừa đăng ký + KYC duyệt nhưng chưa mua gói
+/// (`planId == null`, `subscriptionStatus == 'trial'`) vẫn được cấp
+/// [trialMaxSaleStaff] slot — mirror BE `src/common/staff-entitlement.ts`.
 class StaffEntitlement {
   StaffEntitlement._();
 
   /// Active subscription states that may invite staff (`trial` | `active`).
   /// `past_due | cancelled | expired | frozen | none` are all blocked.
   static const Set<String> _activeStatuses = {'trial', 'active'};
+
+  /// SALE slot được cấp cho trial im lặng (chưa gắn gói). Mirror BE
+  /// `kTrialMaxSaleStaff`.
+  static const int trialMaxSaleStaff = 1;
+
+  /// BE `code` cho lỗi 409 đầy slot (`staff.staffSlotLimitReached`).
+  static const String slotLimitCode = 'staff.staffSlotLimitReached';
 
   /// Max SALE slots a plan allows. `null` = unlimited. Unknown/missing plan = 0.
   static int? maxSlotsFor(String? planId) => switch (planId) {
@@ -31,10 +44,35 @@ class StaffEntitlement {
         _ => 0,
       };
 
+  /// Số slot SALE thực tế — trial im lặng (chưa gắn gói) vẫn được
+  /// [trialMaxSaleStaff]; còn lại theo quota của gói. Mirror BE
+  /// `getEffectiveMaxSaleStaff(planId, subscriptionStatus)`.
+  static int? effectiveMaxSlotsFor(String? planId, String subscriptionStatus) {
+    if (planId == null && subscriptionStatus == 'trial') {
+      return trialMaxSaleStaff;
+    }
+    return maxSlotsFor(planId);
+  }
+
   /// Whether the plan grants any invite quota at all (`> 0` or unlimited).
   static bool planAllowsInvite(String? planId) {
     final max = maxSlotsFor(planId);
     return max == null || max > 0;
+  }
+
+  /// Message lỗi hiển thị khi gửi lời mời thất bại. Trên iOS (App Store
+  /// 3.1.1) KHÔNG được nhắc "nâng cấp / mua gói" → thay lỗi đầy slot bằng
+  /// copy trung tính. Nền tảng khác giữ nguyên message tiếng Việt từ BE.
+  static String inviteErrorMessage({
+    required String? code,
+    required String beMessage,
+  }) {
+    final normalized = code?.toLowerCase().replaceAll(RegExp(r'[^a-z]'), '');
+    final isSlotLimit = normalized?.contains('slotlimitreached') ?? false;
+    if (AppConfig.hidePaidUpgradeUI && isSlotLimit) {
+      return 'Bạn đã đạt số nhân viên tối đa cho tài khoản hiện tại.';
+    }
+    return beMessage;
   }
 
   /// Evaluate whether the signed-in user can send another staff invite now.
@@ -88,7 +126,9 @@ class StaffEntitlement {
       return InviteEligibility.blocked(reason, message);
     }
 
-    final max = maxSlotsFor(planId);
+    // Trial im lặng (chưa gắn gói) vẫn được cấp [trialMaxSaleStaff] slot.
+    final max = effectiveMaxSlotsFor(planId, subscriptionStatus);
+    final isTrialOnly = planId == null && subscriptionStatus == 'trial';
     if (max == 0) {
       return InviteEligibility.blocked(
         InviteBlockReason.planNotAllowed,
@@ -97,10 +137,14 @@ class StaffEntitlement {
       );
     }
     if (enforceSlotLimit && max != null && usedSlots >= max) {
+      final message = isTrialOnly
+          ? 'Bản dùng thử chỉ cho phép $max nhân viên. '
+              'Nâng cấp lên gói Starter để mời thêm nhân viên.'
+          : 'Đã dùng hết $max lượt nhân viên của gói ${_planLabel(planId)}. '
+              'Nâng cấp lên Pro để mời không giới hạn.';
       return InviteEligibility.blocked(
         InviteBlockReason.slotLimitReached,
-        'Đã dùng hết $max lượt nhân viên của gói ${_planLabel(planId)}. '
-        'Nâng cấp lên Pro để mời không giới hạn.',
+        message,
       );
     }
 

@@ -66,6 +66,7 @@ import '../../features/verify/views/subscription_detail_screen.dart';
 import '../../features/verify/views/selfie_capture_screen.dart';
 import '../../features/verify/views/trial_active_screen.dart';
 import 'app_transitions.dart';
+import '../config/app_config.dart';
 
 class _RouterRefreshNotifier extends ChangeNotifier {
   _RouterRefreshNotifier(Ref ref) {
@@ -151,9 +152,28 @@ String? resolveRedirectPath({
     if (isAdminOnly) return '/admin';
   }
 
+  // iOS (Guideline 3.1.1): the paid-upgrade surface is hidden. Any deep-link /
+  // stray navigation to a plan-price or payment screen is bounced to dashboard
+  // so a reviewer can never reach an out-of-IAP purchase flow. KYC capture
+  // screens (cccd/selfie/pending/rejected) stay reachable — identity only.
+  if (AppConfig.hidePaidUpgradeUI) {
+    const hiddenPaymentRoutes = {
+      '/verify/select-plan',
+      '/verify/payment',
+      '/verify/approved', // trial-active shows plan price + renew CTA
+      '/verify/subscription-detail',
+      '/verify/payment-history',
+    };
+    if (hiddenPaymentRoutes.contains(path)) return '/dashboard';
+  }
+
   // OWNER without completed KYC: block every mutate page under /properties.
   // Keep /properties (list) accessible so the user can see status + CTA banner.
   // Backend still returns 403 if a request slips through — this is a UX guard.
+  //
+  // KYC (identity) is the only gate to create rooms — there is NO payment/plan
+  // requirement (the buy-plan step was removed). On iOS the KYC flow shows no
+  // payment wording; on both platforms KYC-approved owners can create freely.
   if (user != null && user.needsKyc) {
     if (path != '/properties' && path.startsWith('/properties/')) {
       // Route to the screen matching the SERVER status — a pending owner must

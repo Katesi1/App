@@ -280,6 +280,10 @@ class AuthNotifier extends StateNotifier<AuthState> {
     // token. Best-effort: still continue logout on failure.
     await PushNotificationService.instance.unregisterForUser();
     await _repo.logout();
+    // Đăng xuất chủ động → xoá credentials đã lưu để màn login không tự
+    // điền lại email/mật khẩu của tài khoản vừa thoát (remember-me chỉ phục
+    // vụ trường hợp token hết hạn, không phải logout thủ công).
+    await SecureStorage.clearCredentials();
     await CrashReporter.setUserId(null);
     state = AuthState();
   }

@@ -11,6 +11,7 @@ import '../../../core/utils/staff_entitlement.dart';
 import '../../../data/models/user_model.dart';
 import '../../../shared/widgets/app_scaffold.dart';
 import '../../../shared/widgets/loading_widget.dart';
+import '../../../shared/widgets/subscription_locked_sheet.dart';
 import '../../../shared/widgets/staff_upsell_view.dart';
 import '../../auth/controllers/auth_controller.dart';
 import '../controllers/staff_controller.dart';
@@ -571,9 +572,8 @@ class _InviteStaffSheetState extends ConsumerState<_InviteStaffSheet> {
     if (!_formKey.currentState!.validate()) return;
     setState(() => _submitting = true);
 
-    final (ok, msg) = await ref
-        .read(staffActionsProvider.notifier)
-        .invite(_emailCtrl.text.trim());
+    final notifier = ref.read(staffActionsProvider.notifier);
+    final (ok, msg) = await notifier.invite(_emailCtrl.text.trim());
 
     if (!mounted) return;
     setState(() => _submitting = false);
@@ -582,7 +582,18 @@ class _InviteStaffSheetState extends ConsumerState<_InviteStaffSheet> {
       AppSnackBar.success(context, msg);
       Navigator.pop(context, true);
     } else {
-      AppSnackBar.error(context, msg);
+      // BE 403 subscription.featureLocked → platform-aware sheet.
+      if (!SubscriptionLock.maybeHandle(context,
+          code: notifier.lastErrorCode, message: msg)) {
+        // 409 đầy slot: trên iOS thay copy "nâng cấp" bằng text trung tính.
+        AppSnackBar.error(
+          context,
+          StaffEntitlement.inviteErrorMessage(
+            code: notifier.lastErrorCode,
+            beMessage: msg,
+          ),
+        );
+      }
     }
   }
 
