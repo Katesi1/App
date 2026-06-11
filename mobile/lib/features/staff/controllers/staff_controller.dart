@@ -46,18 +46,20 @@ class StaffActionsNotifier extends StateNotifier<AsyncValue<void>> {
   StaffActionsNotifier(this._repo, this._ref)
       : super(const AsyncValue.data(null));
 
-  Future<(bool, String)> invite(String email) async {
+  /// Tạo lời mời. Trả về `(invite, message)` — `invite != null` là thành công,
+  /// mang theo `shortCode` + `inviteLink` vừa sinh để UI hiện cho OWNER share.
+  Future<(StaffInvite?, String)> invite(String email) async {
     state = const AsyncValue.loading();
     lastErrorCode = null;
     final result = await _repo.createInvite(email);
     if (result.success) {
       _ref.invalidate(staffInvitesProvider);
       state = const AsyncValue.data(null);
-      return (true, result.message);
+      return (result.data, result.message);
     }
     lastErrorCode = result.code;
     state = AsyncValue.error(result.message, StackTrace.current);
-    return (false, result.message);
+    return (null, result.message);
   }
 
   Future<(bool, String)> cancelInvite(String inviteId) async {

@@ -10,6 +10,7 @@ import '../../../core/theme/app_spacing.dart';
 import '../../../core/utils/staff_entitlement.dart';
 import '../../../data/models/user_model.dart';
 import '../../../shared/widgets/app_scaffold.dart';
+import '../../../shared/widgets/confirm_dialog.dart';
 import '../../../shared/widgets/loading_widget.dart';
 import '../../../shared/widgets/subscription_locked_sheet.dart';
 import '../../../shared/widgets/staff_upsell_view.dart';
@@ -36,7 +37,7 @@ class _StaffManagementScreenState extends ConsumerState<StaffManagementScreen>
   }
 
   Future<void> _openInviteSheet() async {
-    final created = await showModalBottomSheet<bool>(
+    final created = await showModalBottomSheet<StaffInvite>(
       context: context,
       isScrollControlled: true,
       backgroundColor: AppColors.surface,
@@ -45,8 +46,18 @@ class _StaffManagementScreenState extends ConsumerState<StaffManagementScreen>
       ),
       builder: (_) => const _InviteStaffSheet(),
     );
-    if (created == true && mounted) {
+    if (created != null && mounted) {
       _tabCtrl.animateTo(1); // switch to "Invites" tab
+      // Hiện ngay mã mời vừa tạo để OWNER copy/gửi cho nhân viên.
+      await showModalBottomSheet<void>(
+        context: context,
+        isScrollControlled: true,
+        backgroundColor: AppColors.surface,
+        shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+        ),
+        builder: (_) => _InviteCreatedSheet(invite: created),
+      );
     }
   }
 
@@ -76,9 +87,15 @@ class _StaffManagementScreenState extends ConsumerState<StaffManagementScreen>
     final user = ref.watch(currentUserProvider);
     final eligibility = _eligibility(user);
 
-    // Blocked (Mini / chưa có gói / chưa KYC / quá hạn...) → full-screen upsell
-    // telling the owner exactly what to buy/upgrade to unlock staff invites.
-    if (!eligibility.allowed) {
+    // Owner ĐÃ có quyền dùng tính năng nhưng dùng hết slot (vd trial = 1 nhân
+    // viên đã mời). KHÔNG chặn cả màn — vẫn hiện danh sách nhân viên hiện có;
+    // chỉ chặn lời mời mới (toast khi bấm FAB).
+    final atSlotLimit =
+        eligibility.blockReason == InviteBlockReason.slotLimitReached;
+
+    // Blocked thật sự (Mini / chưa có gói / chưa KYC / quá hạn...) → full-screen
+    // upsell nói rõ owner cần mua/nâng cấp gì để mở khoá mời nhân viên.
+    if (!eligibility.allowed && !atSlotLimit) {
       return AppScaffold(
         title: 'Quản lý nhân viên',
         body: StaffUpsellView(eligibility: eligibility, user: user),
@@ -89,7 +106,9 @@ class _StaffManagementScreenState extends ConsumerState<StaffManagementScreen>
       title: 'Quản lý nhân viên',
       body: Column(
         children: [
-          if (eligibility.remaining != null)
+          if (atSlotLimit)
+            _LimitReachedHint(message: _slotLimitMessage(eligibility))
+          else if (eligibility.remaining != null)
             _RemainingHint(remaining: eligibility.remaining!),
           Container(
             color: AppColors.surface,
@@ -120,10 +139,56 @@ class _StaffManagementScreenState extends ConsumerState<StaffManagementScreen>
         ],
       ),
       floatingActionButton: FloatingActionButton.extended(
-        onPressed: _openInviteSheet,
+        onPressed: atSlotLimit
+            ? () => AppSnackBar.error(context, _slotLimitMessage(eligibility))
+            : _openInviteSheet,
         icon: const Icon(Icons.person_add_rounded),
         label: const Text('Mời nhân viên'),
-        backgroundColor: AppColors.ocean,
+        backgroundColor: atSlotLimit ? AppColors.muted : AppColors.ocean,
+      ),
+    );
+  }
+
+  /// Copy hiển thị khi owner đã đạt số nhân viên tối đa. Dùng
+  /// [StaffEntitlement.inviteErrorMessage] để iOS (Guideline 3.1.1) thấy text
+  /// trung tính, nền tảng khác giữ message "nâng cấp" từ eligibility.
+  String _slotLimitMessage(InviteEligibility eligibility) =>
+      StaffEntitlement.inviteErrorMessage(
+        code: StaffEntitlement.slotLimitCode,
+        beMessage: eligibility.reason ??
+            'Bạn đã đạt số nhân viên tối đa cho gói hiện tại.',
+      );
+}
+
+/// Hiện khi owner đã dùng hết slot — vẫn giữ danh sách nhân viên, chỉ báo
+/// rằng không thể mời thêm (thay cho việc chặn cả màn hình).
+class _LimitReachedHint extends StatelessWidget {
+  final String message;
+  const _LimitReachedHint({required this.message});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding:
+          const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: 8),
+      color: AppColors.amber.withValues(alpha: 0.1),
+      child: Row(
+        children: [
+          const Icon(Icons.info_outline_rounded,
+              size: 14, color: AppColors.amber),
+          const SizedBox(width: 6),
+          Expanded(
+            child: Text(
+              message,
+              style: GoogleFonts.beVietnamPro(
+                fontSize: 11,
+                fontWeight: FontWeight.w500,
+                color: AppColors.brownDark,
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -218,26 +283,16 @@ class _StaffListTabState extends ConsumerState<_StaffListTab>
 
   Future<void> _confirmRemove(
       BuildContext context, WidgetRef ref, String userId, String name) async {
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (_) => AlertDialog(
-        title: const Text('Xoá nhân viên?'),
-        content: Text(
-            'Nhân viên "$name" sẽ bị vô hiệu hoá. Bạn có thể mời lại sau.'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('Huỷ'),
-          ),
-          FilledButton(
-            style: FilledButton.styleFrom(backgroundColor: AppColors.coral),
-            onPressed: () => Navigator.pop(context, true),
-            child: const Text('Xoá'),
-          ),
-        ],
-      ),
+    final label = name.isNotEmpty ? name : 'nhân viên này';
+    final confirmed = await ConfirmDialog.show(
+      context,
+      icon: Icons.person_remove_rounded,
+      title: 'Xoá nhân viên',
+      message: 'Nhân viên "$label" sẽ bị vô hiệu hoá. Bạn có thể mời lại sau.',
+      confirmLabel: 'Xoá',
+      destructive: true,
     );
-    if (confirmed != true) return;
+    if (!confirmed) return;
 
     final (ok, msg) =
         await ref.read(staffActionsProvider.notifier).removeStaff(userId);
@@ -573,14 +628,14 @@ class _InviteStaffSheetState extends ConsumerState<_InviteStaffSheet> {
     setState(() => _submitting = true);
 
     final notifier = ref.read(staffActionsProvider.notifier);
-    final (ok, msg) = await notifier.invite(_emailCtrl.text.trim());
+    final (invite, msg) = await notifier.invite(_emailCtrl.text.trim());
 
     if (!mounted) return;
     setState(() => _submitting = false);
 
-    if (ok) {
-      AppSnackBar.success(context, msg);
-      Navigator.pop(context, true);
+    if (invite != null) {
+      // Trả invite vừa tạo cho màn cha để hiện mã mời (shortCode + link).
+      Navigator.pop(context, invite);
     } else {
       // BE 403 subscription.featureLocked → platform-aware sheet.
       if (!SubscriptionLock.maybeHandle(context,
@@ -680,6 +735,195 @@ class _InviteStaffSheetState extends ConsumerState<_InviteStaffSheet> {
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+/// Hiện sau khi tạo lời mời thành công — show mã mời (`shortCode`) + liên kết
+/// để OWNER copy gửi cho nhân viên (nhân viên cũng nhận email kèm link).
+class _InviteCreatedSheet extends StatelessWidget {
+  final StaffInvite invite;
+  const _InviteCreatedSheet({required this.invite});
+
+  void _copy(BuildContext context, String text, String label) {
+    Clipboard.setData(ClipboardData(text: text));
+    AppSnackBar.success(context, 'Đã sao chép $label');
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final dateFmt = DateFormat('dd/MM/yyyy');
+    final hasLink = invite.inviteLink != null && invite.inviteLink!.isNotEmpty;
+
+    return Padding(
+      padding: EdgeInsets.fromLTRB(
+        AppSpacing.lg,
+        AppSpacing.md,
+        AppSpacing.lg,
+        AppSpacing.lg + MediaQuery.of(context).viewInsets.bottom,
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Center(
+            child: Container(
+              width: 40,
+              height: 4,
+              decoration: BoxDecoration(
+                color: AppColors.border,
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+          ),
+          const SizedBox(height: AppSpacing.lg),
+          Center(
+            child: Container(
+              width: 52,
+              height: 52,
+              decoration: BoxDecoration(
+                color: AppColors.emeraldLight,
+                borderRadius: BorderRadius.circular(14),
+              ),
+              child: const Icon(Icons.check_circle_outline_rounded,
+                  size: 28, color: AppColors.emerald),
+            ),
+          ),
+          const SizedBox(height: AppSpacing.md),
+          Text(
+            'Đã tạo lời mời',
+            textAlign: TextAlign.center,
+            style: GoogleFonts.beVietnamPro(
+              fontSize: 18,
+              fontWeight: FontWeight.w700,
+              color: AppColors.navy,
+            ),
+          ),
+          const SizedBox(height: AppSpacing.xs),
+          Text(
+            'Gửi mã mời dưới đây cho ${invite.email}. '
+            'Họ cũng đã nhận email kèm liên kết để đăng ký.',
+            textAlign: TextAlign.center,
+            style: GoogleFonts.beVietnamPro(
+              fontSize: 12,
+              height: 1.5,
+              color: AppColors.muted,
+            ),
+          ),
+          const SizedBox(height: AppSpacing.lg),
+          _CopyField(
+            label: 'Mã mời',
+            value: invite.shortCode,
+            mono: true,
+            onCopy: () => _copy(context, invite.shortCode, 'mã mời'),
+          ),
+          if (hasLink) ...[
+            const SizedBox(height: AppSpacing.sm),
+            _CopyField(
+              label: 'Liên kết',
+              value: invite.inviteLink!,
+              mono: false,
+              onCopy: () => _copy(context, invite.inviteLink!, 'liên kết'),
+            ),
+          ],
+          const SizedBox(height: AppSpacing.md),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Icon(Icons.schedule_rounded,
+                  size: 13, color: AppColors.muted),
+              const SizedBox(width: 4),
+              Text(
+                'Mã hết hạn ${dateFmt.format(invite.expiresAt)}',
+                style: GoogleFonts.beVietnamPro(
+                  fontSize: 11,
+                  color: AppColors.muted,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: AppSpacing.lg),
+          FilledButton(
+            onPressed: () => Navigator.pop(context),
+            style: FilledButton.styleFrom(
+              backgroundColor: AppColors.ocean,
+              padding: const EdgeInsets.symmetric(vertical: 14),
+            ),
+            child: const Text('Xong'),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Ô hiển thị giá trị (mã mời / liên kết) kèm nút sao chép.
+class _CopyField extends StatelessWidget {
+  final String label;
+  final String value;
+  final bool mono;
+  final VoidCallback onCopy;
+
+  const _CopyField({
+    required this.label,
+    required this.value,
+    required this.mono,
+    required this.onCopy,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.fromLTRB(
+          AppSpacing.md, AppSpacing.sm, AppSpacing.xs, AppSpacing.sm),
+      decoration: BoxDecoration(
+        color: AppColors.background,
+        borderRadius: BorderRadius.circular(AppRadius.md),
+        border: Border.all(color: AppColors.border),
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  label.toUpperCase(),
+                  style: GoogleFonts.beVietnamPro(
+                    fontSize: 10,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.muted,
+                    letterSpacing: 0.5,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  value,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: mono
+                      ? GoogleFonts.firaCode(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w700,
+                          color: AppColors.ocean,
+                          letterSpacing: 1,
+                        )
+                      : GoogleFonts.beVietnamPro(
+                          fontSize: 13,
+                          color: AppColors.navy,
+                        ),
+                ),
+              ],
+            ),
+          ),
+          IconButton(
+            onPressed: onCopy,
+            icon: const Icon(Icons.copy_rounded,
+                size: 18, color: AppColors.ocean),
+            tooltip: 'Sao chép',
+          ),
+        ],
       ),
     );
   }

@@ -4,11 +4,13 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../../core/theme/app_color_scheme.dart';
+import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../core/utils/helpers.dart';
 import '../../../core/utils/staff_entitlement.dart';
 import '../../../data/models/user_model.dart';
 import '../../../shared/widgets/app_scaffold.dart';
+import '../../../shared/widgets/confirm_dialog.dart';
 import '../../../shared/widgets/loading_widget.dart';
 import '../../../shared/widgets/staff_upsell_view.dart';
 import '../../auth/controllers/auth_controller.dart';
@@ -53,7 +55,14 @@ class _UserListScreenState extends ConsumerState<UserListScreen> {
     final isAdmin = currentUser?.isAdmin ?? false;
 
     final eligibility = _eligibility(currentUser);
-    final blocked = !eligibility.allowed;
+
+    // Đã có quyền dùng tính năng nhưng dùng hết slot (vd trial đã đủ nhân
+    // viên) → KHÔNG chặn cả màn. Vẫn hiện danh sách nhân viên hiện có; chỉ
+    // chặn thêm mới (toast khi bấm FAB). Các lý do khác (chưa KYC / chưa có
+    // gói / Mini...) vẫn chặn nguyên màn bằng upsell.
+    final atSlotLimit =
+        eligibility.blockReason == InviteBlockReason.slotLimitReached;
+    final blocked = !eligibility.allowed && !atSlotLimit;
 
     final usersAsync = ref.watch(staffListProvider);
 
@@ -61,12 +70,18 @@ class _UserListScreenState extends ConsumerState<UserListScreen> {
       title: isAdmin ? 'Quản lý nhân viên' : 'Nhân viên của tôi',
       showBottomNav: false,
       customAppBar: _buildAppBar(context, isAdmin),
-      floatingActionButton: blocked ? null : _buildFab(context, isAdmin),
+      floatingActionButton: blocked
+          ? null
+          : _buildFab(context, isAdmin, atSlotLimit, eligibility),
       // Blocked OWNER (no KYC / no plan / Mini) → upsell instead of the list.
       body: blocked
           ? StaffUpsellView(eligibility: eligibility, user: currentUser)
           : Column(
               children: [
+                // Đã đủ hạn mức → banner báo, vẫn cho xem danh sách.
+                if (atSlotLimit)
+                  _LimitReachedHint(message: _slotLimitMessage(eligibility)),
+
                 // ── Filter chips (ADMIN only) ───────────────────────────
                 if (isAdmin) _buildFilterChips(context),
 
@@ -218,26 +233,40 @@ class _UserListScreenState extends ConsumerState<UserListScreen> {
     );
   }
 
-  Widget _buildFab(BuildContext context, bool isAdmin) {
+  Widget _buildFab(
+    BuildContext context,
+    bool isAdmin,
+    bool atSlotLimit,
+    InviteEligibility eligibility,
+  ) {
     final colors = context.colors;
+    // Đã đủ hạn mức (OWNER) → FAB xám, bấm vào hiện toast thay vì mở sheet.
+    final dimmed = atSlotLimit && !isAdmin;
     return Container(
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(16),
-        gradient: LinearGradient(
-          colors: [colors.brandLight, colors.brand],
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: colors.brand.withValues(alpha: 0.35),
-            blurRadius: 16,
-            offset: const Offset(0, 6),
-          ),
-        ],
+        gradient: dimmed
+            ? null
+            : LinearGradient(
+                colors: [colors.brandLight, colors.brand],
+              ),
+        color: dimmed ? AppColors.muted : null,
+        boxShadow: dimmed
+            ? null
+            : [
+                BoxShadow(
+                  color: colors.brand.withValues(alpha: 0.35),
+                  blurRadius: 16,
+                  offset: const Offset(0, 6),
+                ),
+              ],
       ),
       child: FloatingActionButton.extended(
-        onPressed: isAdmin
-            ? () => context.push('/admin/users/new')
-            : () => _showAvailableStaffSheet(context),
+        onPressed: dimmed
+            ? () => AppSnackBar.error(context, _slotLimitMessage(eligibility))
+            : isAdmin
+                ? () => context.push('/admin/users/new')
+                : () => _showAvailableStaffSheet(context),
         icon: const Icon(Icons.person_add_rounded, size: 20),
         label: Text(
           isAdmin ? 'Thêm nhân viên' : 'Thêm vào đội',
@@ -253,6 +282,16 @@ class _UserListScreenState extends ConsumerState<UserListScreen> {
       ),
     );
   }
+
+  /// Copy khi OWNER đã đạt số nhân viên tối đa. Qua
+  /// [StaffEntitlement.inviteErrorMessage] để iOS (Guideline 3.1.1) thấy text
+  /// trung tính, nền tảng khác giữ message gốc từ eligibility.
+  String _slotLimitMessage(InviteEligibility eligibility) =>
+      StaffEntitlement.inviteErrorMessage(
+        code: StaffEntitlement.slotLimitCode,
+        beMessage: eligibility.reason ??
+            'Bạn đã đạt số nhân viên tối đa cho gói hiện tại.',
+      );
 
   /// OWNER views unassigned SALE list → tap to add to team.
   Future<void> _showAvailableStaffSheet(BuildContext context) async {
@@ -448,45 +487,17 @@ class _UserListScreenState extends ConsumerState<UserListScreen> {
 
   /// OWNER removes staff from team.
   Future<void> _removeStaff(BuildContext context, UserModel user) async {
-    final ok = await showDialog<bool>(
-      context: context,
-      builder: (ctx) {
-        final colors = ctx.colors;
-        return AlertDialog(
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(AppRadius.lg),
-          ),
-          title: Text(
-            'Gỡ nhân viên',
-            style: GoogleFonts.beVietnamPro(fontWeight: FontWeight.w700),
-          ),
-          content: Text(
-            'Gỡ "${user.name}" khỏi đội của bạn? Nhân viên này sẽ không thể xem phòng và lịch của bạn nữa.',
-            style: GoogleFonts.beVietnamPro(),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context, false),
-              child: Text('Huỷ',
-                  style: GoogleFonts.beVietnamPro(color: colors.textSecondary)),
-            ),
-            FilledButton(
-              style: FilledButton.styleFrom(
-                backgroundColor: colors.error,
-                foregroundColor: Colors.white,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(AppRadius.md),
-                ),
-              ),
-              onPressed: () => Navigator.pop(context, true),
-              child: Text('Gỡ',
-                  style: GoogleFonts.beVietnamPro(fontWeight: FontWeight.w600)),
-            ),
-          ],
-        );
-      },
+    final name = user.name.isNotEmpty ? user.name : 'nhân viên này';
+    final ok = await ConfirmDialog.show(
+      context,
+      icon: Icons.person_remove_rounded,
+      title: 'Gỡ nhân viên',
+      message:
+          'Gỡ "$name" khỏi đội của bạn? Nhân viên này sẽ không thể xem phòng và lịch của bạn nữa.',
+      confirmLabel: 'Gỡ',
+      destructive: true,
     );
-    if (ok != true || !context.mounted) return;
+    if (!ok || !context.mounted) return;
 
     final repo = ref.read(userRepositoryProvider);
     final response = await repo.removeMyStaff(user.id);
@@ -557,6 +568,40 @@ class _UserListScreenState extends ConsumerState<UserListScreen> {
     } else {
       AppSnackBar.error(context, 'Không thể cập nhật trạng thái');
     }
+  }
+}
+
+/// Banner khi OWNER đã dùng hết slot — vẫn giữ danh sách nhân viên, chỉ báo
+/// rằng không thể thêm nữa (thay cho việc chặn cả màn hình bằng upsell).
+class _LimitReachedHint extends StatelessWidget {
+  final String message;
+  const _LimitReachedHint({required this.message});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding:
+          const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: 8),
+      color: AppColors.amber.withValues(alpha: 0.1),
+      child: Row(
+        children: [
+          const Icon(Icons.info_outline_rounded,
+              size: 14, color: AppColors.amber),
+          const SizedBox(width: 6),
+          Expanded(
+            child: Text(
+              message,
+              style: GoogleFonts.beVietnamPro(
+                fontSize: 11,
+                fontWeight: FontWeight.w500,
+                color: AppColors.brownDark,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 }
 

@@ -39,9 +39,18 @@ class UserRepository {
   Future<ApiResponse<List<UserModel>>> getMyStaff() async {
     try {
       final response = await _dio.get('${ApiConstants.users}/my-staff');
-      final list = (response.data['data'] as List)
-          .map((e) => UserModel.fromJson(e))
-          .toList();
+      final list = (response.data['data'] as List).map((e) {
+        final map = Map<String, dynamic>.from(e as Map);
+        // Nhân viên trả về từ /my-staff = ĐÃ thuộc đội của OWNER hiện tại.
+        // Nếu BE không trả `saleMembershipStatus` (và không có `ownerId`),
+        // mặc định 'active' để không hiện nhầm badge "Chưa gán owner". Vẫn
+        // giữ nguyên state rõ ràng từ BE (invited | suspended).
+        final status = (map['saleMembershipStatus'] as String?)?.trim() ?? '';
+        if (status.isEmpty && map['ownerId'] == null) {
+          map['saleMembershipStatus'] = 'active';
+        }
+        return UserModel.fromJson(map);
+      }).toList();
       return ApiResponse(success: true, data: list, message: '');
     } on DioException catch (e) {
       return ApiResponse(success: false, message: parseDioError(e));
