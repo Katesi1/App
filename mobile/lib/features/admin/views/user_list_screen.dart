@@ -14,6 +14,7 @@ import '../../../shared/widgets/confirm_dialog.dart';
 import '../../../shared/widgets/loading_widget.dart';
 import '../../../shared/widgets/staff_upsell_view.dart';
 import '../../auth/controllers/auth_controller.dart';
+import '../../staff/views/widgets/invite_staff_sheet.dart';
 import '../controllers/user_controller.dart';
 
 class UserListScreen extends ConsumerStatefulWidget {
@@ -23,9 +24,19 @@ class UserListScreen extends ConsumerStatefulWidget {
   ConsumerState<UserListScreen> createState() => _UserListScreenState();
 }
 
-class _UserListScreenState extends ConsumerState<UserListScreen> {
+class _UserListScreenState extends ConsumerState<UserListScreen>
+    with SingleTickerProviderStateMixin {
   // null = all staff (OWNER + SALE, excludes ADMIN).
   int? _roleFilter;
+
+  // OWNER chỉ: tab "Nhân viên" | "Lời mời". ADMIN không dùng (tạo user qua form).
+  late final TabController _tabCtrl = TabController(length: 2, vsync: this);
+
+  @override
+  void dispose() {
+    _tabCtrl.dispose();
+    super.dispose();
+  }
 
   // 1=OWNER, 2=SALE
   static const _filterRoles = [2, 1];
@@ -64,8 +75,6 @@ class _UserListScreenState extends ConsumerState<UserListScreen> {
         eligibility.blockReason == InviteBlockReason.slotLimitReached;
     final blocked = !eligibility.allowed && !atSlotLimit;
 
-    final usersAsync = ref.watch(staffListProvider);
-
     return AppScaffold(
       title: isAdmin ? 'Quản lý nhân viên' : 'Nhân viên của tôi',
       showBottomNav: false,
@@ -85,78 +94,202 @@ class _UserListScreenState extends ConsumerState<UserListScreen> {
                 // ── Filter chips (ADMIN only) ───────────────────────────
                 if (isAdmin) _buildFilterChips(context),
 
-                // ── List ────────────────────────────────────────────────
-                Expanded(
-                  child: usersAsync.when(
-                    loading: () => SkeletonList(
-                      skeleton: const _UserCardSkeleton(),
-                      count: 6,
+                // ── OWNER: 2 tab Nhân viên | Lời mời ────────────────────
+                if (!isAdmin)
+                  TabBar(
+                    controller: _tabCtrl,
+                    labelColor: colors.brand,
+                    unselectedLabelColor: colors.textSecondary,
+                    indicatorColor: colors.brand,
+                    labelStyle: GoogleFonts.beVietnamPro(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
                     ),
-                    error: (e, _) => ErrorStateWidget(
-                      message: e.toString().replaceAll('Exception: ', ''),
-                      onRetry: () => ref.invalidate(staffListProvider),
-                    ),
-                    data: (allUsers) {
-                      // Exclude Admin from management list.
-                      final users = allUsers
-                          .where((u) => !u.isAdmin)
-                          .where((u) =>
-                              _roleFilter == null || u.role == _roleFilter)
-                          .toList();
-
-                      if (users.isEmpty) {
-                        return EmptyStateWidget(
-                          icon: Icons.people_outline_rounded,
-                          message: isAdmin
-                              ? (_roleFilter == null
-                                  ? 'Chưa có nhân viên nào'
-                                  : 'Không có ${AppHelpers.roleLabel(_roleFilter)} nào')
-                              : 'Chưa có nhân viên trong đội',
-                          onAction: isAdmin
-                              ? () => context.push('/admin/users/new')
-                              : () => _showAvailableStaffSheet(context),
-                          actionLabel:
-                              isAdmin ? 'Thêm nhân viên' : 'Thêm vào đội',
-                        );
-                      }
-
-                      return RefreshIndicator(
-                        color: colors.brand,
-                        onRefresh: () async =>
-                            ref.invalidate(staffListProvider),
-                        child: ListView.separated(
-                          padding: const EdgeInsets.fromLTRB(
-                            AppSpacing.md,
-                            AppSpacing.sm,
-                            AppSpacing.md,
-                            AppSpacing.xxl,
-                          ),
-                          itemCount: users.length,
-                          separatorBuilder: (_, __) =>
-                              const SizedBox(height: AppSpacing.sm),
-                          itemBuilder: (_, i) => _UserCard(
-                            user: users[i],
-                            animIndex: i,
-                            isAdmin: isAdmin,
-                            onTap: isAdmin
-                                ? () => context
-                                    .push('/admin/users/${users[i].id}/edit')
-                                : null,
-                            onToggleActive: isAdmin
-                                ? () => _toggleActive(context, users[i])
-                                : null,
-                            onRemoveStaff: !isAdmin
-                                ? () => _removeStaff(context, users[i])
-                                : null,
-                          ),
-                        ),
-                      );
-                    },
+                    tabs: const [
+                      Tab(text: 'Nhân viên'),
+                      Tab(text: 'Lời mời'),
+                    ],
                   ),
+
+                Expanded(
+                  child: isAdmin
+                      ? _buildStaffList(context, isAdmin)
+                      : TabBarView(
+                          controller: _tabCtrl,
+                          children: [
+                            _buildStaffList(context, isAdmin),
+                            const InvitesListTab(),
+                          ],
+                        ),
                 ),
               ],
             ),
     );
+  }
+
+  /// Danh sách nhân viên (dùng cho tab "Nhân viên" của OWNER và body ADMIN).
+  Widget _buildStaffList(BuildContext context, bool isAdmin) {
+    final colors = context.colors;
+    final usersAsync = ref.watch(staffListProvider);
+    return usersAsync.when(
+      loading: () => SkeletonList(
+        skeleton: const _UserCardSkeleton(),
+        count: 6,
+      ),
+      error: (e, _) => ErrorStateWidget(
+        message: e.toString().replaceAll('Exception: ', ''),
+        onRetry: () => ref.invalidate(staffListProvider),
+      ),
+      data: (allUsers) {
+        // Exclude Admin from management list.
+        final users = allUsers
+            .where((u) => !u.isAdmin)
+            .where((u) => _roleFilter == null || u.role == _roleFilter)
+            .toList();
+
+        if (users.isEmpty) {
+          return EmptyStateWidget(
+            icon: Icons.people_outline_rounded,
+            message: isAdmin
+                ? (_roleFilter == null
+                    ? 'Chưa có nhân viên nào'
+                    : 'Không có ${AppHelpers.roleLabel(_roleFilter)} nào')
+                : 'Chưa có nhân viên trong đội',
+            onAction: isAdmin
+                ? () => context.push('/admin/users/new')
+                : () => _showAddToTeamChooser(context),
+            actionLabel: isAdmin ? 'Thêm nhân viên' : 'Thêm vào đội',
+          );
+        }
+
+        return RefreshIndicator(
+          color: colors.brand,
+          onRefresh: () async => ref.invalidate(staffListProvider),
+          child: ListView.separated(
+            padding: const EdgeInsets.fromLTRB(
+              AppSpacing.md,
+              AppSpacing.sm,
+              AppSpacing.md,
+              AppSpacing.xxl,
+            ),
+            itemCount: users.length,
+            separatorBuilder: (_, __) => const SizedBox(height: AppSpacing.sm),
+            itemBuilder: (_, i) => _UserCard(
+              user: users[i],
+              animIndex: i,
+              isAdmin: isAdmin,
+              onTap: isAdmin
+                  ? () => context.push('/admin/users/${users[i].id}/edit')
+                  : null,
+              onToggleActive: isAdmin
+                  ? () => _toggleActive(context, users[i])
+                  : null,
+              onRemoveStaff: !isAdmin
+                  ? () => _removeStaff(context, users[i])
+                  : null,
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  /// OWNER bấm "Thêm vào đội" → chọn 1 trong 2: mời qua email (BE sinh mã) hoặc
+  /// chọn nhân viên đã có tài khoản. Sau khi mời email xong → nhảy sang tab
+  /// "Lời mời" để OWNER thấy mã vừa tạo trong danh sách.
+  Future<void> _showAddToTeamChooser(BuildContext context) async {
+    final choice = await showModalBottomSheet<String>(
+      context: context,
+      backgroundColor: context.colors.bgSurface,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(AppRadius.xl)),
+      ),
+      builder: (ctx) {
+        final colors = ctx.colors;
+        return SafeArea(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Padding(
+                padding: const EdgeInsets.only(top: 12, bottom: 4),
+                child: Container(
+                  width: 40,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: colors.borderDefault,
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(20, 12, 20, 4),
+                child: Align(
+                  alignment: Alignment.centerLeft,
+                  child: Text(
+                    'Thêm nhân viên vào đội',
+                    style: GoogleFonts.beVietnamPro(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w700,
+                      color: colors.textPrimary,
+                    ),
+                  ),
+                ),
+              ),
+              ListTile(
+                leading: Icon(Icons.mail_outline_rounded, color: colors.brand),
+                title: Text(
+                  'Mời qua email mới',
+                  style: GoogleFonts.beVietnamPro(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                    color: colors.textPrimary,
+                  ),
+                ),
+                subtitle: Text(
+                  'Gửi email kèm mã mời để nhân viên tự đăng ký',
+                  style: GoogleFonts.beVietnamPro(
+                    fontSize: 12,
+                    color: colors.textSecondary,
+                  ),
+                ),
+                onTap: () => Navigator.pop(ctx, 'email'),
+              ),
+              ListTile(
+                leading:
+                    Icon(Icons.person_search_rounded, color: colors.brand),
+                title: Text(
+                  'Chọn nhân viên đã có tài khoản',
+                  style: GoogleFonts.beVietnamPro(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                    color: colors.textPrimary,
+                  ),
+                ),
+                subtitle: Text(
+                  'Thêm SALE đã đăng ký nhưng chưa thuộc đội nào',
+                  style: GoogleFonts.beVietnamPro(
+                    fontSize: 12,
+                    color: colors.textSecondary,
+                  ),
+                ),
+                onTap: () => Navigator.pop(ctx, 'existing'),
+              ),
+              const SizedBox(height: 8),
+            ],
+          ),
+        );
+      },
+    );
+
+    if (!context.mounted || choice == null) return;
+    if (choice == 'email') {
+      final invite = await showInviteStaffFlow(context);
+      if (invite != null && mounted) {
+        _tabCtrl.animateTo(1); // sang tab "Lời mời" xem mã vừa tạo
+      }
+    } else {
+      await _showAvailableStaffSheet(context);
+    }
   }
 
   /// Minimal app bar (back + title) — replaces the old gradient header; the
@@ -266,7 +399,7 @@ class _UserListScreenState extends ConsumerState<UserListScreen> {
             ? () => AppSnackBar.error(context, _slotLimitMessage(eligibility))
             : isAdmin
                 ? () => context.push('/admin/users/new')
-                : () => _showAvailableStaffSheet(context),
+                : () => _showAddToTeamChooser(context),
         icon: const Icon(Icons.person_add_rounded, size: 20),
         label: Text(
           isAdmin ? 'Thêm nhân viên' : 'Thêm vào đội',

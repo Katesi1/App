@@ -272,52 +272,89 @@ class DashboardScreen extends ConsumerWidget {
                       const SizedBox(height: 12),
                       SizedBox(
                         height: 96,
-                        child: ListView(
-                          scrollDirection: Axis.horizontal,
-                          // Compensates parent Column's horizontal: 16 so first/last
-                          // items don't touch screen edges.
-                          padding: EdgeInsets.zero,
-                          physics: const BouncingScrollPhysics(),
+                        child: Stack(
                           children: [
-                            _QuickAction(
-                              icon: Icons.add_rounded,
-                              label: 'Booking',
-                              color: colors.brand,
-                              onTap: () => context.push('/bookings'),
+                            ListView(
+                              scrollDirection: Axis.horizontal,
+                              // Compensates parent Column's horizontal: 16 so
+                              // first/last items don't touch screen edges.
+                              padding: EdgeInsets.zero,
+                              physics: const BouncingScrollPhysics(),
+                              children: [
+                                _QuickAction(
+                                  icon: Icons.add_rounded,
+                                  label: 'Booking',
+                                  color: colors.brand,
+                                  onTap: () => context.push('/bookings'),
+                                ),
+                                const SizedBox(width: 10),
+                                _QuickAction(
+                                  icon: Icons.login_rounded,
+                                  label: 'Check-in',
+                                  color: colors.brandLight,
+                                  onTap: () => context.push('/front-desk'),
+                                ),
+                                const SizedBox(width: 10),
+                                _QuickAction(
+                                  icon: Icons.logout_rounded,
+                                  label: 'Check-out',
+                                  color: colors.brandSecondary,
+                                  onTap: () => context
+                                      .push('/front-desk?tab=departures'),
+                                ),
+                                if (user?.canManageProperty ?? false) ...[
+                                  const SizedBox(width: 10),
+                                  _QuickAction(
+                                    icon: Icons.add_home_rounded,
+                                    label: 'Thêm phòng',
+                                    color: colors.success,
+                                    onTap: () =>
+                                        context.push('/properties/new'),
+                                  ),
+                                ],
+                                if (user?.isOwner ?? false) ...[
+                                  const SizedBox(width: 10),
+                                  _QuickAction(
+                                    icon: Icons.group_add_rounded,
+                                    label: 'Nhân viên',
+                                    color: colors.brandSecondary,
+                                    onTap: () => context.push('/admin/users'),
+                                  ),
+                                ],
+                                // Đệm phải để item cuối không bị mũi tên gợi ý
+                                // che mất khi cuộn tới cuối.
+                                const SizedBox(width: 28),
+                              ],
                             ),
-                            const SizedBox(width: 10),
-                            _QuickAction(
-                              icon: Icons.login_rounded,
-                              label: 'Check-in',
-                              color: colors.brandLight,
-                              onTap: () => context.push('/front-desk'),
-                            ),
-                            const SizedBox(width: 10),
-                            _QuickAction(
-                              icon: Icons.logout_rounded,
-                              label: 'Check-out',
-                              color: colors.brandSecondary,
-                              onTap: () =>
-                                  context.push('/front-desk?tab=departures'),
-                            ),
-                            if (user?.canManageProperty ?? false) ...[
-                              const SizedBox(width: 10),
-                              _QuickAction(
-                                icon: Icons.add_home_rounded,
-                                label: 'Thêm phòng',
-                                color: colors.success,
-                                onTap: () => context.push('/properties/new'),
+                            // Gợi ý "còn cuộn ngang": fade mờ + mũi tên ở mép
+                            // phải, giúp OWNER không rành biết còn thao tác bên
+                            // phải (vd "Nhân viên").
+                            Positioned(
+                              right: 0,
+                              top: 0,
+                              bottom: 0,
+                              child: IgnorePointer(
+                                child: Container(
+                                  width: 44,
+                                  alignment: Alignment.centerRight,
+                                  decoration: BoxDecoration(
+                                    gradient: LinearGradient(
+                                      begin: Alignment.centerLeft,
+                                      end: Alignment.centerRight,
+                                      colors: [
+                                        colors.bgCanvas.withValues(alpha: 0),
+                                        colors.bgCanvas,
+                                      ],
+                                    ),
+                                  ),
+                                  child: Icon(
+                                    Icons.chevron_right_rounded,
+                                    size: 22,
+                                    color: colors.textSecondary,
+                                  ),
+                                ),
                               ),
-                            ],
-                            if (user?.isOwner ?? false) ...[
-                              const SizedBox(width: 10),
-                              _QuickAction(
-                                icon: Icons.group_add_rounded,
-                                label: 'Nhân viên',
-                                color: colors.brandSecondary,
-                                onTap: () => context.push('/staff/manage'),
-                              ),
-                            ],
+                            ),
                           ],
                         ),
                       ),

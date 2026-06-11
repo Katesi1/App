@@ -12,9 +12,8 @@ import '../../data/models/user_model.dart';
 /// Full-screen upsell shown when an OWNER can't add/invite staff — explains the
 /// reason and points to the exact next action (verify / buy / upgrade / renew).
 ///
-/// Shared between the OWNER staff list ([/admin/users]) and the invite screen
-/// ([/staff/manage]) so both surfaces show the same "Starter+ to add staff"
-/// message and CTA.
+/// Shown on the OWNER staff page ([/admin/users]) so the surface shows the
+/// "Starter+ to add staff" message and CTA.
 /// Block reasons rooted in the subscription/payment state — on iOS these are
 /// surfaced as a neutral "feature unavailable" card (no purchase CTA) to comply
 /// with App Store Guideline 3.1.1.

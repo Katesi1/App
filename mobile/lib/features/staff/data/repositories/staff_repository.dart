@@ -3,7 +3,6 @@ import 'package:dio/dio.dart';
 import '../../../../core/constants/api_constants.dart';
 import '../../../../core/network/api_client.dart';
 import '../../../../core/network/api_response.dart';
-import '../../../../core/storage/secure_storage.dart';
 import '../../../../data/models/user_model.dart';
 import '../models/staff_invite.dart';
 
@@ -12,9 +11,11 @@ sealed class AcceptInviteOutcome {
   const AcceptInviteOutcome();
 }
 
+/// Accept thành công — BE đã tạo tài khoản SALE + tiêu mã mời. Giống
+/// `/auth/login`, endpoint chỉ trả tokens (KHÔNG trả `user`) → FE không tự
+/// đăng nhập ở đây mà điều hướng nhân viên sang màn đăng nhập.
 class AcceptInviteSuccess extends AcceptInviteOutcome {
-  final UserModel user;
-  const AcceptInviteSuccess(this.user);
+  const AcceptInviteSuccess();
 }
 
 class AcceptInviteFailure extends AcceptInviteOutcome {
@@ -156,33 +157,15 @@ class StaffRepository {
 
   Future<AcceptInviteOutcome> _accept({required Map<String, dynamic> body}) async {
     try {
-      final response = await _dio.post(
-        ApiConstants.staffInviteAccept,
-        data: body,
-      );
-      final payload = response.data['data'];
-      if (payload is! Map<String, dynamic>) {
-        return const AcceptInviteFailure(
-          'Phản hồi accept invite không đúng định dạng',
-        );
-      }
-      final access = payload['accessToken'] as String?;
-      final refresh = payload['refreshToken'] as String?;
-      final userMap = payload['user'];
-      if (access == null ||
-          refresh == null ||
-          userMap is! Map<String, dynamic>) {
-        return const AcceptInviteFailure('Thiếu token hoặc user từ máy chủ');
-      }
-      await SecureStorage.saveAccessToken(access);
-      await SecureStorage.saveRefreshToken(refresh);
-      final user = UserModel.fromJson(userMap);
-      await SecureStorage.saveUserData(user.toJsonString());
-      return AcceptInviteSuccess(user);
+      // BE giống `/auth/login`: 2xx = tài khoản SALE đã được tạo + mã mời đã
+      // tiêu. Endpoint CHỈ trả tokens (KHÔNG có `user`) nên KHÔNG parse/đòi
+      // `user` ở đây — chỉ cần thành công rồi cho nhân viên sang màn đăng nhập.
+      await _dio.post(ApiConstants.staffInviteAccept, data: body);
+      return const AcceptInviteSuccess();
     } on DioException catch (e) {
       return AcceptInviteFailure(parseDioError(e));
     } catch (e) {
-      return AcceptInviteFailure('Accept invite thất bại: $e');
+      return AcceptInviteFailure('Tham gia thất bại: $e');
     }
   }
 

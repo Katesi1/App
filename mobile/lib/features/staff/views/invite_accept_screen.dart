@@ -139,9 +139,14 @@ class _InviteAcceptScreenState extends ConsumerState<InviteAcceptScreen> {
 
   void _handleAcceptOutcome(AcceptInviteOutcome outcome) {
     switch (outcome) {
-      case AcceptInviteSuccess(:final user):
-        ref.read(authProvider.notifier).applyExternalLogin(user);
-        AppSnackBar.success(context, 'Chấp nhận lời mời thành công');
+      case AcceptInviteSuccess():
+        // Tài khoản đã tạo xong (mã mời đã tiêu). Đưa nhân viên sang màn đăng
+        // nhập để vào bằng email/mật khẩu hoặc Google vừa đăng ký.
+        AppSnackBar.success(
+          context,
+          'Đăng ký thành công! Vui lòng đăng nhập để bắt đầu.',
+        );
+        context.go('/login');
       case AcceptInviteFailure(:final message):
         setState(() {
           _accepting = false;

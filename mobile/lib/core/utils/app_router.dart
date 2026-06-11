@@ -19,7 +19,6 @@ import '../../features/auth/views/register_screen.dart';
 import '../../features/auth/views/role_picker_screen.dart';
 import '../../features/auth/views/splash_screen.dart';
 import '../../features/staff/views/invite_accept_screen.dart';
-import '../../features/staff/views/staff_management_screen.dart';
 import '../../features/bookings/views/booking_calendar_screen.dart';
 import '../../features/bookings/views/owner_calendar_screen.dart';
 import '../../features/bookings/views/booking_list_screen.dart';
@@ -107,13 +106,6 @@ String? resolveRedirectPath({
   // Admin-only namespace.
   if (user != null && !(user.isAdmin || user.isOwner)) {
     if (path.startsWith('/admin')) return '/dashboard';
-  }
-
-  // OWNER only manages staff.
-  if (user != null && !user.isOwner) {
-    if (path == '/staff/manage' || path.startsWith('/staff/manage/')) {
-      return '/dashboard';
-    }
   }
 
   // SALE without active membership (invited/suspended/unassigned) is locked
@@ -228,12 +220,6 @@ final routerProvider = Provider<GoRouter>((ref) {
           final token = state.uri.queryParameters['token'];
           return InviteAcceptScreen(initialToken: token);
         },
-      ),
-
-      // OWNER staff management (invites + list).
-      GoRoute(
-        path: '/staff/manage',
-        builder: (_, __) => const StaffManagementScreen(),
       ),
 
       // Notifications
