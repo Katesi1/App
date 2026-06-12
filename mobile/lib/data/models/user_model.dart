@@ -177,12 +177,16 @@ class UserModel {
   int? get maxRoomsForPlan =>
       RoomEntitlement.maxRoomsForPlanId(subscriptionPlanId);
 
-  bool canAddMoreRooms(int currentRoomCount, {int adding = 1}) =>
-      RoomEntitlement.canAddRooms(
-        planId: subscriptionPlanId,
-        currentRoomCount: currentRoomCount,
-        adding: adding,
-      );
+  bool canAddMoreRooms(int currentRoomCount, {int adding = 1}) {
+    // Silent trial chưa gắn plan → không hard-block client; để BE gate số phòng
+    // (planId null → pure util trả max=0 → sẽ chặn nhầm).
+    if (SubscriptionGating.isSilentTrial(this)) return true;
+    return RoomEntitlement.canAddRooms(
+      planId: subscriptionPlanId,
+      currentRoomCount: currentRoomCount,
+      adding: adding,
+    );
+  }
 
   String roomQuotaAtLimitMessage(int currentCount) =>
       RoomEntitlement.atLimitMessage(
@@ -232,6 +236,9 @@ class UserModel {
   String get subscriptionMenuSubtitle {
     if (isInTrial) {
       final days = trialDaysLeft ?? 0;
+      if (SubscriptionGating.isSilentTrial(this)) {
+        return 'Bản dùng thử · còn $days ngày';
+      }
       return 'Trial $subscriptionPlanLabel · còn $days ngày';
     }
     if (isSubscriptionActive) {
@@ -283,8 +290,13 @@ class UserModel {
   bool get hasStaffInviteSubscription => isInTrial || isSubscriptionActive;
 
   /// `null` = không giới hạn slot. `0` = gói không hỗ trợ mời.
-  int? get maxStaffInviteSlots =>
-      StaffEntitlement.maxSlotsForPlanId(subscriptionPlanId);
+  int? get maxStaffInviteSlots {
+    // Silent trial chưa gắn plan → BE cho mời 1 SALE (chip hiển thị 0/1).
+    if (SubscriptionGating.isSilentTrial(this)) {
+      return SubscriptionGating.trialDefaultStaffSlots;
+    }
+    return StaffEntitlement.maxSlotsForPlanId(subscriptionPlanId);
+  }
 
   bool get canInviteStaff => SubscriptionGating.canInviteStaff(this);
 

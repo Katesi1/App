@@ -1,4 +1,5 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../../core/network/api_failure.dart';
 import '../../../data/models/homestay_model.dart';
 import '../../../data/repositories/homestay_repository.dart';
 import '../../bookings/controllers/booking_controller.dart';
@@ -19,7 +20,9 @@ final homestayListProvider = FutureProvider.family<List<HomestayModel>, bool>(
     (ref, includeInactive) async {
   final repo = ref.read(homestayRepositoryProvider);
   final result = await repo.getHomestays(includeInactive: includeInactive);
-  if (result.success) return result.data ?? (throw Exception('Dữ liệu trả về trống'));
+  if (result.success) {
+    return result.data ?? (throw Exception('Dữ liệu trả về trống'));
+  }
   throw Exception(result.message);
 });
 
@@ -28,7 +31,9 @@ final homestayDetailProvider =
     FutureProvider.family<HomestayModel, String>((ref, id) async {
   final repo = ref.read(homestayRepositoryProvider);
   final result = await repo.getHomestay(id);
-  if (result.success) return result.data ?? (throw Exception('Dữ liệu trả về trống'));
+  if (result.success) {
+    return result.data ?? (throw Exception('Dữ liệu trả về trống'));
+  }
   throw Exception(result.message);
 });
 
@@ -62,7 +67,11 @@ class HomestayActionsNotifier extends StateNotifier<AsyncValue<void>> {
       state = const AsyncValue.data(null);
       return result.data?.id ?? (throw Exception('Dữ liệu trả về trống'));
     }
-    state = AsyncValue.error(result.message, StackTrace.current);
+    state = AsyncValue.error(
+      ApiFailure(result.message,
+          code: result.code, statusCode: result.statusCode),
+      StackTrace.current,
+    );
     return null;
   }
 
@@ -74,7 +83,11 @@ class HomestayActionsNotifier extends StateNotifier<AsyncValue<void>> {
       state = const AsyncValue.data(null);
       return true;
     }
-    state = AsyncValue.error(result.message, StackTrace.current);
+    state = AsyncValue.error(
+      ApiFailure(result.message,
+          code: result.code, statusCode: result.statusCode),
+      StackTrace.current,
+    );
     return false;
   }
 
@@ -86,7 +99,11 @@ class HomestayActionsNotifier extends StateNotifier<AsyncValue<void>> {
       state = const AsyncValue.data(null);
       return true;
     }
-    state = AsyncValue.error(result.message, StackTrace.current);
+    state = AsyncValue.error(
+      ApiFailure(result.message,
+          code: result.code, statusCode: result.statusCode),
+      StackTrace.current,
+    );
     return false;
   }
 
@@ -98,7 +115,11 @@ class HomestayActionsNotifier extends StateNotifier<AsyncValue<void>> {
       state = const AsyncValue.data(null);
       return true;
     }
-    state = AsyncValue.error(result.message, StackTrace.current);
+    state = AsyncValue.error(
+      ApiFailure(result.message,
+          code: result.code, statusCode: result.statusCode),
+      StackTrace.current,
+    );
     return false;
   }
 }

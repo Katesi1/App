@@ -3,10 +3,12 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
+import '../../../core/network/api_failure.dart';
 import '../../../core/theme/app_color_scheme.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
 import 'package:cached_network_image/cached_network_image.dart';
+import '../../../shared/widgets/feature_locked.dart';
 import '../../../shared/widgets/loading_widget.dart';
 import '../../rooms/controllers/room_controller.dart';
 import '../../auth/controllers/auth_controller.dart';
@@ -329,7 +331,18 @@ class _PropertyManageScreenState extends ConsumerState<PropertyManageScreen> {
       if (ok) {
         ref.invalidate(roomDetailProvider(widget.homestayId));
       } else {
-        AppSnackBar.error(context, 'Không thể cập nhật trạng thái');
+        final err = ref.read(homestayActionsProvider).error;
+        final user = ref.read(currentUserProvider);
+        if (err is ApiFailure &&
+            user != null &&
+            handleFeatureLocked(context, err, user)) {
+          return;
+        }
+        AppSnackBar.error(
+            context,
+            err is ApiFailure
+                ? err.toString()
+                : 'Không thể cập nhật trạng thái');
       }
     }
   }
@@ -377,9 +390,15 @@ class _PropertyManageScreenState extends ConsumerState<PropertyManageScreen> {
       AppSnackBar.success(context, 'Đã xoá thành công');
       context.pop();
     } else {
-      final error = ref.read(homestayActionsProvider);
-      final msg = error.hasError
-          ? error.error.toString().replaceAll('Exception: ', '')
+      final err = ref.read(homestayActionsProvider).error;
+      final user = ref.read(currentUserProvider);
+      if (err is ApiFailure &&
+          user != null &&
+          handleFeatureLocked(context, err, user)) {
+        return;
+      }
+      final msg = err is ApiFailure
+          ? err.toString().replaceAll('Exception: ', '')
           : 'Không thể xoá';
       AppSnackBar.error(context, msg);
     }

@@ -7,10 +7,13 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:image_picker/image_picker.dart';
+import '../../../core/network/api_failure.dart';
 import '../../../core/theme/app_color_scheme.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
+import '../../../shared/widgets/feature_locked.dart';
 import '../../../shared/widgets/loading_widget.dart';
+import '../../auth/controllers/auth_controller.dart';
 import '../../rooms/controllers/room_controller.dart';
 import '../controllers/property_controller.dart';
 
@@ -237,9 +240,15 @@ class _PropertyAddScreenState extends ConsumerState<PropertyAddScreen> {
       context.pop();
     } else {
       setState(() => _isLoading = false);
-      final err = ref.read(homestayActionsProvider);
+      final err = ref.read(homestayActionsProvider).error;
+      final user = ref.read(currentUserProvider);
+      if (err is ApiFailure &&
+          user != null &&
+          handleFeatureLocked(context, err, user)) {
+        return;
+      }
       AppSnackBar.error(
-          context, err.hasError ? err.error.toString() : 'Có lỗi xảy ra');
+          context, err is ApiFailure ? err.toString() : 'Có lỗi xảy ra');
     }
   }
 

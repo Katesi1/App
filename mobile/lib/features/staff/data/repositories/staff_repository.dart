@@ -60,7 +60,7 @@ class StaffRepository {
         message: response.data['message']?.toString() ?? 'Đã gửi lời mời',
       );
     } on DioException catch (e) {
-      return ApiResponse(success: false, message: parseDioError(e));
+      return ApiResponse.fromDioError(e);
     }
   }
 

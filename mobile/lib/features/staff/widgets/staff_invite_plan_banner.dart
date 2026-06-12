@@ -5,8 +5,8 @@ import 'package:google_fonts/google_fonts.dart';
 import '../../../core/theme/app_color_scheme.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../core/utils/staff_entitlement.dart';
+import '../../../core/utils/subscription_gating.dart';
 import '../../../data/models/user_model.dart';
-import '../../../shared/widgets/app_toast.dart';
 
 /// Banner khóa / hướng dẫn nâng cấp khi gói không cho mời nhân viên.
 class StaffInvitePlanBanner extends StatelessWidget {
@@ -17,12 +17,16 @@ class StaffInvitePlanBanner extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = context.colors;
-    final canInvite = user.canInviteStaff;
+    final block = SubscriptionGating.staffInviteBlock(user);
     final reason = user.staffInviteBlockReason;
-    if (canInvite || reason.isEmpty) return const SizedBox.shrink();
+    if (block == StaffInviteBlock.none || reason.isEmpty) {
+      return const SizedBox.shrink();
+    }
 
-    final showUpgrade =
-        user.hasStaffInviteSubscription && (user.maxStaffInviteSlots ?? 0) == 0;
+    // Chỉ gợi ý mua/nâng gói khi lý do thật sự là gói (chưa có gói / Mini).
+    // KYC → CTA xác minh; đã có gói (trial/active) → KHÔNG hiện nút gói.
+    final isPlanBlock = block == StaffInviteBlock.plan;
+    final isKycBlock = block == StaffInviteBlock.kyc;
 
     return Container(
       margin: const EdgeInsets.fromLTRB(
@@ -75,7 +79,7 @@ class StaffInvitePlanBanner extends StatelessWidget {
               ),
             ],
           ),
-          if (showUpgrade) ...[
+          if (isPlanBlock) ...[
             const SizedBox(height: AppSpacing.sm),
             Text(
               'Gói ${StaffEntitlement.minPlanLabel} trở lên: mời nhân viên qua '
@@ -87,34 +91,27 @@ class StaffInvitePlanBanner extends StatelessWidget {
               ),
             ),
           ],
-          const SizedBox(height: AppSpacing.sm),
-          Align(
-            alignment: Alignment.centerRight,
-            child: TextButton(
-              onPressed: showUpgrade || !user.hasStaffInviteSubscription
-                  ? () => AppToast.show(
-                        context,
-                        message:
-                            'Để mời nhân viên, bạn cần tối thiểu gói '
-                            '${StaffEntitlement.minPlanLabel}.',
-                        type: AppToastType.info,
-                        actionLabel: 'Nâng cấp ngay →',
-                        onAction: () =>
-                            context.push(user.subscriptionPlanPickerRoute),
-                      )
-                  : () => context.push(user.subscriptionPlanPickerRoute),
-              child: Text(
-                showUpgrade || !user.hasStaffInviteSubscription
-                    ? 'Xem gói nâng cấp'
-                    : 'Quản lý gói',
-                style: GoogleFonts.beVietnamPro(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w600,
-                  color: colors.brand,
+          // Đã có gói (trial/active) bị chặn vì KYC → CTA xác minh, KHÔNG hiện
+          // nút mua/quản lý gói. Chỉ block do gói mới hiện nút nâng gói.
+          if (isPlanBlock || isKycBlock) ...[
+            const SizedBox(height: AppSpacing.sm),
+            Align(
+              alignment: Alignment.centerRight,
+              child: TextButton(
+                onPressed: isKycBlock
+                    ? () => context.push('/verify/cccd-front')
+                    : () => context.push(user.subscriptionPlanPickerRoute),
+                child: Text(
+                  isKycBlock ? 'Xác minh ngay' : 'Xem gói nâng cấp',
+                  style: GoogleFonts.beVietnamPro(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    color: colors.brand,
+                  ),
                 ),
               ),
             ),
-          ),
+          ],
         ],
       ),
     );

@@ -5,16 +5,19 @@ import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 
+import '../../../core/network/api_failure.dart';
 import '../../../core/theme/app_color_scheme.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../core/utils/staff_entitlement.dart';
+import '../../../core/utils/subscription_gating.dart';
 import '../../../data/models/user_model.dart';
 import '../../auth/controllers/auth_controller.dart';
 import '../../verify/controllers/verify_flow_controller.dart';
 import '../../verify/data/models/verify_enums.dart';
 import '../../../shared/widgets/app_scaffold.dart';
 import '../../../shared/widgets/app_toast.dart';
+import '../../../shared/widgets/feature_locked.dart';
 import '../../../shared/widgets/loading_widget.dart';
 import '../controllers/staff_controller.dart';
 import '../data/models/staff_invite.dart';
@@ -118,6 +121,10 @@ class _StaffManagementScreenState extends ConsumerState<StaffManagementScreen>
     final colors = context.colors;
     final user = ref.watch(currentUserProvider);
     final canInvite = user?.canInviteStaff ?? false;
+    // Chỉ hiện FAB "Nâng cấp gói" khi bị chặn do GÓI (chưa có gói / Mini).
+    // Đã có gói (trial/active) bị chặn do KYC → ẩn FAB, banner lo CTA xác minh.
+    final blockedByPlan = user != null &&
+        SubscriptionGating.staffInviteBlock(user) == StaffInviteBlock.plan;
 
     return AppScaffold(
       title: 'Quản lý nhân viên',
@@ -168,7 +175,7 @@ class _StaffManagementScreenState extends ConsumerState<StaffManagementScreen>
                   label: const Text('Mời nhân viên'),
                   backgroundColor: colors.brand,
                 )
-              : user != null
+              : blockedByPlan
                   ? FloatingActionButton.extended(
                       onPressed: () => _onUpgradeFabTapped(user),
                       icon: const Icon(Icons.lock_outline_rounded),
@@ -481,8 +488,8 @@ class _InviteTile extends ConsumerWidget {
               alignment: Alignment.centerRight,
               child: TextButton.icon(
                 onPressed: () => _confirmCancel(context, ref),
-                icon: Icon(Icons.cancel_outlined,
-                    size: 16, color: colors.error),
+                icon:
+                    Icon(Icons.cancel_outlined, size: 16, color: colors.error),
                 label: Text(
                   'Huỷ lời mời',
                   style: GoogleFonts.beVietnamPro(
@@ -631,6 +638,10 @@ class _InviteStaffSheetState extends ConsumerState<_InviteStaffSheet> {
       AppSnackBar.success(context, msg);
       Navigator.pop(context, true);
     } else {
+      final err = ref.read(staffActionsProvider).error;
+      if (err is ApiFailure && handleFeatureLocked(context, err, user)) {
+        return;
+      }
       AppSnackBar.error(context, msg);
     }
   }
@@ -645,86 +656,88 @@ class _InviteStaffSheetState extends ConsumerState<_InviteStaffSheet> {
       builder: (dialogContext) {
         final dColors = dialogContext.colors;
         return AlertDialog(
-        title: Text(
-          'Đã gửi lời mời',
-          style: GoogleFonts.beVietnamPro(
-            fontWeight: FontWeight.w700,
-            color: dColors.textPrimary,
+          title: Text(
+            'Đã gửi lời mời',
+            style: GoogleFonts.beVietnamPro(
+              fontWeight: FontWeight.w700,
+              color: dColors.textPrimary,
+            ),
           ),
-        ),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              message,
-              style: GoogleFonts.beVietnamPro(
-                fontSize: 13,
-                color: dColors.textSecondary,
-              ),
-            ),
-            const SizedBox(height: AppSpacing.md),
-            Text(
-              'Mã nhân viên (chia sẻ qua chat/SMS):',
-              style: GoogleFonts.beVietnamPro(
-                fontSize: 12,
-                fontWeight: FontWeight.w600,
-                color: dColors.textSecondary,
-              ),
-            ),
-            const SizedBox(height: AppSpacing.xs),
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.symmetric(
-                horizontal: AppSpacing.md,
-                vertical: AppSpacing.sm,
-              ),
-              decoration: BoxDecoration(
-                color: dColors.brand.withValues(alpha: 0.08),
-                borderRadius: BorderRadius.circular(AppRadius.sm),
-                border: Border.all(color: AppColors.jade50),
-              ),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: Text(
-                      invite.shortCode,
-                      style: GoogleFonts.firaCode(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w700,
-                        color: dColors.brand,
-                        letterSpacing: 1.2,
-                      ),
-                    ),
-                  ),
-                  IconButton(
-                    visualDensity: VisualDensity.compact,
-                    onPressed: () => _copyCode(dialogContext, invite.shortCode),
-                    icon: const Icon(Icons.copy_rounded, size: 18),
-                    tooltip: 'Sao chép mã',
-                  ),
-                ],
-              ),
-            ),
-            if (invite.inviteLink != null && invite.inviteLink!.isNotEmpty) ...[
-              const SizedBox(height: AppSpacing.sm),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
               Text(
-                'Email cũng chứa link trực tiếp cho nhân viên.',
+                message,
                 style: GoogleFonts.beVietnamPro(
-                  fontSize: 11,
+                  fontSize: 13,
                   color: dColors.textSecondary,
                 ),
               ),
+              const SizedBox(height: AppSpacing.md),
+              Text(
+                'Mã nhân viên (chia sẻ qua chat/SMS):',
+                style: GoogleFonts.beVietnamPro(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                  color: dColors.textSecondary,
+                ),
+              ),
+              const SizedBox(height: AppSpacing.xs),
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.symmetric(
+                  horizontal: AppSpacing.md,
+                  vertical: AppSpacing.sm,
+                ),
+                decoration: BoxDecoration(
+                  color: dColors.brand.withValues(alpha: 0.08),
+                  borderRadius: BorderRadius.circular(AppRadius.sm),
+                  border: Border.all(color: AppColors.jade50),
+                ),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        invite.shortCode,
+                        style: GoogleFonts.firaCode(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w700,
+                          color: dColors.brand,
+                          letterSpacing: 1.2,
+                        ),
+                      ),
+                    ),
+                    IconButton(
+                      visualDensity: VisualDensity.compact,
+                      onPressed: () =>
+                          _copyCode(dialogContext, invite.shortCode),
+                      icon: const Icon(Icons.copy_rounded, size: 18),
+                      tooltip: 'Sao chép mã',
+                    ),
+                  ],
+                ),
+              ),
+              if (invite.inviteLink != null &&
+                  invite.inviteLink!.isNotEmpty) ...[
+                const SizedBox(height: AppSpacing.sm),
+                Text(
+                  'Email cũng chứa link trực tiếp cho nhân viên.',
+                  style: GoogleFonts.beVietnamPro(
+                    fontSize: 11,
+                    color: dColors.textSecondary,
+                  ),
+                ),
+              ],
             ],
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(dialogContext),
-            child: const Text('Đóng'),
           ),
-        ],
-      );
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(dialogContext),
+              child: const Text('Đóng'),
+            ),
+          ],
+        );
       },
     );
   }

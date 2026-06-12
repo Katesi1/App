@@ -736,7 +736,9 @@ Các rule sau backend áp đặt → frontend phải mirror để UX nhất quá
 
 | Rule | Backend trả | Frontend mirror |
 |---|---|---|
-| OWNER chưa KYC → không tạo/sửa property | `403 + msg` | Route guard `user.needsKyc` redirect `/verify/cccd-front` |
+| OWNER chưa KYC → không tạo/sửa property | `403 code=kyc.propertyRequiresKyc` | Route guard `user.needsKyc` redirect `/verify/cccd-front`; nếu vẫn lọt → `handleFeatureLocked` CTA xác minh |
+| OWNER hết trial / chưa mua gói → không tạo/sửa property, mời NV | `403 code=subscription.featureLocked` | `handleFeatureLocked` toast + CTA "Mua gói" (xem §14) |
+| OWNER trong silent trial (60d, chưa plan) | `subscriptionStatus='trial'`, `planId=null` | `isSilentTrial` → KHÔNG hard-block tạo phòng; cho mời 1 SALE (BE gate phần dư) |
 | SALE chưa được OWNER assign → không CRUD property | `403` | UI lock + banner "Chưa được gán" trên dashboard |
 | OWNER KYC pending → app chỉ cho dùng verify flow | `kycStatus = 'pending'` | Banner "Đang chờ duyệt", các route mutate vẫn lock |
 | Subscription `past_due` | `subscriptionStatus = 'past_due'` | Banner đỏ + bottom sheet → /profile/help |
@@ -862,11 +864,42 @@ Không suppress lint warning trừ khi có lý do rõ ràng.
 
 ### Overview
 
-OWNER mới đăng ký → bị block tạo phòng cho tới khi qua flow verify identity:
-upload CCCD trước/sau + selfie liveness → chọn plan → thanh toán → admin duyệt
-→ trial 7 ngày → auto-charge subscription.
+**Apple IAP compliance (BE v1.12 — repo này Android-only, iOS ở codebase khác):**
 
+OWNER mới đăng ký → BE **tự cấp trial 60 ngày** (`subscriptionStatus="trial"`,
+`trialEndsAt = now+60d`, **chưa gắn `subscriptionPlanId`**). Trong 60 ngày OWNER
+**bắt buộc hoàn thành KYC** (upload CCCD trước/sau + selfie liveness → admin duyệt)
+rồi mới dùng được tính năng quản lý: tạo property + **mời 1 SALE**. Hết 60 ngày
+(hoặc trial không hợp lệ) → BE trả **403** ở write endpoint → user phải **mua gói**
+(Android giữ flow thanh toán VietQR/select-plan; iOS không có UI thanh toán).
+
+→ Chi tiết: [`docs/RELEASE_NOTES_v1.12_APPLE_IAP.md`](docs/RELEASE_NOTES_v1.12_APPLE_IAP.md)
++ [`docs/API_SPEC_FULL.md`](docs/API_SPEC_FULL.md) §2A.5.
 → Spec backend đầy đủ: [`API.md`](API.md) — section 14 (KYC User) + 15 (KYC Admin) + 16 (Billing & Payment)
+
+### Entitlement gate (403 business codes — v1.12)
+
+3 write endpoint trả **403 kèm field `code`** khi OWNER chưa đủ quyền:
+`POST /properties`, `PATCH /properties/:id`, `POST /staff/invites`.
+
+| `code` | Ý nghĩa | FE xử lý |
+|---|---|---|
+| `subscription.featureLocked` | Hết trial / chưa mua gói / past_due / cancelled / frozen (generic, không lộ trạng thái) | Toast message BE + CTA "Mua gói" → `subscriptionPlanPickerRoute` |
+| `kyc.propertyRequiresKyc` | OWNER chưa KYC approved | Toast + CTA "Xác minh ngay" → `/verify/cccd-front` |
+
+**Plumbing**: `ApiResponse` mang `code` + `statusCode` (factory
+`ApiResponse.fromDioError`, extension `isFeatureLocked`/`isKycRequired`,
+constants `ApiErrorCodes`). Controller đẩy `ApiFailure`
+(`lib/core/network/api_failure.dart`) qua `AsyncValue.error` để UI đọc được code.
+Helper dùng chung: `handleFeatureLocked(context, ApiFailure, user)` trong
+`lib/shared/widgets/feature_locked.dart`. KHÁC với `VerifyApiException`
+(throw-style, riêng feature verify — giữ nguyên).
+
+**Silent-trial entitlement (mirror BE)**: khi `isInTrial && subscriptionPlanId`
+rỗng → `SubscriptionGating.isSilentTrial(user)` = true. Lúc này client KHÔNG
+hard-block: `canAddMoreRooms` trả true (BE gate số phòng), `maxStaffInviteSlots`
+= 1 (`trialDefaultStaffSlots`), `canInviteStaff` true. Gói trả phí vẫn theo
+`RoomEntitlement`/`StaffEntitlement` như cũ (quota "Đã dùng 3/5 phòng" giữ nguyên).
 
 ### State machine — 7 status (camelCase, khớp giữa backend & frontend)
 

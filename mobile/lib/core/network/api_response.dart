@@ -5,7 +5,60 @@ class ApiResponse<T> {
   final T? data;
   final String message;
 
-  ApiResponse({required this.success, this.data, required this.message});
+  /// Mã lỗi máy đọc được từ BE (vd `subscription.featureLocked`). Null khi
+  /// thành công hoặc BE không trả `code`.
+  final String? code;
+
+  /// HTTP status code khi lỗi (vd 403). Null khi thành công / lỗi mạng.
+  final int? statusCode;
+
+  ApiResponse({
+    required this.success,
+    this.data,
+    required this.message,
+    this.code,
+    this.statusCode,
+  });
+
+  /// Build error response từ [DioException] — giữ message qua [parseDioError]
+  /// (không đổi hành vi comma-split), đồng thời trích `code` + `statusCode` để
+  /// caller phân biệt được lỗi business (vd featureLocked vs KYC required).
+  factory ApiResponse.fromDioError(DioException e) {
+    final data = e.response?.data;
+    String? code;
+    if (data is Map && data['code'] != null) {
+      code = data['code'].toString();
+    }
+    return ApiResponse(
+      success: false,
+      message: parseDioError(e),
+      code: code,
+      statusCode: e.response?.statusCode,
+    );
+  }
+}
+
+/// Mã lỗi business BE trả ở field `code` (khớp i18n key backend).
+class ApiErrorCodes {
+  ApiErrorCodes._();
+
+  /// Hết trial / chưa active / past_due / cancelled / frozen — generic, BE cố
+  /// tình không lộ trạng thái cụ thể (Apple IAP compliance).
+  static const String featureLocked = 'subscription.featureLocked';
+
+  /// OWNER chưa hoàn thành KYC khi tạo/sửa property hoặc mời nhân viên.
+  static const String kycPropertyRequiresKyc = 'kyc.propertyRequiresKyc';
+}
+
+extension ApiResponseErrorX<T> on ApiResponse<T> {
+  /// True khi BE chặn vì hết quyền dùng tính năng (hết trial / chưa mua gói).
+  /// Fallback: 403 không kèm `code` cũng coi là featureLocked (BE luôn trả
+  /// code, fallback chỉ để phòng thủ). Caller nên check [isKycRequired] trước.
+  bool get isFeatureLocked =>
+      code == ApiErrorCodes.featureLocked ||
+      (code == null && statusCode == 403);
+
+  bool get isKycRequired => code == ApiErrorCodes.kycPropertyRequiresKyc;
 }
 
 // Helper để parse lỗi từ Dio

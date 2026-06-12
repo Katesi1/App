@@ -1,5 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/network/api_failure.dart';
 import '../../../data/models/user_model.dart';
 import '../data/models/staff_invite.dart';
 import '../data/repositories/staff_repository.dart';
@@ -49,7 +50,11 @@ class StaffActionsNotifier extends StateNotifier<AsyncValue<void>> {
       state = const AsyncValue.data(null);
       return (true, result.message, result.data);
     }
-    state = AsyncValue.error(result.message, StackTrace.current);
+    state = AsyncValue.error(
+      ApiFailure(result.message,
+          code: result.code, statusCode: result.statusCode),
+      StackTrace.current,
+    );
     return (false, result.message, null);
   }
 
@@ -61,7 +66,11 @@ class StaffActionsNotifier extends StateNotifier<AsyncValue<void>> {
       state = const AsyncValue.data(null);
       return (true, result.message);
     }
-    state = AsyncValue.error(result.message, StackTrace.current);
+    state = AsyncValue.error(
+      ApiFailure(result.message,
+          code: result.code, statusCode: result.statusCode),
+      StackTrace.current,
+    );
     return (false, result.message);
   }
 
@@ -73,7 +82,11 @@ class StaffActionsNotifier extends StateNotifier<AsyncValue<void>> {
       state = const AsyncValue.data(null);
       return (true, result.message);
     }
-    state = AsyncValue.error(result.message, StackTrace.current);
+    state = AsyncValue.error(
+      ApiFailure(result.message,
+          code: result.code, statusCode: result.statusCode),
+      StackTrace.current,
+    );
     return (false, result.message);
   }
 }

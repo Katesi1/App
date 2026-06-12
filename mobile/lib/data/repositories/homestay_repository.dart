@@ -47,7 +47,7 @@ class HomestayRepository {
         message: response.data['message'] ?? '',
       );
     } on DioException catch (e) {
-      return ApiResponse(success: false, message: parseDioError(e));
+      return ApiResponse.fromDioError(e);
     }
   }
 
@@ -62,7 +62,7 @@ class HomestayRepository {
         message: response.data['message'] ?? '',
       );
     } on DioException catch (e) {
-      return ApiResponse(success: false, message: parseDioError(e));
+      return ApiResponse.fromDioError(e);
     }
   }
 
@@ -71,7 +71,7 @@ class HomestayRepository {
       await _dio.delete(ApiConstants.propertyDetail(id));
       return ApiResponse(success: true, message: 'Xoá cơ sở thành công');
     } on DioException catch (e) {
-      return ApiResponse(success: false, message: parseDioError(e));
+      return ApiResponse.fromDioError(e);
     }
   }
 }

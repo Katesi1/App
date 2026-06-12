@@ -46,9 +46,9 @@ android {
 
     defaultConfig {
         applicationId = "com.halong24h.app"
-        // ML Kit text recognition + camera plugin yêu cầu API ≥ 21.
-        // Set 24 để khớp với baseline của google_mlkit_commons mới.
-        minSdk = maxOf(flutter.minSdkVersion, 24)
+        // camera_android_camerax 0.6.30 yêu cầu API ≥ 23 (Android 6.0).
+        // google_mlkit_commons chỉ cần API 21 — camera là giới hạn thật sự.
+        minSdk = maxOf(flutter.minSdkVersion, 23)
         // Flutter 3.35+ mặc định targetSdk=36 (Android 16 preview) — pin về 35
         // để tránh Google Play hạn chế phân phối trên thiết bị chưa tương thích API 36.
         targetSdk = 35
@@ -82,4 +82,23 @@ flutter {
 dependencies {
     // Required by flutter_local_notifications when isCoreLibraryDesugaringEnabled = true.
     coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.5")
+}
+
+// Flutter 3.35.x bug: flutter pub get writes integration_test (dev_dependency=true) vào
+// GeneratedPluginRegistrant.java, gây lỗi compile khi build release vì class không tồn tại.
+// Hook này strip entry đó ra trước khi Java compiler chạy.
+afterEvaluate {
+    tasks.named("compileReleaseJavaWithJavac").configure {
+        doFirst {
+            val registrantFile = file("src/main/java/io/flutter/plugins/GeneratedPluginRegistrant.java")
+            if (registrantFile.exists()) {
+                val original = registrantFile.readText()
+                val fixed = original.replace(
+                    Regex("""\n\s+try \{\n[^\n]*integration_test[^\n]*\n\s+\} catch \(Exception e\) \{\n[^\n]*integration_test[^\n]*\n\s+\}"""),
+                    ""
+                )
+                if (fixed != original) registrantFile.writeText(fixed)
+            }
+        }
+    }
 }
