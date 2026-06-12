@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import '../../features/chat/views/chat_detail_screen.dart';
+import '../../features/chat/views/chat_inbox_screen.dart';
 import '../../features/admin/views/admin_screen.dart';
 import '../../features/admin/views/admin_trial_screen.dart';
 import '../../features/admin/views/abuse_report_detail_screen.dart';
@@ -118,6 +120,13 @@ String? resolveRedirectPath({
   if (legacyCustomerPaths.contains(path)) return '/dashboard';
 
   if (isPublic) return '/dashboard';
+
+  // FCM chat deeplink dùng `/conversations/:id` (khớp web); app route là
+  // `/chat/:id` → rewrite để cùng 1 màn hình.
+  if (path == '/conversations') return '/chat';
+  if (path.startsWith('/conversations/')) {
+    return '/chat/${path.substring('/conversations/'.length)}';
+  }
 
   // `type=system` không thuộc inbox — admin → lịch sử hệ thống.
   if (path == '/notifications' &&
@@ -261,6 +270,26 @@ final routerProvider = Provider<GoRouter>((ref) {
               key: state.pageKey,
               child: NotificationDetailScreen(
                 id: state.pathParameters['id']!,
+              ),
+            ),
+          ),
+        ],
+      ),
+
+      // ── Chat / Tin nhắn ──────────────────────────────────────────────
+      GoRoute(
+        path: '/chat',
+        pageBuilder: (_, state) => slideUpPage(
+          key: state.pageKey,
+          child: const ChatInboxScreen(),
+        ),
+        routes: [
+          GoRoute(
+            path: ':id',
+            pageBuilder: (_, state) => slideUpPage(
+              key: state.pageKey,
+              child: ChatDetailScreen(
+                conversationId: state.pathParameters['id']!,
               ),
             ),
           ),

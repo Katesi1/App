@@ -8,6 +8,7 @@ import '../providers/theme_provider.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_spacing.dart';
 import '../../features/notifications/controllers/notification_controller.dart';
+import '../../features/chat/controllers/chat_controller.dart';
 
 class AppScaffold extends ConsumerWidget {
   final String title;
@@ -53,6 +54,7 @@ class AppScaffold extends ConsumerWidget {
                   title: Text(title),
                   actions: [
                     ...?actions,
+                    _ChatBell(),
                     _NotificationBell(),
                     IconButton(
                       tooltip: isDark ? 'Chế độ sáng' : 'Chế độ tối',
@@ -279,6 +281,49 @@ class _BottomNavState extends ConsumerState<_BottomNav> {
           ],
         ),
       ),
+    );
+  }
+}
+
+class _ChatBell extends ConsumerWidget {
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final count = ref.watch(chatUnreadProvider);
+
+    return IconButton(
+      tooltip: 'Tin nhắn',
+      icon: Stack(
+        clipBehavior: Clip.none,
+        children: [
+          const Icon(Icons.forum_outlined),
+          if (count > 0)
+            Positioned(
+              top: -4,
+              right: -4,
+              child: Container(
+                padding: const EdgeInsets.all(2),
+                decoration: const BoxDecoration(
+                  color: AppColors.coral500,
+                  shape: BoxShape.circle,
+                ),
+                constraints: const BoxConstraints(
+                  minWidth: 16,
+                  minHeight: 16,
+                ),
+                child: Text(
+                  count > 9 ? '9+' : '$count',
+                  style: GoogleFonts.beVietnamPro(
+                    fontSize: 9,
+                    fontWeight: FontWeight.w700,
+                    color: Colors.white,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+              ),
+            ),
+        ],
+      ),
+      onPressed: () => context.push('/chat'),
     );
   }
 }

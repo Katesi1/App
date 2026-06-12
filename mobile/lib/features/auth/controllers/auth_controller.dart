@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/monitoring/crash_reporter.dart';
 import '../../../core/network/api_client.dart';
+import '../../../core/services/chat_socket_service.dart';
 import '../../../core/services/push_notification_service.dart';
 import '../../../core/storage/secure_storage.dart';
 import '../../../data/models/user_model.dart';
@@ -74,6 +75,8 @@ class AuthNotifier extends StateNotifier<AuthState> {
     // show snackbar.
     _forceLogoutSub = ApiClient.onForceLogout.listen((_) {
       if (!mounted) return;
+      // Token chết → đóng socket chat (sẽ reconnect sau khi login lại).
+      ChatSocketService.instance.disconnect();
       state = AuthState(forceLoggedOut: true);
     });
   }
@@ -97,6 +100,8 @@ class AuthNotifier extends StateNotifier<AuthState> {
   /// Crashlytics user ID — fire & forget, không block UI.
   void _onAuthenticated() {
     unawaited(PushNotificationService.instance.registerForUser());
+    // Mở kết nối chat realtime (socket.io). Idempotent — no-op nếu đã connect.
+    unawaited(ChatSocketService.instance.connect());
     final userId = state.user?.id;
     if (userId != null) {
       unawaited(CrashReporter.setUserId(userId));
@@ -281,6 +286,8 @@ class AuthNotifier extends StateNotifier<AuthState> {
   }
 
   Future<void> logout() async {
+    // Đóng socket chat trước khi clear token.
+    ChatSocketService.instance.disconnect();
     // Unregister FCM trước khi clear tokens — endpoint /devices cần Bearer
     // token. Best-effort: nếu fail vẫn tiếp tục logout.
     await PushNotificationService.instance.unregisterForUser();

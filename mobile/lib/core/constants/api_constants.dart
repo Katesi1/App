@@ -143,6 +143,20 @@ class ApiConstants {
   static String notificationRead(String id) => '/notifications/$id/read';
   static const String notificationsReadAll = '/notifications/read-all';
 
+  // Chat / Conversations (REST + WebSocket — xem API §17)
+  static const String conversations = '/conversations';
+  static const String conversationsUnreadCount = '/conversations/unread-count';
+  static String conversationDetail(String id) => '/conversations/$id';
+  static String conversationMessages(String id) =>
+      '/conversations/$id/messages';
+  static String conversationRead(String id) => '/conversations/$id/read';
+  static String conversationMessageDetail(String messageId) =>
+      '/conversations/messages/$messageId';
+
+  /// Namespace WebSocket socket.io (`wss://.../chat`). socket_io_client nối
+  /// `baseUrl` + namespace `/chat`.
+  static const String chatSocketNamespace = '/chat';
+
   // Partner (bắt buộc header X-Partner-Key — truyền qua repository, không hardcode)
   static const String partnerProperties = '/partner/properties';
   static String partnerPropertyDetail(String id) => '/partner/properties/$id';

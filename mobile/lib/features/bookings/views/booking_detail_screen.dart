@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 
@@ -9,6 +10,7 @@ import '../../../core/theme/app_spacing.dart';
 import '../../../core/utils/helpers.dart';
 import '../../../data/models/booking_model.dart';
 import '../../../shared/widgets/loading_widget.dart';
+import '../../chat/controllers/chat_controller.dart';
 import '../controllers/booking_controller.dart';
 import '../utils/guest_flow_filter.dart';
 
@@ -27,6 +29,10 @@ class BookingDetailScreen extends ConsumerWidget {
       appBar: AppBar(
         title: const Text('Chi tiết booking'),
       ),
+      floatingActionButton: async.maybeWhen(
+        data: (_) => _ChatWithGuestButton(bookingId: id),
+        orElse: () => null,
+      ),
       body: async.when(
         loading: () => const LoadingWidget(),
         error: (error, _) => ErrorStateWidget(
@@ -36,6 +42,49 @@ class BookingDetailScreen extends ConsumerWidget {
         data: (booking) => _BookingDetailBody(booking: booking),
       ),
     );
+  }
+}
+
+/// Nút mở (hoặc tạo) hội thoại với khách của booking này.
+class _ChatWithGuestButton extends ConsumerWidget {
+  final String bookingId;
+
+  const _ChatWithGuestButton({required this.bookingId});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final isLoading = ref.watch(chatActionsProvider).isLoading;
+
+    return FloatingActionButton.extended(
+      onPressed: isLoading ? null : () => _openChat(context, ref),
+      icon: isLoading
+          ? const SizedBox(
+              width: 18,
+              height: 18,
+              child: CircularProgressIndicator(
+                strokeWidth: 2,
+                color: Colors.white,
+              ),
+            )
+          : const Icon(Icons.forum_rounded),
+      label: const Text('Nhắn với khách'),
+    );
+  }
+
+  Future<void> _openChat(BuildContext context, WidgetRef ref) async {
+    final convId = await ref
+        .read(chatActionsProvider.notifier)
+        .openBookingConversation(bookingId);
+    if (!context.mounted) return;
+    if (convId != null) {
+      context.push('/chat/$convId');
+    } else {
+      final error = ref.read(chatActionsProvider).error;
+      AppSnackBar.error(
+        context,
+        error?.toString() ?? 'Không mở được cuộc trò chuyện',
+      );
+    }
   }
 }
 
