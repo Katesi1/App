@@ -5,7 +5,6 @@ import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 
-import '../../../core/network/api_failure.dart';
 import '../../../core/theme/app_color_scheme.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
@@ -17,7 +16,6 @@ import '../../verify/controllers/verify_flow_controller.dart';
 import '../../verify/data/models/verify_enums.dart';
 import '../../../shared/widgets/app_scaffold.dart';
 import '../../../shared/widgets/app_toast.dart';
-import '../../../shared/widgets/feature_locked.dart';
 import '../../../shared/widgets/loading_widget.dart';
 import '../controllers/staff_controller.dart';
 import '../data/models/staff_invite.dart';
@@ -83,15 +81,8 @@ class _StaffManagementScreenState extends ConsumerState<StaffManagementScreen>
       return;
     }
 
-    final created = await showModalBottomSheet<bool>(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: context.colors.bgSurface,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      builder: (_) => const _InviteStaffSheet(),
-    );
+    // Mở trang mời nhân viên (thay cho modal). Pop trả `true` khi tạo thành công.
+    final created = await context.push<bool>('/staff/manage/invite');
     if (created == true && mounted) {
       _tabCtrl.animateTo(1); // chuyển sang tab "Lời mời"
     }
@@ -140,18 +131,46 @@ class _StaffManagementScreenState extends ConsumerState<StaffManagementScreen>
           ],
           Container(
             color: colors.bgSurface,
+            padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
             child: TabBar(
               controller: _tabCtrl,
               labelColor: colors.brand,
               unselectedLabelColor: colors.textSecondary,
               indicatorColor: colors.brand,
+              indicatorSize: TabBarIndicatorSize.label,
+              indicatorWeight: 3,
+              dividerColor: colors.borderSubtle,
               labelStyle: GoogleFonts.beVietnamPro(
-                fontSize: 13,
-                fontWeight: FontWeight.w600,
+                fontSize: 13.5,
+                fontWeight: FontWeight.w700,
+              ),
+              unselectedLabelStyle: GoogleFonts.beVietnamPro(
+                fontSize: 13.5,
+                fontWeight: FontWeight.w500,
               ),
               tabs: const [
-                Tab(text: 'Nhân viên'),
-                Tab(text: 'Lời mời'),
+                Tab(
+                  height: 46,
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.groups_rounded, size: 18),
+                      SizedBox(width: 6),
+                      Text('Nhân viên'),
+                    ],
+                  ),
+                ),
+                Tab(
+                  height: 46,
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.mail_outline_rounded, size: 18),
+                      SizedBox(width: 6),
+                      Text('Lời mời'),
+                    ],
+                  ),
+                ),
               ],
             ),
           ),
@@ -312,6 +331,11 @@ class _StaffTile extends StatelessWidget {
     required this.onRemove,
   });
 
+  String get _initial {
+    final source = name.trim().isNotEmpty ? name.trim() : email.trim();
+    return source.isEmpty ? '?' : source.substring(0, 1).toUpperCase();
+  }
+
   @override
   Widget build(BuildContext context) {
     final colors = context.colors;
@@ -319,59 +343,170 @@ class _StaffTile extends StatelessWidget {
       padding: const EdgeInsets.all(AppSpacing.md),
       decoration: BoxDecoration(
         color: colors.bgSurface,
-        borderRadius: BorderRadius.circular(AppRadius.md),
-        border: Border.all(color: colors.borderDefault),
+        borderRadius: BorderRadius.circular(AppRadius.lg),
+        border: Border.all(color: colors.borderSubtle),
+        boxShadow: [
+          BoxShadow(
+            color: colors.brand.withValues(alpha: 0.04),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
+          ),
+        ],
       ),
       child: Row(
         children: [
+          // Avatar gradient + chữ cái đầu
           Container(
-            width: 44,
-            height: 44,
+            width: 48,
+            height: 48,
             decoration: BoxDecoration(
-              color: colors.brand.withValues(alpha: 0.1),
-              borderRadius: BorderRadius.circular(12),
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [colors.brand, colors.brandLight],
+              ),
+              borderRadius: BorderRadius.circular(14),
+              boxShadow: [
+                BoxShadow(
+                  color: colors.brand.withValues(alpha: 0.25),
+                  blurRadius: 8,
+                  offset: const Offset(0, 3),
+                ),
+              ],
             ),
-            child: Icon(Icons.person_rounded, color: colors.brand),
+            alignment: Alignment.center,
+            child: Text(
+              _initial,
+              style: GoogleFonts.beVietnamPro(
+                fontSize: 18,
+                fontWeight: FontWeight.w700,
+                color: colors.textOnPrimary,
+              ),
+            ),
           ),
           const SizedBox(width: AppSpacing.md),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  name,
-                  style: GoogleFonts.beVietnamPro(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w700,
-                    color: colors.textPrimary,
-                  ),
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  email,
-                  style: GoogleFonts.beVietnamPro(
-                    fontSize: 12,
-                    color: colors.textSecondary,
-                  ),
-                ),
-                if (phone.isNotEmpty)
-                  Text(
-                    phone,
-                    style: GoogleFonts.beVietnamPro(
-                      fontSize: 12,
-                      color: colors.textSecondary,
+                Row(
+                  children: [
+                    Flexible(
+                      child: Text(
+                        name,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: GoogleFonts.beVietnamPro(
+                          fontSize: 14.5,
+                          fontWeight: FontWeight.w700,
+                          color: colors.textPrimary,
+                        ),
+                      ),
                     ),
+                    const SizedBox(width: AppSpacing.xs),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 7, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: colors.brand.withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                      child: Text(
+                        'Nhân viên',
+                        style: GoogleFonts.beVietnamPro(
+                          fontSize: 10,
+                          fontWeight: FontWeight.w600,
+                          color: colors.brand,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 4),
+                _IconLine(
+                  icon: Icons.email_outlined,
+                  text: email,
+                  colors: colors,
+                ),
+                if (phone.isNotEmpty) ...[
+                  const SizedBox(height: 2),
+                  _IconLine(
+                    icon: Icons.phone_outlined,
+                    text: phone,
+                    colors: colors,
                   ),
+                ],
+                const SizedBox(height: 6),
+                Row(
+                  children: [
+                    Container(
+                      width: 7,
+                      height: 7,
+                      decoration: BoxDecoration(
+                        color: colors.success,
+                        shape: BoxShape.circle,
+                      ),
+                    ),
+                    const SizedBox(width: 5),
+                    Text(
+                      'Đang hoạt động',
+                      style: GoogleFonts.beVietnamPro(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w500,
+                        color: colors.success,
+                      ),
+                    ),
+                  ],
+                ),
               ],
             ),
           ),
           IconButton(
             onPressed: onRemove,
-            icon: Icon(Icons.delete_outline_rounded, color: colors.error),
+            style: IconButton.styleFrom(
+              backgroundColor: colors.error.withValues(alpha: 0.08),
+              padding: const EdgeInsets.all(8),
+            ),
+            icon: Icon(Icons.delete_outline_rounded,
+                color: colors.error, size: 20),
             tooltip: 'Xoá nhân viên',
           ),
         ],
       ),
+    );
+  }
+}
+
+/// Dòng icon + text (email/phone) dùng chung trong staff tile.
+class _IconLine extends StatelessWidget {
+  final IconData icon;
+  final String text;
+  final AppColorScheme colors;
+
+  const _IconLine({
+    required this.icon,
+    required this.text,
+    required this.colors,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Icon(icon, size: 13, color: colors.textTertiary),
+        const SizedBox(width: 5),
+        Expanded(
+          child: Text(
+            text,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: GoogleFonts.beVietnamPro(
+              fontSize: 12,
+              color: colors.textSecondary,
+            ),
+          ),
+        ),
+      ],
     );
   }
 }
@@ -422,22 +557,44 @@ class _InviteTile extends ConsumerWidget {
     final colors = context.colors;
     final dateFmt = DateFormat('dd/MM/yyyy');
     final canCancel = invite.status == StaffInviteStatus.pending;
+    final showCode = invite.shortCode.isNotEmpty &&
+        invite.status == StaffInviteStatus.pending;
 
     return Container(
       padding: const EdgeInsets.all(AppSpacing.md),
       decoration: BoxDecoration(
         color: colors.bgSurface,
-        borderRadius: BorderRadius.circular(AppRadius.md),
-        border: Border.all(color: colors.borderDefault),
+        borderRadius: BorderRadius.circular(AppRadius.lg),
+        border: Border.all(color: colors.borderSubtle),
+        boxShadow: [
+          BoxShadow(
+            color: colors.brand.withValues(alpha: 0.04),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
+          ),
+        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
+              Container(
+                width: 36,
+                height: 36,
+                decoration: BoxDecoration(
+                  color: colors.brand.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Icon(Icons.mark_email_unread_outlined,
+                    size: 18, color: colors.brand),
+              ),
+              const SizedBox(width: AppSpacing.sm),
               Expanded(
                 child: Text(
                   invite.email,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                   style: GoogleFonts.beVietnamPro(
                     fontSize: 14,
                     fontWeight: FontWeight.w700,
@@ -445,61 +602,53 @@ class _InviteTile extends ConsumerWidget {
                   ),
                 ),
               ),
+              const SizedBox(width: AppSpacing.xs),
               _StatusBadge(status: invite.status),
             ],
           ),
+          if (showCode) ...[
+            const SizedBox(height: AppSpacing.md),
+            _CodeTicket(
+              code: invite.shortCode,
+              onCopy: () => _copy(context, invite.shortCode),
+            ),
+          ],
           const SizedBox(height: AppSpacing.sm),
           Row(
             children: [
-              Icon(Icons.qr_code_2_rounded,
-                  size: 14, color: colors.textSecondary),
-              const SizedBox(width: 4),
+              Icon(Icons.event_outlined, size: 13, color: colors.textTertiary),
+              const SizedBox(width: 5),
               Text(
-                invite.shortCode,
-                style: GoogleFonts.firaCode(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w600,
-                  color: colors.brand,
-                ),
-              ),
-              const SizedBox(width: AppSpacing.sm),
-              IconButton(
-                visualDensity: VisualDensity.compact,
-                padding: EdgeInsets.zero,
-                constraints: const BoxConstraints(),
-                onPressed: () => _copy(context, invite.shortCode),
-                icon: Icon(Icons.copy_rounded,
-                    size: 16, color: colors.textSecondary),
-                tooltip: 'Sao chép mã',
-              ),
-              const Spacer(),
-              Text(
-                'HSD ${dateFmt.format(invite.expiresAt)}',
+                'Hết hạn ${dateFmt.format(invite.expiresAt)}',
                 style: GoogleFonts.beVietnamPro(
-                  fontSize: 11,
+                  fontSize: 11.5,
                   color: colors.textSecondary,
                 ),
               ),
-            ],
-          ),
-          if (canCancel) ...[
-            const SizedBox(height: AppSpacing.sm),
-            Align(
-              alignment: Alignment.centerRight,
-              child: TextButton.icon(
-                onPressed: () => _confirmCancel(context, ref),
-                icon:
-                    Icon(Icons.cancel_outlined, size: 16, color: colors.error),
-                label: Text(
-                  'Huỷ lời mời',
-                  style: GoogleFonts.beVietnamPro(
-                    fontSize: 12,
-                    color: colors.error,
+              if (canCancel) ...[
+                const Spacer(),
+                TextButton.icon(
+                  onPressed: () => _confirmCancel(context, ref),
+                  style: TextButton.styleFrom(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    minimumSize: Size.zero,
+                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  ),
+                  icon: Icon(Icons.cancel_outlined,
+                      size: 15, color: colors.error),
+                  label: Text(
+                    'Huỷ lời mời',
+                    style: GoogleFonts.beVietnamPro(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                      color: colors.error,
+                    ),
                   ),
                 ),
-              ),
-            ),
-          ],
+              ],
+            ],
+          ),
         ],
       ),
     );
@@ -540,6 +689,72 @@ class _InviteTile extends ConsumerWidget {
     } else {
       AppSnackBar.error(context, msg);
     }
+  }
+}
+
+/// Khối mã mời dạng "vé" — nền tint brand, mã monospace nổi bật + nút sao chép.
+class _CodeTicket extends StatelessWidget {
+  final String code;
+  final VoidCallback onCopy;
+
+  const _CodeTicket({required this.code, required this.onCopy});
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.colors;
+    return Container(
+      padding: const EdgeInsets.symmetric(
+          horizontal: AppSpacing.md, vertical: AppSpacing.sm),
+      decoration: BoxDecoration(
+        color: colors.brand.withValues(alpha: 0.06),
+        borderRadius: BorderRadius.circular(AppRadius.md),
+        border: Border.all(
+          color: colors.brand.withValues(alpha: 0.25),
+        ),
+      ),
+      child: Row(
+        children: [
+          Icon(Icons.qr_code_2_rounded, size: 20, color: colors.brand),
+          const SizedBox(width: AppSpacing.sm),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'MÃ NHÂN VIÊN',
+                  style: GoogleFonts.beVietnamPro(
+                    fontSize: 9.5,
+                    fontWeight: FontWeight.w600,
+                    letterSpacing: 0.8,
+                    color: colors.textTertiary,
+                  ),
+                ),
+                const SizedBox(height: 1),
+                Text(
+                  code,
+                  style: GoogleFonts.firaCode(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w700,
+                    color: colors.brand,
+                    letterSpacing: 1.5,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          IconButton(
+            onPressed: onCopy,
+            visualDensity: VisualDensity.compact,
+            style: IconButton.styleFrom(
+              backgroundColor: colors.brand.withValues(alpha: 0.12),
+              padding: const EdgeInsets.all(8),
+            ),
+            icon: Icon(Icons.copy_rounded, size: 16, color: colors.brand),
+            tooltip: 'Sao chép mã',
+          ),
+        ],
+      ),
+    );
   }
 }
 
@@ -584,252 +799,6 @@ class _StatusBadge extends StatelessWidget {
           fontSize: 11,
           fontWeight: FontWeight.w600,
           color: fg,
-        ),
-      ),
-    );
-  }
-}
-
-// ── Bottom sheet: nhập email mời ──────────────────────────────────────────────
-
-class _InviteStaffSheet extends ConsumerStatefulWidget {
-  const _InviteStaffSheet();
-
-  @override
-  ConsumerState<_InviteStaffSheet> createState() => _InviteStaffSheetState();
-}
-
-class _InviteStaffSheetState extends ConsumerState<_InviteStaffSheet> {
-  final _emailCtrl = TextEditingController();
-  final _formKey = GlobalKey<FormState>();
-  bool _submitting = false;
-
-  @override
-  void dispose() {
-    _emailCtrl.dispose();
-    super.dispose();
-  }
-
-  Future<void> _submit() async {
-    if (!_formKey.currentState!.validate()) return;
-
-    final user = ref.read(currentUserProvider);
-    if (user == null || !user.canInviteStaff) {
-      AppSnackBar.error(
-        context,
-        user?.staffInviteBlockReason ?? 'Không thể mời nhân viên',
-      );
-      return;
-    }
-
-    setState(() => _submitting = true);
-
-    final (ok, msg, invite) = await ref
-        .read(staffActionsProvider.notifier)
-        .invite(_emailCtrl.text.trim());
-
-    if (!mounted) return;
-    setState(() => _submitting = false);
-
-    if (ok && invite != null) {
-      Navigator.pop(context, true);
-      await _showInviteCreatedDialog(context, invite, msg);
-    } else if (ok) {
-      AppSnackBar.success(context, msg);
-      Navigator.pop(context, true);
-    } else {
-      final err = ref.read(staffActionsProvider).error;
-      if (err is ApiFailure && handleFeatureLocked(context, err, user)) {
-        return;
-      }
-      AppSnackBar.error(context, msg);
-    }
-  }
-
-  Future<void> _showInviteCreatedDialog(
-    BuildContext context,
-    StaffInvite invite,
-    String message,
-  ) async {
-    await showDialog<void>(
-      context: context,
-      builder: (dialogContext) {
-        final dColors = dialogContext.colors;
-        return AlertDialog(
-          title: Text(
-            'Đã gửi lời mời',
-            style: GoogleFonts.beVietnamPro(
-              fontWeight: FontWeight.w700,
-              color: dColors.textPrimary,
-            ),
-          ),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                message,
-                style: GoogleFonts.beVietnamPro(
-                  fontSize: 13,
-                  color: dColors.textSecondary,
-                ),
-              ),
-              const SizedBox(height: AppSpacing.md),
-              Text(
-                'Mã nhân viên (chia sẻ qua chat/SMS):',
-                style: GoogleFonts.beVietnamPro(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w600,
-                  color: dColors.textSecondary,
-                ),
-              ),
-              const SizedBox(height: AppSpacing.xs),
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.symmetric(
-                  horizontal: AppSpacing.md,
-                  vertical: AppSpacing.sm,
-                ),
-                decoration: BoxDecoration(
-                  color: dColors.brand.withValues(alpha: 0.08),
-                  borderRadius: BorderRadius.circular(AppRadius.sm),
-                  border: Border.all(color: AppColors.jade50),
-                ),
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: Text(
-                        invite.shortCode,
-                        style: GoogleFonts.firaCode(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w700,
-                          color: dColors.brand,
-                          letterSpacing: 1.2,
-                        ),
-                      ),
-                    ),
-                    IconButton(
-                      visualDensity: VisualDensity.compact,
-                      onPressed: () =>
-                          _copyCode(dialogContext, invite.shortCode),
-                      icon: const Icon(Icons.copy_rounded, size: 18),
-                      tooltip: 'Sao chép mã',
-                    ),
-                  ],
-                ),
-              ),
-              if (invite.inviteLink != null &&
-                  invite.inviteLink!.isNotEmpty) ...[
-                const SizedBox(height: AppSpacing.sm),
-                Text(
-                  'Email cũng chứa link trực tiếp cho nhân viên.',
-                  style: GoogleFonts.beVietnamPro(
-                    fontSize: 11,
-                    color: dColors.textSecondary,
-                  ),
-                ),
-              ],
-            ],
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(dialogContext),
-              child: const Text('Đóng'),
-            ),
-          ],
-        );
-      },
-    );
-  }
-
-  void _copyCode(BuildContext context, String code) {
-    Clipboard.setData(ClipboardData(text: code));
-    AppSnackBar.success(context, 'Đã sao chép mã $code');
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final colors = context.colors;
-    final viewInsets = MediaQuery.of(context).viewInsets;
-
-    return Padding(
-      padding: EdgeInsets.fromLTRB(
-        AppSpacing.lg,
-        AppSpacing.md,
-        AppSpacing.lg,
-        AppSpacing.lg + viewInsets.bottom,
-      ),
-      child: Form(
-        key: _formKey,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Center(
-              child: Container(
-                width: 40,
-                height: 4,
-                decoration: BoxDecoration(
-                  color: colors.borderDefault,
-                  borderRadius: BorderRadius.circular(2),
-                ),
-              ),
-            ),
-            const SizedBox(height: AppSpacing.md),
-            Text(
-              'Mời nhân viên',
-              style: GoogleFonts.beVietnamPro(
-                fontSize: 18,
-                fontWeight: FontWeight.w700,
-                color: colors.textPrimary,
-              ),
-            ),
-            const SizedBox(height: AppSpacing.xs),
-            Text(
-              'Nhập email nhân viên — họ sẽ nhận email kèm mã mời để đăng ký.',
-              style: GoogleFonts.beVietnamPro(
-                fontSize: 12,
-                color: colors.textSecondary,
-              ),
-            ),
-            const SizedBox(height: AppSpacing.lg),
-            TextFormField(
-              controller: _emailCtrl,
-              keyboardType: TextInputType.emailAddress,
-              autofocus: true,
-              enabled: !_submitting,
-              decoration: const InputDecoration(
-                labelText: 'Email nhân viên',
-                hintText: 'nv1@gmail.com',
-                prefixIcon: Icon(Icons.email_outlined),
-              ),
-              validator: (v) {
-                final value = v?.trim() ?? '';
-                if (value.isEmpty) return 'Vui lòng nhập email';
-                final emailReg = RegExp(r'^[\w\.-]+@[\w\.-]+\.\w+$');
-                if (!emailReg.hasMatch(value)) return 'Email không hợp lệ';
-                return null;
-              },
-            ),
-            const SizedBox(height: AppSpacing.lg),
-            FilledButton(
-              onPressed: _submitting ? null : _submit,
-              style: FilledButton.styleFrom(
-                backgroundColor: colors.brand,
-                padding: const EdgeInsets.symmetric(vertical: 14),
-              ),
-              child: _submitting
-                  ? const SizedBox(
-                      width: 18,
-                      height: 18,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2,
-                        color: Colors.white,
-                      ),
-                    )
-                  : const Text('Gửi lời mời'),
-            ),
-          ],
         ),
       ),
     );

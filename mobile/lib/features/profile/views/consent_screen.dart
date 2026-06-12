@@ -28,12 +28,11 @@ class _ConsentScreenState extends ConsumerState<ConsentScreen> {
     if (!mounted) return;
     setState(() => _saving = false);
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(msg),
-        backgroundColor: ok ? null : context.colors.error,
-      ),
-    );
+    if (ok) {
+      AppSnackBar.success(context, msg);
+    } else {
+      AppSnackBar.error(context, msg);
+    }
   }
 
   @override

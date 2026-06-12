@@ -1,5 +1,7 @@
 import 'package:equatable/equatable.dart';
 
+import 'message_model.dart' show sanitizeHttpsUrl;
+
 /// Loại conversation (xem API §17.1). `booking` = khách ↔ chủ homestay theo 1
 /// booking; `support` = user ↔ admin; `staff` = chủ ↔ nhân viên.
 enum ConversationType {
@@ -35,7 +37,11 @@ class ChatUser extends Equatable {
     return ChatUser(
       id: json['id'] as String? ?? '',
       name: json['name'] as String? ?? 'Người dùng',
-      avatar: json['avatar'] as String?,
+      // Chỉ chấp nhận avatar URL https hợp lệ (null nếu không).
+      avatar: () {
+        final safe = sanitizeHttpsUrl(json['avatar'] as String?);
+        return safe.isEmpty ? null : safe;
+      }(),
     );
   }
 

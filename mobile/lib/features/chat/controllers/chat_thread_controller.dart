@@ -84,6 +84,10 @@ class ChatThreadNotifier extends StateNotifier<ChatThreadState> {
   final List<StreamSubscription<dynamic>> _subs = [];
   int _localSeq = 0;
 
+  /// Thời gian chờ ack/new event từ server cho tin gửi qua socket trước khi
+  /// coi như thất bại.
+  static const Duration _ackTimeout = Duration(seconds: 12);
+
   void _bindSocket() {
     _subs.add(_socket.onMessageNew.listen((e) {
       if (e.conversationId == _conversationId) _onIncoming(e.message);
@@ -152,7 +156,7 @@ class ChatThreadNotifier extends StateNotifier<ChatThreadState> {
   /// chưa kết nối.
   Future<void> send(String content) async {
     final trimmed = content.trim();
-    if (trimmed.isEmpty) return;
+    if (trimmed.isEmpty || trimmed.length > kMaxChatMessageLength) return;
     final userId = _currentUserId;
     if (userId == null) return;
 
@@ -169,8 +173,10 @@ class ChatThreadNotifier extends StateNotifier<ChatThreadState> {
 
     if (_socket.isConnected) {
       _socket.sendMessage(_conversationId, content: trimmed);
-      // Ack/new event sẽ thay thế tin optimistic. Nếu không tới, tin giữ
-      // trạng thái "đang gửi" — user có thể gửi lại.
+      // Ack/new event sẽ thay thế tin optimistic. Nếu không tới trong
+      // [_ackTimeout] (mất kết nối ngầm, server không phản hồi) → đánh dấu
+      // failed để user thấy nút gửi lại.
+      _scheduleAckTimeout(localId);
       return;
     }
 
@@ -184,6 +190,19 @@ class ChatThreadNotifier extends StateNotifier<ChatThreadState> {
     }
   }
 
+  /// Sau [_ackTimeout], nếu tin [localId] vẫn đang gửi (chưa nhận ack/new) →
+  /// đánh dấu failed.
+  void _scheduleAckTimeout(String localId) {
+    Future<void>.delayed(_ackTimeout, () {
+      if (!mounted) return;
+      final stillSending = state.messages.any(
+        (m) =>
+            m.localId == localId && m.sendStatus == MessageSendStatus.sending,
+      );
+      if (stillSending) _markFailed(localId);
+    });
+  }
+
   /// Gửi lại tin đã fail.
   Future<void> retry(MessageModel failed) async {
     if (failed.localId == null) return;
@@ -193,6 +212,7 @@ class ChatThreadNotifier extends StateNotifier<ChatThreadState> {
     );
     if (_socket.isConnected) {
       _socket.sendMessage(_conversationId, content: failed.content);
+      _scheduleAckTimeout(failed.localId!);
       return;
     }
     final result =
@@ -214,7 +234,13 @@ class ChatThreadNotifier extends StateNotifier<ChatThreadState> {
   /// thất bại, null nếu OK.
   Future<String?> editMessage(MessageModel message, String content) async {
     final trimmed = content.trim();
-    if (trimmed.isEmpty || trimmed == message.content) return null;
+    if (trimmed.isEmpty ||
+        trimmed == message.content ||
+        trimmed.length > kMaxChatMessageLength) {
+      return null;
+    }
+    // Defense-in-depth: chỉ sender mới sửa (BE enforce, client mirror).
+    if (!canEdit(message)) return 'Không thể sửa tin này';
     final result = await _repo.editMessage(message.id, content: trimmed);
     if (!mounted) return null;
     if (result.success && result.data != null) {
@@ -232,6 +258,8 @@ class ChatThreadNotifier extends StateNotifier<ChatThreadState> {
 
   /// Xoá tin (sender hoặc admin). Soft-delete.
   Future<String?> deleteMessage(MessageModel message) async {
+    // Defense-in-depth: chỉ sender/admin (BE enforce, client mirror).
+    if (!canDelete(message)) return 'Không thể xoá tin này';
     final result = await _repo.deleteMessage(message.id);
     if (!mounted) return null;
     if (result.success) {

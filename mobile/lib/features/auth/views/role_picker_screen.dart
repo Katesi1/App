@@ -9,6 +9,7 @@ import '../../../core/constants/app_constants.dart';
 import '../../../core/theme/app_color_scheme.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
+import '../../../shared/widgets/app_toast.dart';
 import '../controllers/auth_controller.dart';
 
 /// OAuth provider — quyết định endpoint BE gọi sau khi user chọn role.
@@ -92,17 +93,7 @@ class _RolePickerScreenState extends ConsumerState<RolePickerScreen> {
   }
 
   void _showError(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(message),
-        backgroundColor: context.colors.error,
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(AppRadius.sm),
-        ),
-        margin: const EdgeInsets.all(AppSpacing.md),
-      ),
-    );
+    AppToast.error(context, message);
   }
 
   @override

@@ -23,7 +23,8 @@ Future<PaymentSession?> fetchActivePendingSession(WidgetRef ref) async {
 }
 
 /// Hydrate verify state từ session pending (plan + quote + session).
-Future<void> hydratePendingSession(WidgetRef ref, PaymentSession session) async {
+Future<void> hydratePendingSession(
+    WidgetRef ref, PaymentSession session) async {
   List<Plan> plans;
   try {
     plans = await ref.read(verifyPlansProvider.future);

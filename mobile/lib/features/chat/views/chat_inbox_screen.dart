@@ -23,7 +23,7 @@ class ChatInboxScreen extends ConsumerWidget {
       backgroundColor: colors.bgCanvas,
       appBar: AppBar(title: const Text('Tin nhắn')),
       body: async.when(
-        loading: () => const LoadingWidget(),
+        loading: () => const SkeletonList(skeleton: UserCardSkeleton()),
         error: (error, _) => ErrorStateWidget(
           message: error.toString().replaceAll('Exception: ', ''),
           onRetry: () => ref.read(conversationsProvider.notifier).refresh(),

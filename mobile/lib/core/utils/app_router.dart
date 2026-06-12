@@ -23,6 +23,7 @@ import '../../features/auth/views/register_screen.dart';
 import '../../features/auth/views/role_picker_screen.dart';
 import '../../features/auth/views/splash_screen.dart';
 import '../../features/staff/views/invite_accept_screen.dart';
+import '../../features/staff/views/invite_staff_screen.dart';
 import '../../features/staff/views/staff_management_screen.dart';
 import '../../features/bookings/views/booking_calendar_screen.dart';
 import '../../features/bookings/views/owner_calendar_screen.dart';
@@ -122,10 +123,15 @@ String? resolveRedirectPath({
   if (isPublic) return '/dashboard';
 
   // FCM chat deeplink dùng `/conversations/:id` (khớp web); app route là
-  // `/chat/:id` → rewrite để cùng 1 màn hình.
+  // `/chat/:id` → rewrite để cùng 1 màn hình. Validate id (không chứa `/`,
+  // `.`) để chặn path traversal từ deeplink giả mạo — id sai → về inbox.
   if (path == '/conversations') return '/chat';
   if (path.startsWith('/conversations/')) {
-    return '/chat/${path.substring('/conversations/'.length)}';
+    final rawId = path.substring('/conversations/'.length);
+    if (rawId.isNotEmpty && !rawId.contains('/') && !rawId.contains('.')) {
+      return '/chat/$rawId';
+    }
+    return '/chat';
   }
 
   // `type=system` không thuộc inbox — admin → lịch sử hệ thống.
@@ -210,7 +216,16 @@ final routerProvider = Provider<GoRouter>((ref) {
     },
     routes: [
       GoRoute(path: '/splash', builder: (_, __) => const SplashScreen()),
-      GoRoute(path: '/login', builder: (_, __) => const LoginScreen()),
+      GoRoute(
+        path: '/login',
+        builder: (_, state) {
+          final q = state.uri.queryParameters;
+          return LoginScreen(
+            prefillEmail: q['email'],
+            justRegistered: q['registered'] == '1',
+          );
+        },
+      ),
       GoRoute(path: '/register', builder: (_, __) => const RegisterScreen()),
       GoRoute(
           path: '/forgot-password',
@@ -250,6 +265,16 @@ final routerProvider = Provider<GoRouter>((ref) {
           key: state.pageKey,
           child: const StaffManagementScreen(),
         ),
+        routes: [
+          // Trang mời nhân viên (thay cho modal). Kế thừa guard OWNER ở trên.
+          GoRoute(
+            path: 'invite',
+            pageBuilder: (_, state) => slideUpPage(
+              key: state.pageKey,
+              child: const InviteStaffScreen(),
+            ),
+          ),
+        ],
       ),
 
       // ── Notifications ────────────────────────────────────────────────

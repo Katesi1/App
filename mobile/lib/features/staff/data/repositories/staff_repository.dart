@@ -137,23 +137,32 @@ class StaffRepository {
   }
 
   /// Public — accept invite bằng email/password.
+  ///
+  /// [persistSession] = false → đăng ký xong KHÔNG giữ phiên đăng nhập
+  /// (xoá token vừa lưu) để màn hình điều hướng user về trang login tự đăng nhập.
   Future<AcceptInviteOutcome> acceptWithPassword({
     required String token,
     required String name,
     required String password,
     String? phone,
+    bool persistSession = true,
   }) async {
-    return _accept(body: {
-      'token': token.trim(),
-      'method': 'password',
-      'name': name.trim(),
-      'password': password,
-      if (phone != null && phone.trim().isNotEmpty) 'phone': phone.trim(),
-    });
+    return _accept(
+      persistSession: persistSession,
+      body: {
+        'token': token.trim(),
+        'method': 'password',
+        'name': name.trim(),
+        'password': password,
+        if (phone != null && phone.trim().isNotEmpty) 'phone': phone.trim(),
+      },
+    );
   }
 
-  Future<AcceptInviteOutcome> _accept(
-      {required Map<String, dynamic> body}) async {
+  Future<AcceptInviteOutcome> _accept({
+    required Map<String, dynamic> body,
+    bool persistSession = true,
+  }) async {
     try {
       final response = await _dio.post(
         ApiConstants.staffInviteAccept,
@@ -184,6 +193,12 @@ class StaffRepository {
               ? profile.message
               : 'Không lấy được thông tin người dùng sau accept invite',
         );
+      }
+
+      // Đăng ký bằng mật khẩu: xoá token vừa lưu để user quay về trang login
+      // tự đăng nhập (không auto-login). Saved credentials KHÔNG bị xoá.
+      if (!persistSession) {
+        await SecureStorage.clear();
       }
       return AcceptInviteSuccess(profile.data!);
     } on DioException catch (e) {

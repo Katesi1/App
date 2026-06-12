@@ -10,7 +10,7 @@ import 'package:google_fonts/google_fonts.dart';
 import '../../../core/constants/app_constants.dart';
 import '../../../core/theme/app_color_scheme.dart';
 import '../../../core/theme/app_colors.dart';
-import '../../../core/theme/app_spacing.dart';
+import '../../../shared/widgets/app_toast.dart';
 import '../controllers/auth_controller.dart';
 import 'role_picker_screen.dart';
 
@@ -72,22 +72,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen>
     setState(() => _isLoading = false);
 
     if (error != null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Row(
-            children: [
-              const Icon(Icons.error_outline, color: Colors.white, size: 18),
-              const SizedBox(width: AppSpacing.sm),
-              Expanded(child: Text(error)),
-            ],
-          ),
-          backgroundColor: context.colors.error,
-          behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(AppRadius.sm)),
-          margin: const EdgeInsets.all(AppSpacing.md),
-        ),
-      );
+      AppToast.error(context, error);
     }
   }
 
@@ -115,16 +100,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen>
       case GoogleSignInCancelled():
         return;
       case GoogleSignInFailure(:final message):
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(message),
-            backgroundColor: context.colors.error,
-            behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(AppRadius.sm)),
-            margin: const EdgeInsets.all(AppSpacing.md),
-          ),
-        );
+        AppToast.error(context, message);
     }
   }
 
@@ -330,8 +306,8 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen>
                                       AppColors.jade500.withValues(alpha: 0.06),
                                   borderRadius: BorderRadius.circular(14),
                                   border: Border.all(
-                                    color:
-                                        AppColors.jade500.withValues(alpha: 0.3),
+                                    color: AppColors.jade500
+                                        .withValues(alpha: 0.3),
                                   ),
                                 ),
                                 child: Row(
@@ -342,8 +318,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen>
                                       decoration: BoxDecoration(
                                         color: AppColors.jade500
                                             .withValues(alpha: 0.12),
-                                        borderRadius:
-                                            BorderRadius.circular(10),
+                                        borderRadius: BorderRadius.circular(10),
                                       ),
                                       child: const Icon(
                                         Icons.home_work_rounded,
@@ -392,8 +367,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen>
                                   controller: _nameCtrl,
                                   textInputAction: TextInputAction.next,
                                   style: GoogleFonts.beVietnamPro(
-                                      fontSize: 15,
-                                      color: colors.textPrimary),
+                                      fontSize: 15, color: colors.textPrimary),
                                   decoration: _inputDecor(
                                     context: context,
                                     label: 'Họ và tên',
@@ -422,8 +396,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen>
                                   keyboardType: TextInputType.emailAddress,
                                   textInputAction: TextInputAction.next,
                                   style: GoogleFonts.beVietnamPro(
-                                      fontSize: 15,
-                                      color: colors.textPrimary),
+                                      fontSize: 15, color: colors.textPrimary),
                                   decoration: _inputDecor(
                                     context: context,
                                     label: 'Email',
@@ -453,8 +426,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen>
                                   obscureText: _obscurePassword,
                                   textInputAction: TextInputAction.next,
                                   style: GoogleFonts.beVietnamPro(
-                                      fontSize: 15,
-                                      color: colors.textPrimary),
+                                      fontSize: 15, color: colors.textPrimary),
                                   decoration: _inputDecor(
                                     context: context,
                                     label: 'Mật khẩu',
@@ -495,8 +467,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen>
                                   textInputAction: TextInputAction.done,
                                   onFieldSubmitted: (_) => _register(),
                                   style: GoogleFonts.beVietnamPro(
-                                      fontSize: 15,
-                                      color: colors.textPrimary),
+                                      fontSize: 15, color: colors.textPrimary),
                                   decoration: _inputDecor(
                                     context: context,
                                     label: 'Xác nhận mật khẩu',

@@ -125,11 +125,11 @@ class OrderSummaryCard extends StatelessWidget {
             const SizedBox(height: 8),
             _line(
               context,
-              label: breakdown.remainingDays != null &&
-                      breakdown.totalDays != null
-                  ? 'Trừ gói cũ (còn ${breakdown.remainingDays}/'
-                      '${breakdown.totalDays} ngày)'
-                  : 'Credit gói cũ',
+              label:
+                  breakdown.remainingDays != null && breakdown.totalDays != null
+                      ? 'Trừ gói cũ (còn ${breakdown.remainingDays}/'
+                          '${breakdown.totalDays} ngày)'
+                      : 'Credit gói cũ',
               value: '-${VerifyFormat.priceVND(breakdown.creditApplied)}',
               valueColor: colors.success,
             ),

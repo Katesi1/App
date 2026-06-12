@@ -107,12 +107,7 @@ class _ContentState extends ConsumerState<_Content> {
         .approve(widget.submission.id, adminName: adminName);
     if (!mounted) return;
     if (success) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: const Text('Đã phê duyệt hồ sơ'),
-          backgroundColor: context.colors.success,
-        ),
-      );
+      AppSnackBar.success(context, 'Đã phê duyệt hồ sơ');
       Navigator.of(context).maybePop();
     } else {
       _showError('Phê duyệt thất bại');
@@ -136,12 +131,9 @@ class _ContentState extends ConsumerState<_Content> {
         );
     if (!mounted) return;
     if (success) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content:
-              const Text('Đã từ chối hồ sơ + gửi yêu cầu bổ sung cho owner'),
-          backgroundColor: context.colors.error,
-        ),
+      AppSnackBar.success(
+        context,
+        'Đã từ chối hồ sơ + gửi yêu cầu bổ sung cho owner',
       );
       Navigator.of(context).maybePop();
     } else {
@@ -194,9 +186,7 @@ class _ContentState extends ConsumerState<_Content> {
   }
 
   void _showError(String msg) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(msg), backgroundColor: context.colors.error),
-    );
+    AppSnackBar.error(context, msg);
   }
 
   void _toggleReject(RejectableItem item, bool checked) {

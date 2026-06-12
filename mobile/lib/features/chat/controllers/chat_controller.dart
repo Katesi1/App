@@ -97,10 +97,12 @@ class ConversationsNotifier
 
 final conversationsProvider = StateNotifierProvider<ConversationsNotifier,
     AsyncValue<List<ConversationModel>>>((ref) {
+  // watch (không read) currentUserId → logout/đổi tài khoản trong cùng phiên
+  // app sẽ rebuild notifier với đúng userId (tránh filter event sai user).
   return ConversationsNotifier(
     ref.read(chatRepositoryProvider),
     ref.read(chatSocketServiceProvider),
-    ref.read(currentUserProvider)?.id,
+    ref.watch(currentUserProvider.select((u) => u?.id)),
   );
 });
 
@@ -144,7 +146,7 @@ final chatUnreadProvider =
   return ChatUnreadNotifier(
     ref.read(chatRepositoryProvider),
     ref.read(chatSocketServiceProvider),
-    ref.read(currentUserProvider)?.id,
+    ref.watch(currentUserProvider.select((u) => u?.id)),
   );
 });
 

@@ -232,22 +232,25 @@ class _PaymentScreenState extends ConsumerState<PaymentScreen>
   }
 
   void _showBankTransferDialog(PaymentSession session) {
-    showDialog<void>(
-      context: context,
-      barrierDismissible: false,
-      builder: (_) => BankTransferDialog(
-        session: session,
-        onWaitAndClose: () {
-          if (!mounted) return;
-          _showInfo(
-            'Đã ghi nhận. Bạn sẽ nhận thông báo khi thanh toán được xác nhận.',
-          );
-          WidgetsBinding.instance.addPostFrameCallback((_) {
+    // Mở trang QR full-screen (push qua root navigator để khớp cơ chế pop
+    // trong handlePaymentStatusUpdate khi `paid`).
+    Navigator.of(context, rootNavigator: true).push(
+      MaterialPageRoute<void>(
+        fullscreenDialog: true,
+        builder: (_) => BankTransferScreen(
+          session: session,
+          onWaitAndClose: () {
             if (!mounted) return;
-            goToSubscriptionDetail(context);
-          });
-        },
-        onCancelSession: _cancelPaymentSession,
+            _showInfo(
+              'Đã ghi nhận. Bạn sẽ nhận thông báo khi thanh toán được xác nhận.',
+            );
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              if (!mounted) return;
+              goToSubscriptionDetail(context);
+            });
+          },
+          onCancelSession: _cancelPaymentSession,
+        ),
       ),
     );
   }
@@ -457,8 +460,7 @@ class _PaymentScreenState extends ConsumerState<PaymentScreen>
                     const StatusStrip(
                       icon: Icons.sync,
                       label: 'Đang đồng bộ giá từ máy chủ',
-                      subtitle:
-                          'Vui lòng đợi vài giây trước khi thanh toán.',
+                      subtitle: 'Vui lòng đợi vài giây trước khi thanh toán.',
                       variant: StatusStripVariant.brand,
                     ),
                     const SizedBox(height: AppSpacing.md),
@@ -659,8 +661,7 @@ class _PendingOrderBanner extends StatelessWidget {
                     child: _InfoCell(
                       icon: Icons.schedule_rounded,
                       label: 'Hết hạn lúc',
-                      value:
-                          '${VerifyFormat.time(session!.expiresAt)} · '
+                      value: '${VerifyFormat.time(session!.expiresAt)} · '
                           '${VerifyFormat.dateVN(session!.expiresAt)}',
                     ),
                   ),

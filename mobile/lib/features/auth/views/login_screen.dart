@@ -11,12 +11,22 @@ import 'package:google_fonts/google_fonts.dart';
 import '../../../core/storage/secure_storage.dart';
 import '../../../core/theme/app_color_scheme.dart';
 import '../../../core/theme/app_colors.dart';
-import '../../../core/theme/app_spacing.dart';
+import '../../../shared/widgets/app_toast.dart';
 import '../controllers/auth_controller.dart';
 import 'role_picker_screen.dart';
 
 class LoginScreen extends ConsumerStatefulWidget {
-  const LoginScreen({super.key});
+  /// Email điền sẵn — dùng khi nhân viên vừa đăng ký bằng mã mời quay về login.
+  final String? prefillEmail;
+
+  /// True khi vừa đăng ký thành công → hiện snackbar mời đăng nhập.
+  final bool justRegistered;
+
+  const LoginScreen({
+    super.key,
+    this.prefillEmail,
+    this.justRegistered = false,
+  });
 
   @override
   ConsumerState<LoginScreen> createState() => _LoginScreenState();
@@ -51,10 +61,22 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
       vsync: this,
       duration: const Duration(milliseconds: 8000),
     )..repeat();
+
+    // Vừa đăng ký bằng mã mời → điền sẵn email + hiện thông báo mời đăng nhập.
+    if (widget.prefillEmail != null && widget.prefillEmail!.isNotEmpty) {
+      _emailCtrl.text = widget.prefillEmail!;
+    }
+    if (widget.justRegistered) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _showRegisteredSnackBar();
+      });
+    }
     _loadSavedCredentials();
   }
 
   Future<void> _loadSavedCredentials() async {
+    // Không ghi đè email vừa đăng ký bằng credentials đã lưu trước đó.
+    if (widget.prefillEmail != null && widget.prefillEmail!.isNotEmpty) return;
     final saved = await SecureStorage.getSavedCredentials();
     if (saved == null || !mounted) return;
     setState(() {
@@ -62,6 +84,13 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
       _passwordCtrl.text = saved.password;
       _rememberMe = true;
     });
+  }
+
+  void _showRegisteredSnackBar() {
+    AppToast.success(
+      context,
+      'Đăng ký thành công! Vui lòng đăng nhập để tiếp tục.',
+    );
   }
 
   @override
@@ -86,22 +115,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
 
     if (error != null) {
       _shakeCtrl.forward(from: 0);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Row(
-            children: [
-              const Icon(Icons.error_outline, color: Colors.white, size: 18),
-              const SizedBox(width: AppSpacing.sm),
-              Expanded(child: Text(error)),
-            ],
-          ),
-          backgroundColor: context.colors.error,
-          behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(AppRadius.sm)),
-          margin: const EdgeInsets.all(AppSpacing.md),
-        ),
-      );
+      AppToast.error(context, error);
       return;
     }
 
@@ -165,16 +179,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
       case GoogleSignInCancelled():
         return;
       case GoogleSignInFailure(:final message):
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(message),
-            backgroundColor: context.colors.error,
-            behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(AppRadius.sm)),
-            margin: const EdgeInsets.all(AppSpacing.md),
-          ),
-        );
+        AppToast.error(context, message);
     }
   }
 
@@ -185,30 +190,14 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
     final topPadding = MediaQuery.of(context).padding.top;
     final bottomInset = MediaQuery.of(context).viewPadding.bottom;
 
-    // Detect force-logout (token refresh fail) → show snackbar 1 lần.
+    // Detect force-logout (token refresh fail) → show toast 1 lần.
     ref.listen(authProvider, (prev, next) {
       if (next.forceLoggedOut && (prev?.forceLoggedOut ?? false) == false) {
-        ScaffoldMessenger.of(context)
-          ..hideCurrentSnackBar()
-          ..showSnackBar(
-            SnackBar(
-              content: Row(
-                children: const [
-                  Icon(Icons.lock_clock_rounded, color: Colors.white, size: 18),
-                  SizedBox(width: 10),
-                  Expanded(
-                    child: Text(
-                      'Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.',
-                    ),
-                  ),
-                ],
-              ),
-              backgroundColor: context.colors.error,
-              behavior: SnackBarBehavior.floating,
-              duration: const Duration(seconds: 4),
-            ),
-          );
-        // Clear flag để snackbar không hiện lại khi user back-vào lại screen.
+        AppToast.error(
+          context,
+          'Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.',
+        );
+        // Clear flag để toast không hiện lại khi user back-vào lại screen.
         ref.read(authProvider.notifier).consumeForceLogoutFlag();
       }
     });
@@ -288,8 +277,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
                                   ),
                                   boxShadow: [
                                     BoxShadow(
-                                      color:
-                                          AppColors.jade300.withValues(alpha: 0.3),
+                                      color: AppColors.jade300
+                                          .withValues(alpha: 0.3),
                                       blurRadius: 30,
                                       spreadRadius: 5,
                                     ),

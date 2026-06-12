@@ -3,6 +3,37 @@ import 'package:mobile/data/models/conversation_model.dart';
 import 'package:mobile/data/models/message_model.dart';
 
 void main() {
+  group('sanitizeHttpsUrl', () {
+    test('keeps valid https url', () {
+      expect(sanitizeHttpsUrl('https://x.com/a.jpg'), 'https://x.com/a.jpg');
+    });
+
+    test('rejects http / file / empty / malformed', () {
+      expect(sanitizeHttpsUrl('http://x.com/a.jpg'), '');
+      expect(sanitizeHttpsUrl('file:///etc/passwd'), '');
+      expect(sanitizeHttpsUrl(''), '');
+      expect(sanitizeHttpsUrl(null), '');
+      expect(sanitizeHttpsUrl('https://'), ''); // no authority
+    });
+
+    test('MessageAttachment drops non-https url', () {
+      final att = MessageAttachment.fromJson({
+        'url': 'http://evil/a.jpg',
+        'type': 'image/jpeg',
+      });
+      expect(att.url, '');
+    });
+
+    test('ChatUser drops non-https avatar', () {
+      final u = ChatUser.fromJson({
+        'id': 'u1',
+        'name': 'A',
+        'avatar': 'http://evil/a.png',
+      });
+      expect(u.avatar, isNull);
+    });
+  });
+
   group('ConversationType.fromApi', () {
     test('parses known values', () {
       expect(ConversationType.fromApi('booking'), ConversationType.booking);

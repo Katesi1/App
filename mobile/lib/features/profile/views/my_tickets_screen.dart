@@ -183,8 +183,7 @@ class _CreateTicketSheet extends ConsumerStatefulWidget {
   const _CreateTicketSheet({required this.onCreated});
 
   @override
-  ConsumerState<_CreateTicketSheet> createState() =>
-      _CreateTicketSheetState();
+  ConsumerState<_CreateTicketSheet> createState() => _CreateTicketSheetState();
 }
 
 class _CreateTicketSheetState extends ConsumerState<_CreateTicketSheet> {
@@ -203,9 +202,7 @@ class _CreateTicketSheetState extends ConsumerState<_CreateTicketSheet> {
 
   Future<void> _submit() async {
     if (_subjectCtrl.text.trim().isEmpty || _messageCtrl.text.trim().isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Nhập tiêu đề và nội dung')),
-      );
+      AppSnackBar.info(context, 'Nhập tiêu đề và nội dung');
       return;
     }
     setState(() => _submitting = true);
@@ -221,9 +218,7 @@ class _CreateTicketSheetState extends ConsumerState<_CreateTicketSheet> {
     if (!mounted) return;
     setState(() => _submitting = false);
     if (!ok) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(msg), backgroundColor: context.colors.error),
-      );
+      AppSnackBar.error(context, msg);
       return;
     }
     if (id != null && id.isNotEmpty) {

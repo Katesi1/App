@@ -259,20 +259,23 @@ class _SubscriptionDetailScreenState
 
   void _openSessionDialog(PaymentSession session, PaymentMethod method) {
     if (method == PaymentMethod.bankTransfer) {
-      showDialog<void>(
-        context: context,
-        barrierDismissible: false,
-        builder: (_) => BankTransferDialog(
-          session: session,
-          onWaitAndClose: () {
-            if (!mounted) return;
-            AppToast.info(
-              context,
-              'Đã ghi nhận. Bạn sẽ nhận thông báo khi thanh toán '
-              'được xác nhận.',
-            );
-          },
-          onCancelSession: _cancelPaymentSession,
+      // Mở trang QR full-screen (push qua root navigator để khớp cơ chế pop
+      // trong handlePaymentStatusUpdate khi `paid`).
+      Navigator.of(context, rootNavigator: true).push(
+        MaterialPageRoute<void>(
+          fullscreenDialog: true,
+          builder: (_) => BankTransferScreen(
+            session: session,
+            onWaitAndClose: () {
+              if (!mounted) return;
+              AppToast.info(
+                context,
+                'Đã ghi nhận. Bạn sẽ nhận thông báo khi thanh toán '
+                'được xác nhận.',
+              );
+            },
+            onCancelSession: _cancelPaymentSession,
+          ),
         ),
       );
       setState(() => _awaitingReconcile = true);

@@ -9,6 +9,7 @@ import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 import '../../../core/theme/app_colors.dart';
+import '../../../shared/widgets/app_toast.dart';
 import '../controllers/auth_controller.dart';
 
 class SplashScreen extends ConsumerStatefulWidget {
@@ -83,13 +84,10 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
       await ref.read(authProvider.notifier).logout();
       if (!mounted) return;
       context.go('/login');
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text(
-            'App dành cho chủ homestay và nhân viên. '
-            'Khách lưu trú không đăng nhập được trên app này.',
-          ),
-        ),
+      AppToast.info(
+        context,
+        'App dành cho chủ homestay và nhân viên. '
+        'Khách lưu trú không đăng nhập được trên app này.',
       );
       return;
     }
@@ -184,7 +182,8 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
                               ),
                               boxShadow: [
                                 BoxShadow(
-                                  color: AppColors.jade300.withValues(alpha: 0.25),
+                                  color:
+                                      AppColors.jade300.withValues(alpha: 0.25),
                                   blurRadius: 40,
                                   spreadRadius: 8,
                                 ),

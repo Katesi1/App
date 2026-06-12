@@ -53,13 +53,11 @@ extension TierX on Tier {
   bool get isEnterprise => this == Tier.enterprise;
 }
 
-enum PaymentMethod { vnpayQR, bankTransfer, card }
+enum PaymentMethod { bankTransfer, card }
 
 extension PaymentMethodX on PaymentMethod {
   String get displayName {
     switch (this) {
-      case PaymentMethod.vnpayQR:
-        return 'VNPay QR';
       case PaymentMethod.bankTransfer:
         return 'Chuyển khoản ngân hàng';
       case PaymentMethod.card:
@@ -69,8 +67,6 @@ extension PaymentMethodX on PaymentMethod {
 
   String get subtitle {
     switch (this) {
-      case PaymentMethod.vnpayQR:
-        return 'Quét QR bằng app ngân hàng · Tức thời';
       case PaymentMethod.bankTransfer:
         return 'STK + nội dung CK · Đối soát 1–3 giờ';
       case PaymentMethod.card:

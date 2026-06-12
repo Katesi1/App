@@ -248,8 +248,7 @@ class _SelfieScannerScreenState extends State<SelfieScannerScreen>
     final space = FaceAnalysisSpace.fromStream(
       rawWidth: image.width,
       rawHeight: image.height,
-      rotation:
-          input.metadata?.rotation ?? InputImageRotation.rotation0deg,
+      rotation: input.metadata?.rotation ?? InputImageRotation.rotation0deg,
       isFrontCamera:
           controller.description.lensDirection == CameraLensDirection.front,
     );

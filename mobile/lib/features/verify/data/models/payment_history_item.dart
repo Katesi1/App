@@ -166,11 +166,11 @@ PaymentHistoryKind _kindFromApi(String raw) {
 
 PaymentMethod _methodFromString(String raw) {
   switch (raw.toLowerCase()) {
-    case 'vnpay_qr':
-    case 'vnpayqr':
-      return PaymentMethod.vnpayQR;
     case 'card':
       return PaymentMethod.card;
+    // Legacy `vnpay_qr` (record cũ) map về chuyển khoản — VNPay đã gỡ.
+    case 'vnpay_qr':
+    case 'vnpayqr':
     case 'bank_transfer':
     case 'banktransfer':
     default:

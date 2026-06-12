@@ -1,5 +1,20 @@
 import 'package:equatable/equatable.dart';
 
+/// Giới hạn độ dài 1 tin nhắn phía client (mirror BE). Chặn gửi tin quá lớn.
+const int kMaxChatMessageLength = 4000;
+
+/// Trả lại URL nếu là `https://` hợp lệ, ngược lại rỗng. Dùng để chặn render
+/// ảnh từ URL không an toàn (http/file/...) — BE validate nhưng client phòng
+/// thủ với payload lỗi/giả mạo.
+String sanitizeHttpsUrl(String? raw) {
+  if (raw == null || raw.isEmpty) return '';
+  final uri = Uri.tryParse(raw);
+  if (uri == null || uri.scheme.toLowerCase() != 'https' || uri.host.isEmpty) {
+    return '';
+  }
+  return raw;
+}
+
 /// Trạng thái gửi phía client cho optimistic UI. Tin từ BE luôn là [sent].
 enum MessageSendStatus { sending, sent, failed }
 
@@ -20,7 +35,8 @@ class MessageAttachment extends Equatable {
 
   factory MessageAttachment.fromJson(Map<String, dynamic> json) {
     return MessageAttachment(
-      url: json['url'] as String? ?? '',
+      // Chỉ giữ URL https hợp lệ — URL khác (http/file/...) → rỗng, UI bỏ qua.
+      url: sanitizeHttpsUrl(json['url'] as String?),
       type: json['type'] as String? ?? '',
       name: json['name'] as String?,
       size: (json['size'] as num?)?.toInt(),

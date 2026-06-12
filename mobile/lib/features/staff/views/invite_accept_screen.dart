@@ -124,18 +124,39 @@ class _InviteAcceptScreenState extends ConsumerState<InviteAcceptScreen> {
       _errorMessage = null;
     });
 
+    // Đăng ký bằng mật khẩu → KHÔNG auto-login, quay về trang login để
+    // nhân viên tự đăng nhập bằng email + mật khẩu vừa tạo.
     final repo = ref.read(staffRepositoryProvider);
     final outcome = await repo.acceptWithPassword(
       token: _verifiedToken!,
       name: name,
       password: password,
       phone: phone,
+      persistSession: false,
     );
 
     if (!mounted) return;
-    _handleAcceptOutcome(outcome);
+    switch (outcome) {
+      case AcceptInviteSuccess():
+        final email = _preview?.email ?? '';
+        context.go(
+          Uri(
+            path: '/login',
+            queryParameters: {
+              'registered': '1',
+              if (email.isNotEmpty) 'email': email,
+            },
+          ).toString(),
+        );
+      case AcceptInviteFailure(:final message):
+        setState(() {
+          _accepting = false;
+          _errorMessage = message;
+        });
+    }
   }
 
+  /// Google: đây là luồng đăng nhập → giữ auto-login như cũ.
   void _handleAcceptOutcome(AcceptInviteOutcome outcome) {
     switch (outcome) {
       case AcceptInviteSuccess(:final user):

@@ -75,9 +75,7 @@ class _ContentState extends ConsumerState<_Content> {
         .investigate(widget.report.id, adminName: _adminName);
     if (!mounted) return;
     if (ok) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Đã chuyển sang điều tra')),
-      );
+      AppSnackBar.success(context, 'Đã chuyển sang điều tra');
     }
   }
 
@@ -109,9 +107,7 @@ class _ContentState extends ConsumerState<_Content> {
         .dismiss(widget.report.id, adminName: _adminName);
     if (!mounted) return;
     if (success) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Đã bỏ qua báo cáo')),
-      );
+      AppSnackBar.success(context, 'Đã bỏ qua báo cáo');
       Navigator.of(context).maybePop();
     }
   }
@@ -119,9 +115,7 @@ class _ContentState extends ConsumerState<_Content> {
   Future<void> _resolve() async {
     final resolution = _resolutionCtrl.text.trim();
     if (resolution.length < 5) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Ghi chú xử lý tối thiểu 5 ký tự')),
-      );
+      AppSnackBar.info(context, 'Ghi chú xử lý tối thiểu 5 ký tự');
       return;
     }
 
@@ -157,9 +151,7 @@ class _ContentState extends ConsumerState<_Content> {
         );
     if (!mounted) return;
     if (success) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Đã xử lý báo cáo')),
-      );
+      AppSnackBar.success(context, 'Đã xử lý báo cáo');
       Navigator.of(context).maybePop();
     }
   }

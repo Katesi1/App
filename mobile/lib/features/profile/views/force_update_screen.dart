@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../../core/theme/app_color_scheme.dart';
 import '../../../core/theme/app_spacing.dart';
+import '../../../shared/widgets/app_toast.dart';
 
 class ForceUpdateScreen extends StatelessWidget {
   const ForceUpdateScreen({super.key});
@@ -46,9 +47,7 @@ class ForceUpdateScreen extends StatelessWidget {
               width: double.infinity,
               child: FilledButton(
                 onPressed: () {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Mở store để cập nhật app')),
-                  );
+                  AppToast.info(context, 'Mở store để cập nhật app');
                 },
                 child: const Text('Cập nhật ngay'),
               ),

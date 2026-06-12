@@ -5,6 +5,7 @@ import 'package:google_fonts/google_fonts.dart';
 
 import '../../../core/theme/app_color_scheme.dart';
 import '../../../core/theme/app_spacing.dart';
+import '../../../data/models/message_model.dart' show kMaxChatMessageLength;
 
 /// Ô soạn tin nhắn ở đáy màn chat. Tự throttle typing event (1 emit / 3s) +
 /// emit stop sau 3s không gõ.
@@ -108,6 +109,7 @@ class _ChatComposerState extends State<ChatComposer> {
                 enabled: widget.enabled,
                 minLines: 1,
                 maxLines: 5,
+                maxLength: kMaxChatMessageLength,
                 textCapitalization: TextCapitalization.sentences,
                 style: GoogleFonts.beVietnamPro(
                   fontSize: 14,
@@ -121,6 +123,7 @@ class _ChatComposerState extends State<ChatComposer> {
                   ),
                   border: InputBorder.none,
                   isDense: true,
+                  counterText: '',
                   contentPadding:
                       const EdgeInsets.symmetric(vertical: AppSpacing.sm + 2),
                 ),

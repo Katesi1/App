@@ -30,6 +30,13 @@ class _FakeChatRepo extends ChatRepository {
   final Map<String?, MessagePage> messagesByCursor;
   ApiResponse<MessageModel>? sendResult;
   int sendCalls = 0;
+  int deleteCalls = 0;
+
+  @override
+  Future<ApiResponse<void>> deleteMessage(String messageId) async {
+    deleteCalls++;
+    return ApiResponse(success: true, message: '');
+  }
 
   @override
   Future<ApiResponse<MessagePage>> getMessages(
@@ -142,6 +149,52 @@ void main() {
       await n.send('   ');
       expect(n.state.messages, isEmpty);
       expect(repo.sendCalls, 0);
+      n.dispose();
+    });
+
+    test('rejects content over max length', () async {
+      final repo = _FakeChatRepo(
+        messagesByCursor: {null: (messages: [], nextCursor: null)},
+      );
+      final n = _make(repo);
+      await n.loadInitial();
+      await n.send('a' * (kMaxChatMessageLength + 1));
+      expect(n.state.messages, isEmpty);
+      expect(repo.sendCalls, 0);
+      n.dispose();
+    });
+  });
+
+  group('ChatThreadNotifier ownership guards', () {
+    test('deleteMessage on other user message is blocked (no REST call)',
+        () async {
+      final repo = _FakeChatRepo(
+        messagesByCursor: {null: (messages: [], nextCursor: null)},
+      );
+      final n = _make(repo);
+      await n.loadInitial();
+      final err = await n.deleteMessage(_msg('m1', sender: 'them'));
+      expect(err, isNotNull);
+      expect(repo.deleteCalls, 0);
+      n.dispose();
+    });
+
+    test('deleteMessage on own message calls REST', () async {
+      final repo = _FakeChatRepo(
+        messagesByCursor: {null: (messages: [], nextCursor: null)},
+      );
+      final n = _make(repo);
+      await n.loadInitial();
+      final mine = MessageModel(
+        id: 'm1',
+        conversationId: 'c1',
+        senderId: 'me',
+        content: 'x',
+        createdAt: DateTime.now(),
+      );
+      final err = await n.deleteMessage(mine);
+      expect(err, isNull);
+      expect(repo.deleteCalls, 1);
       n.dispose();
     });
   });

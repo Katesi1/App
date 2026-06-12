@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../../../core/monitoring/analytics_service.dart';
 import '../../../core/theme/app_color_scheme.dart';
 import '../../../core/theme/app_spacing.dart';
+import '../../../shared/widgets/app_toast.dart';
 import '../controllers/profile_settings_controller.dart';
 
 class FeedbackReportScreen extends ConsumerStatefulWidget {
@@ -37,9 +38,7 @@ class _FeedbackReportScreenState extends ConsumerState<FeedbackReportScreen> {
 
   Future<void> _submit() async {
     if (_contentCtrl.text.trim().isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Vui lòng nhập nội dung phản hồi')),
-      );
+      AppToast.warning(context, 'Vui lòng nhập nội dung phản hồi');
       return;
     }
 
@@ -55,12 +54,11 @@ class _FeedbackReportScreenState extends ConsumerState<FeedbackReportScreen> {
     if (!mounted) return;
     setState(() => _submitting = false);
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(msg),
-        backgroundColor: ok ? null : context.colors.error,
-      ),
-    );
+    if (ok) {
+      AppToast.success(context, msg);
+    } else {
+      AppToast.error(context, msg);
+    }
 
     if (ok) {
       AnalyticsService.logEvent(

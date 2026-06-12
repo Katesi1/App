@@ -6,6 +6,7 @@ import 'package:intl/intl.dart' show DateFormat;
 import '../../../core/theme/app_color_scheme.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../data/models/calendar_model.dart';
+import '../../../shared/widgets/app_toast.dart';
 import '../../../shared/widgets/calendar_grid_widget.dart';
 import '../../../shared/widgets/loading_widget.dart';
 import '../../calendar/controllers/calendar_controller.dart';
@@ -556,19 +557,14 @@ class _OwnerCalendarScreenState extends ConsumerState<OwnerCalendarScreen> {
         );
 
     if (!mounted) return;
-    final colors = context.colors;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(
-          success
-              ? 'Đã khoá phòng ${room.code} ngày ${date.day}/${date.month}'
-              : 'Có lỗi xảy ra, vui lòng thử lại',
-        ),
-        backgroundColor: success ? colors.textTertiary : colors.error,
-        behavior: SnackBarBehavior.floating,
-        duration: const Duration(seconds: 2),
-      ),
-    );
+    if (success) {
+      AppToast.info(
+        context,
+        'Đã khoá phòng ${room.code} ngày ${date.day}/${date.month}',
+      );
+    } else {
+      AppToast.error(context, 'Có lỗi xảy ra, vui lòng thử lại');
+    }
   }
 
   Future<void> _doHold(
@@ -585,19 +581,14 @@ class _OwnerCalendarScreenState extends ConsumerState<OwnerCalendarScreen> {
         );
 
     if (!mounted) return;
-    final colors = context.colors;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(
-          success
-              ? 'Đã giữ chỗ phòng ${room.code} ngày ${date.day}/${date.month}'
-              : 'Có lỗi xảy ra, vui lòng thử lại',
-        ),
-        backgroundColor: success ? colors.warning : colors.error,
-        behavior: SnackBarBehavior.floating,
-        duration: const Duration(seconds: 2),
-      ),
-    );
+    if (success) {
+      AppToast.warning(
+        context,
+        'Đã giữ chỗ phòng ${room.code} ngày ${date.day}/${date.month}',
+      );
+    } else {
+      AppToast.error(context, 'Có lỗi xảy ra, vui lòng thử lại');
+    }
   }
 
   Future<void> _doUnlock(
@@ -613,19 +604,14 @@ class _OwnerCalendarScreenState extends ConsumerState<OwnerCalendarScreen> {
         );
 
     if (!mounted) return;
-    final colors = context.colors;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(
-          success
-              ? 'Đã mở khoá phòng ${room.code} ngày ${date.day}/${date.month}'
-              : 'Có lỗi xảy ra, vui lòng thử lại',
-        ),
-        backgroundColor: success ? colors.success : colors.error,
-        behavior: SnackBarBehavior.floating,
-        duration: const Duration(seconds: 2),
-      ),
-    );
+    if (success) {
+      AppToast.success(
+        context,
+        'Đã mở khoá phòng ${room.code} ngày ${date.day}/${date.month}',
+      );
+    } else {
+      AppToast.error(context, 'Có lỗi xảy ra, vui lòng thử lại');
+    }
   }
 
   Future<void> _markSold(
@@ -641,20 +627,13 @@ class _OwnerCalendarScreenState extends ConsumerState<OwnerCalendarScreen> {
     if (!mounted) return;
     if (success) {
       setState(() => _manualSoldKeys.add('${room.id}_$dateStr'));
+      AppToast.success(
+        context,
+        'Đã đánh dấu đã bán phòng ${room.code} ngày ${date.day}/${date.month}',
+      );
+    } else {
+      AppToast.error(context, 'Có lỗi xảy ra, vui lòng thử lại');
     }
-    final colors = context.colors;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(
-          success
-              ? 'Đã đánh dấu đã bán phòng ${room.code} ngày ${date.day}/${date.month}'
-              : 'Có lỗi xảy ra, vui lòng thử lại',
-        ),
-        backgroundColor: success ? colors.success : colors.error,
-        behavior: SnackBarBehavior.floating,
-        duration: const Duration(seconds: 2),
-      ),
-    );
   }
 
   String _formatPrice(double price) {

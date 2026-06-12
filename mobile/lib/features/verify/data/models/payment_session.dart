@@ -143,7 +143,7 @@ DateTime? _parseOptionalDate(dynamic raw) {
   return DateTime.tryParse(raw);
 }
 
-/// Một phiên thanh toán đang mở (VNPay / bank transfer / card).
+/// Một phiên thanh toán đang mở (bank transfer / card).
 class PaymentSession extends Equatable {
   final String sessionId;
   final PaymentMethod method;
@@ -151,25 +151,8 @@ class PaymentSession extends Equatable {
   /// Tổng tiền (đã bao gồm VAT) — VND.
   final int totalAmount;
 
-  /// QR payload cho VNPay QR — định dạng EMVCo string raw (FE tự render bằng
-  /// `QrImageView`). Backend trả về sau khi gọi VNPay createQR API.
-  ///
-  /// Nếu backend trả base64 PNG thay vì EMV string, dùng [qrImageBase64].
-  final String? qrCode;
-
-  /// Fallback: ảnh QR base64 PNG (`data:image/png;base64,...` hoặc raw base64).
-  /// Dùng khi backend không tiện sinh EMV string mà render QR rồi gửi ảnh.
-  final String? qrImageBase64;
-
   /// Thông tin chuyển khoản (chỉ áp dụng bank transfer).
   final BankInfo? bankInfo;
-
-  /// Redirect URL — VNPay Gateway flow (mở WebView/browser để nhập thẻ ATM/quốc tế).
-  final String? redirectUrl;
-
-  /// Deeplink để mở app banking trên cùng device (vd `vnpay://...`).
-  /// Sau khi user thanh toán xong, app banking sẽ callback về app qua deeplink.
-  final String? payUrl;
 
   final DateTime expiresAt;
 
@@ -186,11 +169,7 @@ class PaymentSession extends Equatable {
     required this.sessionId,
     required this.method,
     required this.totalAmount,
-    this.qrCode,
-    this.qrImageBase64,
     this.bankInfo,
-    this.redirectUrl,
-    this.payUrl,
     required this.expiresAt,
     this.qrExpiresAt,
     this.kind,
@@ -207,17 +186,13 @@ class PaymentSession extends Equatable {
       sessionId: (json['sessionId'] ?? json['session_id']) as String,
       method: method,
       totalAmount: (json['totalAmount'] ?? json['total_amount']) as int,
-      qrCode: (json['qrCode'] ?? json['qr_code']) as String?,
-      qrImageBase64:
-          (json['qrImageBase64'] ?? json['qr_image_base64']) as String?,
       bankInfo:
           bankRaw is Map<String, dynamic> ? BankInfo.fromJson(bankRaw) : null,
-      redirectUrl: (json['redirectUrl'] ?? json['redirect_url']) as String?,
-      payUrl: (json['payUrl'] ?? json['pay_url']) as String?,
       expiresAt: DateTime.parse(
         (json['expiresAt'] ?? json['expires_at']) as String,
       ),
-      qrExpiresAt: _parseOptionalDate(json['qrExpiresAt'] ?? json['qr_expires_at']),
+      qrExpiresAt:
+          _parseOptionalDate(json['qrExpiresAt'] ?? json['qr_expires_at']),
       kind: _sessionKindFromApi(json['kind'] as String?),
       planId: json['planId'] as String?,
       cycle: _cycleFromApi(json['cycle'] as String?),
@@ -233,14 +208,9 @@ class PaymentSession extends Equatable {
         'sessionId': sessionId,
         'method': method.toApiString(),
         'totalAmount': totalAmount,
-        'qrCode': qrCode,
-        'qrImageBase64': qrImageBase64,
         'bankInfo': bankInfo?.toJson(),
-        'redirectUrl': redirectUrl,
-        'payUrl': payUrl,
         'expiresAt': expiresAt.toIso8601String(),
-        if (qrExpiresAt != null)
-          'qrExpiresAt': qrExpiresAt!.toIso8601String(),
+        if (qrExpiresAt != null) 'qrExpiresAt': qrExpiresAt!.toIso8601String(),
         if (kind != null) 'kind': kind!.name,
         if (planId != null) 'planId': planId,
         if (cycle != null) 'cycle': cycle!.name,
@@ -252,11 +222,7 @@ class PaymentSession extends Equatable {
         sessionId,
         method,
         totalAmount,
-        qrCode,
-        qrImageBase64,
         bankInfo,
-        redirectUrl,
-        payUrl,
         expiresAt,
         qrExpiresAt,
         kind,
@@ -290,12 +256,12 @@ BillingCycle? _cycleFromApi(String? raw) {
   return raw == 'yearly' ? BillingCycle.yearly : BillingCycle.monthly;
 }
 
-/// Backend dùng `vnpay_qr|bank_transfer|card`, frontend enum dùng camelCase.
+/// Backend dùng `bank_transfer|card`, frontend enum dùng camelCase.
+/// Legacy `vnpay_qr` (record cũ) map về chuyển khoản — VNPay đã gỡ.
 PaymentMethod _methodFromApi(String raw) {
   switch (raw) {
     case 'vnpay_qr':
     case 'vnpayqr':
-      return PaymentMethod.vnpayQR;
     case 'bank_transfer':
     case 'banktransfer':
       return PaymentMethod.bankTransfer;
@@ -314,8 +280,6 @@ extension PaymentMethodApi on PaymentMethod {
   /// Convert sang format backend (snake_case) khi gửi POST /payments/initiate.
   String toApiString() {
     switch (this) {
-      case PaymentMethod.vnpayQR:
-        return 'vnpay_qr';
       case PaymentMethod.bankTransfer:
         return 'bank_transfer';
       case PaymentMethod.card:

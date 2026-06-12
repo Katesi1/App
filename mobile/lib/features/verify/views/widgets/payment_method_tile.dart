@@ -157,8 +157,6 @@ class PaymentMethodTile extends StatelessWidget {
 
   IconData _iconFor(PaymentMethod m) {
     switch (m) {
-      case PaymentMethod.vnpayQR:
-        return Icons.qr_code_2;
       case PaymentMethod.bankTransfer:
         return Icons.account_balance;
       case PaymentMethod.card:
@@ -168,8 +166,6 @@ class PaymentMethodTile extends StatelessWidget {
 
   Color _iconColorFor(PaymentMethod m, AppColorScheme colors) {
     switch (m) {
-      case PaymentMethod.vnpayQR:
-        return colors.brandLight;
       case PaymentMethod.bankTransfer:
         return colors.brandSecondary;
       case PaymentMethod.card:

@@ -211,8 +211,7 @@ class _PendingApprovalScreenState extends ConsumerState<PendingApprovalScreen> {
                   child: SizedBox(
                     height: 48,
                     child: FilledButton.icon(
-                      onPressed: () =>
-                          returnToDashboardAfterKyc(context, ref),
+                      onPressed: () => returnToDashboardAfterKyc(context, ref),
                       icon: const Icon(Icons.dashboard_outlined, size: 18),
                       label: const Text('Trang tổng quan'),
                     ),

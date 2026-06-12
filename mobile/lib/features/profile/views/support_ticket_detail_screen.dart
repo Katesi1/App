@@ -40,19 +40,17 @@ class _SupportTicketDetailScreenState
     if (!mounted) return;
     setState(() => _sending = false);
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(msg),
-        backgroundColor: ok ? null : context.colors.error,
-      ),
-    );
-    if (ok) _replyCtrl.clear();
+    if (ok) {
+      AppSnackBar.success(context, msg);
+      _replyCtrl.clear();
+    } else {
+      AppSnackBar.error(context, msg);
+    }
   }
 
   @override
   Widget build(BuildContext context) {
-    final detailAsync =
-        ref.watch(supportTicketDetailProvider(widget.ticketId));
+    final detailAsync = ref.watch(supportTicketDetailProvider(widget.ticketId));
     final colors = context.colors;
 
     return Scaffold(

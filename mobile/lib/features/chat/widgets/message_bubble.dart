@@ -162,7 +162,9 @@ class _Attachments extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final images = message.attachments.where((a) => a.isImage).toList();
+    final images = message.attachments
+        .where((a) => a.isImage && a.url.isNotEmpty)
+        .toList();
     if (images.isEmpty) return const SizedBox.shrink();
     return Padding(
       padding: const EdgeInsets.only(bottom: AppSpacing.xs),

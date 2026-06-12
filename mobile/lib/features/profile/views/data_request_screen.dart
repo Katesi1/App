@@ -44,9 +44,8 @@ class DataRequestScreen extends ConsumerWidget {
               ),
               const SizedBox(height: AppSpacing.md),
               FilledButton.icon(
-                onPressed: isRequesting
-                    ? null
-                    : () => _requestExport(context, ref),
+                onPressed:
+                    isRequesting ? null : () => _requestExport(context, ref),
                 icon: isRequesting
                     ? const SizedBox(
                         width: 18,
@@ -83,12 +82,11 @@ class DataRequestScreen extends ConsumerWidget {
     final (ok, msg) =
         await ref.read(dataExportActionsProvider.notifier).requestExport();
     if (!context.mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(msg),
-        backgroundColor: ok ? null : context.colors.error,
-      ),
-    );
+    if (ok) {
+      AppSnackBar.success(context, msg);
+    } else {
+      AppSnackBar.error(context, msg);
+    }
   }
 }
 
