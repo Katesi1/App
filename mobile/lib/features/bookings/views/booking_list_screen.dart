@@ -29,9 +29,10 @@ class _BookingListScreenState extends ConsumerState<BookingListScreen> {
     BookingStatus.hold,
     BookingStatus.confirmed,
     BookingStatus.cancelled,
+    BookingStatus.noShow,
   ];
 
-  static const _filterLabels = ['Tất cả', 'Đang giữ', 'Đã đặt', 'Đã huỷ'];
+  static const _filterLabels = ['Tất cả', 'Đang giữ', 'Đã đặt', 'Đã huỷ', 'Không đến'];
 
   @override
   Widget build(BuildContext context) {
@@ -249,6 +250,8 @@ class _BookingListScreenState extends ConsumerState<BookingListScreen> {
         return colors.success;
       case BookingStatus.cancelled:
         return colors.error;
+      case BookingStatus.noShow:
+        return colors.warning;
       default:
         return colors.brand;
     }
@@ -292,6 +295,8 @@ class _BookingCardState extends ConsumerState<_BookingCard> {
         return colors.success;
       case BookingStatus.cancelled:
         return colors.error;
+      case BookingStatus.noShow:
+        return colors.warning;
       default:
         return colors.textTertiary;
     }

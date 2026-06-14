@@ -9,6 +9,7 @@ import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../core/utils/helpers.dart';
 import '../../../data/models/user_model.dart';
+import '../../../data/repositories/user_repository.dart';
 import '../../auth/controllers/auth_controller.dart';
 import '../../bookings/controllers/booking_controller.dart';
 import '../../dashboard/controllers/dashboard_controller.dart';
@@ -45,6 +46,15 @@ class DashboardScreen extends ConsumerWidget {
     final colors = context.colors;
     final user = ref.watch(currentUserProvider);
     final statsAsync = ref.watch(dashboardStatsProvider);
+
+    // Show toast when BE auto-cancelled a pending deletion (e.g. user logged
+    // in on another device and the grace period was interrupted).
+    ref.listen<AuthState>(authProvider, (prev, next) {
+      if (next.autoRestoredNotice) {
+        ref.read(authProvider.notifier).consumeRestoredNotice();
+        AppSnackBar.success(context, 'Yêu cầu xoá tài khoản đã được huỷ. Tài khoản của bạn đã được khôi phục.');
+      }
+    });
     final now = DateTime.now();
     final dayOfWeek = AppHelpers.vietnameseDayOfWeek(now.weekday);
     final formattedDate = '$dayOfWeek, ${now.day} tháng ${now.month}';
@@ -77,6 +87,17 @@ class DashboardScreen extends ConsumerWidget {
                   userName: user?.name ?? 'Homestay',
                   formattedDate: formattedDate,
                 ),
+
+                // Account pending deletion banner — highest priority, shown
+                // for all roles. Source: user.deletionScheduledAt from profile.
+                if (user != null && user.isPendingDeletion)
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 0, 16, 0),
+                    child: Transform.translate(
+                      offset: const Offset(0, -16),
+                      child: _DeletionPendingBanner(user: user),
+                    ),
+                  ),
 
                 // Verify CTA for unverified Owner — KYC is the only gate to
                 // create rooms. Source of truth: user.kycStatus from
@@ -1756,6 +1777,133 @@ class _CTAButton extends StatelessWidget {
             Icon(Icons.arrow_forward, size: 12, color: colors.textOnPrimary),
           ],
         ),
+      ),
+    );
+  }
+}
+
+// ─── Deletion Pending Banner ──────────────────────────────────────────────────
+
+/// Shown on dashboard when user.isPendingDeletion = true.
+/// "Khôi phục" → POST /users/me/restore → refresh profile → banner disappears.
+class _DeletionPendingBanner extends ConsumerStatefulWidget {
+  final UserModel user;
+  const _DeletionPendingBanner({required this.user});
+
+  @override
+  ConsumerState<_DeletionPendingBanner> createState() =>
+      _DeletionPendingBannerState();
+}
+
+class _DeletionPendingBannerState
+    extends ConsumerState<_DeletionPendingBanner> {
+  bool _restoring = false;
+
+  String _formatDate(DateTime dt) {
+    final local = dt.toLocal();
+    return '${local.day.toString().padLeft(2, '0')}/'
+        '${local.month.toString().padLeft(2, '0')}/'
+        '${local.year}';
+  }
+
+  Future<void> _restore() async {
+    setState(() => _restoring = true);
+    final result = await UserRepository().restoreAccount();
+    if (!mounted) return;
+    if (result.success) {
+      // Refresh profile → deletionScheduledAt becomes null → banner disappears.
+      await ref.read(authProvider.notifier).refreshProfile();
+      if (!mounted) return;
+      AppSnackBar.success(context, 'Tài khoản đã được khôi phục thành công.');
+    } else {
+      setState(() => _restoring = false);
+      AppSnackBar.error(context, result.message);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.colors;
+    final scheduledAt = widget.user.deletionScheduledAt;
+    final daysLeft = widget.user.deletionDaysLeft ?? 0;
+    final dateStr = scheduledAt != null ? _formatDate(scheduledAt) : '';
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
+      margin: const EdgeInsets.only(bottom: 12),
+      decoration: BoxDecoration(
+        color: colors.errorBg,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: colors.error.withValues(alpha: 0.3)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.schedule_rounded, color: colors.error, size: 18),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  'Tài khoản đang chờ xoá vào $dateStr (còn $daysLeft ngày)',
+                  style: GoogleFonts.beVietnamPro(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w700,
+                    color: colors.error,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Row(
+            children: [
+              Expanded(
+                child: FilledButton(
+                  style: FilledButton.styleFrom(
+                    backgroundColor: colors.error,
+                    padding: const EdgeInsets.symmetric(vertical: 8),
+                    visualDensity: VisualDensity.compact,
+                  ),
+                  onPressed: _restoring ? null : _restore,
+                  child: _restoring
+                      ? const SizedBox(
+                          height: 16,
+                          width: 16,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: Colors.white,
+                          ),
+                        )
+                      : Text(
+                          'Khôi phục ngay',
+                          style: GoogleFonts.beVietnamPro(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                ),
+              ),
+              const SizedBox(width: 8),
+              TextButton(
+                style: TextButton.styleFrom(
+                  foregroundColor: colors.error,
+                  visualDensity: VisualDensity.compact,
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 8,
+                  ),
+                ),
+                onPressed: () => context.push('/profile/help'),
+                child: Text(
+                  'Tìm hiểu',
+                  style: GoogleFonts.beVietnamPro(fontSize: 13),
+                ),
+              ),
+            ],
+          ),
+        ],
       ),
     );
   }

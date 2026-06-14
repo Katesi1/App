@@ -1,5 +1,6 @@
 import '../../core/constants/app_constants.dart';
 
+// cancelledByRole values: 0=ADMIN, 1=OWNER, 2=SALE, 3=CUSTOMER, null=system/cron
 class BookingModel {
   final String id;
   final String propertyId;
@@ -17,6 +18,11 @@ class BookingModel {
   final int holdRemainingSeconds;
   final Map<String, dynamic>? property;
   final Map<String, dynamic>? sale;
+  // Cancellation tracking (v1.14) — null on non-cancelled bookings or pre-migration rows
+  final DateTime? cancelledAt;
+  final String? cancelledByUserId;
+  final int? cancelledByRole;
+  final String? cancelledReason;
 
   BookingModel({
     required this.id,
@@ -35,6 +41,10 @@ class BookingModel {
     this.holdRemainingSeconds = 0,
     this.property,
     this.sale,
+    this.cancelledAt,
+    this.cancelledByUserId,
+    this.cancelledByRole,
+    this.cancelledReason,
   });
 
   factory BookingModel.fromJson(Map<String, dynamic> json) => BookingModel(
@@ -56,6 +66,12 @@ class BookingModel {
         holdRemainingSeconds: json['holdRemainingSeconds'] ?? 0,
         property: json['property'],
         sale: json['sale'],
+        cancelledAt: json['cancelledAt'] != null
+            ? DateTime.tryParse(json['cancelledAt'])
+            : null,
+        cancelledByUserId: json['cancelledByUserId'],
+        cancelledByRole: json['cancelledByRole'] as int?,
+        cancelledReason: json['cancelledReason'],
       );
 
   int get nights => checkoutDate.difference(checkinDate).inDays;
@@ -63,6 +79,21 @@ class BookingModel {
   String get propertyName => property?['name'] ?? 'N/A';
 
   String get saleName => sale?['name'] ?? 'N/A';
+
+  String? get cancelledByRoleLabel {
+    switch (cancelledByRole) {
+      case 0:
+        return 'Admin';
+      case 1:
+        return 'Chủ homestay';
+      case 2:
+        return 'Nhân viên';
+      case 3:
+        return 'Khách';
+      default:
+        return cancelledByRole == null ? 'Hệ thống' : null;
+    }
+  }
 }
 
 class CalendarBooking {

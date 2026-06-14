@@ -27,28 +27,47 @@ class TermsOfServiceScreen extends StatelessWidget {
           ),
           const SizedBox(height: AppSpacing.md),
           const _TermItem(
+            title: 'Phạm vi dịch vụ',
+            description:
+                'Halong24h là ứng dụng quản lý phòng dành cho chủ homestay, '
+                'doanh nghiệp và cá nhân có phòng cho thuê (quản lý phòng, lịch '
+                'và nhân viên). Ứng dụng không bán gói hay đăng ký trả phí.',
+          ),
+          const _TermItem(
             title: 'Tài khoản và thông tin',
             description:
-                'Bạn chịu trách nhiệm cung cấp thông tin chính xác và cập nhật '
-                'để đảm bảo quyền lợi giao dịch.',
+                'Bạn chịu trách nhiệm cung cấp thông tin chính xác, cập nhật và '
+                'bảo mật tài khoản của mình.',
+          ),
+          const _TermItem(
+            title: 'Xác thực danh tính (KYC)',
+            description:
+                'Để đăng phòng và thêm nhân viên, bạn cần hoàn tất xác thực '
+                'danh tính (KYC) và được quản trị viên kiểm duyệt trước. Việc '
+                'này nhằm bảo đảm an toàn, uy tín, trách nhiệm và tránh đăng tin '
+                'tràn lan, giả mạo ảnh hưởng đến hiệu suất hệ thống.',
           ),
           const _TermItem(
             title: 'Hành vi bị cấm',
             description:
-                'Nghiêm cấm gian lận, spam, giả mạo, hoặc sử dụng nền tảng '
-                'cho mục đích vi phạm pháp luật.',
+                'Nghiêm cấm gian lận, spam, giả mạo, đăng tin sai sự thật. Bạn '
+                'cam kết không sử dụng nền tảng cho bất kỳ mục đích trái pháp '
+                'luật nào.',
           ),
           const _TermItem(
-            title: 'Đặt phòng và thanh toán',
+            title: 'Dữ liệu cá nhân',
             description:
-                'Bạn cần tuân thủ chính sách đặt/hủy phòng và nghĩa vụ thanh toán '
-                'theo từng giao dịch cụ thể.',
+                'Bạn đồng ý cho chúng tôi thu thập và xử lý dữ liệu theo Chính '
+                'sách quyền riêng tư. Mọi hình ảnh được lưu trên Cloudinary. Khi '
+                'bạn xoá tài khoản, dữ liệu KYC (gồm ảnh CCCD và selfie) sẽ bị '
+                'xoá theo; hệ thống không lưu trữ cho mục đích riêng.',
           ),
           const _TermItem(
-            title: 'Tạm khóa hoặc chấm dứt tài khoản',
+            title: 'Tạm khoá hoặc chấm dứt tài khoản',
             description:
-                'Halong24h có thể giới hạn hoặc khóa tài khoản nếu phát hiện '
-                'hành vi rủi ro ảnh hưởng đến cộng đồng.',
+                'Halong24h có thể giới hạn hoặc khoá tài khoản nếu phát hiện '
+                'hành vi rủi ro, gian lận hoặc ảnh hưởng đến cộng đồng và hiệu '
+                'suất hệ thống.',
           ),
           const _TermItem(
             title: 'Cập nhật điều khoản',

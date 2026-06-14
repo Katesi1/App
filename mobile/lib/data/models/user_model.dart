@@ -47,6 +47,10 @@ class UserModel {
   final String? pendingCycle;
   final DateTime? pendingEffectiveAt; // ngày downgrade có hiệu lực
 
+  // Account deletion grace period (v1.14 / NĐ 13).
+  // null = normal, ISO = pending deletion scheduled at this date.
+  final DateTime? deletionScheduledAt;
+
   const UserModel({
     required this.id,
     required this.name,
@@ -74,10 +78,21 @@ class UserModel {
     this.pendingPlanId,
     this.pendingCycle,
     this.pendingEffectiveAt,
+    this.deletionScheduledAt,
   });
 
   /// Có lịch hạ gói chờ áp dụng từ kỳ sau.
   bool get hasPendingDowngrade => pendingPlanId != null;
+
+  /// Tài khoản đang trong grace period 30 ngày chờ xoá (NĐ 13 / GDPR).
+  bool get isPendingDeletion => deletionScheduledAt != null;
+
+  /// Số ngày còn lại trước khi tài khoản bị xoá, hoặc null nếu không pending.
+  int? get deletionDaysLeft {
+    if (deletionScheduledAt == null) return null;
+    final diff = deletionScheduledAt!.difference(DateTime.now()).inDays;
+    return diff < 0 ? 0 : diff;
+  }
 
   /// Defensive wrapper around `_$UserModelFromJson` — older backends may omit
   /// id/name/phone on some responses. The generated file stays untouched.
@@ -201,6 +216,7 @@ class UserModel {
     String? pendingPlanId,
     String? pendingCycle,
     DateTime? pendingEffectiveAt,
+    DateTime? deletionScheduledAt,
   }) =>
       UserModel(
         id: id ?? this.id,
@@ -230,5 +246,6 @@ class UserModel {
         pendingPlanId: pendingPlanId ?? this.pendingPlanId,
         pendingCycle: pendingCycle ?? this.pendingCycle,
         pendingEffectiveAt: pendingEffectiveAt ?? this.pendingEffectiveAt,
+        deletionScheduledAt: deletionScheduledAt ?? this.deletionScheduledAt,
       );
 }

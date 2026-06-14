@@ -1,9 +1,11 @@
 # Halong24h — Chính sách bảo mật / Privacy Policy
 
-> **Version**: 1.2 — 2026-06-10
+> **Version**: 1.3 — 2026-06-12
 >
 > **Áp dụng cho**: Mobile app Halong24h (iOS + Android) + dịch vụ web
-> tại `halong24h.com`.
+> tại `halong24h.com`. App mobile là công cụ **quản lý phòng** cho chủ
+> homestay, doanh nghiệp và cá nhân có phòng cho thuê (không bán gói/đăng ký
+> trả phí trong app).
 >
 > **Đơn vị vận hành**: UPGO SOLUTIONS COMPANY LIMITED, Việt Nam.
 >
@@ -68,13 +70,18 @@ Chúng tôi thu thập **một ảnh selfie** trong bước xác minh danh tính
 dụng cho chủ homestay) để nhân viên đối chiếu thủ công với ảnh trên CCCD.
 
 - **Thu thập gì**: 1 ảnh selfie. KHÔNG quay video.
+- **Mục đích**: KYC chỉ phục vụ **an toàn, uy tín và trách nhiệm** — quản trị
+  viên kiểm duyệt trước khi chủ phòng được đăng phòng và thêm nhân viên, nhằm
+  tránh đăng tin tràn lan, giả mạo ảnh hưởng hiệu suất hệ thống. Chúng tôi cam
+  kết không dùng dữ liệu KYC vào bất kỳ mục đích trái phép nào.
 - **KHÔNG nhận diện khuôn mặt tự động (face recognition)** để xác định danh tính.
 - **KHÔNG so khớp khuôn mặt tự động với CCCD** — việc đối chiếu do nhân viên
   thực hiện thủ công. App không tạo hay lưu template / faceprint / vector
   sinh trắc khuôn mặt nào.
 - **KHÔNG dùng cho**: quảng cáo, hồ sơ hành vi, theo dõi, mở khoá thiết bị
   (đây KHÔNG phải Face ID).
-- **Lưu trữ**: trên Amazon S3 (mã hoá at-rest).
+- **Lưu trữ**: trên Cloudinary (qua kết nối bảo mật). Hệ thống không lưu trữ
+  cho mục đích riêng.
 - **Chia sẻ**: KHÔNG bán, KHÔNG chia sẻ cho bên thứ ba để nhận diện/đối chiếu
   khuôn mặt. Chỉ tiết lộ cho cơ quan nhà nước khi có yêu cầu hợp pháp.
 - **Thời gian lưu**: giữ cho đến khi bạn xoá tài khoản. Khi xoá tài khoản, toàn
@@ -85,9 +92,10 @@ dụng cho chủ homestay) để nhân viên đối chiếu thủ công với �
 > face recognition and does NOT perform automated face matching against the
 > national ID (CCCD) — comparison is done manually by staff, and no face
 > template, faceprint, or biometric embedding is created or stored. The selfie
-> is stored encrypted on Amazon S3, is never sold or shared with any third party
-> for face recognition/matching, and is retained until you delete your account;
-> on account deletion, all KYC data including the face image is deleted."
+> is stored on Cloudinary over a secure connection, is never sold or shared with
+> any third party for face recognition/matching, and is retained until you
+> delete your account; on account deletion, all KYC data including the face
+> image is deleted."
 
 ## 3. Mục đích sử dụng
 
@@ -96,10 +104,10 @@ dụng cho chủ homestay) để nhân viên đối chiếu thủ công với �
 | Tài khoản, mật khẩu | Cho phép đăng nhập, xác thực |
 | Email | Gửi xác nhận, mật khẩu reset, lời mời nhân viên |
 | SĐT | Xác nhận booking, liên hệ khẩn cấp khi check-in |
-| Ảnh CCCD + selfie | KYC theo yêu cầu Nghị định 13/2023/NĐ-CP về bảo vệ dữ liệu cá nhân + thẩm định chủ kinh doanh |
+| Ảnh CCCD + selfie | KYC theo Nghị định 13/2023/NĐ-CP; bảo đảm an toàn, uy tín, trách nhiệm; admin kiểm duyệt trước khi chủ phòng được đăng phòng + thêm nhân viên |
 | Thông tin booking | Vận hành dịch vụ đặt phòng |
 | Device ID + IP | Chống spam đăng ký (3 acc/24h/device, 10/24h/IP) |
-| FCM token | Gửi push notification về booking, thanh toán, hệ thống |
+| FCM token | Gửi push notification về booking và hệ thống |
 | Crash logs | Phát hiện và sửa lỗi app |
 | Reviews | Hiển thị công khai cho user khác xem |
 
@@ -109,7 +117,7 @@ dụng cho chủ homestay) để nhân viên đối chiếu thủ công với �
 - **Mã hoá**:
   - Mật khẩu: bcrypt hash, KHÔNG lưu plaintext
   - Token: JWT hash (refresh token), HTTPS-only transport
-  - Ảnh CCCD + selfie (KYC): lưu trên Amazon S3, encrypted at rest
+  - Hình ảnh (ảnh phòng, ảnh CCCD + selfie KYC): lưu trên Cloudinary qua kết nối bảo mật
 - **Thời gian lưu**:
   - Tài khoản active: lưu vô thời hạn
   - Tài khoản đã xoá: soft-delete 30 ngày, sau đó hard-delete
@@ -127,8 +135,7 @@ Chúng tôi KHÔNG bán dữ liệu. Chia sẻ chỉ trong các trường hợp 
 | **Google Cloud Platform** | Email, name, avatar | Google Sign-In OAuth |
 | **Apple** | Email (có thể privateRelay), name | Sign In with Apple |
 | **Firebase (Google)** | FCM token, device ID, crash logs | Push notification + crash reporting |
-| **Amazon S3 (AWS)** | Ảnh CCCD, ảnh selfie | Lưu trữ KYC (mã hoá at-rest) |
-| **Cloudinary** | Ảnh property | Lưu trữ + CDN |
+| **Cloudinary** | Ảnh phòng, ảnh CCCD + selfie (KYC) | Lưu trữ ảnh + CDN (qua kết nối bảo mật) |
 | **Cơ quan nhà nước** | Toàn bộ data nếu có yêu cầu hợp pháp | Tuân thủ pháp luật VN |
 | **OWNER (chủ homestay)** | Tên + SĐT + số người booking | Quản lý đặt phòng |
 | **Nhân viên SALE của OWNER** | Tương tự OWNER, scope theo `ownerId` | Hỗ trợ vận hành |
@@ -238,13 +245,16 @@ owners only) so staff can manually compare it with the photo on the national ID
 (CCCD).
 
 - **What is collected**: one selfie image. No video is recorded.
+- **Purpose**: KYC serves only safety, trust, and accountability — an admin
+  reviews it before an owner may publish rooms or add staff, preventing spam or
+  fraudulent listings. We never use KYC data for any unlawful purpose.
 - **No automated face recognition** is performed to identify you.
 - **No automated face matching against the CCCD** — comparison is done manually
   by staff. The app creates and stores no face template, faceprint, or
   biometric embedding.
 - **Never used for**: advertising, profiling, tracking, or device unlock (this
   is not Face ID).
-- **Storage**: on Amazon S3, encrypted at rest.
+- **Storage**: on Cloudinary over a secure connection.
 - **Sharing**: never sold, never shared with any third party for face
   recognition/matching. Disclosed only to Vietnamese government authorities upon
   lawful request.
@@ -269,8 +279,7 @@ owners only) so staff can manually compare it with the photo on the national ID
 We DO NOT sell data. We share only with:
 - Google Cloud (Sign-In, Firebase) — email, name, avatar, FCM token
 - Apple — email, name (first authorization)
-- Amazon S3 (AWS) — CCCD images, selfie image (KYC storage, encrypted at rest)
-- Cloudinary — property images for storage and CDN
+- Cloudinary — property images, CCCD images, selfie image (KYC) for storage and CDN over a secure connection
 - Vietnamese government — full data on legal request
 - Property owners — guest name, phone, occupancy
 - Owner-invited sales staff — same scope as owner

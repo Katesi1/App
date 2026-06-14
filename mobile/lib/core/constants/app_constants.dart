@@ -68,8 +68,8 @@ extension UserRoleExtension on UserRole {
   }
 }
 
-// 0=HOLD, 1=CONFIRMED, 2=CANCELLED, 3=COMPLETED
-enum BookingStatus { hold, confirmed, cancelled, completed }
+// 0=HOLD, 1=CONFIRMED, 2=CANCELLED, 3=COMPLETED, 4=NO_SHOW
+enum BookingStatus { hold, confirmed, cancelled, completed, noShow }
 
 extension BookingStatusExtension on BookingStatus {
   int get value {
@@ -82,6 +82,8 @@ extension BookingStatusExtension on BookingStatus {
         return 2;
       case BookingStatus.completed:
         return 3;
+      case BookingStatus.noShow:
+        return 4;
     }
   }
 
@@ -93,6 +95,8 @@ extension BookingStatusExtension on BookingStatus {
         return BookingStatus.cancelled;
       case 3:
         return BookingStatus.completed;
+      case 4:
+        return BookingStatus.noShow;
       default:
         return BookingStatus.hold;
     }
@@ -108,6 +112,8 @@ extension BookingStatusExtension on BookingStatus {
         return 'Đã huỷ';
       case BookingStatus.completed:
         return 'Hoàn thành';
+      case BookingStatus.noShow:
+        return 'Không đến';
     }
   }
 }

@@ -133,21 +133,37 @@ class UserRepository {
     }
   }
 
-  /// Self-delete for App Store + GDPR compliance.
-  /// Currently reuses `DELETE /users/:id` — BE needs to confirm this endpoint
-  /// allows user self-delete (not just ADMIN). If BE doesn't allow it yet,
-  /// it returns 403 and FE shows a clear error so the user can contact support.
+  /// Huỷ yêu cầu xoá tài khoản trong grace period 30 ngày.
+  /// 200 → khôi phục thành công.
+  /// 400 users.deletionNotPending → không có pending request (race condition).
+  Future<ApiResponse<void>> restoreAccount() async {
+    try {
+      await _dio.post(ApiConstants.userDeletionRestore);
+      return ApiResponse(success: true, message: 'Tài khoản đã được khôi phục.');
+    } on DioException catch (e) {
+      return ApiResponse(success: false, message: parseDioError(e));
+    }
+  }
+
+  /// Self-delete for App Store + GDPR / NĐ 13 compliance.
+  /// v1.14: BE không xoá ngay — tạo deletion request với grace 30 ngày.
+  /// Response data: { scheduledDeleteAt: ISO, graceDays: 30 }.
+  /// Login lại trong grace period → BE auto-cancel yêu cầu.
   ///
   /// [reason] optional — sent along so BE can log the reason (analytics).
-  Future<ApiResponse<void>> deleteMyAccount({String? reason}) async {
+  Future<ApiResponse<String?>> deleteMyAccount({String? reason}) async {
     try {
-      await _dio.delete(
+      final resp = await _dio.delete(
         '${ApiConstants.users}/me',
         data: reason == null ? null : {'reason': reason},
       );
+      final scheduledDeleteAt =
+          resp.data?['data']?['scheduledDeleteAt'] as String?;
       return ApiResponse(
         success: true,
-        message: 'Đã xoá tài khoản. Hẹn gặp lại bạn!',
+        data: scheduledDeleteAt,
+        message: resp.data?['message'] as String? ??
+            'Yêu cầu xoá tài khoản đã được gửi.',
       );
     } on DioException catch (e) {
       return ApiResponse(success: false, message: parseDioError(e));

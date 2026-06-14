@@ -621,10 +621,11 @@ const _faqCategories = <_FaqCategory>[
     items: [
       _FaqItem(
         question: 'Làm sao để tạo tài khoản?',
-        answer: 'Bạn có thể tạo tài khoản bằng cách nhấn "Đăng ký" ở màn hình '
-            'đăng nhập. Nhập số điện thoại, mật khẩu và chọn vai trò '
-            '(Khách hàng hoặc Nhân viên). Bạn cũng có thể đăng ký nhanh '
-            'bằng tài khoản Google.',
+        answer: 'Nhấn "Đăng ký" ở màn hình đăng nhập. Nhập số điện thoại, '
+            'mật khẩu và chọn vai trò "Chủ homestay". Bạn cũng có thể '
+            'đăng ký nhanh bằng tài khoản Google hoặc Apple ID. '
+            'Nhân viên (Sale) được mời qua email bởi chủ homestay, '
+            'không cần tự đăng ký.',
       ),
       _FaqItem(
         question: 'Quên mật khẩu thì phải làm sao?',
@@ -639,9 +640,10 @@ const _faqCategories = <_FaqCategory>[
             'chữ hoa, chữ thường, số và ký tự đặc biệt).',
       ),
       _FaqItem(
-        question: 'Tôi có thể đăng nhập bằng Google không?',
-        answer: 'Có! Tại màn hình đăng nhập, nhấn nút "Đăng nhập với Google". '
-            'Nếu là lần đầu, hệ thống sẽ tự tạo tài khoản cho bạn.',
+        question: 'Tôi có thể đăng nhập bằng mạng xã hội không?',
+        answer: 'Có! Tại màn hình đăng nhập, nhấn "Đăng nhập với Google" hoặc '
+            '"Đăng nhập với Apple" (trên iOS). Nếu là lần đầu, hệ thống '
+            'sẽ yêu cầu chọn vai trò và tự tạo tài khoản cho bạn.',
       ),
     ],
   ),
@@ -725,9 +727,10 @@ const _faqCategories = <_FaqCategory>[
     items: [
       _FaqItem(
         question: 'Tôi là chủ homestay, làm sao để bắt đầu?',
-        answer: 'Đăng ký tài khoản với vai trò "Nhân viên", sau đó liên hệ '
-            'admin để được cấp quyền quản lý homestay. Bạn sẽ có thể '
-            'thêm phòng, quản lý booking và xem báo cáo.',
+        answer: 'Đăng ký tài khoản và chọn vai trò "Chủ homestay". Sau đó '
+            'hoàn tất xác minh danh tính (CCCD) để được duyệt. Khi được '
+            'duyệt, bạn có thể thêm cơ sở, đăng phòng, quản lý booking '
+            'và xem báo cáo doanh thu.',
       ),
       _FaqItem(
         question: 'Làm sao để xác nhận booking?',

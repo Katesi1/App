@@ -124,6 +124,8 @@ class ApiConstants {
   static String supportTicketReply(String id) => '/support/tickets/$id/reply';
   static const String feedback = '/feedback';
   static const String dataExport = '/users/me/data-export';
+  static const String userDeletionStatus = '/users/me/deletion-status';
+  static const String userDeletionRestore = '/users/me/restore';
   static const String consents = '/users/me/consents';
   static const String notificationPreferences =
       '/users/me/notification-preferences';

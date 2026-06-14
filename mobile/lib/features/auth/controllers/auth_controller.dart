@@ -36,12 +36,19 @@ class AuthState {
   /// snackbar + calls `consumeForceLogoutFlag()` to reset.
   final bool forceLoggedOut;
 
+  /// Set to true when refreshProfile() detects that a pending deletion was
+  /// auto-cancelled by the server (deletionScheduledAt was non-null, now null).
+  /// Dashboard listens via ref.listen and shows a toast, then calls
+  /// consumeRestoredNotice() to reset.
+  final bool autoRestoredNotice;
+
   AuthState({
     this.user,
     this.isLoading = false,
     this.isLoggedIn = false,
     this.error,
     this.forceLoggedOut = false,
+    this.autoRestoredNotice = false,
   });
 
   AuthState copyWith({
@@ -50,6 +57,7 @@ class AuthState {
     bool? isLoggedIn,
     String? error,
     bool? forceLoggedOut,
+    bool? autoRestoredNotice,
   }) =>
       AuthState(
         user: user ?? this.user,
@@ -57,6 +65,7 @@ class AuthState {
         isLoggedIn: isLoggedIn ?? this.isLoggedIn,
         error: error,
         forceLoggedOut: forceLoggedOut ?? this.forceLoggedOut,
+        autoRestoredNotice: autoRestoredNotice ?? this.autoRestoredNotice,
       );
 }
 
@@ -289,13 +298,27 @@ class AuthNotifier extends StateNotifier<AuthState> {
   }
 
   /// Calls GET /auth/profile and updates state + local storage.
+  /// Detects auto-restore: if account had pending deletion before and it's
+  /// cleared now (BE auto-cancelled on login), sets autoRestoredNotice=true.
   Future<(bool success, String message)> refreshProfile() async {
+    final hadPendingDeletion = state.user?.isPendingDeletion ?? false;
     final result = await _repo.getProfile();
     if (result.success && result.data != null) {
-      state = state.copyWith(user: result.data);
+      final nowPending = result.data!.isPendingDeletion;
+      state = state.copyWith(
+        user: result.data,
+        autoRestoredNotice: hadPendingDeletion && !nowPending,
+      );
       return (true, '');
     }
     return (false, result.message);
+  }
+
+  /// Consume the auto-restore toast flag after the UI has shown it.
+  void consumeRestoredNotice() {
+    if (state.autoRestoredNotice) {
+      state = state.copyWith(autoRestoredNotice: false);
+    }
   }
 
   /// Update the user in state (caller is responsible for SecureStorage persistence in the repo).

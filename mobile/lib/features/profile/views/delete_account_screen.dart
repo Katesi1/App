@@ -9,8 +9,10 @@ import '../../../data/repositories/user_repository.dart';
 import '../../../shared/widgets/loading_widget.dart';
 import '../../auth/controllers/auth_controller.dart';
 
-/// Self-delete account flow — required for Apple Guideline 5.1.1(v) and
-/// GDPR Article 17 (right to erasure).
+/// Self-delete account flow — required for Apple Guideline 5.1.1(v),
+/// GDPR Article 17 (right to erasure), and NĐ 13/2023/NĐ-CP.
+/// v1.14: BE không xoá ngay — tạo deletion request grace 30 ngày.
+/// Login lại trong grace period → auto-cancel yêu cầu.
 class DeleteAccountScreen extends ConsumerStatefulWidget {
   const DeleteAccountScreen({super.key});
 
@@ -42,19 +44,55 @@ class _DeleteAccountScreenState extends ConsumerState<DeleteAccountScreen> {
     if (!mounted) return;
 
     if (result.success) {
-      // Xoá saved credentials (Remember me) để login screen không auto-fill
-      // input của tài khoản vừa bị xoá.
+      final scheduledDeleteAt = _parseScheduledDate(result.data);
+      await _showGraceDialog(scheduledDeleteAt);
+      if (!mounted) return;
+      // Xoá saved credentials (Remember me) để login screen không auto-fill.
       await SecureStorage.clearCredentials();
       // Logout local: clear tokens, FCM unregister, reset state.
       await ref.read(authProvider.notifier).logout();
-
-      if (!mounted) return;
-      AppSnackBar.success(context, result.message);
-      // Router redirects to /login automatically when authState.isLoggedIn = false.
+      // Router tự redirect /login khi authState.isLoggedIn = false.
     } else {
       setState(() => _submitting = false);
       AppSnackBar.error(context, result.message);
     }
+  }
+
+  /// Parse ISO string → formatted date "dd/MM/yyyy". Returns null on failure.
+  String? _parseScheduledDate(String? iso) {
+    if (iso == null) return null;
+    final dt = DateTime.tryParse(iso);
+    if (dt == null) return null;
+    final local = dt.toLocal();
+    return '${local.day.toString().padLeft(2, '0')}/'
+        '${local.month.toString().padLeft(2, '0')}/'
+        '${local.year}';
+  }
+
+  Future<void> _showGraceDialog(String? scheduledDate) async {
+    if (!mounted) return;
+    final dateText = scheduledDate != null
+        ? 'Tài khoản sẽ bị xoá vào ngày $scheduledDate.'
+        : 'Tài khoản sẽ bị xoá sau 30 ngày.';
+
+    await showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Yêu cầu đã được gửi'),
+        content: Text(
+          '$dateText\n\n'
+          'Bạn có thể đăng nhập lại bất cứ lúc nào trước ngày đó để huỷ '
+          'yêu cầu và khôi phục tài khoản.',
+        ),
+        actions: [
+          FilledButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: const Text('Đã hiểu'),
+          ),
+        ],
+      ),
+    );
   }
 
   @override
@@ -80,11 +118,11 @@ class _DeleteAccountScreenState extends ConsumerState<DeleteAccountScreen> {
                 children: [
                   Row(
                     children: [
-                      Icon(Icons.warning_rounded, color: colors.error),
+                      Icon(Icons.schedule_rounded, color: colors.error),
                       const SizedBox(width: AppSpacing.sm),
                       Expanded(
                         child: Text(
-                          'Hành động này không thể hoàn tác',
+                          'Tài khoản sẽ bị xoá sau 30 ngày',
                           style: TextStyle(
                             color: colors.error,
                             fontWeight: FontWeight.w700,
@@ -95,12 +133,13 @@ class _DeleteAccountScreenState extends ConsumerState<DeleteAccountScreen> {
                   ),
                   const SizedBox(height: AppSpacing.sm),
                   Text(
-                    'Sau khi xoá tài khoản:\n'
-                    '• Booking + lịch sử thanh toán bị mất quyền truy cập.\n'
-                    '• Hồ sơ KYC + ảnh CCCD bị xoá khỏi server (theo GDPR).\n'
-                    '• Subscription đang chạy bị huỷ — không hoàn tiền '
-                    'cho phần còn lại.\n'
-                    '• Email của bạn không thể đăng ký lại trong 30 ngày.',
+                    'Sau khi gửi yêu cầu:\n'
+                    '• Bạn sẽ bị đăng xuất ngay lập tức.\n'
+                    '• Tài khoản sẽ bị xoá vĩnh viễn sau 30 ngày.\n'
+                    '• Đăng nhập lại trong 30 ngày để huỷ yêu cầu '
+                    'và khôi phục tài khoản.\n'
+                    '• Sau khi xoá: booking, lịch sử thanh toán và '
+                    'hồ sơ KYC bị xoá khỏi server (GDPR / NĐ 13).',
                     style: TextStyle(color: colors.error, height: 1.45),
                   ),
                 ],
@@ -142,7 +181,8 @@ class _DeleteAccountScreenState extends ConsumerState<DeleteAccountScreen> {
               value: _confirmedPolicy,
               onChanged: (v) => setState(() => _confirmedPolicy = v ?? false),
               title: const Text(
-                'Tôi hiểu rằng dữ liệu KHÔNG thể khôi phục được sau khi xoá',
+                'Tôi hiểu tài khoản sẽ bị xoá sau 30 ngày nếu '
+                'tôi không đăng nhập lại để huỷ yêu cầu',
               ),
             ),
             const SizedBox(height: AppSpacing.lg),
@@ -163,7 +203,7 @@ class _DeleteAccountScreenState extends ConsumerState<DeleteAccountScreen> {
                         color: Colors.white,
                       ),
                     )
-                  : const Text('Xoá tài khoản vĩnh viễn'),
+                  : const Text('Gửi yêu cầu xoá tài khoản'),
             ),
             const SizedBox(height: AppSpacing.sm),
             Center(

@@ -37,7 +37,7 @@ class AppHelpers {
     }
   }
 
-  // ── Booking status helpers (0=HOLD, 1=CONFIRMED, 2=CANCELLED, 3=COMPLETED)
+  // ── Booking status helpers (0=HOLD, 1=CONFIRMED, 2=CANCELLED, 3=COMPLETED, 4=NO_SHOW)
 
   static Color bookingStatusColor(int? status) {
     switch (status) {
@@ -49,6 +49,8 @@ class AppHelpers {
         return AppColors.cancelled;
       case 3:
         return AppColors.completed;
+      case 4:
+        return AppColors.amber;
       default:
         return AppColors.primary;
     }

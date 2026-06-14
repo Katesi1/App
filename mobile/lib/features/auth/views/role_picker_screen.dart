@@ -145,7 +145,7 @@ class _RolePickerScreenState extends ConsumerState<RolePickerScreen> {
                 ),
               ),
               const SizedBox(height: AppSpacing.md),
-              _GoogleAvatar(profile: profile),
+              _GoogleAvatar(profile: profile, provider: widget.args.provider),
               const SizedBox(height: AppSpacing.xl),
               _RoleOption(
                 icon: Icons.home_work_rounded,
@@ -178,8 +178,9 @@ class _RolePickerScreenState extends ConsumerState<RolePickerScreen> {
 
 class _GoogleAvatar extends StatelessWidget {
   final GoogleProfile profile;
+  final SocialProvider provider;
 
-  const _GoogleAvatar({required this.profile});
+  const _GoogleAvatar({required this.profile, required this.provider});
 
   @override
   Widget build(BuildContext context) {
@@ -235,7 +236,9 @@ class _GoogleAvatar extends StatelessWidget {
                   overflow: TextOverflow.ellipsis,
                 ),
                 Text(
-                  'Đăng nhập qua Google',
+                  provider == SocialProvider.apple
+                      ? 'Đăng nhập qua Apple'
+                      : 'Đăng nhập qua Google',
                   style: GoogleFonts.beVietnamPro(
                     fontSize: 11,
                     color: AppColors.muted,

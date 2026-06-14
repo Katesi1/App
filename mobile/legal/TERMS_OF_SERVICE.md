@@ -1,6 +1,10 @@
 # Halong24h — Điều khoản sử dụng / Terms of Service
 
-> **Version**: 1.1 — 2026-06-09
+> **Version**: 1.2 — 2026-06-12
+>
+> **Lưu ý**: App mobile Halong24h là công cụ **quản lý phòng** cho chủ homestay,
+> doanh nghiệp và cá nhân có phòng cho thuê — **không bán gói/đăng ký trả phí
+> trong app**. Đặt phòng và thanh toán booking diễn ra trên website.
 >
 > **Hành động cho team Web/BE**: Host file này tại
 > `https://halong24h.com/terms`. URL phải public — App Store reviewer
@@ -27,7 +31,7 @@ quan trọng sẽ thông báo trước 30 ngày.
 | **Chủ homestay / Owner** | User role OWNER — chủ hoặc người quản lý homestay, gồm cả cá nhân cho thuê 1–2 phòng nhỏ lẻ (không bắt buộc là doanh nghiệp) |
 | **Nhân viên / Sale** | User được Owner mời, role SALE |
 | **Booking** | Yêu cầu/đơn đặt phòng |
-| **Subscription** | Gói trả phí cho Owner để mở khoá tính năng quản lý |
+| **KYC** | Xác thực danh tính chủ phòng (CCCD + selfie), do admin kiểm duyệt trước khi cho đăng phòng + thêm nhân viên |
 
 ## 3. Tài khoản
 
@@ -79,8 +83,7 @@ Halong24h có quyền đình chỉ/chấm dứt tài khoản nếu:
 
 ### 5.1 Đăng ký
 - Phải hoàn tất KYC: CCCD + selfie + admin duyệt (24-48h)
-- Sau approve, được hưởng **trial 7 ngày** miễn phí
-- **Không tự động gia hạn**; muốn dùng tiếp thì chủ động mua gói qua chuyển khoản VietQR
+- Sau khi được admin duyệt, Owner mới được đăng phòng và thêm nhân viên
 
 ### 5.2 Trách nhiệm Owner
 - Property là sở hữu hợp pháp hoặc có quyền cho thuê
@@ -89,21 +92,21 @@ Halong24h có quyền đình chỉ/chấm dứt tài khoản nếu:
 - Hoàn tiền 100% nếu không thể đáp ứng booking đã CONFIRMED
 - Tuân thủ pháp luật VN về kinh doanh lưu trú (đăng ký với công an địa phương, kê khai thuế)
 
-### 5.3 Subscription
-- Phí subscription tính theo số phòng + chu kỳ (tháng/năm)
-- Thanh toán **một lần cho mỗi kỳ** qua **chuyển khoản QR ngân hàng (VietQR)** —
-  đây là phương thức duy nhất; KHÔNG có tự động gia hạn, KHÔNG tự động trừ tiền
-- Mỗi giao dịch được **admin đối soát thủ công** trước khi kích hoạt gói
-- **Không bắt buộc gia hạn** — khi hết kỳ, nếu muốn tiếp tục dùng, Owner chủ
-  động **mua gói mới** qua chuyển khoản VietQR
-- **Hoàn tiền**: 100% trong 14 ngày đầu kể từ thanh toán nếu không hài lòng
-- Sau 14 ngày: không hoàn tiền cho phần kỳ chưa sử dụng
+### 5.3 Xác thực danh tính & kiểm duyệt (KYC)
+- KYC (CCCD + selfie) chỉ phục vụ **an toàn, uy tín và trách nhiệm** của người
+  đăng phòng — KHÔNG dùng cho nhận diện khuôn mặt hay mục đích nào khác
+- **Admin kiểm duyệt KYC trước** khi Owner được đăng phòng và thêm nhân viên,
+  nhằm tránh đăng tin tràn lan, giả mạo làm ảnh hưởng hiệu suất hệ thống
+- Owner cam kết KHÔNG dùng nền tảng và dữ liệu KYC vào bất kỳ mục đích trái
+  phép nào
+- Khi Owner xoá tài khoản, toàn bộ dữ liệu KYC (gồm ảnh CCCD + selfie) sẽ bị
+  xoá theo; hệ thống không lưu trữ cho mục đích riêng
 
 ### 5.4 Đình chỉ Owner
 Halong24h có quyền đình chỉ Owner nếu:
 - Property không có thật
 - Khách phản ánh không đúng cam kết
-- Không thanh toán subscription
+- Đăng tin tràn lan, giả mạo ảnh hưởng hệ thống
 - Hành vi lừa đảo
 
 ## 6. Quản lý nhân viên (Sale)
@@ -118,24 +121,16 @@ Halong24h có quyền đình chỉ Owner nếu:
 - KHÔNG được tạo/xoá property
 - Tài khoản Sale bị xoá khi Owner gỡ khỏi team
 
-## 7. Thanh toán
+## 7. Dữ liệu cá nhân & hình ảnh
 
-### 7.1 Phương thức
-- **Chuyển khoản QR (VietQR)**: quét mã QR hoặc copy số tài khoản + nội dung
-  chuyển khoản trong app ngân hàng. Đây là phương thức **duy nhất** cho phí gói.
-- Giao dịch được **admin đối soát thủ công**; gói kích hoạt sau khi xác nhận đã
-  nhận được tiền.
-- Ứng dụng **KHÔNG** dùng In-App Purchase / thanh toán trong ứng dụng.
-
-### 7.2 Hoá đơn
-- Xuất sau khi thanh toán được đối soát thành công
-- Định dạng: `INV-YYYY-NNNN`
-- Owner có thể yêu cầu hoá đơn VAT (cần đăng ký mã số thuế)
-
-### 7.3 Tranh chấp thanh toán
-- Customer phát hiện sai sót: liên hệ trong 7 ngày
-- Halong24h hoàn tiền nếu xác nhận lỗi
-- Tranh chấp với ngân hàng phát hành thẻ: theo quy định ngân hàng
+- Việc thu thập và xử lý dữ liệu cá nhân tuân theo **Chính sách quyền riêng tư**
+  của Halong24h.
+- **Mọi hình ảnh** (ảnh phòng, ảnh CCCD + selfie KYC) được lưu trữ trên
+  **Cloudinary** qua kết nối bảo mật. Hệ thống không lưu trữ cho mục đích riêng.
+- Khi bạn **xoá tài khoản**, dữ liệu cá nhân và dữ liệu KYC (gồm ảnh CCCD +
+  selfie) sẽ bị xoá theo.
+- Ứng dụng **KHÔNG** bán gói/đăng ký trả phí trong app và **KHÔNG** dùng
+  In-App Purchase. (Đặt phòng và thanh toán booking thực hiện trên website.)
 
 ## 8. Reviews
 
@@ -205,7 +200,7 @@ If you disagree, please do not use the Service.
 | Owner | OWNER role — a homestay host or manager, including individuals renting just 1–2 rooms (not limited to companies) |
 | Sale | Owner-invited employee |
 | Booking | Reservation request/order |
-| Subscription | Owner's paid plan for management features |
+| KYC | Owner identity verification (ID + selfie), admin-reviewed before publishing rooms + adding staff |
 
 ## 3. Account
 
@@ -258,8 +253,7 @@ We may suspend/terminate accounts for:
 
 ### 5.1 Registration
 - Must complete KYC: ID + selfie + admin approval (24-48h)
-- 7-day free trial after approval
-- **No auto-renewal**; to keep using the app, buy a plan via VietQR bank transfer
+- Only after admin approval may an Owner publish rooms and add staff
 
 ### 5.2 Owner responsibilities
 - Legal property ownership/right to lease
@@ -268,20 +262,19 @@ We may suspend/terminate accounts for:
 - 100% refund if cannot fulfill confirmed booking
 - Comply with Vietnamese hospitality business laws
 
-### 5.3 Subscription
-- Pricing based on room count + cycle (monthly/yearly)
-- Paid **once per period** via **VietQR bank transfer (QR)** — the only method;
-  there is **no auto-renewal and no auto-charge**
-- Each payment is **manually reconciled by an admin** before the plan activates
-- **Renewal is optional** — at period end, if you want to keep using the app,
-  you buy a plan again via VietQR bank transfer
-- **Refund**: 100% within 14 days if unsatisfied
-- After 14 days: no refund for the unused portion of the period
+### 5.3 Identity verification & review (KYC)
+- KYC (ID + selfie) serves only **safety, trust, and accountability** of the
+  person publishing rooms — never for face recognition or any other purpose
+- An **admin reviews KYC before** an Owner may publish rooms and add staff, to
+  prevent spam or fraudulent listings that degrade system performance
+- The Owner commits never to use the platform or KYC data for any unlawful purpose
+- On account deletion, all KYC data (ID + selfie images) is deleted; we do not
+  retain it for our own purposes
 
 ### 5.4 Owner suspension
 - Fake property → suspension
 - Customer complaints
-- Subscription default
+- Spam or fraudulent listings degrading the system
 - Fraud
 
 ## 6. Sales staff (Sale)
@@ -295,25 +288,17 @@ We may suspend/terminate accounts for:
 - CANNOT create/delete properties
 - Account deleted if Owner removes from team
 
-## 7. Payment
+## 7. Personal data & images
 
-### 7.1 Methods
-- **VietQR bank transfer (QR)**: scan the QR code or copy the account number +
-  transfer memo in your banking app. This is the **only** method for the
-  management subscription fee.
-- Transactions are **reconciled manually by an admin**; the plan activates once
-  the funds are confirmed.
-- The app does **NOT** use In-App Purchase / in-app payment.
-
-### 7.2 Invoices
-- Issued after the payment is successfully reconciled
-- Format: `INV-YYYY-NNNN`
-- VAT invoice on Owner request (requires tax ID)
-
-### 7.3 Disputes
-- Customer reports within 7 days
-- We refund if confirmed error
-- Bank disputes: per bank's terms
+- Collection and processing of personal data follow Halong24h's **Privacy
+  Policy**.
+- **All images** (room photos, ID + selfie KYC images) are stored on
+  **Cloudinary** over a secure connection. We do not retain them for our own
+  purposes.
+- When you **delete your account**, your personal data and KYC data (ID +
+  selfie images) are deleted accordingly.
+- The app does **NOT** sell plans/paid subscriptions in-app and does **NOT**
+  use In-App Purchase. (Booking and booking payment happen on the website.)
 
 ## 8. Reviews
 
