@@ -236,6 +236,34 @@ class _BookingDetailBody extends StatelessWidget {
               ),
           ],
         ),
+        if (booking.status == BookingStatus.cancelled) ...[
+          const SizedBox(height: AppSpacing.md),
+          _DetailSection(
+            title: 'THÔNG TIN HUỶ',
+            children: [
+              _InfoRow(
+                icon: Icons.person_off_outlined,
+                label: 'Huỷ bởi',
+                value: booking.cancelledByRole == null
+                    ? 'Hệ thống'
+                    : AppHelpers.roleLabel(booking.cancelledByRole),
+              ),
+              if (booking.cancelledAt != null)
+                _InfoRow(
+                  icon: Icons.event_busy_outlined,
+                  label: 'Thời điểm huỷ',
+                  value: fmt.format(booking.cancelledAt!),
+                ),
+              if (booking.cancelledReason != null &&
+                  booking.cancelledReason!.trim().isNotEmpty)
+                _InfoRow(
+                  icon: Icons.notes_outlined,
+                  label: 'Lý do',
+                  value: booking.cancelledReason!,
+                ),
+            ],
+          ),
+        ],
         if (booking.status == BookingStatus.hold &&
             booking.holdRemainingSeconds > 0) ...[
           const SizedBox(height: AppSpacing.md),

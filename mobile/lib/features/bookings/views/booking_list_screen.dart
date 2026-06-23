@@ -351,6 +351,8 @@ class _BookingListScreenState extends ConsumerState<BookingListScreen> {
         return colors.success;
       case BookingStatus.cancelled:
         return colors.error;
+      case BookingStatus.noShow:
+        return colors.textSecondary;
       default:
         return colors.brand;
     }
@@ -394,6 +396,8 @@ class _BookingCardState extends ConsumerState<_BookingCard> {
         return colors.success;
       case BookingStatus.cancelled:
         return colors.error;
+      case BookingStatus.noShow:
+        return colors.textSecondary;
       default:
         return colors.textTertiary;
     }

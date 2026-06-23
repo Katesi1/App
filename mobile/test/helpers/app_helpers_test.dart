@@ -36,12 +36,13 @@ void main() {
 
   group('AppHelpers.bookingStatusColor', () {
     test(
-        'returns correct colors (0=HOLD, 1=CONFIRMED, 2=CANCELLED, 3=COMPLETED)',
+        'returns correct colors (0=HOLD, 1=CONFIRMED, 2=CANCELLED, 3=COMPLETED, 4=NO_SHOW)',
         () {
       expect(AppHelpers.bookingStatusColor(0), AppColors.hold);
       expect(AppHelpers.bookingStatusColor(1), AppColors.confirmed);
       expect(AppHelpers.bookingStatusColor(2), AppColors.cancelled);
       expect(AppHelpers.bookingStatusColor(3), AppColors.completed);
+      expect(AppHelpers.bookingStatusColor(4), AppColors.statusNoShow);
     });
 
     test('defaults to primary for null/unknown', () {

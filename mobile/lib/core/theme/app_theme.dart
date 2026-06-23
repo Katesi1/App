@@ -518,6 +518,8 @@ class AppTheme {
         return AppColors.statusCancelled;
       case 'COMPLETED':
         return AppColors.statusCompleted;
+      case 'NO_SHOW':
+        return AppColors.statusNoShow;
       default:
         return AppColors.successBg;
     }

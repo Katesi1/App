@@ -174,12 +174,15 @@ class AppColors {
   static const statusConfirmed = Color(0xFF22C55E);
   static const statusCancelled = Color(0xFFEF4444);
   static const statusCompleted = Color(0xFF7B1FA2);
+  // NO_SHOW: khách không đến — warm slate/stone, phân biệt rõ với amber (hold)
+  static const statusNoShow = Color(0xFF78716C);
   static const statusPending = jade500;
 
   static const statusHoldBg = Color(0xFFFEF3C7);
   static const statusConfirmedBg = Color(0xFFDCFCE7);
   static const statusCancelledBg = Color(0xFFFEE2E2);
   static const statusCompletedBg = Color(0xFFF3E8FF);
+  static const statusNoShowBg = Color(0xFFF5F5F4);
   static const statusPendingBg = jade50;
 
   // Dark variants
@@ -187,6 +190,7 @@ class AppColors {
   static const statusConfirmedDark = Color(0xFF4ADE80);
   static const statusCancelledDark = Color(0xFFF87171);
   static const statusCompletedDark = Color(0xFFC084FC);
+  static const statusNoShowDark = Color(0xFFA8A29E);
 
   // ═══════════════════════════════════════════════════════════════
   // EXTRA accents (calendar weekday/holiday — giữ từ V1)

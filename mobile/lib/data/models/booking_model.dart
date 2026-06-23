@@ -27,6 +27,13 @@ class BookingModel {
   final Map<String, dynamic>? property;
   final Map<String, dynamic>? sale;
 
+  // Cancellation tracking (BE v1.14+ — nullable; booking cũ trước migration = null)
+  // cancelledByRole: 0=ADMIN, 1=OWNER, 2=SALE, 3=CUSTOMER, null = hệ thống/cron.
+  final DateTime? cancelledAt;
+  final String? cancelledByUserId;
+  final int? cancelledByRole;
+  final String? cancelledReason;
+
   BookingModel({
     required this.id,
     required this.propertyId,
@@ -44,6 +51,10 @@ class BookingModel {
     this.holdRemainingSeconds = 0,
     this.property,
     this.sale,
+    this.cancelledAt,
+    this.cancelledByUserId,
+    this.cancelledByRole,
+    this.cancelledReason,
   });
 
   factory BookingModel.fromJson(Map<String, dynamic> json) => BookingModel(
@@ -55,8 +66,9 @@ class BookingModel {
         checkoutDate: _parseDate(json['checkoutDate']),
         status: BookingStatusExtension.fromInt(
             (json['status'] as num?)?.toInt() ?? 0),
-        holdExpireAt:
-            json['holdExpireAt'] != null ? _parseDate(json['holdExpireAt']) : null,
+        holdExpireAt: json['holdExpireAt'] != null
+            ? _parseDate(json['holdExpireAt'])
+            : null,
         customerName: json['customerName'],
         customerPhone: json['customerPhone'],
         depositAmount: (json['depositAmount'] as num?)?.toDouble(),
@@ -65,6 +77,12 @@ class BookingModel {
         holdRemainingSeconds: json['holdRemainingSeconds'] ?? 0,
         property: json['property'],
         sale: json['sale'],
+        cancelledAt: json['cancelledAt'] != null
+            ? _parseDate(json['cancelledAt'])
+            : null,
+        cancelledByUserId: json['cancelledByUserId'],
+        cancelledByRole: (json['cancelledByRole'] as num?)?.toInt(),
+        cancelledReason: json['cancelledReason'],
       );
 
   int get nights => checkoutDate.difference(checkinDate).inDays;

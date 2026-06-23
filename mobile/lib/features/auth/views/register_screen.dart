@@ -10,6 +10,7 @@ import 'package:google_fonts/google_fonts.dart';
 import '../../../core/constants/app_constants.dart';
 import '../../../core/theme/app_color_scheme.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../core/utils/phone_input.dart';
 import '../../../shared/widgets/app_toast.dart';
 import '../controllers/auth_controller.dart';
 import 'role_picker_screen.dart';
@@ -26,6 +27,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen>
   final _formKey = GlobalKey<FormState>();
   final _nameCtrl = TextEditingController();
   final _emailCtrl = TextEditingController();
+  final _phoneCtrl = TextEditingController();
   final _passwordCtrl = TextEditingController();
   final _confirmPasswordCtrl = TextEditingController();
 
@@ -51,6 +53,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen>
   void dispose() {
     _nameCtrl.dispose();
     _emailCtrl.dispose();
+    _phoneCtrl.dispose();
     _passwordCtrl.dispose();
     _confirmPasswordCtrl.dispose();
     _waveCtrl.dispose();
@@ -64,6 +67,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen>
     final error = await ref.read(authProvider.notifier).register(
           name: _nameCtrl.text.trim(),
           email: _emailCtrl.text.trim(),
+          phone: _phoneCtrl.text.trim(),
           password: _passwordCtrl.text,
           role: _role.value,
         );
@@ -413,6 +417,28 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen>
                                     }
                                     return null;
                                   },
+                                ),
+                              ),
+
+                              const SizedBox(height: 14),
+
+                              // Số điện thoại
+                              _buildField(
+                                delay: 490.ms,
+                                child: TextFormField(
+                                  controller: _phoneCtrl,
+                                  keyboardType: TextInputType.phone,
+                                  textInputAction: TextInputAction.next,
+                                  inputFormatters: PhoneInput.formatters,
+                                  validator: PhoneInput.validate,
+                                  style: GoogleFonts.beVietnamPro(
+                                      fontSize: 15, color: colors.textPrimary),
+                                  decoration: _inputDecor(
+                                    context: context,
+                                    label: 'Số điện thoại',
+                                    hint: '0xxxxxxxxx (10 số)',
+                                    icon: Icons.phone_outlined,
+                                  ).copyWith(counterText: ''),
                                 ),
                               ),
 

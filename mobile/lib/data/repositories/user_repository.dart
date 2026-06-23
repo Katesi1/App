@@ -1,7 +1,8 @@
-﻿import 'package:dio/dio.dart';
+import 'package:dio/dio.dart';
 import '../../core/constants/api_constants.dart';
 import '../../core/network/api_client.dart';
 import '../../core/network/api_response.dart';
+import '../../features/profile/data/models/account_deletion_schedule.dart';
 import '../models/user_model.dart';
 
 class UserRepository {
@@ -124,21 +125,33 @@ class UserRepository {
     }
   }
 
-  /// Self-delete cho compliance App Store / Play Store / GDPR.
-  /// Hiện tại reuse `DELETE /users/:id` — BE cần confirm endpoint này cho phép
-  /// user self-delete (không chỉ ADMIN). Nếu BE chưa cho phép, sẽ trả 403 và
-  /// FE hiện error rõ ràng để user liên hệ support.
+  /// Self-delete cho compliance App Store / Play Store / GDPR + NĐ 13.
+  ///
+  /// BE v1.14+: KHÔNG xoá ngay mà tạo deletion request pending, đặt lịch xoá
+  /// sau 30 ngày (`data.scheduledDeleteAt` + `data.graceDays`). Đăng nhập lại
+  /// trong grace period sẽ tự huỷ yêu cầu (BE auto-cancel, FE không gọi gì).
   ///
   /// [reason] optional — gửi kèm để BE log lý do user xoá (analytics).
-  Future<ApiResponse<void>> deleteMyAccount({String? reason}) async {
+  Future<ApiResponse<AccountDeletionSchedule>> deleteMyAccount({
+    String? reason,
+  }) async {
     try {
-      await _dio.delete(
+      final response = await _dio.delete(
         '${ApiConstants.users}/me',
         data: reason == null ? null : {'reason': reason},
       );
+      // BE mới trả data.scheduledDeleteAt; BE cũ trả data=null → schedule null,
+      // UI fallback message chung (vẫn logout đúng).
+      final data = response.data?['data'];
+      final schedule =
+          data is Map<String, dynamic> && data['scheduledDeleteAt'] != null
+              ? AccountDeletionSchedule.fromJson(data)
+              : null;
       return ApiResponse(
         success: true,
-        message: 'Đã xoá tài khoản. Hẹn gặp lại bạn!',
+        data: schedule,
+        message: response.data?['message']?.toString() ??
+            'Đã gửi yêu cầu xoá tài khoản.',
       );
     } on DioException catch (e) {
       return ApiResponse(success: false, message: parseDioError(e));

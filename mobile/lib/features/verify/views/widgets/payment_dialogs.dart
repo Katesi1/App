@@ -253,18 +253,19 @@ class _BankTransferScreenState extends State<BankTransferScreen> {
                         children: [
                           _row(
                             context,
+                            icon: Icons.account_balance_rounded,
                             label: 'Ngân hàng',
                             value: bank.bankName,
                             copyable: false,
-                            leading: bank.bankLogoUrl != null
+                            leadingOverride: bank.bankLogoUrl != null
                                 ? ClipRRect(
-                                    borderRadius: BorderRadius.circular(6),
+                                    borderRadius: BorderRadius.circular(8),
                                     child: CachedNetworkImage(
                                       imageUrl: bank.bankLogoUrl!,
-                                      width: 28,
-                                      height: 28,
+                                      width: 36,
+                                      height: 36,
                                       fit: BoxFit.contain,
-                                      memCacheWidth: 56,
+                                      memCacheWidth: 72,
                                       errorWidget: (_, __, ___) =>
                                           const SizedBox.shrink(),
                                     ),
@@ -274,6 +275,7 @@ class _BankTransferScreenState extends State<BankTransferScreen> {
                           Divider(height: 1, color: colors.borderSubtle),
                           _row(
                             context,
+                            icon: Icons.numbers_rounded,
                             label: 'Số tài khoản',
                             value: bank.accountNumber,
                             enabled: !expired,
@@ -281,6 +283,7 @@ class _BankTransferScreenState extends State<BankTransferScreen> {
                           Divider(height: 1, color: colors.borderSubtle),
                           _row(
                             context,
+                            icon: Icons.person_outline_rounded,
                             label: 'Tên người nhận',
                             value: bank.accountName,
                             copyable: false,
@@ -288,6 +291,7 @@ class _BankTransferScreenState extends State<BankTransferScreen> {
                           Divider(height: 1, color: colors.borderSubtle),
                           _row(
                             context,
+                            icon: Icons.edit_note_rounded,
                             label: 'Nội dung CK',
                             value: transferContent,
                             enabled: !expired,
@@ -423,26 +427,38 @@ class _BankTransferScreenState extends State<BankTransferScreen> {
 
   Widget _row(
     BuildContext context, {
+    required IconData icon,
     required String label,
     required String value,
     bool copyable = true,
     bool enabled = true,
     Color? valueColor,
     FontWeight? valueWeight,
-    Widget? leading,
+    Widget? leadingOverride,
   }) {
     final colors = context.colors;
     final canCopy = copyable && enabled;
 
+    // Ô leading cố định 36px → mọi hàng canh thẳng cột nhãn/giá trị.
+    final Widget leadingSlot = SizedBox(
+      width: 36,
+      height: 36,
+      child: leadingOverride ??
+          DecoratedBox(
+            decoration: BoxDecoration(
+              color: colors.brand.withValues(alpha: 0.1),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Icon(icon, size: 18, color: colors.brand),
+          ),
+    );
+
     final content = Padding(
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
       child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          if (leading != null) ...[
-            leading,
-            const SizedBox(width: 10),
-          ],
+          leadingSlot,
+          const SizedBox(width: 12),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -456,7 +472,7 @@ class _BankTransferScreenState extends State<BankTransferScreen> {
                     letterSpacing: 0.4,
                   ),
                 ),
-                const SizedBox(height: 4),
+                const SizedBox(height: 3),
                 Text(
                   value,
                   style: TextStyle(
@@ -469,12 +485,13 @@ class _BankTransferScreenState extends State<BankTransferScreen> {
               ],
             ),
           ),
-          if (canCopy)
+          if (canCopy) ...[
+            const SizedBox(width: 8),
             Container(
-              padding: const EdgeInsets.all(6),
+              padding: const EdgeInsets.all(8),
               decoration: BoxDecoration(
                 color: colors.brand.withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(8),
+                borderRadius: BorderRadius.circular(10),
               ),
               child: Icon(
                 Icons.content_copy_rounded,
@@ -482,6 +499,7 @@ class _BankTransferScreenState extends State<BankTransferScreen> {
                 color: colors.brand,
               ),
             ),
+          ],
         ],
       ),
     );

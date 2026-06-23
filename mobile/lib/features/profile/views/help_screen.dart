@@ -22,8 +22,8 @@ class _HelpScreenState extends State<HelpScreen> {
   final _searchController = TextEditingController();
   String _query = '';
 
-  static const _supportPhone = '0901234567';
-  static const _supportEmail = 'support@halong24h.vn';
+  static const _supportPhone = '0325992001';
+  static const _supportEmail = 'halong24h.team@gmail.com';
   static const _supportHours = 'T2 - CN: 8:00 - 22:00';
 
   @override

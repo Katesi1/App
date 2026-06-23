@@ -122,6 +122,11 @@ Vượt → `429 Too Many Requests`.
 
 ### 1.7 Token refresh flow
 
+| Token | TTL |
+|---|---|
+| `accessToken` | **15 phút** |
+| `refreshToken` | **14 ngày** |
+
 ```
 Request gốc → 401
   ↓ (Authenticator lock mutex)
@@ -132,6 +137,8 @@ Lưu access + refresh mới (httpOnly cookie / EncryptedSharedPreferences)
 Retry request gốc
   ↓ Nếu refresh fail (401) → logout về /login
 ```
+
+> Refresh token rotate mỗi lần gọi `/auth/refresh` (token cũ bị invalidate qua bcrypt-compare với hash trong DB). Hết 14 ngày không hoạt động → user phải login lại.
 
 ---
 
@@ -286,6 +293,7 @@ state.setUser(user.data);
     "pendingPlanId": null,
     "pendingCycle": null,
     "pendingEffectiveAt": null,
+    "deletionScheduledAt": null,
     "permissions": [],
     "createdAt": "2026-06-05T15:21:20.741Z",
     "updatedAt": "2026-06-05T15:39:23.505Z"
@@ -380,7 +388,7 @@ FE flow xử lý 403:
 |---|---|
 | `GET /auth/profile, POST /auth/logout, POST /auth/change-password` | Profile self-service |
 | `PUT /users/:id` (chỉ chính mình, ADMIN sửa được người khác) | Update profile |
-| `DELETE /users/me` | Self-delete GDPR |
+| `DELETE /users/me`, `GET /users/me/deletion-status`, `POST /users/me/restore` | Self-delete + khôi phục trong grace 30d |
 | `GET /properties/:id` (cơ sở approved) | Xem detail |
 | `POST /devices, DELETE /devices/:token, GET /devices` | FCM token management |
 | `GET /notifications, /unread-count, PATCH /:id/read, /read-all` | Inbox |
@@ -638,7 +646,9 @@ Base path: `/users`. Tất cả cần Bearer.
 | `POST` | `/users/my-staff` | OWNER | `{ email }` | Owner add SALE đã có account vào team |
 | `PUT` | `/users/:id` | Any auth | `{ name?, phone?, email?, gender?, dateOfBirth?, avatar? }` | Admin sửa anyone, user khác sửa chính mình |
 | `PATCH` | `/users/:id/kyc-bypass` | ADMIN | `{ bypass: boolean }` | Cấp/thu hồi quyền bỏ qua KYC |
-| `DELETE` | `/users/me` | Any auth | `{ reason? }` | Self-delete (GDPR) |
+| `DELETE` | `/users/me` | Any auth | `{ reason? }` | Self-delete (NĐ 13) — tạo grace 30 ngày, không xoá ngay. Trả `data: { scheduledDeleteAt, graceDays: 30, canRestoreUntil }`. **Tự động tạo in-app notification + gửi email** "Yêu cầu xoá tài khoản — đăng nhập lại trước ngày X để khôi phục". Login lại trong grace → auto-cancel + notification + email "đã khôi phục". Có thể gọi `POST /users/me/restore` để chủ động huỷ. Sau 30 ngày cron thực thi soft-delete + **wipe toàn bộ KYC + dữ liệu cá nhân**: xoá `KycSubmission`/`KycUpload`, `UserDevice`, `UserConsent`, `NotificationPreference`, `DataExportRequest`, `UserPermission`, `SupportTicket`(+messages); anonymize `Feedback.userId=null`; reset trên User: `name='Deleted User'`, `email/phone` rename free unique, clear `password/avatar/gender/dateOfBirth/google-appleSub/registerDeviceId/registerIp`, reset `kycStatus='none'/kycBypass=false/kycSubmissionId=null` + toàn bộ field `subscription*`/`trialEndsAt`/`pendingPlan*`. Giữ lại `Booking`/`Property`/`Subscription`/`PaymentSession` (yêu cầu retention tài chính — `PaymentSession.submissionId` được set null trước khi xoá KYC để không cascade mất lịch sử). Re-register cùng email/phone sau đó tạo User mới hoàn toàn sạch. |
+| `GET` | `/users/me/deletion-status` | Any auth | — | Trả `data: { pending: boolean, scheduledDeleteAt: ISO\|null, daysRemaining: number }`. FE check để show banner "Tài khoản đang chờ xoá vào dd/mm/yyyy — Khôi phục". `GET /auth/profile` cũng đã trả `deletionScheduledAt` để FE tiết kiệm 1 round-trip. |
+| `POST` | `/users/me/restore` | Any auth | — | Huỷ yêu cầu xoá đang pending. Trả 400 `users.deletionNotPending` nếu không có request đang chờ. Tạo notification + email "đã khôi phục". |
 | `DELETE` | `/users/my-staff/:id` | OWNER | — | Owner gỡ nhân viên |
 | `DELETE` | `/users/:id` | ADMIN | — | Admin xoá user |
 
@@ -664,8 +674,10 @@ Base path: `/properties`.
 
 | Method | Path | Query |
 |---|---|---|
-| `GET` | `/properties/public` | `checkinDate?, checkoutDate?, guests?, minPrice?, maxPrice?, type?, view?` |
-| `GET` | `/properties/share/:id` | — (trả PropertyDto không kèm giá) |
+| `GET` | `/properties/public` | `checkinDate?, checkoutDate?, guests?, minPrice?, maxPrice?, type?, view?` — **array phẳng PropertyCardDto[]** (legacy, dùng cho mobile) |
+| `GET` | `/properties/search` | Full filter + pagination + sort — **dùng cho customer web list/search** (xem §4.7) |
+| `GET` | `/properties/public/:slug` | **Chi tiết phòng cho customer web** (kèm giá + host) — xem §4.11 |
+| `GET` | `/properties/share/:id` | — (trả PropertyDto không kèm giá, theo `id`, dùng cho share link nội bộ) |
 
 ### 4.2 Authenticated CRUD
 
@@ -693,27 +705,31 @@ Base path: `/properties`.
 | `POST` | `/properties/:id/approve` | — |
 | `POST` | `/properties/:id/reject` | `{ reason }` (≥5 chars) |
 | `POST` | `/properties/:id/suspend` | `{ reason? }` |
+| `PATCH` | `/properties/:id/hot` | `{ isHot: true \| false }` — bật/tắt badge Hot (xem §4.10) |
 
-> **Business rule**: OWNER tạo property → mặc định `moderationStatus = "pending"`, `isActive = false` (chưa public). ADMIN/SALE tạo → `approved` ngay.
-> **OWNER/SALE list:** `GET /properties` tự động bao gồm property `pending/rejected/suspended` của mình (không cần truyền `?includeInactive=true`). ADMIN/khác phải truyền `?includeInactive=true` mới thấy inactive.
+> **Business rule (v1.9+)**: OWNER đã KYC + subscription active/trial → `POST /properties` tạo ngay `moderationStatus = "approved"`, `isActive = true` (public mặc định). OWNER tự bật/tắt `isActive` qua `PATCH /properties/:id`. ADMIN/SALE tạo thay mặt owner cũng `approved` + `isActive = true`.
+> **Điều kiện tạo phòng**: KYC approved (hoặc `kycBypass`) + subscription entitled — hai cổng độc lập, không còn hàng chờ duyệt admin khi tạo mới.
+> **OWNER/SALE list:** `GET /properties` tự động bao gồm property `inactive/rejected/suspended` của mình (không cần truyền `?includeInactive=true`). ADMIN/khác phải truyền `?includeInactive=true` mới thấy inactive.
 
-**Moderation status** (sau fix v1.1):
-- `pending` — OWNER vừa tạo, chờ admin duyệt
-- `approved` — admin đã duyệt, property công khai
-- `rejected` — admin từ chối (property chưa bao giờ hoạt động hoặc bị reject lần đầu) → OWNER có thể edit và submit lại
-- `suspended` — admin tạm ngưng property đang hoạt động (đã từng approved) → khác `rejected` về semantic, OWNER không tự reactivate được
+**Moderation status**:
+- `approved` — property được phép hoạt động; public khi `isActive = true`
+- `rejected` — admin từ chối → `isActive = false`; OWNER edit lại → auto `approved`, tự bật `isActive` nếu muốn public
+- `suspended` — admin tạm ngưng property đang hoạt động → `isActive = false`; OWNER **không** tự bật lại (`PATCH isActive=true` → 403); cần admin `POST /properties/:id/approve`
+- `pending` — legacy (dữ liệu cũ trước v1.9); property mới không còn vào trạng thái này
 
-### 4.5 PropertyDto
+### 4.5 PropertyDto (admin/owner — full)
 
 ```json
 {
   "id": "uuid",
   "ownerId": "uuid",
   "name": "Villa Hạ Long View",
+  "slug": "villa-ha-long-view-vl001",
   "type": 0,
   "code": "VL001",
   "view": "sea",
-  "address": "Bãi Cháy",
+  "address": "Bãi Cháy, Hạ Long",
+  "latitude": 20.95, "longitude": 107.05,
   "mapLink": "https://maps.google.com/...",
   "isActive": true,
   "moderationStatus": "approved",
@@ -722,15 +738,235 @@ Base path: `/properties`.
   "moderationReviewedBy": null,
   "bedrooms": 3, "bathrooms": 2,
   "standardGuests": 6, "maxGuests": 8,
+  "floorArea": 120,
   "weekdayPrice": 2000000, "weekendPrice": 3000000, "holidayPrice": 4500000,
   "adultSurcharge": 200000, "childSurcharge": 100000,
   "amenities": ["wifi", "pool"],
   "cancellationPolicy": 1,
   "rules": "...", "services": ["..."], "description": "...",
   "checkInTime": "14:00", "checkOutTime": "12:00",
-  "images": [{ "id": "uuid", "url": "https://...", "isCover": true }]
+  "ratingAvg": 4.92, "reviewCount": 37,
+  "images": [{ "id": "uuid", "imageUrl": "https://...", "isCover": true, "order": 0 }]
 }
 ```
+
+### 4.6 PropertyCardDto (public list — `/properties/public`, `/properties/search`)
+
+Shape rút gọn cho card khách hàng. Tính sẵn `minPrice`, `rating`, `reviewCount`, `isGuestFavorite`, `coverImageUrl` để FE không phải post-process.
+
+```json
+{
+  "id": "uuid",
+  "slug": "villa-ha-long-view-vl001",
+  "name": "Villa Hạ Long View",
+  "code": "VL001",
+  "type": 0,
+  "view": "sea",
+  "address": "Bãi Cháy, Hạ Long",
+  "latitude": 20.95, "longitude": 107.05,
+  "bedrooms": 3, "bathrooms": 2,
+  "standardGuests": 6, "maxGuests": 8,
+  "floorArea": 120,
+  "amenities": ["wifi", "pool", "seaview"],
+  "weekdayPrice": 2000000, "weekendPrice": 3000000, "holidayPrice": 4500000,
+  "minPrice": 2000000,
+  "rating": 4.92,
+  "reviewCount": 37,
+  "isGuestFavorite": true,
+  "isHot": false,
+  "isFavorited": false,
+  "coverImageUrl": "https://res.cloudinary.com/.../cover.jpg",
+  "images": [{ "id": "uuid", "imageUrl": "https://...", "isCover": true, "order": 0 }]
+}
+```
+
+- `slug` — duy nhất toàn hệ thống; auto-gen từ name + code khi tạo property (Vietnamese-aware). FE dùng cho URL `/property/{slug}`.
+- `minPrice` — `min(weekdayPrice, weekendPrice, holidayPrice)` bỏ qua giá null/0.
+- `rating` / `reviewCount` — đã denormalized vào `properties` (cập nhật mỗi khi review create/hide/restore).
+- `isGuestFavorite` — derived **global**: `rating >= 4.8 && reviewCount >= 5` (badge "được khách yêu thích").
+- `isHot` — **admin curated global**: bật/tắt bằng `PATCH /properties/:id/hot` (ADMIN only). Hot property tự pop lên đầu khi `sort=featured` và có thể lọc bằng `?hot=true` (xem §4.10).
+- `isFavorited` — **per-user**: true nếu user hiện tại (JWT) đã save property này. Anonymous → luôn false. Toggle bằng `POST/DELETE /properties/:id/favorite` (xem §4.9).
+- `coverImageUrl` — ảnh có `isCover = true`; fallback ảnh đầu danh sách.
+
+### 4.7 `GET /properties/search` (customer web)
+
+Paginated + filter + sort, **toàn bộ ở server-side**. Lý do: FE chỉ thấy 1 trang nên lọc/sort client sẽ sai. Không hỗ trợ FE filter sau khi nhận data.
+
+**Query params** (tất cả optional):
+
+| Param | Kiểu | Ghi chú |
+|---|---|---|
+| `checkinDate`, `checkoutDate` | `YYYY-MM-DD` | Loại property bị HOLD/CONFIRMED đè ngày trùng |
+| `guests` | int ≥1 | `maxGuests >= guests` |
+| `bedrooms` | int ≥0 | `bedrooms >= bedrooms` (min) |
+| `minPrice`, `maxPrice` | float | So với `weekdayPrice` |
+| `type` | 0\|1\|2 | VILLA/HOMESTAY/HOTEL |
+| `view` | enum | `sea \| city \| mountain \| garden \| pool` |
+| `amenities` | CSV / array | **AND-match** các amenity (xem enum §4.8) |
+| `minRating` | float 0–5 | `ratingAvg >= minRating` |
+| `q` | string | Contains trong `name`, `code`, `address` |
+| `sort` | enum | `price_asc \| price_desc \| rating \| newest \| featured` (default `featured`) |
+| `page` | int ≥1 | Default `1` |
+| `limit` | int 1–50 | Default `20` |
+| `favorited` | bool | `true` → chỉ trả property user hiện tại đã save. **Yêu cầu Authorization header** — anonymous → 403. |
+| `hot` | bool | `true` → chỉ trả property admin đã đánh dấu Hot. Public, không cần auth. |
+
+> **Auth tuỳ chọn**: endpoint `@Public()` nhưng nếu FE gửi kèm Authorization header, BE sẽ populate `isFavorited` cho từng item dựa trên danh sách favorite của user. Không gửi token → `isFavorited` luôn `false`.
+
+**Response**:
+
+```json
+{
+  "success": true,
+  "message": "...",
+  "data": {
+    "items": [PropertyCardDto, ...],
+    "total": 124,
+    "page": 1,
+    "limit": 20,
+    "totalPages": 7
+  }
+}
+```
+
+Sort `featured` = **isHot desc** → ratingAvg desc → reviewCount desc → createdAt desc. Hot property luôn nổi lên đầu.
+
+### 4.8 Vocabulary
+
+- **`view` enum** (cột riêng trên Property): `sea | city | mountain | garden | pool | null`.
+- **`amenities` keys** (kebab-case, string khớp tuyệt đối). Validate trong DTO. Mở rộng tại `src/modules/properties/property-enums.ts`. Tổng cộng **46 key**, chia 6 nhóm:
+
+  - **Core / filterable (12)**: `wifi`, `pool`, `bbq`, `kitchen`, `parking`, `ac`, `gym`, `breakfast`, `spa`, `restaurant`, `jacuzzi`, `bar`.
+  - **Views (5)**: `seaview`, `bayview`, `cityview`, `gardenview`, `mountainview`.
+  - **Bếp & đồ ăn (5)**: `fridge`, `microwave`, `induction-cooker`, `dishware`, `free-water`.
+  - **Phòng tắm & phòng ngủ (9)**: `bathtub`, `shower`, `hot-water`, `hair-dryer`, `towels`, `toiletries`, `washing-machine`, `wardrobe`, `iron`.
+  - **Tiện ích chung & giải trí (11)**: `tv`, `elevator`, `kids-area`, `heater`, `karaoke`, `safe-box`, `speaker`, `balcony`, `rooftop`, `garden`, `minibar`.
+  - **An toàn & chính sách (4)**: `pet-friendly`, `security-camera`, `smoke-detector`, `first-aid-kit`.
+
+  FE có thể gửi `?amenities=wifi,pool,bbq` (CSV) hoặc `?amenities[]=wifi&amenities[]=pool` (array). Sai key → 400.
+
+### 4.9 Favorites (per-user wishlist)
+
+Per-user. Chỉ **CUSTOMER** dùng được — Owner/Sale/Admin gọi → 403.
+
+| Method | Path | Body | Mô tả |
+|---|---|---|---|
+| `POST` | `/properties/:id/favorite` | — | Lưu vào wishlist. Idempotent (gọi 2 lần không lỗi). Property inactive/đã xoá → 404. |
+| `DELETE` | `/properties/:id/favorite` | — | Bỏ. Idempotent (xoá row không tồn tại không lỗi). |
+| `GET` | `/users/me/favorites?page&limit` | — | List `PropertyCardDto[]` user đã save, mới nhất trước. Mỗi item `isFavorited = true`. |
+
+**Response add/remove**:
+```json
+{ "success": true, "message": "...", "data": { "propertyId": "uuid", "isFavorited": true } }
+```
+
+**Hiển thị heart icon trên list/search**: BE đã populate `isFavorited` per item nếu FE gửi kèm token → không cần FE call thêm endpoint nào.
+
+**Lọc chỉ wishlist**: `GET /properties/search?favorited=true` (kèm token). Tận dụng được pagination + filter + sort hiện có.
+
+### 4.10 Hot badge (admin curated)
+
+Admin tự chọn property nổi bật để lên top + hiển thị badge "Hot" trên web khách hàng.
+
+| Method | Path | Role | Body |
+|---|---|---|---|
+| `PATCH` | `/properties/:id/hot` | ADMIN | `{ isHot: true \| false }` |
+
+Response:
+```json
+{ "success": true, "message": "...", "data": { "id": "uuid", "name": "...", "code": "...", "isHot": true } }
+```
+
+**Cách FE web khách hàng dùng:**
+- `PropertyCardDto.isHot` đã có sẵn → hiển thị badge "Hot" trên card.
+- Section "Hot/Trending" → gọi `GET /properties/search?hot=true&sort=newest&limit=N`.
+- Default list (`sort=featured`) tự đẩy hot property lên đầu, không cần tách section riêng nếu không muốn.
+
+**Cách web admin dùng:**
+- Trang quản lý property có toggle "Đánh dấu Hot" gọi `PATCH /properties/:id/hot` với `{ isHot }` tương ứng.
+- Audit log: action `property.set_hot`, metadata `{ isHot }`.
+
+### 4.11 Public detail by slug — `GET /properties/public/:slug`
+
+Endpoint **chi tiết phòng cho FE web khách hàng** (`webhalong24h.com/property/{slug}`). Không cần auth.
+
+- Tra theo `slug` (vd `b1503-03`). Slug ổn định, unique, không đổi khi rename — FE bookmark/cache 60s an toàn.
+- Chỉ trả property `isActive=true, deletedAt=null`. Slug không tồn tại / inactive → **404**.
+- Kèm **đầy đủ giá** (`weekdayPrice`, `weekendPrice`, `holidayPrice`) — khác với `/share/:id` (không có giá).
+- **Không** trả `phone`/`email` chủ nhà (chat-mediated). Host info chỉ gồm name + avatar + KYC badge + memberSince + totalProperties.
+
+**Response shape:**
+
+```json
+{
+  "success": true,
+  "message": "...",
+  "data": {
+    "id": "uuid",
+    "slug": "b1503-03",
+    "name": "B1503",
+    "code": "03",
+    "type": 1,
+    "view": "sea",
+    "address": "Toà Alacarte",
+    "city": "Hạ Long",
+    "district": "Bãi Cháy",
+    "latitude": null,
+    "longitude": null,
+    "mapLink": null,
+    "description": "Alacarte căn góc",
+    "amenities": ["ac", "wifi", "tv"],
+    "rules": "Check-in sau 14:00...",
+    "services": [],
+    "bedrooms": 0,
+    "bathrooms": 1,
+    "standardGuests": 2,
+    "maxGuests": 2,
+    "floorArea": null,
+    "weekdayPrice": 1100000,
+    "weekendPrice": 1600000,
+    "holidayPrice": 1800000,
+    "cancellationPolicy": 1,
+    "checkInTime": "14:00",
+    "checkOutTime": "12:00",
+    "rating": 4.92,
+    "reviewCount": 37,
+    "isHot": false,
+    "images": [
+      { "id": "uuid", "imageUrl": "https://...", "isCover": true, "order": 0 }
+    ],
+    "ratingBreakdown": {
+      "overall": 4.92,
+      "cleanliness": 4.9,
+      "location": 4.95,
+      "amenities": 4.8,
+      "service": 4.9,
+      "value": 4.85,
+      "accuracy": 4.95,
+      "count": 37
+    },
+    "host": {
+      "name": "Nguyễn Văn A",
+      "avatarUrl": "https://res.cloudinary.com/.../avatar.jpg",
+      "isKycVerified": true,
+      "memberSince": "2024-01",
+      "totalProperties": 5,
+      "responseRate": null
+    }
+  }
+}
+```
+
+Ghi chú field:
+- `city`, `district` — owner điền tay trong form admin/owner, **null** nếu chưa điền. FE tự ẩn dòng location nếu cả 2 null.
+- `rating`, `reviewCount` — denormalized từ `Property.ratingAvg/reviewCount`, đồng bộ với card list.
+- `ratingBreakdown.count` = số review visible. Nếu chưa có review → tất cả score = 0, FE tự ẩn section breakdown khi `count === 0`.
+- `host.isKycVerified` = `kycBypass === true || kycStatus === 'approved'`.
+- `host.memberSince` định dạng `YYYY-MM` (UTC) — FE format hiển thị theo locale.
+- `host.responseRate` — luôn `null` ở v1, sẽ tính sau khi có data response time từ chat module.
+- `isHot` — admin curated badge (xem §4.10).
+
+**FE migration**: bỏ workaround scan `/properties/search` → map slug → id → `/share/:id`. Gọi thẳng `/properties/public/:slug`.
 
 ---
 
@@ -750,7 +986,7 @@ Base path: `/bookings`. Auth required.
 | `POST` | `/bookings/customer-hold` | CUSTOMER (+all) | Hold 24h |
 | `PATCH` | `/bookings/:id/confirm` | ADMIN/OWNER/SALE | HOLD → CONFIRMED |
 | `PATCH` | `/bookings/:id/paid` | ADMIN/OWNER/SALE | `{ amount? }` Ghi nhận thu tiền |
-| `PATCH` | `/bookings/:id/cancel` | ADMIN/OWNER/SALE | — |
+| `PATCH` | `/bookings/:id/cancel` | ADMIN/OWNER/SALE | Body optional `{ reason?: string }` (10–500 ký tự nếu gửi). Reason KHÔNG lưu DB; được forward vào email gửi khách + subtitle push notification. |
 | `PATCH` | `/bookings/:id/customer-cancel` | Any auth | Customer huỷ HOLD của mình |
 | `PUT` | `/bookings/:id` | ADMIN/OWNER/SALE | Update customerName/Phone/guests/notes/deposit |
 
@@ -789,11 +1025,46 @@ Base path: `/bookings`. Auth required.
   "paidAmount": null,
   "paidAt": null,
   "guestCount": 4,
-  "notes": "..."
+  "notes": "...",
+  "propertyName": "Villa Bãi Cháy",
+  "nights": 2
 }
 ```
 
-Status: `0=HOLD, 1=CONFIRMED, 2=CANCELLED, 3=COMPLETED`
+Status: `0=HOLD, 1=CONFIRMED, 2=CANCELLED, 3=COMPLETED, 4=NO_SHOW`
+
+**Status `4=NO_SHOW`** (v1.14): cron mỗi ngày 03:30 tự đánh khi booking `CONFIRMED` đã qua `checkoutDate > 24h` mà `paidAt = null` (khách không tới + không hoàn tất thanh toán tại chỗ). FE hiển thị label "Khách không đến". App mobile cũ không biết status 4 → rơi vào nhánh default; nên cập nhật bản tiếp theo để hiển thị đúng.
+
+**Tracking cancellation** (v1.14): mọi booking ở status `CANCELLED` có thêm các field:
+- `cancelledAt: ISO | null`
+- `cancelledByUserId: string | null` (null = system/cron expire)
+- `cancelledByRole: 0|1|2|3 | null` (0=ADMIN, 1=OWNER, 2=SALE, 3=CUSTOMER)
+- `cancelledReason: string | null` (pass-through từ body cancel, không enforce length)
+
+**Lưu ý nullability cho HOLD:**
+- `totalAmount` = **null** khi booking ở trạng thái HOLD (BE chưa tự tính từ bảng giá lúc tạo hold). Field này chỉ được set khi `markPaid` ghi vào.
+- `depositAmount` = null nếu FE không gửi field này lúc `POST /bookings/hold`.
+- `paidAmount`, `paidAt` = null cho tới khi `PATCH /bookings/:id/paid`.
+- FE web hiển thị: gặp `null` thì show "Chưa chốt giá" (không hardcode 0 ₫).
+- **Countdown HOLD**: dùng `holdRemainingSeconds` (server-computed, đã tính cả lệch giờ client), không tự tính `holdExpireAt - Date.now()`.
+
+### 5.3.1 GET /bookings/:id — response giàu hơn list
+
+Detail include thêm so với item trong list:
+- `property.images` — 5 ảnh đầu (sort `order` asc), không bị giới hạn `isCover`.
+- `property.owner` — `{ id, name, phone }`.
+- `sale` — `{ id, name, phone }` (giống list).
+
+Các field còn lại (`holdRemainingSeconds`, `propertyName`, `nights`) tính giống list.
+
+### 5.3.2 PATCH /bookings/:id/cancel — Email khách kèm lý do
+
+- Body optional: `{ reason?: string }` (`MinLength=10`, `MaxLength=500` nếu gửi). Bỏ trống cũng huỷ được.
+- Reason **không lưu DB** (theo yêu cầu sản phẩm) — chỉ pass-through vào:
+  - Email `booking_cancelled` gửi `booking.customer.email` (nếu khách có account + có email + SMTP cấu hình). Email kèm `propertyName`, `checkinDate`, `checkoutDate`, `reason`, `owner.name`, `owner.phone` để khách tiện liên hệ lại.
+  - In-app notification subtitle của customer (vd: "Villa A đã được huỷ — Chủ nhà có việc đột xuất").
+- Email không chặn flow: thất bại SMTP → log, vẫn trả `cancelSuccess`.
+- Booking từ luồng customer chưa có account (`customerId=null`) → bỏ qua email.
 
 ### 5.4 PATCH /bookings/:id/paid
 
@@ -1066,7 +1337,50 @@ Endpoints KPI cho Owner/Sale/Admin. Auth: Bearer. Roles: ADMIN, OWNER, SALE.
 
 **Nguồn doanh thu**: aggregate `Booking.depositAmount` của booking `status ∈ {CONFIRMED, COMPLETED}` overlapping kỳ. Revenue mỗi ngày = chia đều `depositAmount / số đêm`.
 
-### 7A.5 Endpoints CHƯA wire (roadmap)
+### 7A.5 GET /admin/reports/risk-kpis — Risk KPIs cho trang admin reports
+
+Role: ADMIN. Trả 1 lần đủ cho cards + bảng top host cancel + delta vs kỳ trước.
+
+Query: `?range=week|month|quarter|year` (default `month`). Window: trailing N days.
+
+| range | N ngày |
+|---|---|
+| week | 7 |
+| month | 30 |
+| quarter | 90 |
+| year | 365 |
+
+Mỗi metric trả `{ value, prev }` để FE tính delta. `prev` = cùng window N ngày liền trước.
+
+```jsonc
+{
+  "range": "month",
+  "rangeDays": 30,
+  "disputesOpen":        { "value": 5, "prev": 4 },
+  "flaggedReviews":      { "value": 3, "prev": 5 },
+  "kycPending":          { "value": 8, "prev": 6 },
+  "subscriptionOverdue": { "value": 2, "prev": 2 },   // snapshot — prev = current
+  "revenuePaid":         { "value": 15000000, "prev": 12500000 },
+  "deletionRequests":    { "value": 2, "prev": 1, "note": "Proxy: User.deletedAt trong kỳ" },
+  "cancelRate":          { "value": 3.2, "prev": 3.6, "note": "Aggregate cancelled / total — không tách host vs customer" },
+  "hostCancelRate":      { "value": 3.2, "prev": 3.6, "note": "..." },
+  "noShowRate":          { "value": 1.8, "prev": 2.0, "note": "..." },
+  "topHostCancel": [
+    { "ownerId": "uuid", "name": "...", "propertyCount": 3, "bookingCount": 42, "cancelCount": 6, "cancelRate": 14.3 }
+  ]
+}
+```
+
+**Caveats** (FE phải hiển thị note hoặc dấu ":" để user hiểu):
+- `disputesOpen`, `flaggedReviews`, `kycPending` đếm theo **createdAt/updatedAt trong kỳ**, không phải snapshot tại thời điểm cuối kỳ. Đủ cho hiển thị delta dạng "biến động trong kỳ".
+- `subscriptionOverdue` là **snapshot hiện tại** (past_due bây giờ). `prev = value` vì không có cách rẻ tính snapshot quá khứ. FE ẩn delta cho metric này.
+- `deletionRequests` (v1.14): đếm `AccountDeletionRequest` được tạo trong kỳ (cả `pending`, `completed`, `cancelled`). Phản ánh "số yêu cầu xoá account đã nhận trong kỳ".
+- `cancelRate` = tổng booking CANCELLED / tổng booking trong kỳ.
+- `hostCancelRate` (v1.14, đã unblock): cancellation `cancelledByRole ∈ {OWNER, SALE, ADMIN}` trong kỳ / booking đã cọc (`status ∈ {CONFIRMED, COMPLETED}` hoặc `paidAt != null`) trong kỳ. Booking row cũ trước v1.14 không có `cancelledByRole` → không tính vào tử số (under-count nhẹ trong giai đoạn migration ~30 ngày).
+- `noShowRate` (v1.14, đã unblock): số booking có `status=NO_SHOW` đánh trong kỳ / booking đã cọc trong kỳ. Cron mark mỗi ngày 03:30 (xem §19 enum reference).
+- `topHostCancel`: top 5 owner theo cancellation **host-side** (`cancelledByRole ∈ {OWNER, SALE}`) trong kỳ. `cancelRate` của 1 owner = host-cancel / total bookings của owner đó trong kỳ.
+
+### 7A.7 Endpoints CHƯA wire (roadmap)
 
 FE hiện gom hết vào `GET /reports`. Các path sau đã reserve nhưng **không cần implement** cho release này:
 
@@ -1988,10 +2302,11 @@ socket.on('error', (e) => console.error(e.message));
 | `read:update` | `{ conversationId, userId, lastReadAt }` | Member khác đã đọc |
 | `typing` | `{ conversationId, userId, typing: boolean }` | Member khác đang gõ |
 | `presence` | `{ userId, online: boolean }` | Member có conversation chung lên/xuống mạng |
-| `error` | `{ message }` | Lỗi (token sai, không phải member, ...) |
+| `error` | `{ code?, message }` | Lỗi. `code: 'tokenExpired'` kèm `disconnect(true)` khi access token (15') hết hạn giữa socket session — FE refresh token rồi reconnect |
 
 ### 17.5 Behavior tự động
 
+- **Token expiry mid-session**: BE set timer theo `payload.exp` ở handshake. Khi access token hết hạn → server emit `error: { code: 'tokenExpired', message: 'Token expired' }` rồi `disconnect(true)`. FE refresh token qua `/auth/refresh` và reconnect lại WS với token mới.
 - **Offline → FCM**: nếu recipient không có socket nào active, BE tự gửi FCM push với `pushType: "chat_message"` và `deepLink: "/conversations/:id"`.
 - **Multi-device**: tất cả socket của 1 user đều nhận → đồng bộ web + mobile.
 - **Retention 180 ngày**: cron 3AM xoá messages cũ. Conversation có `hasDispute=true` được giữ.
@@ -2053,7 +2368,7 @@ CANCELLATION_POLICY = { FLEXIBLE: 0, MODERATE: 1, STRICT: 2 }
 MODERATION_STATUS = 'pending' | 'approved' | 'rejected' | 'suspended'
 
 // Booking
-BOOKING_STATUS = { HOLD: 0, CONFIRMED: 1, CANCELLED: 2, COMPLETED: 3 }
+BOOKING_STATUS = { HOLD: 0, CONFIRMED: 1, CANCELLED: 2, COMPLETED: 3, NO_SHOW: 4 }
 
 // Calendar
 CALENDAR_DAY_STATUS = 'available' | 'hold' | 'booked' | 'locked'
@@ -2185,6 +2500,17 @@ CONVERSATION_MEMBER_ROLE = 'owner' | 'sale' | 'customer' | 'admin'
 ---
 
 ## 21. Changelog & Bug fixes
+
+### v1.12.1 — 2026-06-11 (Trial quota fix: 1 SALE slot + machine `code` cho 403)
+
+Hot-fix sau khi phát hiện OWNER vừa đăng ký không mời được nhân viên dù trial còn hạn.
+
+| Thay đổi | Chi tiết |
+|---|---|
+| **Trial = 1 SALE slot** | Helper mới `getEffectiveMaxSaleStaff(planId, status)` ở `src/common/staff-entitlement.ts`. Khi `planId=null` + `subscriptionStatus="trial"` → 1 slot (constant `TRIAL_MAX_SALE_STAFF`). Các state khác giữ y nguyên `getMaxSaleStaff` (0 nếu chưa mua). Mirror cần thêm ở FE `staff_entitlement.dart`. |
+| **Machine code cho 403** | 3 endpoint gate (`POST/PUT /properties`, `POST /staff/invites`) giờ trả `code` ổn định trong body: `"KYC_REQUIRED"` (chưa KYC) hoặc `"FEATURE_LOCKED"` (hết entitlement). Helper mới `featureLocked()` ở `src/common/errors/subscription.errors.ts`. FE match theo `code`, không cần fallback theo message. |
+
+**Breaking?** Không (code mới thêm vào response, không xoá). FE nên migrate sang match theo `code`.
 
 ### v1.12 — 2026-06-10 (Apple IAP compliance: silent 60-day OWNER trial + generic entitlement gate)
 
@@ -2388,7 +2714,8 @@ Hoàn thiện các MEDIUM/LOW issue còn lại từ v1.1 và thêm tính năng �
 
 | Fix | Mô tả | Ảnh hưởng FE |
 |---|---|---|
-| OWNER PATCH property rejected/suspended → tự về `pending` | OWNER edit property bị reject/suspended, BE tự reset moderation về pending + notify admin | Hiển thị toast "Đã gửi lại để duyệt" khi OWNER save |
+| OWNER PATCH property rejected → auto `approved` | OWNER edit property bị reject, BE tự chuyển `moderationStatus → approved`; OWNER tự bật `isActive` | Không còn toast "Đã gửi lại để duyệt"; hiển thị trạng thái theo `moderationStatus` + `isActive` |
+| OWNER không tự bật property `suspended` | `PATCH isActive=true` khi `moderationStatus=suspended` → 403 `cannotReactivateSuspended` | Disable nút bật; hướng dẫn liên hệ admin |
 
 #### Leads
 
@@ -2526,11 +2853,12 @@ Response shape:
 
 `GET /properties` đã include `_count: { bookings }` (`property._count.bookings` là số booking). FE map sang `bookingCount` từ field này.
 
-Phân biệt 3 trạng thái dùng `moderationStatus` trực tiếp (không cần aggregate):
-- `pending` — chờ duyệt lần đầu
-- `approved + isActive=true` — hoạt động
-- `rejected` — bị reject (chưa hoạt động bao giờ)
-- `suspended` — đã từng approved nhưng admin tạm ngưng
+Phân biệt trạng thái dùng `moderationStatus` + `isActive` (không suy luận từ `bookingCount`):
+- `approved + isActive=true` — đang public
+- `approved + isActive=false` — owner tự tắt (ẩn khỏi `/properties/public`)
+- `rejected` — admin từ chối (`isActive=false`)
+- `suspended` — admin tạm ngưng (`isActive=false`, owner không tự bật lại)
+- `pending` — legacy (chỉ dữ liệu cũ)
 
 #### A4. Subscription list response shape ✅ CONFIRMED
 
@@ -2552,9 +2880,15 @@ Shape chính xác mỗi item:
   "subscriptionFrozenAt": null,
   "subscriptionFrozenReason": null,
   "trialEndsAt": null,
-  "nextChargeAt": "2026-07-04T00:00:00.000Z"
+  "nextChargeAt": "2026-07-04T00:00:00.000Z",
+  "rooms": 5,
+  "amount": 658900
 }
 ```
+
+**`rooms`** (v1.13): số phòng của subscription hiện hành. Lấy từ `Subscription.rooms` row mới nhất, fallback `plan.maxRooms` hoặc `1`. FE **không** cần suy từ `planId`.
+
+**`amount`** (v1.13): tổng tiền/kỳ thực tế đã bao gồm VAT (VND, integer). Tính bằng cùng công thức `POST /payments/quote` (`computeFullCycleTotal`): `max(pricePerRoom × rooms, minCharge) × months × (1 - yearlyDiscount) + VAT`. Khi có `subscriptionPriceOverride` → dùng override + VAT tính trên override. `null` nếu user chưa có plan + không có override. FE chỉ cần đọc `amount` để hiển thị, không tự tính.
 
 **Plan ID format**: `rooms_1`, `rooms_5`, `rooms_10`, `rooms_20`, `rooms_50`, `enterprise`. **KHÔNG** có `_monthly`/`_yearly` suffix — `cycle` lưu riêng ở field `subscriptionCycle`.
 

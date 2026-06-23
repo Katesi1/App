@@ -73,6 +73,7 @@ void main() {
         expect(BookingStatus.confirmed.value, 1);
         expect(BookingStatus.cancelled.value, 2);
         expect(BookingStatus.completed.value, 3);
+        expect(BookingStatus.noShow.value, 4);
       });
     });
 
@@ -82,6 +83,7 @@ void main() {
         expect(BookingStatus.confirmed.label, 'Đã xác nhận');
         expect(BookingStatus.cancelled.label, 'Đã huỷ');
         expect(BookingStatus.completed.label, 'Hoàn thành');
+        expect(BookingStatus.noShow.label, 'Khách không đến');
       });
     });
 
@@ -91,6 +93,7 @@ void main() {
         expect(BookingStatusExtension.fromInt(1), BookingStatus.confirmed);
         expect(BookingStatusExtension.fromInt(2), BookingStatus.cancelled);
         expect(BookingStatusExtension.fromInt(3), BookingStatus.completed);
+        expect(BookingStatusExtension.fromInt(4), BookingStatus.noShow);
       });
 
       test('defaults to hold for unknown', () {

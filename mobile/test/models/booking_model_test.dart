@@ -63,6 +63,52 @@ void main() {
       expect(booking.propertyName, 'N/A');
       expect(booking.saleName, 'N/A');
     });
+
+    test('parses NO_SHOW status (4)', () {
+      final booking = BookingModel.fromJson({
+        'id': 'b-noshow',
+        'propertyId': 'p-1',
+        'checkinDate': '2026-04-01T00:00:00.000Z',
+        'checkoutDate': '2026-04-03T00:00:00.000Z',
+        'status': 4,
+      });
+
+      expect(booking.status, BookingStatus.noShow);
+    });
+
+    test('parses cancellation tracking fields (BE v1.14+)', () {
+      final booking = BookingModel.fromJson({
+        'id': 'b-cancel',
+        'propertyId': 'p-1',
+        'checkinDate': '2026-04-01T00:00:00.000Z',
+        'checkoutDate': '2026-04-03T00:00:00.000Z',
+        'status': 2, // CANCELLED
+        'cancelledAt': '2026-06-13T10:00:00.000Z',
+        'cancelledByUserId': 'u-1',
+        'cancelledByRole': 1, // OWNER
+        'cancelledReason': 'Khách đổi lịch',
+      });
+
+      expect(booking.cancelledAt, isNotNull);
+      expect(booking.cancelledByUserId, 'u-1');
+      expect(booking.cancelledByRole, 1);
+      expect(booking.cancelledReason, 'Khách đổi lịch');
+    });
+
+    test('cancellation fields null cho booking cũ trước migration', () {
+      final booking = BookingModel.fromJson({
+        'id': 'b-old',
+        'propertyId': 'p-1',
+        'checkinDate': '2026-04-01T00:00:00.000Z',
+        'checkoutDate': '2026-04-03T00:00:00.000Z',
+        'status': 2, // CANCELLED nhưng không có tracking
+      });
+
+      expect(booking.cancelledAt, isNull);
+      expect(booking.cancelledByUserId, isNull);
+      expect(booking.cancelledByRole, isNull);
+      expect(booking.cancelledReason, isNull);
+    });
   });
 
   group('CalendarBooking', () {

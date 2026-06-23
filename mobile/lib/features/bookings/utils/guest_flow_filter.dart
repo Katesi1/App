@@ -54,7 +54,8 @@ class GuestFlowFilter {
     DateTime end,
   ) {
     if (booking.status == BookingStatus.cancelled ||
-        booking.status == BookingStatus.completed) {
+        booking.status == BookingStatus.completed ||
+        booking.status == BookingStatus.noShow) {
       return false;
     }
     final checkIn = dateOnly(booking.checkinDate);
@@ -67,7 +68,8 @@ class GuestFlowFilter {
     DateTime end,
   ) {
     if (booking.status == BookingStatus.cancelled ||
-        booking.status == BookingStatus.hold) {
+        booking.status == BookingStatus.hold ||
+        booking.status == BookingStatus.noShow) {
       return false;
     }
     final checkOut = dateOnly(booking.checkoutDate);
