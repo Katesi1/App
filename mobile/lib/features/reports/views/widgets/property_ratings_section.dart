@@ -35,6 +35,7 @@ class PropertyRatingsSection extends StatelessWidget {
 
     if (ratings.isEmpty && reviews.isEmpty) {
       return Container(
+        width: double.infinity,
         padding: const EdgeInsets.all(20),
         decoration: BoxDecoration(
           color: colors.bgSurface,

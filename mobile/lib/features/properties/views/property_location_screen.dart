@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../../../core/theme/app_color_scheme.dart';
 import '../../../core/theme/app_spacing.dart';
+import '../../../core/utils/location_helper.dart';
 import '../../../shared/widgets/loading_widget.dart';
 import '../../rooms/controllers/room_controller.dart';
 
@@ -22,6 +24,7 @@ class _PropertyLocationScreenState
   final _addressCtrl = TextEditingController();
   final _mapLinkCtrl = TextEditingController();
   bool _isLoading = false;
+  bool _gettingLocation = false;
   bool _initialized = false;
 
   @override
@@ -38,6 +41,36 @@ class _PropertyLocationScreenState
     _initialized = true;
     _addressCtrl.text = room.address ?? '';
     _mapLinkCtrl.text = room.mapLink ?? '';
+  }
+
+  /// Xin quyền + lấy vị trí GPS hiện tại → tự tạo link Google Maps.
+  Future<void> _useCurrentLocation() async {
+    setState(() => _gettingLocation = true);
+    final result = await LocationHelper.getCurrentLocation();
+    if (!mounted) return;
+    setState(() => _gettingLocation = false);
+
+    switch (result) {
+      case LocationSuccess(:final mapsLink):
+        setState(() => _mapLinkCtrl.text = mapsLink);
+        AppSnackBar.success(context, 'Đã lấy vị trí hiện tại');
+      case LocationFailure(:final message):
+        AppSnackBar.error(context, message);
+    }
+  }
+
+  /// Mở thử link Google Maps đang nhập để kiểm tra đúng vị trí.
+  Future<void> _openMapLink() async {
+    final link = _mapLinkCtrl.text.trim();
+    final uri = Uri.tryParse(link);
+    if (link.isEmpty || uri == null) {
+      AppSnackBar.error(context, 'Chưa có link Google Maps');
+      return;
+    }
+    final ok = await launchUrl(uri, mode: LaunchMode.externalApplication);
+    if (!ok && mounted) {
+      AppSnackBar.error(context, 'Không mở được Google Maps');
+    }
   }
 
   Future<void> _onSave() async {
@@ -98,6 +131,64 @@ class _PropertyLocationScreenState
                   decoration:
                       _inputDeco(context, 'Dán link Google Maps tại đây'),
                 ),
+                const SizedBox(height: AppSpacing.sm),
+                Row(
+                  children: [
+                    Expanded(
+                      child: OutlinedButton.icon(
+                        onPressed:
+                            _gettingLocation ? null : _useCurrentLocation,
+                        icon: _gettingLocation
+                            ? const SizedBox(
+                                width: 16,
+                                height: 16,
+                                child: CircularProgressIndicator(
+                                    strokeWidth: 2),
+                              )
+                            : const Icon(Icons.my_location_rounded, size: 18),
+                        label: Text(
+                          _gettingLocation
+                              ? 'Đang lấy...'
+                              : 'Lấy vị trí hiện tại',
+                          style: GoogleFonts.beVietnamPro(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: colors.brand,
+                          side: BorderSide(color: colors.brand),
+                          padding:
+                              const EdgeInsets.symmetric(vertical: 12),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(AppRadius.md),
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: AppSpacing.sm),
+                    OutlinedButton.icon(
+                      onPressed: _openMapLink,
+                      icon: const Icon(Icons.open_in_new_rounded, size: 18),
+                      label: Text(
+                        'Mở thử',
+                        style: GoogleFonts.beVietnamPro(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: colors.textSecondary,
+                        side: BorderSide(color: colors.borderDefault),
+                        padding: const EdgeInsets.symmetric(
+                            vertical: 12, horizontal: 14),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(AppRadius.md),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
                 const SizedBox(height: AppSpacing.md),
                 Container(
                   padding: const EdgeInsets.all(12),
@@ -112,7 +203,9 @@ class _PropertyLocationScreenState
                       const SizedBox(width: 10),
                       Expanded(
                         child: Text(
-                          'Mở Google Maps, tìm vị trí phòng, nhấn "Chia sẻ" rồi dán link vào đây.',
+                          'Nhấn "Lấy vị trí hiện tại" để app tự định vị và tạo '
+                          'link. Hoặc mở Google Maps, tìm vị trí phòng, nhấn '
+                          '"Chia sẻ" rồi dán link vào đây.',
                           style: GoogleFonts.beVietnamPro(
                             fontSize: 12,
                             color: colors.textBrand,

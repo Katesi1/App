@@ -145,7 +145,7 @@ class _CalendarGridWidgetState extends State<CalendarGridWidget> {
     final dates = _visibleDates;
     final rooms = widget.rooms;
 
-    const roomColWidth = 64.0;
+    const roomColWidth = 96.0;
     const cellWidth = 54.0;
     const cellHeight = 50.0;
     const headerHeight = 44.0;
@@ -286,7 +286,7 @@ class _CalendarGridWidgetState extends State<CalendarGridWidget> {
                 ),
               ),
               child: Text(
-                'Căn',
+                'Mã căn',
                 style: GoogleFonts.beVietnamPro(
                   fontSize: 12,
                   fontWeight: FontWeight.w700,

@@ -1,7 +1,10 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:intl/intl.dart';
 import '../../../core/constants/app_constants.dart';
 import '../../../core/theme/app_color_scheme.dart';
 import '../../../core/theme/app_colors.dart';
@@ -11,6 +14,7 @@ import '../../../data/models/user_model.dart';
 import '../../auth/controllers/auth_controller.dart';
 import '../../bookings/controllers/booking_controller.dart';
 import '../../dashboard/controllers/dashboard_controller.dart';
+import '../../reports/controllers/report_controller.dart';
 import '../../verify/data/models/verify_enums.dart';
 import '../../verify/views/paywall_modal.dart';
 import '../../../shared/utils/dashboard_refresh.dart';
@@ -201,11 +205,11 @@ class DashboardScreen extends ConsumerWidget {
                               child: _KpiCard(
                                 label: 'Tổng phòng',
                                 value: AppHelpers.formatIntOrDash(
-                                    stats.globalTotalRooms),
-                                sub:
-                                    '${AppHelpers.formatIntOrDash(stats.totalRooms)} của tôi',
+                                    stats.totalRooms),
+                                sub: 'của tôi',
                                 accentColor: colors.brand,
                                 icon: Icons.apartment_rounded,
+                                onTap: () => context.go('/rooms'),
                               ),
                             ),
                             const SizedBox(width: 12),
@@ -213,9 +217,8 @@ class DashboardScreen extends ConsumerWidget {
                               child: _KpiCard(
                                 label: 'Phòng trống',
                                 value: AppHelpers.formatIntOrDash(
-                                    stats.globalEmptyRooms),
-                                sub:
-                                    '${AppHelpers.formatIntOrDash(stats.emptyRooms)} của tôi',
+                                    stats.emptyRooms),
+                                sub: 'của tôi',
                                 accentColor: colors.success,
                                 icon: Icons.check_circle_outline_rounded,
                               ),
@@ -455,22 +458,15 @@ class _DashboardRecentBookingsSectionState
           children: [
             ...pageItems.map((b) {
               final statusColor = AppHelpers.bookingStatusColor(b.status.value);
-              final rawName = (b.customerName ?? '').trim();
-              final initials = rawName.isNotEmpty
-                  ? rawName.substring(0, 1).toUpperCase()
-                  : 'K';
               return Padding(
                 padding: const EdgeInsets.only(bottom: 10),
                 child: _BookingItem(
-                  initials: initials,
                   name: b.customerName ?? 'Không tên',
                   meta: '${b.propertyName} · ${b.nights} đêm',
                   status: b.status.label,
                   statusColor: statusColor,
                   statusBg: statusColor.withValues(alpha: 0.12),
-                  price: (b.depositAmount != null && b.depositAmount! > 0)
-                      ? '${AppHelpers.formatPrice(b.depositAmount!)}đ'
-                      : '--',
+                  date: DateFormat('dd/MM/yyyy').format(b.checkinDate),
                   onTap: () => context.push('/bookings/${b.id}'),
                 ),
               );
@@ -680,6 +676,7 @@ class _KpiCard extends StatelessWidget {
   final String sub;
   final Color accentColor;
   final IconData icon;
+  final VoidCallback? onTap;
 
   const _KpiCard({
     required this.label,
@@ -687,6 +684,7 @@ class _KpiCard extends StatelessWidget {
     required this.sub,
     required this.accentColor,
     required this.icon,
+    this.onTap,
   });
 
   @override
@@ -694,7 +692,7 @@ class _KpiCard extends StatelessWidget {
     final colors = context.colors;
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
-    return Container(
+    final card = Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
         color: colors.bgSurface,
@@ -722,14 +720,21 @@ class _KpiCard extends StatelessWidget {
                 child: Icon(icon, color: accentColor, size: 17),
               ),
               const Spacer(),
-              Container(
-                width: 4,
-                height: 24,
-                decoration: BoxDecoration(
-                  color: accentColor.withValues(alpha: 0.3),
-                  borderRadius: BorderRadius.circular(2),
+              if (onTap != null)
+                Icon(
+                  Icons.chevron_right_rounded,
+                  size: 20,
+                  color: colors.textTertiary,
+                )
+              else
+                Container(
+                  width: 4,
+                  height: 24,
+                  decoration: BoxDecoration(
+                    color: accentColor.withValues(alpha: 0.3),
+                    borderRadius: BorderRadius.circular(2),
+                  ),
                 ),
-              ),
             ],
           ),
           const SizedBox(height: 12),
@@ -762,11 +767,19 @@ class _KpiCard extends StatelessWidget {
         ],
       ),
     );
+
+    if (onTap == null) return card;
+
+    return GestureDetector(
+      onTap: onTap,
+      behavior: HitTestBehavior.opaque,
+      child: card,
+    );
   }
 }
 
 // ─── Revenue Card ─────────────────────────────────────────────────────────────
-class _RevenueCard extends StatelessWidget {
+class _RevenueCard extends ConsumerWidget {
   final double monthlyRevenue;
   final double todayRevenue;
   final DateTime now;
@@ -778,9 +791,19 @@ class _RevenueCard extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final colors = context.colors;
     final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    // Sparkline doanh thu theo ngày trong tháng — tái dùng reportDataProvider
+    // (default ReportParams = tháng hiện tại). Best-effort: lỗi/đang tải thì
+    // ẩn chart, card vẫn hiển thị số liệu từ dashboard stats.
+    final reportAsync = ref.watch(reportDataProvider(const ReportParams()));
+    final spark = reportAsync.maybeWhen(
+      data: (report) =>
+          report.revenueByDay.map((p) => p.revenue.toDouble()).toList(),
+      orElse: () => const <double>[],
+    );
 
     return Container(
       decoration: BoxDecoration(
@@ -820,8 +843,9 @@ class _RevenueCard extends StatelessWidget {
               Padding(
                 padding: const EdgeInsets.fromLTRB(20, 16, 16, 16),
                 child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
-                    // Monthly revenue
+                    // Monthly revenue + sparkline
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
@@ -835,7 +859,14 @@ class _RevenueCard extends StatelessWidget {
                               letterSpacing: 1.0,
                             ),
                           ),
-                          const SizedBox(height: 6),
+                          if (spark.length >= 2) ...[
+                            const SizedBox(height: 8),
+                            _RevenueSparkline(
+                              values: spark,
+                              color: colors.success,
+                            ),
+                          ],
+                          const SizedBox(height: 8),
                           Text(
                             AppHelpers.formatPriceOrDash(monthlyRevenue),
                             style: GoogleFonts.beVietnamPro(
@@ -905,6 +936,101 @@ class _RevenueCard extends StatelessWidget {
       ),
     );
   }
+}
+
+// ─── Revenue Sparkline ───────────────────────────────────────────────────────
+/// Mini line chart (sparkline) cho doanh thu theo ngày. Tự vẽ bằng
+/// CustomPainter — nhẹ, không cần dependency chart cho card nhỏ.
+class _RevenueSparkline extends StatelessWidget {
+  final List<double> values;
+  final Color color;
+
+  const _RevenueSparkline({required this.values, required this.color});
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      height: 38,
+      width: double.infinity,
+      child: CustomPaint(
+        painter: _SparklinePainter(values: values, color: color),
+      ),
+    );
+  }
+}
+
+class _SparklinePainter extends CustomPainter {
+  final List<double> values;
+  final Color color;
+
+  _SparklinePainter({required this.values, required this.color});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    if (values.length < 2) return;
+
+    final maxV = values.reduce(math.max);
+    final minV = values.reduce(math.min);
+    final range = maxV - minV;
+    const pad = 3.0;
+    final h = size.height - pad * 2;
+    final dx = size.width / (values.length - 1);
+
+    Offset pointAt(int i) {
+      final norm = range < 1 ? 0.5 : (values[i] - minV) / range; // 0..1
+      return Offset(dx * i, pad + h - norm * h);
+    }
+
+    // Đường line mượt qua trung điểm các đoạn (quadratic bezier).
+    final line = Path()..moveTo(pointAt(0).dx, pointAt(0).dy);
+    for (var i = 0; i < values.length - 1; i++) {
+      final p = pointAt(i);
+      final next = pointAt(i + 1);
+      final mid = Offset((p.dx + next.dx) / 2, (p.dy + next.dy) / 2);
+      line.quadraticBezierTo(p.dx, p.dy, mid.dx, mid.dy);
+    }
+    line.lineTo(pointAt(values.length - 1).dx, pointAt(values.length - 1).dy);
+
+    // Vùng fill gradient dưới line.
+    final fill = Path.from(line)
+      ..lineTo(size.width, size.height)
+      ..lineTo(0, size.height)
+      ..close();
+    final fillPaint = Paint()
+      ..shader = LinearGradient(
+        begin: Alignment.topCenter,
+        end: Alignment.bottomCenter,
+        colors: [
+          color.withValues(alpha: 0.22),
+          color.withValues(alpha: 0.0),
+        ],
+      ).createShader(Offset.zero & size);
+    canvas.drawPath(fill, fillPaint);
+
+    final linePaint = Paint()
+      ..color = color
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 2
+      ..strokeCap = StrokeCap.round
+      ..strokeJoin = StrokeJoin.round;
+    canvas.drawPath(line, linePaint);
+
+    // Chấm cuối nhấn điểm hiện tại.
+    final last = pointAt(values.length - 1);
+    canvas.drawCircle(last, 3, Paint()..color = color);
+    canvas.drawCircle(
+      last,
+      3,
+      Paint()
+        ..color = Colors.white
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 1.5,
+    );
+  }
+
+  @override
+  bool shouldRepaint(covariant _SparklinePainter old) =>
+      old.values != values || old.color != color;
 }
 
 // ─── Quick Action ──────────────────────────────────────────────────────────────
@@ -1096,23 +1222,21 @@ class _ManageShortcut extends StatelessWidget {
 
 // ─── Booking Item ──────────────────────────────────────────────────────────────
 class _BookingItem extends StatelessWidget {
-  final String initials;
   final String name;
   final String meta;
   final String status;
   final Color statusColor;
   final Color statusBg;
-  final String price;
+  final String date;
   final VoidCallback? onTap;
 
   const _BookingItem({
-    required this.initials,
     required this.name,
     required this.meta,
     required this.status,
     required this.statusColor,
     required this.statusBg,
-    required this.price,
+    required this.date,
     this.onTap,
   });
 
@@ -1137,46 +1261,54 @@ class _BookingItem extends StatelessWidget {
         ),
         child: ClipRRect(
           borderRadius: BorderRadius.circular(14),
-          child: Row(
-            children: [
-              // Left status stripe
-              Container(
-                width: 4,
-                height: 64,
-                color: statusColor,
-              ),
-              const SizedBox(width: 12),
-              // Emoji avatar
-              Container(
-                width: 42,
-                height: 42,
-                decoration: BoxDecoration(
-                  color: statusBg,
-                  borderRadius: BorderRadius.circular(10),
+          child: Padding(
+            padding: const EdgeInsets.all(10),
+            child: Row(
+              children: [
+                // Thumbnail phòng (icon tinted theo status — booking không kèm
+                // ảnh phòng từ backend nên dùng placeholder có chủ đích).
+                Container(
+                  width: 52,
+                  height: 52,
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                      colors: [
+                        statusColor.withValues(alpha: 0.18),
+                        statusColor.withValues(alpha: 0.08),
+                      ],
+                    ),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Icon(
+                    Icons.king_bed_rounded,
+                    color: statusColor,
+                    size: 24,
+                  ),
                 ),
-                child: Center(
-                  child: Text(initials, style: const TextStyle(fontSize: 20)),
-                ),
-              ),
-              const SizedBox(width: 12),
-              // Info
-              Expanded(
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 12),
+                const SizedBox(width: 12),
+                // Info
+                Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
                     children: [
                       Text(
                         name,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                         style: GoogleFonts.beVietnamPro(
                           fontSize: 14,
                           fontWeight: FontWeight.w600,
                           color: colors.textPrimary,
                         ),
                       ),
-                      const SizedBox(height: 2),
+                      const SizedBox(height: 3),
                       Text(
                         meta,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                         style: GoogleFonts.beVietnamPro(
                           fontSize: 12,
                           color: colors.textSecondary,
@@ -1185,12 +1317,11 @@ class _BookingItem extends StatelessWidget {
                     ],
                   ),
                 ),
-              ),
-              // Status + price
-              Padding(
-                padding: const EdgeInsets.only(right: 14),
-                child: Column(
+                const SizedBox(width: 8),
+                // Status + ngày check-in
+                Column(
                   crossAxisAlignment: CrossAxisAlignment.end,
+                  mainAxisSize: MainAxisSize.min,
                   children: [
                     Container(
                       padding: const EdgeInsets.symmetric(
@@ -1209,19 +1340,19 @@ class _BookingItem extends StatelessWidget {
                         ),
                       ),
                     ),
-                    const SizedBox(height: 5),
+                    const SizedBox(height: 6),
                     Text(
-                      price,
+                      date,
                       style: GoogleFonts.beVietnamPro(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w700,
-                        color: colors.textBrand,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w500,
+                        color: colors.textTertiary,
                       ),
                     ),
                   ],
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ),

@@ -5,6 +5,7 @@ import 'package:google_fonts/google_fonts.dart';
 import '../../../core/theme/app_color_scheme.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../shared/widgets/loading_widget.dart';
+import '../../../shared/widgets/number_input_dialog.dart';
 import '../../rooms/controllers/room_controller.dart';
 
 class PropertyInfoScreen extends ConsumerStatefulWidget {
@@ -55,6 +56,44 @@ class _PropertyInfoScreenState extends ConsumerState<PropertyInfoScreen> {
     _standardGuests = room.standardGuests;
     _maxGuests = room.maxGuests;
     _selectedView = room.view;
+  }
+
+  /// Chọn loại phòng → tự điền WC + sức chứa theo tiêu chuẩn.
+  /// Owner vẫn có thể chỉnh lại các giá trị bên dưới.
+  /// Quy ước: Studio tính như 1 phòng ngủ.
+  /// - WC = số phòng ngủ
+  /// - Sức chứa tiêu chuẩn = tối đa = số phòng ngủ × 2
+  void _selectBedrooms(int bedrooms) {
+    setState(() {
+      _bedrooms = bedrooms;
+      final effective = bedrooms == 0 ? 1 : bedrooms;
+      _bathrooms = effective;
+      // Sức chứa hiển thị bằng chip 1–20 nên giữ trong dải đó.
+      _standardGuests = (effective * 2).clamp(1, 20);
+      _maxGuests = (effective * 2).clamp(1, 20);
+    });
+  }
+
+  /// Nhập số phòng ngủ tuỳ ý khi nhiều hơn dải chip (10+).
+  Future<void> _promptCustomBedrooms() async {
+    final value = await showNumberInputDialog(
+      context,
+      title: 'Số phòng ngủ',
+      hint: 'Nhập số phòng ngủ (VD: 12)',
+      initial: (_bedrooms ?? 0) >= 10 ? _bedrooms : null,
+    );
+    if (value != null) _selectBedrooms(value);
+  }
+
+  /// Nhập số nhà tắm / WC tuỳ ý khi nhiều hơn dải chip (10+).
+  Future<void> _promptCustomBathrooms() async {
+    final value = await showNumberInputDialog(
+      context,
+      title: 'Số nhà tắm / WC',
+      hint: 'Nhập số nhà tắm / WC (VD: 12)',
+      initial: (_bathrooms ?? 0) >= 10 ? _bathrooms : null,
+    );
+    if (value != null) setState(() => _bathrooms = value);
   }
 
   Future<void> _onSave() async {
@@ -157,13 +196,25 @@ class _PropertyInfoScreenState extends ConsumerState<PropertyInfoScreen> {
                     runSpacing: 8,
                     children: [
                       _chip(context, 'Studio', _bedrooms == 0,
-                          () => setState(() => _bedrooms = 0)),
+                          () => _selectBedrooms(0)),
                       for (var i = 1; i <= 9; i++)
                         _chip(context, '${i}PN', _bedrooms == i,
-                            () => setState(() => _bedrooms = i)),
-                      _chip(context, '10PN+', (_bedrooms ?? 0) >= 10,
-                          () => setState(() => _bedrooms = 10)),
+                            () => _selectBedrooms(i)),
+                      _chip(
+                          context,
+                          (_bedrooms ?? 0) >= 10 ? '${_bedrooms}PN' : '10PN+',
+                          (_bedrooms ?? 0) >= 10,
+                          _promptCustomBedrooms),
                     ],
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    'Chọn loại phòng sẽ tự điền số WC và sức chứa theo tiêu '
+                    'chuẩn — bạn có thể chỉnh lại bên dưới.',
+                    style: GoogleFonts.beVietnamPro(
+                      fontSize: 11.5,
+                      color: colors.textTertiary,
+                    ),
                   ),
 
                   const SizedBox(height: AppSpacing.lg),
@@ -178,8 +229,11 @@ class _PropertyInfoScreenState extends ConsumerState<PropertyInfoScreen> {
                       for (var i = 1; i <= 9; i++)
                         _chip(context, '$i WC', _bathrooms == i,
                             () => setState(() => _bathrooms = i)),
-                      _chip(context, '10+', (_bathrooms ?? 0) >= 10,
-                          () => setState(() => _bathrooms = 10)),
+                      _chip(
+                          context,
+                          (_bathrooms ?? 0) >= 10 ? '$_bathrooms WC' : '10+',
+                          (_bathrooms ?? 0) >= 10,
+                          _promptCustomBathrooms),
                     ],
                   ),
 

@@ -26,6 +26,10 @@
 
     <!-- Launch external URLs (Zalo, phone dialer) -->
     <uses-permission android:name="android.permission.CALL_PHONE" />
+
+    <!-- Location — lấy vị trí hiện tại để tạo link Google Maps khi tạo phòng -->
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
+    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
     <application
         android:label="Halong24h"
         android:name="${applicationName}"

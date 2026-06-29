@@ -3,7 +3,7 @@
 > Tài liệu chính thức cho team FE Web (Next.js admin/host) và App Mobile (Android/iOS).
 > Bao gồm tất cả endpoint, schema response, business rule, WebSocket guide và integration checklist.
 >
-> **Cập nhật**: 2026-06-05 (v1.8 — thêm §2A Authorization rules đầy đủ cho FE) · **BE base**: NestJS 11 · **DB**: PostgreSQL + Prisma · **Auth**: JWT · **Real-time**: Socket.IO
+> **Cập nhật**: 2026-06-27 (v1.16 — customer web booking detail mở cho khách + similar properties + enrich BookingDto) · **BE base**: NestJS 11 · **DB**: PostgreSQL + Prisma · **Auth**: JWT · **Real-time**: Socket.IO
 
 ---
 
@@ -33,6 +33,9 @@
 21. [Changelog & Bug fixes](#21-changelog--bug-fixes)
 22. [FE Q&A — Confirms & Design decisions](#22-fe-qa--confirms--design-decisions)
 23. [Uploads — Generic file upload cho Chat & các module khác](#23-uploads--generic-file-upload)
+24. [Mobile Profile Endpoints](#24-mobile-profile-endpoints-support--feedback--data-export--consents--notification-prefs)
+25. [FE Web Admin v2 — Bổ sung 2026-06-23](#25-fe-web-admin-v2--bổ-sung-2026-06-23)
+26. [**System SALE — Admin-grade SALE (v1.15)**](#26-system-sale--admin-grade-sale-v115--2026-06-26)
 
 ---
 
@@ -279,6 +282,7 @@ state.setUser(user.data);
     "dateOfBirth": null,
     "kycBypass": false,
     "kycStatus": "approved",
+    "isKycVerified": true,
     "subscriptionStatus": "trial",
     "subscriptionPlanId": "rooms_5",
     "subscriptionCycle": "monthly",
@@ -310,6 +314,14 @@ state.setUser(user.data);
 ```
 Với ADMIN/OWNER/CUSTOMER → `permissions: []` (mảng rỗng, KHÔNG phải `undefined`).
 
+**`isKycVerified`** (derived flag, đọc-only) = `kycBypass === true || kycStatus === 'approved'`. FE app dùng cờ này để quyết định banner:
+
+- `isKycVerified = true` + `kycStatus = 'approved'` → user tự nộp KYC và được duyệt → ẩn banner KYC.
+- `isKycVerified = true` + `kycBypass = true` (kèm bất kỳ `kycStatus` nào, kể cả `none/pending/rejected`) → admin cấp bypass → **ẩn banner KYC, KHÔNG nhắc user lên KYC nữa**.
+- `isKycVerified = false` → hiển thị banner / CTA "Hoàn tất KYC" như cũ.
+
+Cùng quy tắc đã dùng cho `host.isKycVerified` ở §4.11.
+
 ### 2.6 Lợi ích của pattern này
 
 | | Pattern cũ (login trả user) | Pattern mới (tách 2 endpoint) |
@@ -330,6 +342,8 @@ Backend chặn quá 3 account tạo cùng 1 device trong 24h (dựa trên `User-
 ## 2A. Phân quyền & Authorization — Quy tắc tổng
 
 > **Đọc kỹ section này trước khi gọi bất kỳ endpoint nào.** FE đôi khi gặp 401/403 không hiểu vì sao — câu trả lời đa số nằm ở đây.
+>
+> ⚠️ **v1.15 (2026-06-26)** — Mọi endpoint admin giờ chấp nhận thêm **SALE hệ thống** (`role=2 + scope=system`) khi user có quyền tương ứng trong bảng `user_permissions`. Đọc §26 để hiểu mô hình mới đầy đủ. PermissionGuard giờ check cả `users / kyc / subscriptions / disputes / ...` chứ không chỉ 4 module owner-scope cũ.
 
 ### 2A.1 Ba lớp guard BE chạy theo thứ tự
 
@@ -677,6 +691,8 @@ Base path: `/properties`.
 | `GET` | `/properties/public` | `checkinDate?, checkoutDate?, guests?, minPrice?, maxPrice?, type?, view?` — **array phẳng PropertyCardDto[]** (legacy, dùng cho mobile) |
 | `GET` | `/properties/search` | Full filter + pagination + sort — **dùng cho customer web list/search** (xem §4.7) |
 | `GET` | `/properties/public/:slug` | **Chi tiết phòng cho customer web** (kèm giá + host) — xem §4.11 |
+| `GET` | `/properties/public/:slug/similar?limit=8` | **Cơ sở tương tự** (carousel cuối trang detail) — xem §4.12 |
+| `GET` | `/properties/public/by-owner/:ownerId` | **Danh sách phòng công khai của 1 chủ nhà** (no auth) — dùng cho link Zalo "lịch phòng" — xem §4.13 |
 | `GET` | `/properties/share/:id` | — (trả PropertyDto không kèm giá, theo `id`, dùng cho share link nội bộ) |
 
 ### 4.2 Authenticated CRUD
@@ -968,6 +984,66 @@ Ghi chú field:
 
 **FE migration**: bỏ workaround scan `/properties/search` → map slug → id → `/share/:id`. Gọi thẳng `/properties/public/:slug`.
 
+### 4.12 Similar properties — `GET /properties/public/:slug/similar`
+
+Carousel "Cơ sở khác" ở cuối trang property detail customer web. Public, không cần auth.
+
+**Query**:
+
+| Param | Kiểu | Default | Ghi chú |
+|---|---|---|---|
+| `limit` | int 1–20 | 8 | Số lượng tối đa trả về |
+
+**Algorithm**:
+1. Tra property nguồn theo `slug` (`isActive=true, deletedAt=null`); slug không tồn tại → 404.
+2. Build `OR` filter theo độ ưu tiên: cùng `district` → cùng `city` → cùng `type` (PostgreSQL gộp tất cả, không weighted scoring).
+3. Loại bỏ chính property nguồn + bất kỳ property `inactive | deleted | moderationStatus != 'approved'`.
+4. Sort: `isHot desc → ratingAvg desc → reviewCount desc → createdAt desc`. Lấy top `limit`.
+
+**Response**:
+
+```json
+{
+  "success": true,
+  "message": "Lấy danh sách cơ sở thành công",
+  "data": [PropertyCardDto, PropertyCardDto, ...]
+}
+```
+
+Mỗi item dùng shape `PropertyCardDto` (§4.6). `isFavorited` luôn `false` (endpoint public, không attempt resolve user).
+
+### 4.13 Public list theo owner — `GET /properties/public/by-owner/:ownerId`
+
+Endpoint **public** (no auth) cho use case "chủ nhà share lịch phòng vào nhóm Zalo": OWNER copy link `webhalong24h.com/zalo-cal/<ownerId>`, dán vào nhóm Zalo, các SALE click → mở web thấy hết phòng của OWNER kèm SĐT để bấm Zalo gọi nhanh, không cần đăng nhập.
+
+- Tra theo `ownerId` (UUID của User). Owner không tồn tại / `isActive=false` / `bannedAt != null` / `deletedAt != null` → **404**.
+- Chỉ trả property `isActive=true, deletedAt=null, moderationStatus='approved'` (không lộ pending/rejected/suspended).
+- Sort: `isHot desc → name asc`.
+- Không cần filter ngày — endpoint chỉ liệt kê phòng, SALE bấm sang `GET /calendar/public-grid?propertyId=...` (§6.1) để xem lịch trống.
+
+**Response**:
+
+```json
+{
+  "success": true,
+  "message": "Lấy danh sách cơ sở của chủ nhà thành công",
+  "data": {
+    "owner": {
+      "id": "uuid",
+      "name": "Nguyễn Văn A",
+      "phone": "0901234567",
+      "avatarUrl": "https://res.cloudinary.com/.../avatar.jpg"
+    },
+    "items": [PropertyCardDto, PropertyCardDto, ...],
+    "total": 10
+  }
+}
+```
+
+Mỗi item dùng shape `PropertyCardDto` (§4.6). `isFavorited` luôn `false` (public, không attempt resolve user). `owner.phone` có thể `null` nếu OWNER chưa cập nhật SĐT — FE phải handle gracefully (ẩn nút Zalo).
+
+> **Lưu ý quyền riêng tư**: endpoint này tiết lộ SĐT của OWNER và danh sách phòng. Đây là chủ ý — OWNER chủ động share link Zalo cho team SALE. Nếu sau này cần revoke được link (vd: thay đổi đội ngũ), sẽ phải thêm field `User.publicShareToken` và đổi endpoint sang `/properties/public/by-token/:token` (defer khi cần).
+
 ---
 
 ## 5. Bookings
@@ -981,7 +1057,7 @@ Base path: `/bookings`. Auth required.
 | `GET` | `/bookings?propertyId&status&page&limit` | ADMIN/OWNER/SALE | — |
 | `GET` | `/bookings/my-bookings?status&page&limit` | Any auth | — |
 | `GET` | `/bookings/calendar/:propertyId?year&month` | ADMIN/OWNER/SALE | Lịch tháng cho 1 property |
-| `GET` | `/bookings/:id` | ADMIN/OWNER/SALE | — |
+| `GET` | `/bookings/:id` | Any auth (xem §5.3.1) | ADMIN/OWNER/SALE thấy booking trong scope; **CUSTOMER thấy booking của chính mình** (`booking.customerId === user.id`). Khác → 403 |
 | `POST` | `/bookings/hold` | ADMIN/OWNER/SALE (CUSTOMER bị chặn) | Hold 30 phút |
 | `POST` | `/bookings/customer-hold` | CUSTOMER (+all) | Hold 24h |
 | `PATCH` | `/bookings/:id/confirm` | ADMIN/OWNER/SALE | HOLD → CONFIRMED |
@@ -1027,11 +1103,35 @@ Base path: `/bookings`. Auth required.
   "guestCount": 4,
   "notes": "...",
   "propertyName": "Villa Bãi Cháy",
-  "nights": 2
+  "nights": 2,
+  "code": "HL-A1B2C3D4",
+  "propertySlug": "villa-bai-chay-vl001",
+  "coverImageUrl": "https://res.cloudinary.com/.../cover.jpg",
+  "host": { "name": "Nguyễn Văn A", "phone": null },
+  "cancellationPolicy": 1,
+  "hasReview": false,
+  "depositDeadlineAt": "2026-06-04T11:00:00.000Z"
 }
 ```
 
 Status: `0=HOLD, 1=CONFIRMED, 2=CANCELLED, 3=COMPLETED, 4=NO_SHOW`
+
+**Field mở rộng cho customer web (v1.16, áp dụng cho `findOne`, `getMyBookings`, `findAll`):**
+
+| Field | Kiểu | Ghi chú |
+|---|---|---|
+| `code` | `string` | Mã hiển thị `HL-XXXXXXXX` (8 ký tự hex đầu của booking id, upper-case). Khách dùng để đối chiếu khi liên hệ chủ nhà. Derive ở BE — không lưu DB |
+| `propertySlug` | `string \| null` | Slug property → FE build URL `/property/{slug}` |
+| `coverImageUrl` | `string \| null` | Ảnh cover (fallback ảnh đầu danh sách) |
+| `host` | `{ name, phone } \| null` | Chủ nhà. **`phone` CHỈ trả khi `status >= CONFIRMED` (= 1, 3, 4)** — tránh leak số trước khi cọc. HOLD/CANCELLED → `phone = null` |
+| `cancellationPolicy` | `0 \| 1 \| 2 \| null` | Chính sách huỷ của property: 0=FLEXIBLE, 1=MODERATE, 2=STRICT. Xem [§19 Enums](#19-enums-reference) |
+| `hasReview` | `boolean` | True nếu customer đã review booking này → FE disable nút "Đánh giá" |
+| `depositDeadlineAt` | `ISO \| null` | Hạn cọc: HOLD = `holdExpireAt` (countdown khách phải cọc trong cửa sổ này); CONFIRMED/CANCELLED/... = `null` (chưa có business rule riêng cho CONFIRMED) |
+
+**Field tạm thời chưa có (BE đang chờ schema):**
+
+- `vietqr` (`{ bankBin, bankName, accountNumber, accountName, memo }`) — **CHƯA trả về**. Schema hiện chưa lưu thông tin bank của OWNER per property. FE muốn hiển thị VietQR phải đợi BE thêm field bank trên User/Property hoặc dùng nội bộ Halong24h. Workaround tạm: FE ẩn panel VietQR booking-deposit, hướng dẫn khách chat trực tiếp chủ nhà để gửi STK.
+- `approvedAt` (timestamp HOLD → CONFIRMED) — **CHƯA có field DB riêng**. FE dùng `updatedAt` làm proxy khi `status >= CONFIRMED` (chấp nhận sai số nếu booking đã được update sau confirm). BE sẽ bổ sung field `confirmedAt` trong migration sau nếu FE cần độ chính xác.
 
 **Status `4=NO_SHOW`** (v1.14): cron mỗi ngày 03:30 tự đánh khi booking `CONFIRMED` đã qua `checkoutDate > 24h` mà `paidAt = null` (khách không tới + không hoàn tất thanh toán tại chỗ). FE hiển thị label "Khách không đến". App mobile cũ không biết status 4 → rơi vào nhánh default; nên cập nhật bản tiếp theo để hiển thị đúng.
 
@@ -1048,14 +1148,22 @@ Status: `0=HOLD, 1=CONFIRMED, 2=CANCELLED, 3=COMPLETED, 4=NO_SHOW`
 - FE web hiển thị: gặp `null` thì show "Chưa chốt giá" (không hardcode 0 ₫).
 - **Countdown HOLD**: dùng `holdRemainingSeconds` (server-computed, đã tính cả lệch giờ client), không tự tính `holdExpireAt - Date.now()`.
 
-### 5.3.1 GET /bookings/:id — response giàu hơn list
+### 5.3.1 GET /bookings/:id — quyền truy cập + response giàu hơn list
+
+**Quyền truy cập (v1.16):**
+- ADMIN/OWNER/SALE: theo scope effective owner như cũ.
+- **CUSTOMER**: truy cập được nếu `booking.customerId === user.id`. Người khác → 403 `bookings.forbiddenAccess`.
+
+FE web khách hàng giờ gọi `GET /bookings/:id` trực tiếp thay vì lọc trong `/bookings/my-bookings` để lấy detail.
 
 Detail include thêm so với item trong list:
 - `property.images` — 5 ảnh đầu (sort `order` asc), không bị giới hạn `isCover`.
 - `property.owner` — `{ id, name, phone }`.
+- `property.cancellationPolicy` — số 0/1/2.
 - `sale` — `{ id, name, phone }` (giống list).
+- `review` — `{ id }` hoặc null (dùng để derive `hasReview`).
 
-Các field còn lại (`holdRemainingSeconds`, `propertyName`, `nights`) tính giống list.
+Field flatten thêm so với list: tất cả field §5.3 mở rộng (`code`, `propertySlug`, `coverImageUrl`, `host`, `cancellationPolicy`, `hasReview`, `depositDeadlineAt`) đều có ở cả detail và list.
 
 ### 5.3.2 PATCH /bookings/:id/cancel — Email khách kèm lý do
 
@@ -2501,6 +2609,34 @@ CONVERSATION_MEMBER_ROLE = 'owner' | 'sale' | 'customer' | 'admin'
 
 ## 21. Changelog & Bug fixes
 
+### v1.16 — 2026-06-27 (Customer web booking detail + similar properties + enriched BookingDto)
+
+Phản hồi cho danh sách yêu cầu FE web khách hàng (received 2026-06-27).
+
+| Thay đổi | Chi tiết |
+|---|---|
+| `GET /bookings/:id` mở cho CUSTOMER | Bỏ `@Roles(ADMIN,OWNER,SALE)` + `@Permission(BOOKINGS, READ)` trên controller; service check `booking.customerId === user.id` cho CUSTOMER (xem §5.3.1). Không cần wait FE lọc `my-bookings`. |
+| BookingDto enrich (cả `findOne`, `getMyBookings`, `findAll`) | Thêm `code` (HL-XXXXXXXX), `propertySlug`, `coverImageUrl`, `host: {name, phone}` (phone CHỈ trả khi `status >= CONFIRMED`), `cancellationPolicy`, `hasReview`, `depositDeadlineAt` (HOLD = `holdExpireAt`, khác = null). Xem §5.3. |
+| `GET /properties/public/:slug/similar` (NEW) | Public endpoint trả `PropertyCardDto[]` cho carousel "Cơ sở khác" cuối trang detail. Sort district → city → type, isHot/rating/reviewCount desc. Xem §4.12. |
+| Confirm enum `cancellationPolicy` | 0=FLEXIBLE, 1=MODERATE, 2=STRICT (đã có trong [§19 Enums](#19-enums-reference) — không đổi). FE không cần đoán. |
+| Confirm `PropertyCardDto` đã có `latitude` + `longitude` | Field tồn tại trong `PROPERTY_CARD_SELECT` từ trước, response `/properties/search` + `/properties/public` đã trả. FE đang bịa toạ độ là do chưa wire, không phải BE thiếu. |
+
+**Field cần thêm CHƯA implement** (cần quyết định business hoặc schema migration — defer ngoài turn này):
+
+| Field | Lý do defer | Tạm thời |
+|---|---|---|
+| `vietqr` ({bankBin, bankName, accountNumber, accountName, memo}) | Schema hiện chưa lưu bank info per-owner/property. Cần quyết định: per-owner bank, system bank Halong24h, hay FE generate VietQR client-side khi có data | FE ẩn panel VietQR booking-deposit, hướng dẫn khách chat trực tiếp chủ nhà |
+| `approvedAt` (HOLD → CONFIRMED timestamp) | Chưa có field `confirmedAt` riêng trên `Booking` | FE fallback `updatedAt` khi `status >= CONFIRMED` (chấp nhận sai số nhỏ) |
+
+**Yêu cầu CHƯA implement** (scope lớn — cần PRD + migration riêng, không nằm trong turn này):
+
+| Yêu cầu | Lý do defer |
+|---|---|
+| A.3 Cruises (Du thuyền) | Cần thiết kế module mới: schema (`Cruise`, `CruiseRoom`, `CruiseAmenity`, `CruiseReview`...), CRUD cho host, public list/detail. Khối lượng tương đương module `properties`. Cần PRD + sprint riêng. |
+| A.4 Chat pre-booking (no bookingId) | Hiện schema `Conversation` bắt buộc `bookingId` cho `type=booking`. Cần thêm `type='property_inquiry'` + `propertyId` nullable, sửa `ConversationsService.create`, sửa ACL (member resolve từ property.owner thay vì booking). Có rủi ro làm lệch chat retention. Cần align với team chat. |
+| A.5 Blog / Articles | Module hoàn toàn mới: schema (`Article`, `ArticleCategory`), seed data, admin CMS. FE thấy ưu tiên thấp → defer khi có nội dung thực sự. |
+| WebSocket realtime chat confirm | WS gateway đã có sẵn (xem §17.4) — `wss://api.halong24h.com/chat`, auth qua `socket.auth.token`. Đã production-ready. FE chỉ cần wire — không có thay đổi BE trong turn này. |
+
 ### v1.12.1 — 2026-06-11 (Trial quota fix: 1 SALE slot + machine `code` cho 403)
 
 Hot-fix sau khi phát hiện OWNER vừa đăng ký không mời được nhân viên dù trial còn hạn.
@@ -3158,7 +3294,7 @@ ChatService `sendMessage` đã tự gọi `markAttached`. FE chỉ cần:
 
 ---
 
-> **Phiên bản tài liệu**: v1.8 — 2026-06-05 (Authorization rules). Mọi thay đổi schema/endpoint vui lòng cập nhật file này và thông báo team FE qua channel chung.
+> **Phiên bản tài liệu**: v1.16 — 2026-06-27 (Customer web booking detail + similar properties + enriched BookingDto). Mọi thay đổi schema/endpoint vui lòng cập nhật file này và thông báo team FE qua channel chung.
 >
 > **Lưu ý cho FE Web + Mobile**: trước khi wire bất kỳ endpoint nào, đọc:
 > - **§2.3 + §2.4** — pattern auth chuẩn (tách login và profile)
@@ -3338,3 +3474,593 @@ Body:
 }
 ```
 Bulk upsert. Mỗi field CRUD optional (giữ giá trị cũ nếu không gửi). Response trả `{ userId, permissions: [...] }`.
+
+---
+
+## 25. FE Web Admin v2 — Bổ sung 2026-06-23
+
+> Phản hồi cho danh sách 9 yêu cầu FE Web. Các endpoint đã live trên prod sau khi PR merge.
+
+### 25.1 Bảng tóm tắt
+
+| # | Endpoint | Status | Path thật | Ghi chú cho FE |
+|---|---|---|---|---|
+| 1 | `PATCH /auth/profile` | **NEW** | `PATCH /auth/profile` | Body whitelist 3 field |
+| 2 | `PATCH /admin/users/:id/role` | EXISTS | `PATCH /users/:id/role` | KHÔNG có prefix `/admin` — đổi URL |
+| 3 | `GET /guests` | **NEW** | `GET /guests`, `GET /guests/:id` | Derive từ User role=CUSTOMER |
+| 4 | `GET /subscriptions/me/invoices` | **NEW** | `GET /subscriptions/me/invoices` | Source: PaymentSession |
+| 5 | `POST /admin/subscriptions/:id/call-log` | **NEW** | `POST + GET /admin/subscriptions/:id/call-log` | `:id` là userId của OWNER |
+| 6 | `POST /calendar/bulk-lock` | EXISTS | `POST /calendar/bulk` | Body khác: `{ mode, items: [{propertyId, date}] }` |
+| 7 | `GET /users?withStats=true` | EXPANDED | `GET /users?withStats=true` | Đã thêm `stats.disputeCount` + `lastActiveAt` |
+| 8 | `GET /admin/disputes/:id` | EXPANDED | `GET /admin/disputes/:id` | Đã thêm `evidence`, `verdict`, `chatExcerpts`, `penalty` |
+| 9 | `GET /admin/kyc/:id` | **NEW** | `GET /admin/kyc/:id` | Trả `verificationFields` (7 mục) |
+
+### 25.2 #1 — `PATCH /auth/profile`
+
+User tự sửa hồ sơ cá nhân. Whitelist 3 field. Không cho đổi role/password.
+
+**Auth**: Bearer.
+
+**Body** (tất cả optional, ít nhất 1 field):
+```json
+{ "fullName": "Nguyễn Văn A", "email": "new@example.com", "phone": "0901234567" }
+```
+
+Validate:
+- `fullName`: string ≥ 1 ký tự (BE map sang `User.name`)
+- `email`: định dạng email
+- `phone`: 10 số bắt đầu `0`
+
+**Response 200**: shape giống `GET /auth/profile` (full ProfileDto).
+
+**Errors**:
+- `409 users.phoneDuplicate` — phone đã được user khác dùng
+- `409 auth.emailDuplicate` — email đã được user khác dùng
+
+### 25.3 #3 — `GET /guests`, `GET /guests/:id`
+
+Danh sách khách (User role=CUSTOMER) kèm aggregate booking + label.
+
+**Auth**: Bearer. Roles: ADMIN, OWNER, SALE.
+
+#### `GET /guests`
+
+Query:
+| Param | Mô tả |
+|---|---|
+| `q` | Search theo name / phone / email (max 100 ký tự) |
+| `label` | `vip` \| `regular` \| `new` \| `restricted` |
+| `page`, `limit` | Pagination Shape A. Default 1 / 20 |
+
+**Label heuristic** (BE compute):
+- `vip` — ≥ 5 booking COMPLETED
+- `regular` — ≥ 2 booking COMPLETED
+- `new` — < 2 booking COMPLETED, không bị ban
+- `restricted` — `User.bannedAt != null`
+
+> Khi filter `label=vip|regular|new` → BE post-filter sau khi count. Field `total` trong response sẽ là số kết quả thực tế sau filter (không phải tổng customer).
+
+**Response**:
+```json
+{
+  "success": true,
+  "data": {
+    "items": [{
+      "id": "uuid", "name": "...", "email": "...", "phone": "...", "avatar": null,
+      "gender": null, "dateOfBirth": null,
+      "bannedAt": null, "bannedReason": null,
+      "createdAt": "...", "updatedAt": "...",
+      "stats": { "totalBookings": 12, "completedBookings": 7, "cancelledBookings": 1 },
+      "lastBookingAt": "2026-06-10T...",
+      "label": "vip"
+    }],
+    "total": 124, "page": 1, "limit": 20, "totalPages": 7
+  }
+}
+```
+
+#### `GET /guests/:id`
+
+Detail + 50 booking gần nhất. Thêm `recentBookings: [{ id, propertyId, checkinDate, checkoutDate, status, totalAmount, paidAmount, createdAt, property: { id, name, code } }]`.
+
+**404** nếu user không tồn tại / không phải CUSTOMER.
+
+### 25.4 #4 — `GET /subscriptions/me/invoices`
+
+Lịch sử hoá đơn gói cước của user hiện tại.
+
+**Auth**: Bearer. Roles: OWNER, SALE (SALE tự resolve theo `ownerId`).
+
+**Source**: `PaymentSession` filter `kind ∈ {subscription, renew, upgrade, refund}`, newest first, không phân trang (volume nhỏ).
+
+**Response**:
+```json
+{
+  "success": true,
+  "data": {
+    "items": [{
+      "id": "uuid",
+      "invoiceNumber": "INV-2026-0042",
+      "kind": "renew",
+      "planId": "rooms_5",
+      "planLabel": "Starter · Tháng",
+      "cycle": "monthly",
+      "rooms": 5,
+      "period": "2026-06",           // YYYY-MM của paidAt (hoặc createdAt nếu chưa paid)
+      "amount": 658900,
+      "method": "bank_transfer",
+      "status": "paid",
+      "provider": "manual_bank",
+      "referenceCode": "FT26060512345678",
+      "paidAt": "2026-06-05T03:14:00.000Z",
+      "refundedAt": null,
+      "refundedAmount": null,
+      "expiresAt": "2026-06-06T03:14:00.000Z",
+      "createdAt": "2026-06-05T03:00:00.000Z"
+    }],
+    "total": 8
+  }
+}
+```
+
+`400 users.saleNotAssigned` nếu SALE chưa được gán OWNER.
+
+### 25.5 #5 — `POST/GET /admin/subscriptions/:id/call-log`
+
+Admin ghi chú "đã gọi nhắc đóng tiền". `:id` là **userId của OWNER**.
+
+**Auth**: Bearer. Roles: ADMIN.
+
+#### `POST /admin/subscriptions/:id/call-log`
+
+Body:
+```json
+{ "note": "Gọi 14:30, khách hứa CK chiều nay" }
+```
+
+`note`: 3–2000 ký tự.
+
+Response: `{ id, userId, adminId, note, createdAt }`. Tự ghi audit log `subscription.call_log`.
+
+#### `GET /admin/subscriptions/:id/call-log`
+
+Newest first. Mỗi item kèm `admin: { id, name, email }` hydrated.
+
+### 25.6 #6 — `POST /calendar/bulk` (path đổi)
+
+Đã có sẵn. **FE đề xuất `POST /calendar/bulk-lock` không tồn tại** — dùng path `POST /calendar/bulk` với body BE đang nhận:
+
+```json
+{ "mode": "lock" | "unlock", "items": [{ "propertyId": "uuid", "date": "2026-06-15" }] }
+```
+
+Map từ shape FE đề xuất `{ propertyId, dates[], mode }`:
+```ts
+const body = { mode, items: dates.map(d => ({ propertyId, date: d })) };
+```
+
+Giới hạn 100 items/request.
+
+### 25.7 #7 — `GET /users?withStats=true` (mở rộng)
+
+Thêm 2 trường vào item khi có `withStats=true`:
+
+```json
+{
+  "id": "...", "name": "...", "...": "...",
+  "stats": {
+    "propertyCount": 3,
+    "bookingCount": 25,
+    "disputeCount": 2     // ← mới: tổng dispute user là owner + customer
+  },
+  "lastActiveAt": "2026-06-22T08:14:00.000Z"   // ← mới: max(UserDevice.lastActiveAt), null nếu chưa từng login mobile
+}
+```
+
+`lastActiveAt` tính từ `UserDevice.lastActiveAt` (FCM token register/refresh). User chỉ dùng web → `null` — sẽ bổ sung "last web login" sau khi có session tracking.
+
+### 25.8 #8 — `GET /admin/disputes/:id` (mở rộng)
+
+Thêm 4 trường:
+
+```json
+{
+  "id": "uuid", "...": "...",
+  "attachments": ["https://..."],
+  "evidence": ["https://..."],          // alias của attachments
+  "resolution": "Hoàn 50% deposit",
+  "verdict": "Hoàn 50% deposit",        // alias của resolution
+  "penalty": "refund",                   // null | warning | refund | ban_temp | ban_perm
+  "chatExcerpts": [                      // 20 message gần nhất từ conversation booking-type, oldest first
+    { "id": "uuid", "senderId": "uuid", "content": "...", "createdAt": "...", "isSystem": false }
+  ],
+  "property": { "id", "name", "code" },
+  "booking": { ... },
+  "owner": { ... },
+  "customer": { ... }
+}
+```
+
+#### `POST /admin/disputes/:id/resolve` — thêm field `penalty`
+
+Body:
+```json
+{
+  "resolution": "Hoàn 50% deposit",
+  "refundAmount": 250000,
+  "penalty": "refund"                    // ← mới, optional, enum
+}
+```
+
+Penalty enum: `none | warning | refund | ban_temp | ban_perm`. Lưu vào `Dispute.penalty`. Không tự động ban user — admin gọi `POST /users/:id/ban` riêng nếu chọn `ban_*`.
+
+### 25.9 #9 — `GET /admin/kyc/:id`
+
+Endpoint **mới**. Trả full submission + 7 mục xác minh boolean.
+
+**Auth**: Bearer. Roles: ADMIN.
+
+**Response**:
+```json
+{
+  "success": true,
+  "data": {
+    "id": "uuid",
+    "userId": "uuid",
+    "user": { "id", "name", "email", "phone", "avatar", "role", "kycBypass", "kycStatus", "createdAt" },
+    "status": "awaiting_approval",
+    "statusLabel": "awaitingApproval",
+    "rejectReason": null,
+    "rejectedItems": [],
+    "approvedAt": null,
+    "approvedById": null,
+    "trialEndsAt": null,
+    "chargeStartsAt": null,
+    "expectedRooms": 5,
+    "uploads": {
+      "cccdFront": { "id", "imageUrl", "imageUrlThumb", "ocrResult", "ocrConfidence", "faceMatchScore", "livenessScore", "provider", "uploadedAt" } | null,
+      "cccdBack":  { ... } | null,
+      "selfie":    { ... } | null
+    },
+    "payments": [{ "id", "planId", "cycle", "rooms", "totalAmount", "method", "status", "paidAt" }],
+    "verificationFields": [
+      { "key": "cccdFrontUploaded",       "label": "Đã tải ảnh CCCD mặt trước",          "passed": true },
+      { "key": "cccdBackUploaded",        "label": "Đã tải ảnh CCCD mặt sau",            "passed": true },
+      { "key": "selfieUploaded",          "label": "Đã tải ảnh selfie",                  "passed": true },
+      { "key": "ocrConfidenceOk",         "label": "OCR đạt ngưỡng 0.8",                 "passed": true,  "source": "front=0.91, back=0.88" },
+      { "key": "faceMatchOk",             "label": "Selfie khớp ảnh CCCD ≥ 0.7",          "passed": true,  "source": "score=0.82" },
+      { "key": "livenessOk",              "label": "Liveness selfie ≥ 0.7",              "passed": false, "source": "score=null" },
+      { "key": "documentMetadataPresent", "label": "OCR đọc được ngày hết hạn + địa chỉ", "passed": true,  "source": "expire=true, address=true" }
+    ],
+    "verificationPassedCount": 6,
+    "verificationTotalCount": 7,
+    "createdAt": "...",
+    "updatedAt": "..."
+  }
+}
+```
+
+**7 mục** đều derive từ data có sẵn (`KycUpload.ocrResult/ocrConfidence/faceMatchScore/livenessScore`). Threshold hard-coded:
+- OCR ≥ 0.8 (front & back đều phải đạt)
+- Face match ≥ 0.7
+- Liveness ≥ 0.7
+
+FE hiển thị checklist 7 mục + badge `passedCount/totalCount`.
+
+### 25.10 Schema migration
+
+Migration `20260623091337_dispute_penalty_call_log` đã apply lên prod DB:
+- Thêm column `disputes.penalty TEXT NULL`
+- Thêm table `subscription_call_logs (id, userId, adminId, note TEXT, createdAt)` + index `(userId, createdAt DESC)`
+
+Không touch booking/payment/user table (rủi ro thấp).
+
+---
+
+## 26. System SALE — Admin-grade SALE (v1.15 · 2026-06-26)
+
+> SALE của hệ thống: ADMIN tạo SALE với quyền gần ADMIN, cấu hình per-module qua bảng `user_permissions`. Khác với SALE thuộc OWNER (hiện hữu).
+
+### 26.1 Hai loại SALE
+
+Cùng `role=2` (SALE) nhưng phân biệt bằng cột mới **`User.scope`**:
+
+| `scope` | Ý nghĩa | `ownerId` | Cách tạo | Data scope | Default permissions |
+|---|---|---|---|---|---|
+| `"owner"` (default) | SALE thuộc 1 OWNER (legacy) | OWNER id | OWNER invite qua `POST /staff/invites` | Chỉ data của OWNER mình | 4 module owner-scope, `canRead=true` (xem §12) |
+| `"system"` | SALE hệ thống (admin-grade) | `null` | ADMIN invite qua `POST /admin/system-staff/invites` HOẶC tạo trực tiếp `POST /users { role: 2, scope: "system" }` | Toàn hệ thống (như ADMIN, `getEffectiveOwnerId → null`) | **Không có gì** — ADMIN phải cấp tường minh qua `PUT /permissions/:userId` |
+
+User mới đăng ký Google/Apple/password đều mặc định `scope="owner"`. System SALE chỉ được tạo qua ADMIN, không tự sign-up.
+
+### 26.2 Permission modules — mở rộng
+
+Bảng `user_permissions` giờ chấp nhận thêm **admin-scope modules** (chỉ áp dụng cho `scope=system`):
+
+#### Owner-scope (legacy, áp dụng cho SALE thuộc OWNER)
+
+| module | Endpoint mẫu | Default cho SALE owner |
+|---|---|---|
+| `properties` | `/properties` CRUD | `canRead=true` |
+| `bookings` | `/bookings` CRUD | `canRead=true, canCreate=true, canUpdate=true` |
+| `calendar` | `/calendar/*` | CRUD đầy đủ |
+| `reviews` | `/properties/:id/reviews/:reviewId/reply` | `canRead=true, canUpdate=true` |
+
+#### Admin-scope (system SALE, default ALL false — phải cấp tường minh)
+
+| module | Endpoint mẫu | Action mapping |
+|---|---|---|
+| `users` | `/users` CRUD, `/users/:id/ban|unban|reset-password|...`, `/permissions/:userId`, `/admin/system-staff/*` | GET=`canRead`, POST tạo=`canCreate`, ban/unban/reset/role/kyc-bypass/revoke=`canUpdate`, DELETE=`canDelete` |
+| `kyc` | `/admin/kyc/queue|count-pending|:id`, `submissions/:id/approve|reject` | `canRead` list/detail, `canUpdate` approve/reject |
+| `subscriptions` | `/admin/subscriptions`, `/admin/users/:id/subscription/*`, `/admin/subscriptions/:id/call-log` | `canRead` list, `canUpdate` mark-paid/freeze/unfreeze/price/grant-trial, `canCreate` call-log, `canDelete` `DELETE trial` |
+| `payments` | `/admin/payments/*` | `canRead`, `canUpdate` (mark-paid) |
+| `disputes` | `/admin/disputes/*` | `canRead`, `canUpdate` (investigate/resolve/reject) |
+| `reviewsModeration` | `/admin/reviews/*` | `canRead`, `canUpdate` (restore), `canDelete` (hide) |
+| `propertiesModeration` | `/properties/:id/approve|reject|suspend|hot` | `canUpdate` cho mọi action |
+| `audit` | `/admin/audit-log` | `canRead` |
+| `leads` | (reserved cho admin view lead toàn hệ thống) | `canRead` |
+| `support` | (reserved cho admin ticket reply) | `canRead`, `canUpdate` |
+| `emails` | `/admin/emails/templates`, `/admin/emails/test` | `canRead`, `canCreate` (test send) |
+| `billing` | `/admin/billing-plans` CRUD | CRUD đầy đủ |
+| `appVersion` | `POST /admin/app-version` | `canUpdate` |
+| `dashboard` | `/admin/reports/risk-kpis` | `canRead` |
+
+> **ADMIN bypass toàn bộ permission check** — luôn pass dù bảng `user_permissions` trống.
+> **OWNER + CUSTOMER** chỉ pass owner-scope module; admin-scope module luôn deny.
+
+### 26.3 Endpoint mới — Quản lý System SALE
+
+Base path: `/admin/system-staff`. Roles: `ADMIN` HOẶC `SALE scope=system` (với permission tương ứng trên module `users`).
+
+| Method | Path | Permission yêu cầu | Body / Query | Mô tả |
+|---|---|---|---|---|
+| `POST` | `/admin/system-staff/invites` | `users.canCreate` | `{ email }` | Tạo invite SALE hệ thống. Reuse bảng `staff_invites` với `scope=system`, `ownerId=adminId` (inviter). TTL 7 ngày. Gửi email + trả `inviteLink` + `shortCode HL-XXXXXX`. |
+| `GET` | `/admin/system-staff/invites?status=` | `users.canRead` | `?status=pending\|accepted\|expired\|cancelled\|all` | List invite system, default all status. |
+| `DELETE` | `/admin/system-staff/invites/:id` | `users.canUpdate` | — | Huỷ invite đang pending. 400 nếu không phải scope=system hoặc đã accept. |
+| `GET` | `/admin/system-staff?isActive=` | `users.canRead` | `?isActive=true\|false\|all` | List system SALE, hydrate `permissions[]` per user. |
+| `DELETE` | `/admin/system-staff/:userId` | `users.canDelete` | — | Soft-disable system SALE (`isActive=false`, clear `refreshToken` + xoá device tokens). |
+
+#### Verify + Accept dùng chung với owner invite
+
+Endpoint `GET /staff/invites/verify/:token` và `POST /staff/invites/accept` đã có sẵn, **giờ trả thêm field `scope`** trong verify response để FE biết loại invite:
+
+```json
+{
+  "success": true,
+  "data": {
+    "email": "ops@halong24h.com",
+    "scope": "system",
+    "owner": { "name": "Halong24h Admin", "avatar": null, "homestayName": null },
+    "expiresAt": "...",
+    "status": "pending"
+  }
+}
+```
+
+Khi accept thành công:
+- `scope=owner` → tạo user `role=SALE, scope=owner, ownerId=invite.ownerId`. BE seed 4 row `user_permissions` default cho owner-scope modules.
+- `scope=system` → tạo user `role=SALE, scope=system, ownerId=null`. BE **KHÔNG seed** permission gì — ADMIN tự cấp qua `PUT /permissions/:userId`.
+
+FCM push khi system invite được accept: `pushType=system_staff_invite_accepted`, deepLink `/admin/system-staff`.
+
+#### 26.3.2 `GET /users?scope=` — Lọc theo SALE scope (server-side)
+
+`GET /users` đã hỗ trợ thêm query `scope` để FE Web không phải lọc client-side.
+
+| `scope` | Hành vi |
+|---|---|
+| `owner` | Chỉ SALE thuộc OWNER (`role=SALE && scope='owner'`). BE tự ép `role=2`. |
+| `system` | Chỉ SALE hệ thống (`role=SALE && scope='system'`). BE tự ép `role=2`. |
+| `all` hoặc bỏ qua | Không lọc theo scope. |
+| Giá trị khác | **400** `systemSale.scopeInvalid`. |
+
+Có thể kết hợp với `role`, `q`, `withStats`. Nếu truyền `role=1&scope=system` → nghịch logic (OWNER không có scope=system), BE giữ điều kiện `role=SALE` của filter scope → kết quả rỗng (đúng semantic).
+
+Ví dụ:
+
+```
+GET /users?scope=system&withStats=true&q=ops
+GET /users?scope=owner&role=2
+GET /users?scope=all   # = GET /users (không lọc)
+```
+
+Auth: ADMIN hoặc system SALE có `users.canRead` (không đổi so với endpoint gốc).
+
+### 26.4 `POST /users` — Tạo user kèm scope
+
+ADMIN có thể tạo trực tiếp system SALE không cần qua invite:
+
+```json
+{
+  "name": "Ops Manager",
+  "email": "ops@halong24h.com",
+  "phone": "0900000000",
+  "password": "Strong@123",
+  "role": 2,
+  "scope": "system"
+}
+```
+
+Validate:
+- `scope` chỉ chấp nhận `"owner"` hoặc `"system"`. Sai → 400 `systemSale.scopeInvalid`.
+- `scope=system` + `role≠2` → 400 (system chỉ áp dụng cho SALE).
+- `scope=system` + caller không phải ADMIN → 403 `systemSale.onlyAdminCreate`.
+
+Response thêm field `scope` cho mọi user shape (`GET /auth/profile`, `GET /users`, `GET /users/:id`).
+
+### 26.5 `PUT /permissions/:userId` — Cấp quyền System SALE
+
+Endpoint cũ vẫn dùng. Mở rộng:
+- Target user phải có `role=SALE`. Truyền userId khác → 400 `permissions.onlyForSale`.
+- Target `scope=owner` → chỉ chấp nhận 4 owner-scope modules. Truyền admin-scope module → 400 `permissions.invalidModule(mod)`.
+- Target `scope=system` → chấp nhận tất cả modules (owner + admin scope).
+- Default khi tạo row mới cho admin-scope module: `canRead = false` (phải cấp tường minh). Owner-scope module giữ default `canRead = true`.
+
+**Body example cho system SALE**:
+```json
+{
+  "permissions": [
+    { "module": "users",                 "canCreate": true, "canRead": true, "canUpdate": true, "canDelete": false },
+    { "module": "kyc",                   "canRead": true, "canUpdate": true },
+    { "module": "subscriptions",         "canRead": true, "canUpdate": true, "canCreate": true },
+    { "module": "payments",              "canRead": true, "canUpdate": true },
+    { "module": "disputes",              "canRead": true, "canUpdate": true },
+    { "module": "reviewsModeration",     "canRead": true, "canUpdate": true, "canDelete": true },
+    { "module": "propertiesModeration",  "canRead": true, "canUpdate": true },
+    { "module": "audit",                 "canRead": true },
+    { "module": "emails",                "canRead": true, "canCreate": true },
+    { "module": "billing",               "canRead": true, "canCreate": true, "canUpdate": true, "canDelete": true },
+    { "module": "appVersion",            "canUpdate": true },
+    { "module": "dashboard",             "canRead": true }
+  ]
+}
+```
+
+Response `GET /permissions/:userId` trả về tất cả module (cả những module chưa có row, dùng default), kèm `user.scope` để FE biết hiển thị form owner-scope hay full admin-scope:
+
+```json
+{
+  "data": {
+    "user": { "id": "uuid", "name": "Ops Manager", "role": 2, "scope": "system" },
+    "permissions": [ /* 18 entries: 4 owner-scope + 14 admin-scope */ ]
+  }
+}
+```
+
+### 26.6 Authorization guard — hành vi mới
+
+Bổ sung cho §2A.1:
+
+```
+JwtAuthGuard          → user object kèm field `scope` (string)
+RolesGuard            → user.role phải có trong whitelist @Roles(...)
+PermissionGuard       → endpoint có @Permission(module, action) → check user_permissions
+```
+
+`PermissionGuard.hasPermission(userId, role, module, action)` logic mới:
+- ADMIN → allow (bypass)
+- OWNER → allow nếu module thuộc owner-scope; deny nếu admin-scope
+- CUSTOMER → allow nếu module thuộc owner-scope; deny nếu admin-scope
+- SALE:
+  - Resolve `scope` từ DB (1 query mỗi request).
+  - Owner SALE truy cập admin-scope module → deny (luôn 403).
+  - Owner SALE truy cập owner-scope module: `canRead = true` default; CRUD khác phải có row `user_permissions`.
+  - System SALE: phải có row `user_permissions` với action=true cho **mọi** module (kể cả `canRead`). Không có row → deny.
+
+Endpoint admin (vd `/admin/disputes`, `/users`, `/admin/kyc/queue`) giờ có 2 decorator:
+
+```ts
+@Roles(ROLE.ADMIN, ROLE.SALE)
+@Permission(PERMISSION_MODULE.DISPUTES, 'canRead')
+```
+
+- SALE owner → pass `@Roles`, fail `@Permission` (admin-scope) → 403.
+- SALE system có `disputes.canRead=true` → pass cả 2 → vào được.
+- ADMIN → pass cả 2 (bypass permission).
+
+### 26.7 Chống leo quyền (privilege escalation)
+
+System SALE có thể có `users.canUpdate / canDelete` nhưng **không được tác động lên ADMIN user**:
+
+| Action | Block khi caller không phải ADMIN |
+|---|---|
+| `POST /users/:id/ban` với target ADMIN | 403 `common.forbidden` |
+| `POST /users/:id/unban` với target ADMIN | 403 `common.forbidden` |
+| `PATCH /users/:id/role` với target ADMIN hoặc `newRole=ADMIN` | 403 `common.forbidden` |
+
+System SALE cũng **không tự tạo system SALE khác** qua `POST /users` (chỉ ADMIN). Riêng `POST /admin/system-staff/invites` thì system SALE có `users.canCreate` vẫn tạo được — đây là trade-off vì luồng invite an toàn hơn (cần email + accept).
+
+### 26.8 Schema migration — `20260626053013_add_user_scope`
+
+```sql
+ALTER TABLE "staff_invites" ADD COLUMN "scope" TEXT NOT NULL DEFAULT 'owner';
+ALTER TABLE "users"         ADD COLUMN "scope" TEXT NOT NULL DEFAULT 'owner';
+```
+
+Additive, non-destructive. Mọi user/invite hiện hữu giữ `scope='owner'` (legacy behavior).
+
+### 26.9 FE migration checklist
+
+#### Web Admin
+
+- [ ] Trang `/admin/users` — thêm filter `scope=owner|system|all`, badge "Hệ thống" cho row có `scope=system`. **Server-side đã hỗ trợ** `GET /users?scope=owner|system|all` (xem §26.3.2) — gỡ logic lọc client-side.
+- [ ] Form tạo user role=SALE — thêm select `scope` (Admin-only thấy option "system").
+- [ ] Trang mới `/admin/system-staff` — list system SALE + permissions per user.
+- [ ] Trang mới `/admin/system-staff/invites` — danh sách invite + nút tạo + huỷ.
+- [ ] Modal cấp quyền — render dynamic 4 modules (owner-scope) hoặc 18 modules (system-scope) tuỳ `user.scope` trả về từ `GET /permissions/:userId`.
+- [ ] Hiển thị badge "SALE hệ thống" thay vì "Nhân viên của OWNER" trong header.
+- [ ] System SALE login → ẩn các UI sub plan / KYC (không áp dụng cho system).
+
+#### Mobile (nếu có app cho system SALE)
+
+- [ ] `GET /auth/profile` đã trả thêm `scope` — lưu trong state.
+- [ ] Nếu `role=2 && scope=system` → render UI admin-grade thay vì UI staff thường.
+- [ ] Mọi endpoint `/admin/*` giờ chấp nhận token system SALE có permission tương ứng.
+
+#### Cả hai
+
+- [ ] Phân biệt 401 (token sai) vs 403 (thiếu permission). System SALE bị 403 trên endpoint admin → kiểm tra `PUT /permissions/:userId` đã cấp đủ chưa.
+- [ ] Endpoint accept invite (`/staff/invites/verify/:token`) giờ trả `scope` — FE hiển thị UI khác cho 2 loại invite.
+
+### 26.10 Quick start cho ADMIN
+
+```bash
+# 1. Tạo system SALE bằng POST /users (admin chủ động, set password ngay)
+curl -X POST https://api.halong24h.com/users \
+  -H "Authorization: Bearer <admin-token>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "Ops Manager",
+    "email": "ops@halong24h.com",
+    "password": "TempPass@123",
+    "role": 2,
+    "scope": "system"
+  }'
+
+# 2. Cấp quyền — ví dụ toàn quyền KYC + Subscription + Disputes
+curl -X PUT https://api.halong24h.com/permissions/<new-user-id> \
+  -H "Authorization: Bearer <admin-token>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "permissions": [
+      { "module": "kyc",           "canRead": true, "canUpdate": true },
+      { "module": "subscriptions", "canRead": true, "canUpdate": true, "canCreate": true },
+      { "module": "disputes",      "canRead": true, "canUpdate": true }
+    ]
+  }'
+
+# 3. Hoặc dùng invite flow (gửi email cho user tự set password)
+curl -X POST https://api.halong24h.com/admin/system-staff/invites \
+  -H "Authorization: Bearer <admin-token>" \
+  -d '{ "email": "ops@halong24h.com" }'
+# → email được gửi, user click link → POST /staff/invites/accept
+# → SALE scope=system được tạo, ADMIN cấp permissions sau
+```
+
+### 26.11 System SALE xem toàn bộ phòng — tái dùng `GET /properties`
+
+System SALE **không có endpoint riêng** để list toàn bộ property hệ thống. Tái dùng `GET /properties`:
+
+- Endpoint `GET /properties` đã gắn `@Roles(ADMIN, OWNER, SALE) + @Permission(properties, canRead)`.
+- ADMIN cấp `properties.canRead=true` cho system SALE qua `PUT /permissions/:userId`.
+- Service `findAll` tự gọi `getEffectiveOwnerId(user)` → `null` cho system SALE (vì `isSystemSale(user) === true`) → **không filter `ownerId`** → SALE thấy hết property toàn hệ thống y như ADMIN.
+
+> Phân biệt: SALE owner-scope mặc định có `canRead=true` nhưng `getEffectiveOwnerId` trả về `user.ownerId` → chỉ thấy property của OWNER mình. System SALE phải được ADMIN cấp tường minh, sau đó thấy hết.
+
+Ví dụ cấp toàn quyền view property + booking + calendar cho system SALE:
+
+```bash
+curl -X PUT https://api.halong24h.com/permissions/<system-sale-id> \
+  -H "Authorization: Bearer <admin-token>" \
+  -d '{
+    "permissions": [
+      { "module": "properties", "canRead": true },
+      { "module": "bookings",   "canRead": true },
+      { "module": "calendar",   "canRead": true }
+    ]
+  }'
+```
+
+### 26.12 Changelog
+
+- **2026-06-26 (v1.15)** — Thêm system SALE: `User.scope` + `StaffInvite.scope`, mở rộng `user_permissions` thêm 14 admin-scope modules, mới module `/admin/system-staff/*`, sweep mọi admin controller chấp nhận thêm SALE (kèm `@Permission`), thêm guard chống leo quyền target ADMIN.
+- **2026-06-27 (v1.16.1)** — Document §26.11: system SALE tái dùng `GET /properties` (chỉ cần ADMIN cấp `properties.canRead`). Thêm public endpoint `GET /properties/public/by-owner/:ownerId` (§4.13) — chủ nhà share link Zalo, SALE click không cần đăng nhập.

@@ -77,4 +77,28 @@ Ghi lại các lỗi, edge case, bài học từ quá trình phát triển. Form
 
 ---
 
+## Button theme `minimumSize: Size(double.infinity, 52)` → crash khi đặt button non-flex trong Row/Wrap
+
+**Vấn đề**: App văng/đơ khi mở màn "Tạo phòng" — lỗi `BoxConstraints forces an infinite width` (`w=Infinity, 52.0<=h<=Infinity`), layout abort cả màn.
+
+**Nguyên nhân**: `app_theme.dart` đặt `minimumSize: const Size(double.infinity, 52)` cho Elevated/Filled/OutlinedButton (chủ ý cho button full-width). Một button dùng theme này khi là **child non-flex trong `Row` (hoặc `Wrap`)** sẽ bị đo với chiều rộng vô hạn → `minWidth=infinity` → throw. Button trong `Expanded`/`Flexible` thì OK (được cấp width tight, hữu hạn).
+
+**Cũng dính với `AlertDialog.actions`**: actions được bọc trong `OverflowBar`, mà `OverflowBar` đo từng nút với chiều rộng vô hạn để quyết định xuống dòng → bất kỳ `FilledButton`/`ElevatedButton`/`OutlinedButton` mặc định trong `actions` đều crash. (Đây là lý do popup "10+ phòng/WC" văng.) → KHÔNG đặt button theme mặc định vào `AlertDialog.actions`; tự dựng hàng nút bằng `Row`+`Expanded`, hoặc override `minimumSize`.
+
+**Giải pháp**:
+- Bọc button trong `Expanded`/`Flexible`, **hoặc**
+- Override `minimumSize` hữu hạn cho riêng button đó: `OutlinedButton.styleFrom(minimumSize: const Size(0, 52))`.
+- Đã áp dụng cho nút "Mở thử" trong `property_add_screen.dart` (Row 2 nút GPS).
+- `number_input_dialog.dart` đã viết lại bằng `Dialog` + hàng nút `Row`/`Expanded` (không dùng `AlertDialog.actions`).
+
+## `TextEditingController` trong dialog: KHÔNG dispose thủ công sau `await showDialog`
+
+**Vấn đề**: Dialog có TextField crash `TextEditingController was used after being disposed` (kèm `_dependents.isEmpty is not true`).
+
+**Nguyên nhân**: Pattern `final ctrl = TextEditingController(); final r = await showDialog(...); ctrl.dispose();` — khi dialog đóng vẫn rebuild (animation/keyboard dismiss) → TextField dùng controller vừa bị dispose.
+
+**Giải pháp**: Cho body dialog là `StatefulWidget` tự sở hữu controller, dispose trong `State.dispose()`. Không dispose thủ công sau `await`.
+
+---
+
 _(Thêm gotcha mới vào đây khi phát hiện)_

@@ -7,12 +7,15 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../../../core/network/api_failure.dart';
 import '../../../core/theme/app_color_scheme.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
+import '../../../core/utils/location_helper.dart';
 import '../../../shared/widgets/feature_locked.dart';
 import '../../../shared/widgets/loading_widget.dart';
+import '../../../shared/widgets/number_input_dialog.dart';
 import '../../auth/controllers/auth_controller.dart';
 import '../../rooms/controllers/room_controller.dart';
 import '../controllers/property_controller.dart';
@@ -46,6 +49,9 @@ class _PropertyAddScreenState extends ConsumerState<PropertyAddScreen> {
   // Thông số phòng
   int _bedrooms = 5;
   int _bathrooms = 2;
+
+  // Đang lấy vị trí GPS
+  bool _gettingLocation = false;
 
   // Sức chứa
   final _standardGuestsCtrl = TextEditingController();
@@ -161,6 +167,76 @@ class _PropertyAddScreenState extends ConsumerState<PropertyAddScreen> {
     _adultSurchargeCtrl.dispose();
     _childSurchargeCtrl.dispose();
     super.dispose();
+  }
+
+  /// Chọn loại phòng → tự điền WC + sức chứa theo tiêu chuẩn.
+  /// Owner vẫn có thể chỉnh lại sau. Quy ước: Studio tính như 1 phòng ngủ,
+  /// WC = số phòng ngủ, sức chứa tiêu chuẩn = tối đa = số phòng ngủ × 2.
+  void _selectBedrooms(int bedrooms) {
+    setState(() {
+      _bedrooms = bedrooms;
+      final effective = bedrooms == 0 ? 1 : bedrooms;
+      _bathrooms = effective;
+      final guests = effective * 2;
+      _standardGuestsCtrl.text = '$guests';
+      _maxGuestsCtrl.text = '$guests';
+    });
+  }
+
+  /// Nhập số phòng ngủ tuỳ ý khi nhiều hơn dải chip (10+).
+  Future<void> _promptCustomBedrooms() async {
+    final value = await showNumberInputDialog(
+      context,
+      title: 'Số phòng ngủ',
+      subtitle: 'Dùng nút −/+ hoặc nhập trực tiếp',
+      hint: 'VD: 12',
+      icon: Icons.king_bed_rounded,
+      initial: _bedrooms >= 10 ? _bedrooms : null,
+    );
+    if (value != null) _selectBedrooms(value);
+  }
+
+  /// Nhập số nhà tắm / WC tuỳ ý khi nhiều hơn dải chip (10+).
+  Future<void> _promptCustomBathrooms() async {
+    final value = await showNumberInputDialog(
+      context,
+      title: 'Số nhà tắm / WC',
+      subtitle: 'Dùng nút −/+ hoặc nhập trực tiếp',
+      hint: 'VD: 12',
+      icon: Icons.bathtub_rounded,
+      initial: _bathrooms >= 10 ? _bathrooms : null,
+    );
+    if (value != null) setState(() => _bathrooms = value);
+  }
+
+  /// Xin quyền + lấy vị trí GPS hiện tại → tự tạo link Google Maps.
+  Future<void> _useCurrentLocation() async {
+    setState(() => _gettingLocation = true);
+    final result = await LocationHelper.getCurrentLocation();
+    if (!mounted) return;
+    setState(() => _gettingLocation = false);
+
+    switch (result) {
+      case LocationSuccess(:final mapsLink):
+        setState(() => _mapLinkCtrl.text = mapsLink);
+        AppSnackBar.success(context, 'Đã lấy vị trí hiện tại');
+      case LocationFailure(:final message):
+        AppSnackBar.error(context, message);
+    }
+  }
+
+  /// Mở thử link Google Maps đang nhập để kiểm tra đúng vị trí.
+  Future<void> _openMapLink() async {
+    final link = _mapLinkCtrl.text.trim();
+    final uri = Uri.tryParse(link);
+    if (link.isEmpty || uri == null) {
+      AppSnackBar.error(context, 'Chưa có link Google Maps');
+      return;
+    }
+    final ok = await launchUrl(uri, mode: LaunchMode.externalApplication);
+    if (!ok && mounted) {
+      AppSnackBar.error(context, 'Không mở được Google Maps');
+    }
   }
 
   Future<void> _pickImages() async {
@@ -464,6 +540,7 @@ class _PropertyAddScreenState extends ConsumerState<PropertyAddScreen> {
                         ctrl: _codeCtrl,
                         label: 'Mã căn *',
                         hint: 'VD: C3-06',
+                        maxLength: 20,
                         validator: (v) =>
                             v?.trim().isEmpty == true ? 'Nhập mã căn' : null),
                     const SizedBox(height: AppSpacing.md),
@@ -512,6 +589,65 @@ class _PropertyAddScreenState extends ConsumerState<PropertyAddScreen> {
                         ctrl: _mapLinkCtrl,
                         label: 'Link Google Maps',
                         hint: 'Dán link Google Maps tại đây'),
+                    const SizedBox(height: AppSpacing.sm),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: OutlinedButton.icon(
+                            onPressed:
+                                _gettingLocation ? null : _useCurrentLocation,
+                            icon: _gettingLocation
+                                ? const SizedBox(
+                                    width: 16,
+                                    height: 16,
+                                    child: CircularProgressIndicator(
+                                        strokeWidth: 2),
+                                  )
+                                : const Icon(Icons.my_location_rounded,
+                                    size: 18),
+                            label: Text(
+                              _gettingLocation
+                                  ? 'Đang lấy...'
+                                  : 'Lấy vị trí hiện tại',
+                              style: GoogleFonts.beVietnamPro(
+                                  fontSize: 13, fontWeight: FontWeight.w600),
+                            ),
+                            style: OutlinedButton.styleFrom(
+                              foregroundColor: colors.brand,
+                              side: BorderSide(color: colors.brand),
+                              padding:
+                                  const EdgeInsets.symmetric(vertical: 12),
+                              shape: RoundedRectangleBorder(
+                                borderRadius:
+                                    BorderRadius.circular(AppRadius.md),
+                              ),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: AppSpacing.sm),
+                        OutlinedButton.icon(
+                          onPressed: _openMapLink,
+                          icon: const Icon(Icons.open_in_new_rounded, size: 18),
+                          label: Text('Mở thử',
+                              style: GoogleFonts.beVietnamPro(
+                                  fontSize: 13, fontWeight: FontWeight.w600)),
+                          style: OutlinedButton.styleFrom(
+                            foregroundColor: colors.textSecondary,
+                            side: BorderSide(color: colors.borderDefault),
+                            // Override minWidth vô hạn từ theme (Size(inf, 52)) —
+                            // nút này là child non-flex trong Row nên bị đo với
+                            // width vô hạn → phải ghim minWidth hữu hạn, tránh
+                            // "BoxConstraints forces an infinite width".
+                            minimumSize: const Size(0, 52),
+                            padding: const EdgeInsets.symmetric(
+                                vertical: 12, horizontal: 14),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(AppRadius.md),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
                   ],
                 ),
               ).animate(delay: 100.ms).fadeIn(duration: 300.ms),
@@ -523,9 +659,11 @@ class _PropertyAddScreenState extends ConsumerState<PropertyAddScreen> {
                   children: [
                     const _Title('THÔNG SỐ PHÒNG'),
                     const SizedBox(height: AppSpacing.sm),
-                    Text('Số phòng ngủ *',
-                        style: GoogleFonts.beVietnamPro(
-                            fontSize: 13, fontWeight: FontWeight.w500)),
+                    _labelText(
+                        'Số phòng ngủ *',
+                        GoogleFonts.beVietnamPro(
+                            fontSize: 13, fontWeight: FontWeight.w500),
+                        colors.error),
                     const SizedBox(height: AppSpacing.xs),
                     Wrap(
                       spacing: 8,
@@ -534,22 +672,32 @@ class _PropertyAddScreenState extends ConsumerState<PropertyAddScreen> {
                         _Chip(
                             label: 'Studio',
                             on: _bedrooms == 0,
-                            onTap: () => setState(() => _bedrooms = 0)),
+                            onTap: () => _selectBedrooms(0)),
                         for (var i = 1; i <= 9; i++)
                           _Chip(
                               label: '${i}PN',
                               on: _bedrooms == i,
-                              onTap: () => setState(() => _bedrooms = i)),
+                              onTap: () => _selectBedrooms(i)),
                         _Chip(
-                            label: '10PN+',
+                            label: _bedrooms >= 10 ? '${_bedrooms}PN' : '10PN+',
                             on: _bedrooms >= 10,
-                            onTap: () => setState(() => _bedrooms = 10)),
+                            onTap: _promptCustomBedrooms),
                       ],
                     ),
-                    const SizedBox(height: AppSpacing.md),
-                    Text('Số nhà tắm / WC *',
+                    const SizedBox(height: 6),
+                    Text(
+                        'Chọn loại phòng sẽ tự điền WC và sức chứa theo tiêu '
+                        'chuẩn — bạn có thể chỉnh lại bên dưới.',
                         style: GoogleFonts.beVietnamPro(
-                            fontSize: 13, fontWeight: FontWeight.w500)),
+                            fontSize: 11,
+                            color: colors.textSecondary,
+                            fontStyle: FontStyle.italic)),
+                    const SizedBox(height: AppSpacing.md),
+                    _labelText(
+                        'Số nhà tắm / WC *',
+                        GoogleFonts.beVietnamPro(
+                            fontSize: 13, fontWeight: FontWeight.w500),
+                        colors.error),
                     const SizedBox(height: AppSpacing.xs),
                     Wrap(
                       spacing: 8,
@@ -561,9 +709,9 @@ class _PropertyAddScreenState extends ConsumerState<PropertyAddScreen> {
                               on: _bathrooms == i,
                               onTap: () => setState(() => _bathrooms = i)),
                         _Chip(
-                            label: '10+',
+                            label: _bathrooms >= 10 ? '$_bathrooms WC' : '10+',
                             on: _bathrooms >= 10,
-                            onTap: () => setState(() => _bathrooms = 10)),
+                            onTap: _promptCustomBathrooms),
                       ],
                     ),
                   ],
@@ -965,16 +1113,37 @@ class _Section extends StatelessWidget {
   }
 }
 
+/// Nhãn có tô đỏ dấu '*' cuối để đánh dấu trường bắt buộc.
+Widget _labelText(String text, TextStyle style, Color requiredColor) {
+  if (!text.endsWith('*')) return Text(text, style: style);
+  return Text.rich(
+    TextSpan(
+      text: text.substring(0, text.length - 1),
+      children: [
+        TextSpan(
+          text: '*',
+          style: style.copyWith(
+              color: requiredColor, fontWeight: FontWeight.w700),
+        ),
+      ],
+    ),
+    style: style,
+  );
+}
+
 class _Title extends StatelessWidget {
   final String text;
   const _Title(this.text);
   @override
-  Widget build(BuildContext context) => Text(text,
-      style: GoogleFonts.beVietnamPro(
-          fontSize: 13,
-          fontWeight: FontWeight.w700,
-          color: context.colors.textBrand,
-          letterSpacing: 0.5));
+  Widget build(BuildContext context) => _labelText(
+        text,
+        GoogleFonts.beVietnamPro(
+            fontSize: 13,
+            fontWeight: FontWeight.w700,
+            color: context.colors.textBrand,
+            letterSpacing: 0.5),
+        context.colors.error,
+      );
 }
 
 class _Field extends StatelessWidget {
@@ -986,6 +1155,7 @@ class _Field extends StatelessWidget {
   final List<TextInputFormatter>? inputFormatters;
   final String? suffix;
   final int? maxLines;
+  final int? maxLength;
 
   const _Field({
     required this.ctrl,
@@ -996,6 +1166,7 @@ class _Field extends StatelessWidget {
     this.inputFormatters,
     this.suffix,
     this.maxLines,
+    this.maxLength,
   });
 
   @override
@@ -1004,11 +1175,13 @@ class _Field extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(label,
-            style: GoogleFonts.beVietnamPro(
+        _labelText(
+            label,
+            GoogleFonts.beVietnamPro(
                 fontSize: 13,
                 fontWeight: FontWeight.w500,
-                color: colors.textPrimary)),
+                color: colors.textPrimary),
+            colors.error),
         const SizedBox(height: 6),
         TextFormField(
           controller: ctrl,
@@ -1016,10 +1189,12 @@ class _Field extends StatelessWidget {
               ? TextInputType.multiline
               : keyboard,
           maxLines: maxLines ?? 1,
+          maxLength: maxLength,
           validator: validator,
           inputFormatters: inputFormatters,
           style: GoogleFonts.beVietnamPro(fontSize: 14),
           decoration: InputDecoration(
+            counterText: '',
             hintText: hint,
             hintStyle: GoogleFonts.beVietnamPro(
                 fontSize: 14, color: colors.textTertiary),
