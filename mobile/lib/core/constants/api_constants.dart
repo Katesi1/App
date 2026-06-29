@@ -118,6 +118,10 @@ class ApiConstants {
   static const String devices = '/devices';
   static String deviceDetail(String token) => '/devices/$token';
 
+  // Generic uploads (BE §23) — attachment cho support ticket / feedback.
+  static const String uploads = '/uploads';
+  static String uploadDetail(String id) => '/uploads/$id';
+
   // Profile account modules (BE §24 — support, feedback, GDPR, consent, prefs).
   static const String supportTickets = '/support/tickets';
   static String supportTicketDetail(String id) => '/support/tickets/$id';

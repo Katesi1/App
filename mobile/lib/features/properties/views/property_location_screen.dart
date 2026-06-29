@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:geolocator/geolocator.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 import '../../../core/theme/app_color_scheme.dart';
@@ -23,6 +24,11 @@ class _PropertyLocationScreenState
   final _mapLinkCtrl = TextEditingController();
   bool _isLoading = false;
   bool _initialized = false;
+  bool _locating = false;
+
+  // Toạ độ GPS khi dùng "Lấy vị trí hiện tại" (null nếu chỉ dán link thủ công).
+  double? _latitude;
+  double? _longitude;
 
   @override
   void dispose() {
@@ -40,14 +46,71 @@ class _PropertyLocationScreenState
     _mapLinkCtrl.text = room.mapLink ?? '';
   }
 
+  /// Link Google Maps chuẩn từ toạ độ — mở được cả web + app khi click.
+  String _mapLinkFromCoords(double lat, double lng) =>
+      'https://www.google.com/maps/search/?api=1&query=$lat,$lng';
+
+  /// Lấy vị trí hiện tại (GPS) và tự điền link Google Maps. Người dùng cũng có
+  /// thể bỏ qua nút này và dán link Google Maps thủ công vào ô bên dưới.
+  Future<void> _useCurrentLocation() async {
+    if (_locating) return;
+    setState(() => _locating = true);
+    try {
+      final enabled = await Geolocator.isLocationServiceEnabled();
+      if (!enabled) {
+        if (mounted) {
+          AppSnackBar.error(context, 'Vui lòng bật dịch vụ vị trí (GPS)');
+        }
+        return;
+      }
+      var permission = await Geolocator.checkPermission();
+      if (permission == LocationPermission.denied) {
+        permission = await Geolocator.requestPermission();
+      }
+      if (permission == LocationPermission.denied ||
+          permission == LocationPermission.deniedForever) {
+        if (mounted) {
+          AppSnackBar.error(context, 'Chưa cấp quyền truy cập vị trí');
+        }
+        return;
+      }
+      final pos = await Geolocator.getCurrentPosition(
+        locationSettings:
+            const LocationSettings(accuracy: LocationAccuracy.high),
+      );
+      if (mounted) {
+        setState(() {
+          _latitude = pos.latitude;
+          _longitude = pos.longitude;
+          _mapLinkCtrl.text = _mapLinkFromCoords(pos.latitude, pos.longitude);
+        });
+        AppSnackBar.success(context, 'Đã lấy vị trí hiện tại');
+      }
+    } catch (_) {
+      if (mounted) {
+        AppSnackBar.error(context, 'Không lấy được vị trí hiện tại');
+      }
+    } finally {
+      if (mounted) setState(() => _locating = false);
+    }
+  }
+
   Future<void> _onSave() async {
     setState(() => _isLoading = true);
+
+    // Nếu người dùng tự sửa/dán link khác sau khi lấy GPS thì toạ độ cũ không
+    // còn khớp link → chỉ gửi lat/lng khi link vẫn là link sinh từ toạ độ đó.
+    final link = _mapLinkCtrl.text.trim();
+    final coordsMatchLink = _latitude != null &&
+        _longitude != null &&
+        link == _mapLinkFromCoords(_latitude!, _longitude!);
 
     final ok =
         await ref.read(roomActionsProvider.notifier).update(widget.homestayId, {
       'address': _addressCtrl.text.trim(),
-      if (_mapLinkCtrl.text.trim().isNotEmpty)
-        'mapLink': _mapLinkCtrl.text.trim(),
+      if (link.isNotEmpty) 'mapLink': link,
+      if (coordsMatchLink) 'latitude': _latitude,
+      if (coordsMatchLink) 'longitude': _longitude,
     });
 
     if (!mounted) return;
@@ -90,11 +153,71 @@ class _PropertyLocationScreenState
                   decoration: _inputDeco(context, 'VD: Bãi Cháy, Hạ Long'),
                 ),
                 const SizedBox(height: AppSpacing.lg),
-                _label(context, 'Link Google Maps'),
+                _label(context, 'Vị trí trên bản đồ'),
                 const SizedBox(height: 6),
+                // Cách 1: lấy vị trí hiện tại (GPS) → tự sinh link Google Maps.
+                SizedBox(
+                  width: double.infinity,
+                  height: 48,
+                  child: OutlinedButton.icon(
+                    onPressed: _locating ? null : _useCurrentLocation,
+                    icon: _locating
+                        ? const SizedBox(
+                            width: 18,
+                            height: 18,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
+                        : const Icon(Icons.my_location_rounded, size: 20),
+                    label: Text(
+                      _locating ? 'Đang lấy vị trí...' : 'Lấy vị trí hiện tại',
+                      style: GoogleFonts.beVietnamPro(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: colors.brand,
+                      side: BorderSide(color: colors.brand),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(AppRadius.md),
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: AppSpacing.md),
+                // Dải phân cách "hoặc" giữa 2 cách.
+                Row(
+                  children: [
+                    Expanded(child: Divider(color: colors.borderDefault)),
+                    Padding(
+                      padding:
+                          const EdgeInsets.symmetric(horizontal: AppSpacing.sm),
+                      child: Text(
+                        'hoặc dán link',
+                        style: GoogleFonts.beVietnamPro(
+                          fontSize: 12,
+                          color: colors.textTertiary,
+                        ),
+                      ),
+                    ),
+                    Expanded(child: Divider(color: colors.borderDefault)),
+                  ],
+                ),
+                const SizedBox(height: AppSpacing.md),
+                // Cách 2: dán link Google Maps thủ công (lấy từ bản web/app).
                 TextFormField(
                   controller: _mapLinkCtrl,
                   style: GoogleFonts.beVietnamPro(fontSize: 14),
+                  keyboardType: TextInputType.url,
+                  // Đổi link thủ công → xoá toạ độ GPS cũ cho khỏi lệch link.
+                  onChanged: (_) {
+                    if (_latitude != null || _longitude != null) {
+                      setState(() {
+                        _latitude = null;
+                        _longitude = null;
+                      });
+                    }
+                  },
                   decoration:
                       _inputDeco(context, 'Dán link Google Maps tại đây'),
                 ),
@@ -112,7 +235,10 @@ class _PropertyLocationScreenState
                       const SizedBox(width: 10),
                       Expanded(
                         child: Text(
-                          'Mở Google Maps, tìm vị trí phòng, nhấn "Chia sẻ" rồi dán link vào đây.',
+                          'Nhấn "Lấy vị trí hiện tại" khi bạn đang ở cơ sở, '
+                          'hoặc mở Google Maps tìm vị trí → "Chia sẻ" → dán link '
+                          'vào đây. Link này hiển thị bên web, khách bấm vào sẽ '
+                          'mở đúng vị trí cơ sở.',
                           style: GoogleFonts.beVietnamPro(
                             fontSize: 12,
                             color: colors.textBrand,

@@ -30,6 +30,12 @@ String? parseDioErrorCode(DioException e) {
 
 // Helper to parse Dio errors into user-facing messages.
 String parseDioError(DioException e) {
+  // 5xx = lỗi phía server (vd "Internal Server Error" tiếng Anh) → hiện thông
+  // báo hệ thống bằng tiếng Việt thay vì message khó hiểu từ backend.
+  final statusCode = e.response?.statusCode;
+  if (statusCode != null && statusCode >= 500) {
+    return 'Hệ thống đang gặp sự cố, vui lòng thử lại sau';
+  }
   if (e.response?.data != null) {
     final data = e.response!.data;
     if (data is Map && data['message'] != null) {

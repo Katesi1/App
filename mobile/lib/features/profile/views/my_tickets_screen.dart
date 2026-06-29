@@ -7,6 +7,7 @@ import '../../../core/theme/app_spacing.dart';
 import '../../../shared/widgets/loading_widget.dart';
 import '../controllers/account_controller.dart';
 import '../data/models/account_models.dart';
+import '../widgets/attachment_picker.dart';
 
 /// Yêu cầu hỗ trợ của tôi (`GET/POST /support/tickets`).
 class MyTicketsScreen extends ConsumerWidget {
@@ -172,6 +173,8 @@ class _CreateTicketSheetState extends ConsumerState<_CreateTicketSheet> {
   final _descCtrl = TextEditingController();
   String _category = 'account';
   bool _sending = false;
+  List<String> _attachments = const [];
+  bool _uploadingAttachment = false;
 
   @override
   void dispose() {
@@ -189,11 +192,18 @@ class _CreateTicketSheetState extends ConsumerState<_CreateTicketSheet> {
       );
       return;
     }
+    if (_uploadingAttachment) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Đang tải ảnh lên, vui lòng đợi')),
+      );
+      return;
+    }
     setState(() => _sending = true);
     final result = await ref.read(accountRepositoryProvider).createTicket(
           subject: subject,
           category: _category,
           description: desc,
+          attachments: _attachments,
         );
     if (!mounted) return;
     setState(() => _sending = false);
@@ -259,6 +269,12 @@ class _CreateTicketSheetState extends ConsumerState<_CreateTicketSheet> {
               labelText: 'Mô tả chi tiết',
               hintText: 'Mô tả vấn đề bạn gặp phải...',
             ),
+          ),
+          const SizedBox(height: AppSpacing.md),
+          AttachmentPicker(
+            onChanged: (urls) => _attachments = urls,
+            onBusyChanged: (busy) =>
+                setState(() => _uploadingAttachment = busy),
           ),
           const SizedBox(height: AppSpacing.md),
           SizedBox(

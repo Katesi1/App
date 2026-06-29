@@ -1,11 +1,15 @@
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:photo_view/photo_view.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../../../core/theme/app_color_scheme.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../shared/widgets/loading_widget.dart';
 import '../controllers/account_controller.dart';
 import '../data/models/account_models.dart';
+import '../widgets/attachment_picker.dart';
 
 /// Chi tiết ticket hỗ trợ + lịch sử trao đổi + trả lời
 /// (`GET /support/tickets/:id`, `POST /support/tickets/:id/reply`).
@@ -20,6 +24,10 @@ class TicketDetailScreen extends ConsumerStatefulWidget {
 class _TicketDetailScreenState extends ConsumerState<TicketDetailScreen> {
   final _replyCtrl = TextEditingController();
   bool _sending = false;
+  List<String> _attachments = const [];
+  bool _uploadingAttachment = false;
+  // Đổi key để reset AttachmentPicker (xoá thumbnail) sau khi gửi xong.
+  int _pickerEpoch = 0;
 
   @override
   void dispose() {
@@ -29,14 +37,27 @@ class _TicketDetailScreenState extends ConsumerState<TicketDetailScreen> {
 
   Future<void> _reply(SupportTicket ticket) async {
     final msg = _replyCtrl.text.trim();
-    if (msg.isEmpty) return;
+    if (msg.isEmpty && _attachments.isEmpty) return;
+    if (_uploadingAttachment) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Đang tải ảnh lên, vui lòng đợi')),
+      );
+      return;
+    }
     setState(() => _sending = true);
-    final result =
-        await ref.read(accountRepositoryProvider).replyTicket(ticket.id, msg);
+    final result = await ref.read(accountRepositoryProvider).replyTicket(
+          ticket.id,
+          msg,
+          attachments: _attachments,
+        );
     if (!mounted) return;
     setState(() => _sending = false);
     if (result.success) {
       _replyCtrl.clear();
+      setState(() {
+        _attachments = const [];
+        _pickerEpoch++;
+      });
       FocusScope.of(context).unfocus();
       ref.invalidate(ticketDetailProvider(widget.ticketId));
       ref.invalidate(ticketListProvider);
@@ -87,6 +108,12 @@ class _TicketDetailScreenState extends ConsumerState<TicketDetailScreen> {
                 controller: _replyCtrl,
                 sending: _sending,
                 onSend: () => _reply(ticket),
+                picker: AttachmentPicker(
+                  key: ValueKey(_pickerEpoch),
+                  onChanged: (urls) => _attachments = urls,
+                  onBusyChanged: (busy) =>
+                      setState(() => _uploadingAttachment = busy),
+                ),
               )
             else
               Container(
@@ -178,6 +205,10 @@ class _HeaderCard extends StatelessWidget {
                   color: colors.textSecondary, fontSize: 13, height: 1.45),
             ),
           ],
+          if (ticket.attachments.isNotEmpty) ...[
+            const SizedBox(height: 10),
+            _AttachmentThumbs(urls: ticket.attachments),
+          ],
         ],
       ),
     );
@@ -217,16 +248,119 @@ class _MessageBubble extends StatelessWidget {
                   color: colors.textBrand,
                 ),
               ),
-            Text(
-              message.message,
-              style: TextStyle(
-                fontSize: 13.5,
-                height: 1.4,
-                color: fromAdmin ? colors.textPrimary : colors.textOnPrimary,
+            if (message.message.isNotEmpty)
+              Text(
+                message.message,
+                style: TextStyle(
+                  fontSize: 13.5,
+                  height: 1.4,
+                  color: fromAdmin ? colors.textPrimary : colors.textOnPrimary,
+                ),
               ),
-            ),
+            if (message.attachments.isNotEmpty) ...[
+              if (message.message.isNotEmpty) const SizedBox(height: 6),
+              _AttachmentThumbs(urls: message.attachments),
+            ],
           ],
         ),
+      ),
+    );
+  }
+}
+
+/// Lưới thumbnail attachment (ảnh/pdf) trong ticket. Ảnh → mở fullscreen
+/// (PhotoView); pdf/khác → mở bằng trình duyệt ngoài.
+class _AttachmentThumbs extends StatelessWidget {
+  final List<String> urls;
+  const _AttachmentThumbs({required this.urls});
+
+  static bool _isImage(String url) {
+    final path = Uri.tryParse(url)?.path.toLowerCase() ?? url.toLowerCase();
+    return path.endsWith('.jpg') ||
+        path.endsWith('.jpeg') ||
+        path.endsWith('.png') ||
+        path.endsWith('.webp') ||
+        path.endsWith('.gif');
+  }
+
+  Future<void> _open(BuildContext context, String url) async {
+    if (_isImage(url)) {
+      await showDialog<void>(
+        context: context,
+        builder: (_) => _ImageViewerDialog(url: url),
+      );
+    } else {
+      await launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.colors;
+    return Wrap(
+      spacing: 8,
+      runSpacing: 8,
+      children: urls.map((url) {
+        final isImage = _isImage(url);
+        return GestureDetector(
+          onTap: () => _open(context, url),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(AppRadius.sm),
+            child: SizedBox(
+              width: 64,
+              height: 64,
+              child: isImage
+                  ? CachedNetworkImage(
+                      imageUrl: url,
+                      fit: BoxFit.cover,
+                      memCacheWidth: 250,
+                      placeholder: (_, __) =>
+                          Container(color: colors.bgSurfaceContainer),
+                      errorWidget: (_, __, ___) => Container(
+                        color: colors.bgSurfaceContainer,
+                        child: Icon(Icons.broken_image_outlined,
+                            color: colors.textTertiary, size: 22),
+                      ),
+                    )
+                  : Container(
+                      color: colors.bgSurfaceContainer,
+                      child: Icon(Icons.picture_as_pdf_outlined,
+                          color: colors.error, size: 26),
+                    ),
+            ),
+          ),
+        );
+      }).toList(),
+    );
+  }
+}
+
+class _ImageViewerDialog extends StatelessWidget {
+  final String url;
+  const _ImageViewerDialog({required this.url});
+
+  @override
+  Widget build(BuildContext context) {
+    return Dialog(
+      backgroundColor: Colors.black,
+      insetPadding: EdgeInsets.zero,
+      child: Stack(
+        children: [
+          PhotoView(
+            imageProvider: CachedNetworkImageProvider(url),
+            backgroundDecoration: const BoxDecoration(color: Colors.black),
+            minScale: PhotoViewComputedScale.contained,
+            maxScale: PhotoViewComputedScale.covered * 3,
+          ),
+          Positioned(
+            top: MediaQuery.of(context).padding.top + 8,
+            right: 8,
+            child: IconButton(
+              icon: const Icon(Icons.close, color: Colors.white),
+              onPressed: () => Navigator.of(context).pop(),
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -236,11 +370,13 @@ class _ReplyBar extends StatelessWidget {
   final TextEditingController controller;
   final bool sending;
   final VoidCallback onSend;
+  final Widget picker;
 
   const _ReplyBar({
     required this.controller,
     required this.sending,
     required this.onSend,
+    required this.picker,
   });
 
   @override
@@ -257,32 +393,39 @@ class _ReplyBar extends StatelessWidget {
         color: colors.bgSurface,
         border: Border(top: BorderSide(color: colors.borderDefault)),
       ),
-      child: Row(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
         children: [
-          Expanded(
-            child: TextField(
-              controller: controller,
-              minLines: 1,
-              maxLines: 4,
-              decoration: const InputDecoration(
-                hintText: 'Nhập trả lời...',
-                border: OutlineInputBorder(),
-                isDense: true,
-                contentPadding:
-                    EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+          picker,
+          const SizedBox(height: AppSpacing.sm),
+          Row(
+            children: [
+              Expanded(
+                child: TextField(
+                  controller: controller,
+                  minLines: 1,
+                  maxLines: 4,
+                  decoration: const InputDecoration(
+                    hintText: 'Nhập trả lời...',
+                    border: OutlineInputBorder(),
+                    isDense: true,
+                    contentPadding:
+                        EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                  ),
+                ),
               ),
-            ),
-          ),
-          const SizedBox(width: 8),
-          IconButton.filled(
-            onPressed: sending ? null : onSend,
-            icon: sending
-                ? const SizedBox(
-                    width: 18,
-                    height: 18,
-                    child: CircularProgressIndicator(strokeWidth: 2),
-                  )
-                : const Icon(Icons.send_rounded, size: 18),
+              const SizedBox(width: 8),
+              IconButton.filled(
+                onPressed: sending ? null : onSend,
+                icon: sending
+                    ? const SizedBox(
+                        width: 18,
+                        height: 18,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : const Icon(Icons.send_rounded, size: 18),
+              ),
+            ],
           ),
         ],
       ),

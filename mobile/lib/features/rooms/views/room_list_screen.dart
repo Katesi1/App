@@ -245,17 +245,23 @@ class _RoomListScreenState extends ConsumerState<RoomListScreen>
                 '${d.year}';
           }
 
-          return Container(
-            decoration: BoxDecoration(
-              color: colors.bgSurface,
-              borderRadius: const BorderRadius.vertical(
-                top: Radius.circular(20),
-              ),
+          return Padding(
+            // Đẩy sheet lên trên bàn phím để ô "Người lớn / Trẻ em" không bị che.
+            padding: EdgeInsets.only(
+              bottom: MediaQuery.of(ctx).viewInsets.bottom,
             ),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
+            child: Container(
+              decoration: BoxDecoration(
+                color: colors.bgSurface,
+                borderRadius: const BorderRadius.vertical(
+                  top: Radius.circular(20),
+                ),
+              ),
+              child: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
                 // Handle bar
                 Center(
                   child: Container(
@@ -473,10 +479,12 @@ class _RoomListScreenState extends ConsumerState<RoomListScreen>
                     ),
                   ),
                 ),
-                SizedBox(
-                  height: MediaQuery.of(ctx).padding.bottom,
+                    SizedBox(
+                      height: MediaQuery.of(ctx).padding.bottom,
+                    ),
+                  ],
                 ),
-              ],
+              ),
             ),
           );
         },

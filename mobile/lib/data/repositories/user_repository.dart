@@ -141,27 +141,56 @@ class UserRepository {
       await _dio.post(ApiConstants.userDeletionRestore);
       return ApiResponse(success: true, message: 'Tài khoản đã được khôi phục.');
     } on DioException catch (e) {
+      // Giữ `code` (vd users.deletionNotPending) để UI phân biệt "không còn ở
+      // trạng thái chờ xoá" với lỗi mạng → xử lý mượt thay vì báo lỗi chung.
+      return ApiResponse(
+        success: false,
+        message: parseDioError(e),
+        code: parseDioErrorCode(e),
+      );
+    }
+  }
+
+  /// Trạng thái xoá tài khoản từ server (NĐ 13 / GDPR).
+  /// Response data: { pending: bool, scheduledDeleteAt: ISO|null,
+  /// daysRemaining: int }. Authoritative hơn cache profile (đồng hồ server).
+  Future<ApiResponse<DeletionStatus>> getDeletionStatus() async {
+    try {
+      final resp = await _dio.get(ApiConstants.userDeletionStatus);
+      final data = resp.data?['data'];
+      return ApiResponse(
+        success: true,
+        data: (
+          pending: data?['pending'] == true,
+          scheduledDeleteAt: data?['scheduledDeleteAt'] as String?,
+          daysRemaining: (data?['daysRemaining'] as num?)?.toInt(),
+        ),
+        message: '',
+      );
+    } on DioException catch (e) {
       return ApiResponse(success: false, message: parseDioError(e));
     }
   }
 
   /// Self-delete for App Store + GDPR / NĐ 13 compliance.
-  /// v1.14: BE không xoá ngay — tạo deletion request với grace 30 ngày.
-  /// Response data: { scheduledDeleteAt: ISO, graceDays: 30 }.
+  /// v1.14: BE không xoá ngay — tạo deletion request với grace period.
+  /// Response data: { scheduledDeleteAt: ISO, graceDays: int }.
   /// Login lại trong grace period → BE auto-cancel yêu cầu.
   ///
   /// [reason] optional — sent along so BE can log the reason (analytics).
-  Future<ApiResponse<String?>> deleteMyAccount({String? reason}) async {
+  Future<ApiResponse<DeletionSchedule>> deleteMyAccount({String? reason}) async {
     try {
       final resp = await _dio.delete(
         '${ApiConstants.users}/me',
         data: reason == null ? null : {'reason': reason},
       );
-      final scheduledDeleteAt =
-          resp.data?['data']?['scheduledDeleteAt'] as String?;
+      final data = resp.data?['data'];
       return ApiResponse(
         success: true,
-        data: scheduledDeleteAt,
+        data: (
+          scheduledDeleteAt: data?['scheduledDeleteAt'] as String?,
+          graceDays: (data?['graceDays'] as num?)?.toInt(),
+        ),
         message: resp.data?['message'] as String? ??
             'Yêu cầu xoá tài khoản đã được gửi.',
       );
@@ -170,3 +199,13 @@ class UserRepository {
     }
   }
 }
+
+/// Kết quả yêu cầu xoá tài khoản — ngày xoá dự kiến + số ngày grace từ BE.
+typedef DeletionSchedule = ({String? scheduledDeleteAt, int? graceDays});
+
+/// Trạng thái xoá tài khoản hiện tại (GET /users/me/deletion-status).
+typedef DeletionStatus = ({
+  bool pending,
+  String? scheduledDeleteAt,
+  int? daysRemaining,
+});

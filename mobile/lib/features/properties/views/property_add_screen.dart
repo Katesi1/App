@@ -88,6 +88,10 @@ class _PropertyAddScreenState extends ConsumerState<PropertyAddScreen> {
 
   bool _isLoading = false;
 
+  /// Villa = loại hình lớn → tối thiểu 3 phòng ngủ + 3 WC.
+  bool get _isVilla => _selectedType == 0;
+  static const _villaMinRooms = 3;
+
   // 0=VILLA, 1=HOMESTAY, 2=HOTEL
   static const _typeOptions = [
     (value: 0, label: 'Villa', icon: Icons.villa_rounded),
@@ -188,6 +192,22 @@ class _PropertyAddScreenState extends ConsumerState<PropertyAddScreen> {
         }
       });
     }
+  }
+
+  /// Chọn loại hình → villa ép tối thiểu 3 phòng ngủ + 3 WC.
+  void _selectType(int value) {
+    setState(() {
+      _selectedType = value;
+      if (value == 0) {
+        if (_bedrooms < _villaMinRooms) {
+          _bedrooms = _villaMinRooms;
+          _applyRoomDefaults();
+        }
+        if (_bathrooms < _villaMinRooms) {
+          _bathrooms = _villaMinRooms;
+        }
+      }
+    });
   }
 
   /// Chọn số phòng ngủ → tự điền nhà tắm + sức chứa cho bớt thao tác.
@@ -387,8 +407,7 @@ class _PropertyAddScreenState extends ConsumerState<PropertyAddScreen> {
                           child: Padding(
                             padding: EdgeInsets.zero,
                             child: GestureDetector(
-                              onTap: () =>
-                                  setState(() => _selectedType = t.value),
+                              onTap: () => _selectType(t.value),
                               child: AnimatedContainer(
                                 duration: const Duration(milliseconds: 200),
                                 padding:
@@ -627,11 +646,13 @@ class _PropertyAddScreenState extends ConsumerState<PropertyAddScreen> {
                         _Chip(
                             label: 'Studio',
                             on: _bedrooms == 0,
+                            enabled: !_isVilla,
                             onTap: () => _selectBedrooms(0)),
                         for (var i = 1; i <= 9; i++)
                           _Chip(
                               label: '${i}PN',
                               on: _bedrooms == i,
+                              enabled: !_isVilla || i >= _villaMinRooms,
                               onTap: () => _selectBedrooms(i)),
                         _Chip(
                             label: _bedrooms >= 10 ? '${_bedrooms}PN' : '10PN+',
@@ -652,6 +673,7 @@ class _PropertyAddScreenState extends ConsumerState<PropertyAddScreen> {
                           _Chip(
                               label: '$i WC',
                               on: _bathrooms == i,
+                              enabled: !_isVilla || i >= _villaMinRooms,
                               onTap: () => setState(() => _bathrooms = i)),
                         _Chip(
                             label: '10+',
@@ -1129,27 +1151,36 @@ class _Field extends StatelessWidget {
 class _Chip extends StatelessWidget {
   final String label;
   final bool on;
+  final bool enabled;
   final VoidCallback onTap;
-  const _Chip({required this.label, required this.on, required this.onTap});
+  const _Chip({
+    required this.label,
+    required this.on,
+    required this.onTap,
+    this.enabled = true,
+  });
 
   @override
   Widget build(BuildContext context) {
     final colors = context.colors;
     return GestureDetector(
-      onTap: onTap,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 150),
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-        decoration: BoxDecoration(
-          color: on ? colors.brand : Colors.transparent,
-          borderRadius: BorderRadius.circular(AppRadius.full),
-          border: Border.all(color: on ? colors.brand : colors.borderDefault),
+      onTap: enabled ? onTap : null,
+      child: Opacity(
+        opacity: enabled ? 1 : 0.4,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 150),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+          decoration: BoxDecoration(
+            color: on ? colors.brand : Colors.transparent,
+            borderRadius: BorderRadius.circular(AppRadius.full),
+            border: Border.all(color: on ? colors.brand : colors.borderDefault),
+          ),
+          child: Text(label,
+              style: GoogleFonts.beVietnamPro(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                  color: on ? Colors.white : colors.textPrimary)),
         ),
-        child: Text(label,
-            style: GoogleFonts.beVietnamPro(
-                fontSize: 13,
-                fontWeight: FontWeight.w600,
-                color: on ? Colors.white : colors.textPrimary)),
       ),
     );
   }

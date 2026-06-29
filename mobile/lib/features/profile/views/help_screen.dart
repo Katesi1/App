@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:url_launcher/url_launcher.dart';
+import '../../../core/constants/app_constants.dart';
 import '../../../core/theme/app_color_scheme.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
@@ -22,9 +23,10 @@ class _HelpScreenState extends State<HelpScreen> {
   final _searchController = TextEditingController();
   String _query = '';
 
-  static const _supportPhone = '0901234567';
-  static const _supportEmail = 'support@halong24h.vn';
-  static const _supportHours = 'T2 - CN: 8:00 - 22:00';
+  // Nguồn duy nhất: AppConstants — tránh lệch số giữa các màn hình.
+  static const _supportPhone = AppConstants.supportPhone;
+  static const _supportEmail = AppConstants.supportEmail;
+  static const _supportHours = AppConstants.supportHours;
 
   @override
   void dispose() {
@@ -705,19 +707,20 @@ const _faqCategories = <_FaqCategory>[
   ),
   _FaqCategory(
     icon: Icons.payment_outlined,
-    title: 'Thanh toán',
+    title: 'Gói dịch vụ & Thanh toán',
     items: [
       _FaqItem(
-        question: 'Các hình thức thanh toán?',
-        answer: 'Hiện tại hỗ trợ thanh toán trực tiếp tại homestay khi '
-            'nhận phòng. Chúng tôi đang phát triển thêm các phương '
-            'thức thanh toán online trong thời gian tới.',
+        question: 'Làm sao để đăng ký / thanh toán gói dịch vụ?',
+        answer: 'Việc hoàn thiện hồ sơ và thanh toán gói dịch vụ được thực '
+            'hiện trên website halong24h.vn. Bạn đăng nhập bằng tài khoản '
+            'hiện tại rồi làm theo hướng dẫn để hoàn tất. Ứng dụng không '
+            'xử lý thanh toán trực tiếp.',
       ),
       _FaqItem(
-        question: 'Chính sách hoàn tiền như thế nào?',
-        answer: 'Nếu bạn huỷ booking trước thời gian nhận phòng 24 giờ, '
-            'bạn sẽ được hoàn tiền 100%. Huỷ trong vòng 24 giờ trước '
-            'nhận phòng sẽ tuỳ theo chính sách của từng homestay.',
+        question: 'Tôi đã thanh toán trên web nhưng app chưa cập nhật?',
+        answer: 'Sau khi thanh toán được xác nhận, hãy mở lại ứng dụng hoặc '
+            'kéo làm mới ở màn "Tổng quan" để cập nhật trạng thái. Nếu vẫn '
+            'chưa thấy, vui lòng liên hệ hỗ trợ.',
       ),
     ],
   ),

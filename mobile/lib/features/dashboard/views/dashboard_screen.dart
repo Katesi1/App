@@ -2017,6 +2017,29 @@ class _DeletionPendingBannerState
     extends ConsumerState<_DeletionPendingBanner> {
   bool _restoring = false;
 
+  // Số ngày còn lại lấy từ server (đồng hồ server, chính xác hơn tính ở client).
+  int? _serverDaysLeft;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadAuthoritativeStatus();
+  }
+
+  /// Xác nhận trạng thái xoá từ server để hiển thị số ngày còn lại chuẩn —
+  /// fallback về giá trị tính từ profile nếu lỗi/loading.
+  Future<void> _loadAuthoritativeStatus() async {
+    final result = await UserRepository().getDeletionStatus();
+    if (!mounted || !result.success || result.data == null) return;
+    final status = result.data!;
+    if (status.pending && status.daysRemaining != null) {
+      setState(() => _serverDaysLeft = status.daysRemaining);
+    } else if (!status.pending) {
+      // Server nói không còn chờ xoá → đồng bộ profile để ẩn banner.
+      await ref.read(authProvider.notifier).refreshProfile();
+    }
+  }
+
   String _formatDate(DateTime dt) {
     final local = dt.toLocal();
     return '${local.day.toString().padLeft(2, '0')}/'
@@ -2033,6 +2056,15 @@ class _DeletionPendingBannerState
       await ref.read(authProvider.notifier).refreshProfile();
       if (!mounted) return;
       AppSnackBar.success(context, 'Tài khoản đã được khôi phục thành công.');
+    } else if (result.code == 'users.deletionNotPending') {
+      // Tài khoản không còn ở trạng thái chờ xoá (đã khôi phục ở nơi khác hoặc
+      // BE đã tự huỷ yêu cầu) → đồng bộ lại profile để banner tự biến mất.
+      await ref.read(authProvider.notifier).refreshProfile();
+      if (!mounted) return;
+      AppSnackBar.info(
+        context,
+        'Tài khoản không còn ở trạng thái chờ xoá.',
+      );
     } else {
       setState(() => _restoring = false);
       AppSnackBar.error(context, result.message);
@@ -2043,7 +2075,7 @@ class _DeletionPendingBannerState
   Widget build(BuildContext context) {
     final colors = context.colors;
     final scheduledAt = widget.user.deletionScheduledAt;
-    final daysLeft = widget.user.deletionDaysLeft ?? 0;
+    final daysLeft = _serverDaysLeft ?? widget.user.deletionDaysLeft ?? 0;
     final dateStr = scheduledAt != null ? _formatDate(scheduledAt) : '';
 
     return Container(

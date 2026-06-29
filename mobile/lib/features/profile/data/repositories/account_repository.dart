@@ -11,6 +11,49 @@ import '../models/account_models.dart';
 class AccountRepository {
   final Dio _dio = ApiClient.instance;
 
+  // ── Uploads (BE §23) ──────────────────────────────────────────────────────
+
+  /// Upload 1 file (ảnh/pdf, ≤ 10MB) → trả về [UploadedFile] để đính kèm vào
+  /// ticket / feedback. Whitelist + magic-bytes do BE kiểm tra.
+  Future<ApiResponse<UploadedFile>> uploadFile(String path) async {
+    try {
+      final form = FormData.fromMap({
+        'file': await MultipartFile.fromFile(
+          path,
+          filename: path.split('/').last,
+        ),
+      });
+      final res = await _dio.post(
+        ApiConstants.uploads,
+        data: form,
+        options: Options(
+          contentType: 'multipart/form-data',
+          sendTimeout: const Duration(seconds: 60),
+          receiveTimeout: const Duration(seconds: 60),
+        ),
+      );
+      return ApiResponse(
+        success: true,
+        data: UploadedFile.fromJson(res.data['data'] as Map<String, dynamic>),
+        message: res.data['message'] ?? '',
+      );
+    } on DioException catch (e) {
+      return ApiResponse(success: false, message: parseDioError(e));
+    } catch (_) {
+      return ApiResponse(success: false, message: _badSchema);
+    }
+  }
+
+  /// Xoá file orphan khi user gỡ đính kèm trước lúc gửi (chỉ owner, chưa
+  /// attach). Bỏ qua lỗi — cron BE vẫn dọn orphan sau 24h.
+  Future<void> deleteUpload(String id) async {
+    try {
+      await _dio.delete(ApiConstants.uploadDetail(id));
+    } on DioException catch (_) {
+      // best-effort: orphan sẽ tự bị cron dọn nếu xoá thất bại.
+    }
+  }
+
   // ── Support tickets ───────────────────────────────────────────────────────
 
   Future<ApiResponse<List<SupportTicket>>> getTickets({
@@ -55,12 +98,14 @@ class AccountRepository {
     required String subject,
     required String category,
     required String description,
+    List<String> attachments = const [],
   }) async {
     try {
       final res = await _dio.post(ApiConstants.supportTickets, data: {
         'subject': subject,
         'category': category,
         'description': description,
+        if (attachments.isNotEmpty) 'attachments': attachments,
       });
       return ApiResponse(
         success: true,
@@ -74,10 +119,16 @@ class AccountRepository {
     }
   }
 
-  Future<ApiResponse<void>> replyTicket(String id, String message) async {
+  Future<ApiResponse<void>> replyTicket(
+    String id,
+    String message, {
+    List<String> attachments = const [],
+  }) async {
     try {
-      await _dio.post(ApiConstants.supportTicketReply(id),
-          data: {'message': message});
+      await _dio.post(ApiConstants.supportTicketReply(id), data: {
+        'message': message,
+        if (attachments.isNotEmpty) 'attachments': attachments,
+      });
       return ApiResponse(success: true, message: '');
     } on DioException catch (e) {
       return ApiResponse(success: false, message: parseDioError(e));
@@ -91,6 +142,7 @@ class AccountRepository {
     required String message,
     String? contact,
     String? deviceInfo,
+    List<String> attachments = const [],
   }) async {
     try {
       await _dio.post(ApiConstants.feedback, data: {
@@ -99,6 +151,7 @@ class AccountRepository {
         if (contact != null && contact.isNotEmpty) 'contact': contact,
         if (deviceInfo != null && deviceInfo.isNotEmpty)
           'deviceInfo': deviceInfo,
+        if (attachments.isNotEmpty) 'attachments': attachments,
       });
       return ApiResponse(success: true, message: 'Đã gửi phản hồi');
     } on DioException catch (e) {

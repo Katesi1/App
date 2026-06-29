@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../core/constants/app_constants.dart';
 import '../../../core/storage/secure_storage.dart';
 import '../../../core/theme/app_color_scheme.dart';
 import '../../../core/theme/app_spacing.dart';
@@ -44,8 +45,11 @@ class _DeleteAccountScreenState extends ConsumerState<DeleteAccountScreen> {
     if (!mounted) return;
 
     if (result.success) {
-      final scheduledDeleteAt = _parseScheduledDate(result.data);
-      await _showGraceDialog(scheduledDeleteAt);
+      final scheduledDeleteAt =
+          _parseScheduledDate(result.data?.scheduledDeleteAt);
+      final graceDays =
+          result.data?.graceDays ?? AppConstants.accountDeletionGraceDays;
+      await _showGraceDialog(scheduledDeleteAt, graceDays);
       if (!mounted) return;
       // Xoá saved credentials (Remember me) để login screen không auto-fill.
       await SecureStorage.clearCredentials();
@@ -69,11 +73,11 @@ class _DeleteAccountScreenState extends ConsumerState<DeleteAccountScreen> {
         '${local.year}';
   }
 
-  Future<void> _showGraceDialog(String? scheduledDate) async {
+  Future<void> _showGraceDialog(String? scheduledDate, int graceDays) async {
     if (!mounted) return;
     final dateText = scheduledDate != null
         ? 'Tài khoản sẽ bị xoá vào ngày $scheduledDate.'
-        : 'Tài khoản sẽ bị xoá sau 30 ngày.';
+        : 'Tài khoản sẽ bị xoá sau $graceDays ngày.';
 
     await showDialog<void>(
       context: context,
@@ -122,7 +126,8 @@ class _DeleteAccountScreenState extends ConsumerState<DeleteAccountScreen> {
                       const SizedBox(width: AppSpacing.sm),
                       Expanded(
                         child: Text(
-                          'Tài khoản sẽ bị xoá sau 30 ngày',
+                          'Tài khoản sẽ bị xoá sau '
+                          '${AppConstants.accountDeletionGraceDays} ngày',
                           style: TextStyle(
                             color: colors.error,
                             fontWeight: FontWeight.w700,
@@ -135,9 +140,11 @@ class _DeleteAccountScreenState extends ConsumerState<DeleteAccountScreen> {
                   Text(
                     'Sau khi gửi yêu cầu:\n'
                     '• Bạn sẽ bị đăng xuất ngay lập tức.\n'
-                    '• Tài khoản sẽ bị xoá vĩnh viễn sau 30 ngày.\n'
-                    '• Đăng nhập lại trong 30 ngày để huỷ yêu cầu '
-                    'và khôi phục tài khoản.\n'
+                    '• Tài khoản sẽ bị xoá vĩnh viễn sau '
+                    '${AppConstants.accountDeletionGraceDays} ngày.\n'
+                    '• Đăng nhập lại trong '
+                    '${AppConstants.accountDeletionGraceDays} ngày để huỷ yêu '
+                    'cầu và khôi phục tài khoản.\n'
                     '• Sau khi xoá: booking, lịch sử thanh toán và '
                     'hồ sơ KYC bị xoá khỏi server (GDPR / NĐ 13).',
                     style: TextStyle(color: colors.error, height: 1.45),
@@ -180,8 +187,9 @@ class _DeleteAccountScreenState extends ConsumerState<DeleteAccountScreen> {
               contentPadding: EdgeInsets.zero,
               value: _confirmedPolicy,
               onChanged: (v) => setState(() => _confirmedPolicy = v ?? false),
-              title: const Text(
-                'Tôi hiểu tài khoản sẽ bị xoá sau 30 ngày nếu '
+              title: Text(
+                'Tôi hiểu tài khoản sẽ bị xoá sau '
+                '${AppConstants.accountDeletionGraceDays} ngày nếu '
                 'tôi không đăng nhập lại để huỷ yêu cầu',
               ),
             ),

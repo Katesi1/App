@@ -2,18 +2,50 @@
 /// data export (GDPR), consents, notification preferences.
 library;
 
+// ── Uploads (BE §23) ────────────────────────────────────────────────────────
+
+/// File đã upload qua `POST /uploads` — dùng làm attachment cho support
+/// ticket / feedback. Khi gửi kèm, BE chỉ cần mảng `url` (≤ 5).
+class UploadedFile {
+  final String id;
+  final String url;
+  final String type; // MIME: image/jpeg, application/pdf...
+  final String name;
+  final int size; // bytes
+
+  const UploadedFile({
+    required this.id,
+    required this.url,
+    required this.type,
+    required this.name,
+    this.size = 0,
+  });
+
+  factory UploadedFile.fromJson(Map<String, dynamic> j) => UploadedFile(
+        id: (j['id'] ?? '') as String,
+        url: (j['url'] ?? '') as String,
+        type: (j['type'] ?? '') as String,
+        name: (j['name'] ?? '') as String,
+        size: (j['size'] as num?)?.toInt() ?? 0,
+      );
+
+  bool get isImage => type.startsWith('image/');
+}
+
 // ── Support tickets ─────────────────────────────────────────────────────────
 
 class TicketMessage {
   final String id;
   final bool fromAdmin;
   final String message;
+  final List<String> attachments; // URL ảnh/pdf đính kèm
   final DateTime? createdAt;
 
   const TicketMessage({
     required this.id,
     required this.fromAdmin,
     required this.message,
+    this.attachments = const [],
     this.createdAt,
   });
 
@@ -21,6 +53,7 @@ class TicketMessage {
         id: (j['id'] ?? '') as String,
         fromAdmin: (j['fromAdmin'] ?? j['isAdmin'] ?? false) as bool,
         message: (j['message'] ?? j['content'] ?? '') as String,
+        attachments: _attachmentUrls(j['attachments']),
         createdAt: _date(j['createdAt']),
       );
 }
@@ -32,6 +65,7 @@ class SupportTicket {
   final String category; // account | payment | technical | other
   final String status; // open | in_progress | resolved | closed
   final String? description;
+  final List<String> attachments; // URL ảnh/pdf đính kèm khi tạo ticket
   final List<TicketMessage> messages;
   final DateTime? createdAt;
   final DateTime? updatedAt;
@@ -43,6 +77,7 @@ class SupportTicket {
     required this.category,
     required this.status,
     this.description,
+    this.attachments = const [],
     this.messages = const [],
     this.createdAt,
     this.updatedAt,
@@ -55,6 +90,7 @@ class SupportTicket {
         category: (j['category'] ?? 'other') as String,
         status: (j['status'] ?? 'open') as String,
         description: j['description'] as String?,
+        attachments: _attachmentUrls(j['attachments']),
         messages: (j['messages'] as List?)
                 ?.whereType<Map<String, dynamic>>()
                 .map(TicketMessage.fromJson)
@@ -204,4 +240,14 @@ class NotificationPrefs {
 DateTime? _date(dynamic raw) {
   if (raw is! String || raw.isEmpty) return null;
   return DateTime.tryParse(raw);
+}
+
+/// `attachments` từ BE có thể là `["url"]` hoặc `[{ url, type, name }]` →
+/// luôn rút về danh sách URL không rỗng.
+List<String> _attachmentUrls(dynamic raw) {
+  if (raw is! List) return const [];
+  return raw
+      .map((e) => e is Map ? (e['url'] ?? '') as String : (e as String? ?? ''))
+      .where((url) => url.isNotEmpty)
+      .toList();
 }

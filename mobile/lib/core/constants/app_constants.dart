@@ -17,11 +17,21 @@ class AppConstants {
   // Support contact — shown on the KYC pending screen + anywhere the user
   // needs to reach the Halong24h team.
   static const String supportEmail = 'halong24h.team@gmail.com';
-  static const String supportPhone = '0983692497';
+  static const String supportPhone = '0325992001';
+
+  // Khung giờ hỗ trợ — hiển thị ở màn Trợ giúp.
+  static const String supportHours = 'T2 - CN: 8:00 - 22:00';
 
   // Hotline tổng đài admin — dùng cho nút "Gọi điện cho Admin" ở lịch booking
   // (cố định, KHÁC với Zalo chủ nhà — Zalo dùng SĐT chủ nhà từ API).
   static const String adminHotline = '0976982240';
+
+  // Website hoàn thiện hồ sơ + thanh toán gói dịch vụ (app KHÔNG bán gói/IAP).
+  static const String websiteUrl = 'https://halong24h.vn';
+
+  // Số ngày giữ tài khoản trước khi xoá vĩnh viễn (grace period) — dùng làm
+  // mặc định hiển thị; giá trị thực BE trả về trong response xoá tài khoản.
+  static const int accountDeletionGraceDays = 30;
 }
 
 // B2B app for homestay OWNER + SALE only. ADMIN exists on backend but cannot

@@ -8,6 +8,7 @@ import '../../../core/monitoring/analytics_service.dart';
 import '../../../core/theme/app_color_scheme.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../controllers/account_controller.dart';
+import '../widgets/attachment_picker.dart';
 
 /// Gửi phản hồi / báo lỗi (`POST /feedback`, rate-limit 10/giờ/user).
 class FeedbackReportScreen extends ConsumerStatefulWidget {
@@ -24,6 +25,8 @@ class _FeedbackReportScreenState extends ConsumerState<FeedbackReportScreen> {
   String _category = 'bug'; // bug | feature | support | other
   bool _includeDeviceInfo = true;
   bool _sending = false;
+  List<String> _attachments = const [];
+  bool _uploadingAttachment = false;
 
   @override
   void dispose() {
@@ -51,6 +54,12 @@ class _FeedbackReportScreenState extends ConsumerState<FeedbackReportScreen> {
       );
       return;
     }
+    if (_uploadingAttachment) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Đang tải ảnh lên, vui lòng đợi')),
+      );
+      return;
+    }
     setState(() => _sending = true);
     final deviceInfo = await _deviceInfo();
     final result = await ref.read(accountRepositoryProvider).submitFeedback(
@@ -58,6 +67,7 @@ class _FeedbackReportScreenState extends ConsumerState<FeedbackReportScreen> {
           message: content,
           contact: _contactCtrl.text.trim(),
           deviceInfo: deviceInfo,
+          attachments: _attachments,
         );
     if (!mounted) return;
     setState(() => _sending = false);
@@ -127,6 +137,12 @@ class _FeedbackReportScreenState extends ConsumerState<FeedbackReportScreen> {
               labelText: 'Nội dung',
               hintText: 'Mô tả các bước gây lỗi hoặc mong muốn cải thiện...',
             ),
+          ),
+          const SizedBox(height: AppSpacing.md),
+          AttachmentPicker(
+            onChanged: (urls) => _attachments = urls,
+            onBusyChanged: (busy) =>
+                setState(() => _uploadingAttachment = busy),
           ),
           const SizedBox(height: AppSpacing.sm),
           CheckboxListTile(

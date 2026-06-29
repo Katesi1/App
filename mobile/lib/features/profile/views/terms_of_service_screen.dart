@@ -13,6 +13,15 @@ class TermsOfServiceScreen extends StatelessWidget {
       body: ListView(
         padding: const EdgeInsets.all(AppSpacing.md),
         children: [
+          Text(
+            'Phiên bản 1.2 · Cập nhật 12/06/2026',
+            style: TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+              color: colors.textTertiary,
+            ),
+          ),
+          const SizedBox(height: AppSpacing.sm),
           Container(
             padding: const EdgeInsets.all(AppSpacing.md),
             decoration: BoxDecoration(
