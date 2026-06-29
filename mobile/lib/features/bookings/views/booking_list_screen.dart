@@ -32,7 +32,13 @@ class _BookingListScreenState extends ConsumerState<BookingListScreen> {
     BookingStatus.noShow,
   ];
 
-  static const _filterLabels = ['Tất cả', 'Đang giữ', 'Đã đặt', 'Đã huỷ', 'Không đến'];
+  static const _filterLabels = [
+    'Tất cả',
+    'Đang giữ',
+    'Đã đặt',
+    'Đã huỷ',
+    'Không đến'
+  ];
 
   @override
   Widget build(BuildContext context) {

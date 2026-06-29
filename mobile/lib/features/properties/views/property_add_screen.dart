@@ -13,6 +13,7 @@ import '../../../core/theme/app_color_scheme.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../shared/widgets/loading_widget.dart';
+import '../../../shared/widgets/required_label.dart';
 import '../../../shared/widgets/subscription_locked_sheet.dart';
 import '../../rooms/controllers/room_controller.dart';
 import '../controllers/property_controller.dart';
@@ -283,6 +284,12 @@ class _PropertyAddScreenState extends ConsumerState<PropertyAddScreen> {
 
   Future<void> _save() async {
     if (!_formKey.currentState!.validate()) return;
+    // Guard tường minh: form trong ListView build lười nên field giá có thể
+    // chưa được validate khi nằm ngoài viewport → check lại giá ngày thường.
+    if (_parsePrice(_weekdayPriceCtrl.text) <= 0) {
+      AppSnackBar.error(context, 'Vui lòng nhập giá ngày thường lớn hơn 0');
+      return;
+    }
     setState(() => _isLoading = true);
 
     final data = {
@@ -363,6 +370,24 @@ class _PropertyAddScreenState extends ConsumerState<PropertyAddScreen> {
   double _parsePrice(String text) {
     final cleaned = text.replaceAll('.', '').replaceAll(',', '');
     return double.tryParse(cleaned) ?? 0;
+  }
+
+  /// Giá ngày thường bắt buộc + phải > 0.
+  String? _validateRequiredPrice(String? v) {
+    final raw = (v ?? '').replaceAll('.', '').replaceAll(',', '').trim();
+    if (raw.isEmpty) return 'Nhập giá phòng';
+    final value = double.tryParse(raw);
+    if (value == null || value <= 0) return 'Giá phải lớn hơn 0';
+    return null;
+  }
+
+  /// Giá cuối tuần / ngày lễ không bắt buộc, nhưng nếu nhập thì phải > 0.
+  String? _validateOptionalPrice(String? v) {
+    final raw = (v ?? '').replaceAll('.', '').replaceAll(',', '').trim();
+    if (raw.isEmpty) return null;
+    final value = double.tryParse(raw);
+    if (value == null || value <= 0) return 'Giá phải lớn hơn 0';
+    return null;
   }
 
   bool _isGroupAllSelected(List<String> items) =>
@@ -448,7 +473,6 @@ class _PropertyAddScreenState extends ConsumerState<PropertyAddScreen> {
                   ],
                 ),
               ).animate().fadeIn(duration: 300.ms),
-
               _Section(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -557,7 +581,6 @@ class _PropertyAddScreenState extends ConsumerState<PropertyAddScreen> {
                   ],
                 ),
               ).animate(delay: 50.ms).fadeIn(duration: 300.ms),
-
               _Section(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -628,14 +651,13 @@ class _PropertyAddScreenState extends ConsumerState<PropertyAddScreen> {
                   ],
                 ),
               ).animate(delay: 100.ms).fadeIn(duration: 300.ms),
-
               _Section(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     const _Title('THÔNG SỐ PHÒNG'),
                     const SizedBox(height: AppSpacing.sm),
-                    Text('Số phòng ngủ *',
+                    RequiredLabel('Số phòng ngủ *',
                         style: GoogleFonts.beVietnamPro(
                             fontSize: 13, fontWeight: FontWeight.w500)),
                     const SizedBox(height: AppSpacing.xs),
@@ -661,7 +683,7 @@ class _PropertyAddScreenState extends ConsumerState<PropertyAddScreen> {
                       ],
                     ),
                     const SizedBox(height: AppSpacing.md),
-                    Text('Số nhà tắm / WC *',
+                    RequiredLabel('Số nhà tắm / WC *',
                         style: GoogleFonts.beVietnamPro(
                             fontSize: 13, fontWeight: FontWeight.w500)),
                     const SizedBox(height: AppSpacing.xs),
@@ -684,7 +706,6 @@ class _PropertyAddScreenState extends ConsumerState<PropertyAddScreen> {
                   ],
                 ),
               ).animate(delay: 150.ms).fadeIn(duration: 300.ms),
-
               _Section(
                 highlighted: true,
                 child: Column(
@@ -718,7 +739,6 @@ class _PropertyAddScreenState extends ConsumerState<PropertyAddScreen> {
                   ],
                 ),
               ).animate(delay: 200.ms).fadeIn(duration: 300.ms),
-
               _Section(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -727,10 +747,11 @@ class _PropertyAddScreenState extends ConsumerState<PropertyAddScreen> {
                     const SizedBox(height: AppSpacing.sm),
                     _Field(
                         ctrl: _weekdayPriceCtrl,
-                        label: 'Ngày thường (T2-T5)',
+                        label: 'Ngày thường (T2-T5) *',
                         hint: '1.300.000',
                         keyboard: TextInputType.number,
                         inputFormatters: [VndInputFormatter()],
+                        validator: _validateRequiredPrice,
                         suffix: '₫'),
                     const SizedBox(height: AppSpacing.md),
                     _Field(
@@ -739,6 +760,7 @@ class _PropertyAddScreenState extends ConsumerState<PropertyAddScreen> {
                         hint: '1.500.000',
                         keyboard: TextInputType.number,
                         inputFormatters: [VndInputFormatter()],
+                        validator: _validateOptionalPrice,
                         suffix: '₫'),
                     const SizedBox(height: AppSpacing.md),
                     _Field(
@@ -747,11 +769,11 @@ class _PropertyAddScreenState extends ConsumerState<PropertyAddScreen> {
                         hint: '2.000.000',
                         keyboard: TextInputType.number,
                         inputFormatters: [VndInputFormatter()],
+                        validator: _validateOptionalPrice,
                         suffix: '₫'),
                   ],
                 ),
               ).animate(delay: 250.ms).fadeIn(duration: 300.ms),
-
               _Section(
                 highlighted: true,
                 child: Column(
@@ -783,7 +805,6 @@ class _PropertyAddScreenState extends ConsumerState<PropertyAddScreen> {
                   ],
                 ),
               ).animate(delay: 300.ms).fadeIn(duration: 300.ms),
-
               _Section(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -912,7 +933,6 @@ class _PropertyAddScreenState extends ConsumerState<PropertyAddScreen> {
                   ],
                 ),
               ).animate(delay: 350.ms).fadeIn(duration: 300.ms),
-
               _Section(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -973,7 +993,6 @@ class _PropertyAddScreenState extends ConsumerState<PropertyAddScreen> {
                   ],
                 ),
               ).animate(delay: 400.ms).fadeIn(duration: 300.ms),
-
               _Section(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -996,7 +1015,6 @@ class _PropertyAddScreenState extends ConsumerState<PropertyAddScreen> {
                   ],
                 ),
               ).animate(delay: 450.ms).fadeIn(duration: 300.ms),
-
               Padding(
                 padding: const EdgeInsets.all(AppSpacing.md),
                 child: AnimatedSwitcher(
@@ -1077,7 +1095,7 @@ class _Title extends StatelessWidget {
   final String text;
   const _Title(this.text);
   @override
-  Widget build(BuildContext context) => Text(text,
+  Widget build(BuildContext context) => RequiredLabel(text,
       style: GoogleFonts.beVietnamPro(
           fontSize: 13,
           fontWeight: FontWeight.w700,
@@ -1112,7 +1130,7 @@ class _Field extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(label,
+        RequiredLabel(label,
             style: GoogleFonts.beVietnamPro(
                 fontSize: 13,
                 fontWeight: FontWeight.w500,
@@ -1391,12 +1409,11 @@ class _StepperBtn extends StatelessWidget {
         width: 56,
         height: 56,
         decoration: BoxDecoration(
-          color: enabled
-              ? colors.brand.withValues(alpha: 0.1)
-              : colors.bgSurface,
+          color:
+              enabled ? colors.brand.withValues(alpha: 0.1) : colors.bgSurface,
           borderRadius: BorderRadius.circular(AppRadius.md),
-          border: Border.all(
-              color: enabled ? colors.brand : colors.borderDefault),
+          border:
+              Border.all(color: enabled ? colors.brand : colors.borderDefault),
         ),
         child: Icon(icon,
             color: enabled ? colors.brand : colors.textSecondary, size: 26),

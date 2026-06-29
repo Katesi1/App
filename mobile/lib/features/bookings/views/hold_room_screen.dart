@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import '../../../core/utils/phone_input.dart';
 import '../../../core/utils/vnd_input_formatter.dart';
@@ -10,6 +12,7 @@ import '../../../core/theme/app_color_scheme.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../data/models/calendar_model.dart';
 import '../../../shared/widgets/loading_widget.dart';
+import '../../../shared/widgets/required_label.dart';
 import '../../calendar/controllers/calendar_controller.dart';
 import '../../rooms/controllers/room_controller.dart';
 import '../controllers/booking_controller.dart';
@@ -32,8 +35,41 @@ class _HoldRoomScreenState extends ConsumerState<HoldRoomScreen> {
   DateTime? _checkoutDate;
   List<String> _dateConflicts = [];
 
+  // Đếm ngược cooldown giữ phòng (1 phòng / 1 phút / tài khoản).
+  Timer? _cooldownTimer;
+  Duration _cooldownLeft = Duration.zero;
+
+  @override
+  void initState() {
+    super.initState();
+    _syncCooldown();
+  }
+
+  /// Đồng bộ thời gian cooldown còn lại từ controller; chạy timer 1s nếu còn.
+  void _syncCooldown() {
+    final left = ref
+        .read(bookingActionsProvider.notifier)
+        .holdCooldownLeft(widget.propertyId);
+    setState(() => _cooldownLeft = left);
+    _cooldownTimer?.cancel();
+    if (left > Duration.zero) {
+      _cooldownTimer = Timer.periodic(const Duration(seconds: 1), (t) {
+        if (!mounted) {
+          t.cancel();
+          return;
+        }
+        final l = ref
+            .read(bookingActionsProvider.notifier)
+            .holdCooldownLeft(widget.propertyId);
+        setState(() => _cooldownLeft = l);
+        if (l <= Duration.zero) t.cancel();
+      });
+    }
+  }
+
   @override
   void dispose() {
+    _cooldownTimer?.cancel();
     _customerNameCtrl.dispose();
     _customerPhoneCtrl.dispose();
     _depositCtrl.dispose();
@@ -141,8 +177,7 @@ class _HoldRoomScreenState extends ConsumerState<HoldRoomScreen> {
       'checkoutDate': DateFormat('yyyy-MM-dd').format(_checkoutDate!),
       if (_customerNameCtrl.text.trim().isNotEmpty)
         'customerName': _customerNameCtrl.text.trim(),
-      if (_customerPhoneCtrl.text.trim().isNotEmpty)
-        'customerPhone': _customerPhoneCtrl.text.trim(),
+      'customerPhone': _customerPhoneCtrl.text.trim(),
       if (_depositCtrl.text.trim().isNotEmpty)
         'depositAmount':
             double.tryParse(_depositCtrl.text.replaceAll('.', '').trim()),
@@ -242,7 +277,7 @@ class _HoldRoomScreenState extends ConsumerState<HoldRoomScreen> {
                 const SizedBox(height: AppSpacing.lg),
 
                 // ── Date picker ────────────────────────────────────
-                Text(
+                RequiredLabel(
                   'Ngày lưu trú *',
                   style: GoogleFonts.beVietnamPro(
                     fontWeight: FontWeight.w700,
@@ -394,11 +429,10 @@ class _HoldRoomScreenState extends ConsumerState<HoldRoomScreen> {
                   keyboardType: TextInputType.phone,
                   textInputAction: TextInputAction.next,
                   inputFormatters: PhoneInput.formatters,
-                  // Booking field — SĐT khách optional (xem _holdRoom: chỉ
-                  // attach customerPhone khi không rỗng).
-                  validator: PhoneInput.validateOptional,
+                  // SĐT khách bắt buộc để giữ phòng (liên hệ + chống giữ ảo).
+                  validator: PhoneInput.validate,
                   decoration: InputDecoration(
-                    labelText: 'Số điện thoại khách (không bắt buộc)',
+                    label: const RequiredLabel('Số điện thoại khách *'),
                     hintText: '0xxxxxxxxx (10 số)',
                     counterText: '',
                     prefixIcon: Icon(Icons.phone_outlined, color: colors.brand),
@@ -482,10 +516,15 @@ class _HoldRoomScreenState extends ConsumerState<HoldRoomScreen> {
                         )
                       : FilledButton.icon(
                           key: const ValueKey('hold-btn'),
-                          onPressed: _dateConflicts.isEmpty ? _holdRoom : null,
+                          onPressed: (_dateConflicts.isEmpty &&
+                                  _cooldownLeft <= Duration.zero)
+                              ? _holdRoom
+                              : null,
                           icon: const Icon(Icons.lock_clock_rounded),
                           label: Text(
-                            'Giữ phòng 30 phút',
+                            _cooldownLeft <= Duration.zero
+                                ? 'Giữ phòng 30 phút'
+                                : 'Thử lại sau ${_cooldownLeft.inSeconds + 1}s',
                             style: GoogleFonts.beVietnamPro(
                                 fontWeight: FontWeight.w700, fontSize: 15),
                           ),

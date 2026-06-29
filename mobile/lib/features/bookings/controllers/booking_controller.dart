@@ -38,7 +38,9 @@ final bookingDetailProvider =
     FutureProvider.family<BookingModel, String>((ref, id) async {
   final repo = ref.read(bookingRepositoryProvider);
   final result = await repo.getBookingDetail(id);
-  if (result.success) return result.data ?? (throw Exception('Dữ liệu trả về trống'));
+  if (result.success) {
+    return result.data ?? (throw Exception('Dữ liệu trả về trống'));
+  }
   throw Exception(result.message);
 });
 
@@ -49,7 +51,9 @@ final bookingListProvider = FutureProvider.autoDispose
   Future.delayed(const Duration(minutes: 2), link.close);
   final repo = ref.read(bookingRepositoryProvider);
   final result = await repo.getBookings(propertyId: propertyId);
-  if (result.success) return result.data ?? (throw Exception('Dữ liệu trả về trống'));
+  if (result.success) {
+    return result.data ?? (throw Exception('Dữ liệu trả về trống'));
+  }
   throw Exception(result.message);
 });
 
@@ -60,7 +64,9 @@ final calendarProvider =
   final repo = ref.read(bookingRepositoryProvider);
   final result =
       await repo.getCalendar(params.propertyId, params.year, params.month);
-  if (result.success) return result.data ?? (throw Exception('Dữ liệu trả về trống'));
+  if (result.success) {
+    return result.data ?? (throw Exception('Dữ liệu trả về trống'));
+  }
   throw Exception(result.message);
 });
 
@@ -72,6 +78,20 @@ class BookingActionsNotifier extends StateNotifier<AsyncValue<void>> {
   BookingActionsNotifier(this._repo, this._ref)
       : super(const AsyncValue.data(null));
 
+  /// Throttle giữ phòng: 1 tài khoản chỉ giữ được 1 phòng mỗi 1 phút
+  /// (mirror rate-limit của BE). Lưu theo `propertyId`, sống theo phiên đăng
+  /// nhập (provider không autoDispose).
+  static const _holdCooldown = Duration(minutes: 1);
+  final Map<String, DateTime> _lastHoldAt = {};
+
+  /// Thời gian còn lại của cooldown cho phòng [propertyId] (0 nếu hết).
+  Duration holdCooldownLeft(String propertyId) {
+    final last = _lastHoldAt[propertyId];
+    if (last == null) return Duration.zero;
+    final left = _holdCooldown - DateTime.now().difference(last);
+    return left.isNegative ? Duration.zero : left;
+  }
+
   void _refreshAll() {
     _ref.invalidate(bookingListProvider);
     _ref.invalidate(calendarProvider);
@@ -81,9 +101,21 @@ class BookingActionsNotifier extends StateNotifier<AsyncValue<void>> {
   }
 
   Future<bool> hold(Map<String, dynamic> data) async {
+    final propertyId = data['propertyId'] as String?;
+    if (propertyId != null) {
+      final left = holdCooldownLeft(propertyId);
+      if (left > Duration.zero) {
+        state = AsyncValue.error(
+          'Bạn vừa giữ phòng này. Vui lòng thử lại sau ${left.inSeconds + 1} giây.',
+          StackTrace.current,
+        );
+        return false;
+      }
+    }
     state = const AsyncValue.loading();
     final result = await _repo.holdRoom(data);
     if (result.success) {
+      if (propertyId != null) _lastHoldAt[propertyId] = DateTime.now();
       _refreshAll();
       state = const AsyncValue.data(null);
       return true;

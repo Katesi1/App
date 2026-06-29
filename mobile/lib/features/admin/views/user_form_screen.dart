@@ -10,6 +10,7 @@ import '../../../core/theme/app_spacing.dart';
 import '../../../core/utils/helpers.dart';
 import '../../../core/utils/phone_input.dart';
 import '../../../shared/widgets/loading_widget.dart';
+import '../../../shared/widgets/required_label.dart';
 import '../../auth/controllers/auth_controller.dart';
 import '../controllers/user_controller.dart';
 
@@ -519,7 +520,7 @@ class _SectionTitle extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = context.colors;
-    return Text(
+    return RequiredLabel(
       text,
       style: GoogleFonts.beVietnamPro(
         fontSize: 13,
@@ -639,7 +640,7 @@ class _FormField extends StatelessWidget {
         obscureText: obscureText,
         inputFormatters: inputFormatters,
         decoration: InputDecoration(
-          labelText: label,
+          label: RequiredLabel(label),
           hintText: hintText,
           prefixIcon: Icon(icon, color: colors.brand),
           suffixIcon: suffixIcon,

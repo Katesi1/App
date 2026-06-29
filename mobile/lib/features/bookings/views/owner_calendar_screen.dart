@@ -1,14 +1,21 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart' show Clipboard, ClipboardData;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart' show DateFormat;
+import 'package:share_plus/share_plus.dart';
+import 'package:url_launcher/url_launcher.dart';
 
+import '../../../core/constants/app_constants.dart';
 import '../../../core/theme/app_color_scheme.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../data/models/calendar_model.dart';
+import '../../../data/models/user_model.dart';
 import '../../../shared/widgets/calendar_grid_widget.dart';
 import '../../../shared/widgets/loading_widget.dart';
+import '../../auth/controllers/auth_controller.dart';
 import '../../calendar/controllers/calendar_controller.dart';
+import '../../properties/controllers/property_controller.dart';
 
 /// Owner-only calendar — shows only owner's properties (Bearer token).
 /// OWNER/SALE see their own properties, ADMIN sees all.
@@ -110,6 +117,11 @@ class _OwnerCalendarScreenState extends ConsumerState<OwnerCalendarScreen> {
     );
 
     final gridAsync = ref.watch(calendarGridProvider(gridParams));
+    final user = ref.watch(currentUserProvider);
+    // Tải sẵn danh sách phòng để gate share biết khi owner chưa có phòng nào.
+    if (user?.isOwner ?? false) {
+      ref.watch(homestayListProvider(false));
+    }
 
     return Scaffold(
       backgroundColor: colors.bgCanvas,
@@ -119,6 +131,16 @@ class _OwnerCalendarScreenState extends ConsumerState<OwnerCalendarScreen> {
             title: 'Lịch phòng của tôi',
             subtitle: 'Quản lý lịch các căn của bạn',
             showBack: true,
+            actions: [
+              // Chỉ OWNER mới có lịch phòng công khai để chia sẻ qua Zalo.
+              if (user != null && user.isOwner)
+                IconButton(
+                  onPressed: () => _openShareSheet(user),
+                  icon:
+                      const Icon(Icons.ios_share_rounded, color: Colors.white),
+                  tooltip: 'Chia sẻ lịch phòng qua Zalo',
+                ),
+            ],
           ),
           CalendarViewModeToggle(
             viewMode: _viewMode,
@@ -265,8 +287,8 @@ class _OwnerCalendarScreenState extends ConsumerState<OwnerCalendarScreen> {
                   onTap: onRetry,
                   borderRadius: BorderRadius.circular(20),
                   child: Padding(
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 14, vertical: 8),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
@@ -656,6 +678,70 @@ class _OwnerCalendarScreenState extends ConsumerState<OwnerCalendarScreen> {
     }
     return '${(price / 1000).toInt()}k đ/đêm';
   }
+
+  // ─── Chia sẻ lịch phòng qua Zalo ──────────────────────────────────────────
+
+  /// Lý do chưa thể chia sẻ (null = đủ điều kiện). Web sale filter theo
+  /// entitlement (§4.1) → owner chưa đủ điều kiện thì link share sẽ trả 404.
+  String? _shareBlockReason(UserModel user) {
+    if (!user.isKycVerified) {
+      return 'Hoàn tất KYC để chia sẻ lịch phòng';
+    }
+    if (!(user.isSubscriptionActive || user.isInTrial)) {
+      return 'Cần gói dịch vụ đang hoạt động để chia sẻ lịch phòng';
+    }
+    // Chỉ chặn khi đã biết chắc owner không có phòng nào (list đã load).
+    final count = ref.read(homestayListProvider(false)).valueOrNull?.length;
+    if (count == 0) {
+      return 'Tạo phòng trước khi chia sẻ';
+    }
+    return null;
+  }
+
+  void _openShareSheet(UserModel user) {
+    final reason = _shareBlockReason(user);
+    if (reason != null) {
+      AppSnackBar.info(context, reason);
+      return;
+    }
+    final url = AppConstants.zaloCalendarUrl(user.id);
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(AppRadius.xl)),
+      ),
+      builder: (_) => _ShareCalendarSheet(
+        url: url,
+        onShare: (origin) => _doShareNative(url, origin),
+        onCopy: () => _copyLink(url),
+        onPreview: () => _openPreview(url),
+      ),
+    );
+  }
+
+  Future<void> _doShareNative(String url, Rect? sharePositionOrigin) async {
+    await Share.share(
+      'Lịch phòng của tôi tại Halong24h: $url',
+      subject: 'Lịch phòng Halong24h',
+      sharePositionOrigin: sharePositionOrigin,
+    );
+  }
+
+  Future<void> _copyLink(String url) async {
+    await Clipboard.setData(ClipboardData(text: url));
+    if (mounted) AppSnackBar.success(context, 'Đã copy link');
+  }
+
+  Future<void> _openPreview(String url) async {
+    final ok = await launchUrl(
+      Uri.parse(url),
+      mode: LaunchMode.externalApplication,
+    );
+    if (!ok && mounted) {
+      AppSnackBar.error(context, 'Không mở được link');
+    }
+  }
 }
 
 // ─── Action Button ─────────────────────────────────────────────────────────────
@@ -731,6 +817,179 @@ class _ActionBtn extends StatelessWidget {
             ],
           ),
         ),
+      ),
+    );
+  }
+}
+
+// ─── Share calendar bottom sheet ───────────────────────────────────────────────
+class _ShareCalendarSheet extends StatelessWidget {
+  final String url;
+  final ValueChanged<Rect?> onShare;
+  final VoidCallback onCopy;
+  final VoidCallback onPreview;
+
+  const _ShareCalendarSheet({
+    required this.url,
+    required this.onShare,
+    required this.onCopy,
+    required this.onPreview,
+  });
+
+  /// iPad cần `sharePositionOrigin` để neo popover của share sheet.
+  static Rect? _rectFromContext(BuildContext context) {
+    final box = context.findRenderObject() as RenderBox?;
+    if (box == null || !box.hasSize) return null;
+    return box.localToGlobal(Offset.zero) & box.size;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.colors;
+    return Container(
+      decoration: BoxDecoration(
+        color: colors.bgSurface,
+        borderRadius:
+            const BorderRadius.vertical(top: Radius.circular(AppRadius.xl)),
+      ),
+      padding: const EdgeInsets.fromLTRB(24, 16, 24, 32),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Center(
+            child: Container(
+              width: 40,
+              height: 4,
+              decoration: BoxDecoration(
+                color: colors.borderDefault,
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+          ),
+          const SizedBox(height: 20),
+          Text(
+            'Chia sẻ lịch phòng qua Zalo',
+            style: GoogleFonts.beVietnamPro(
+              fontSize: 17,
+              fontWeight: FontWeight.w700,
+              color: colors.textPrimary,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            'Gửi link này vào nhóm Zalo — khách & nhân viên bấm vào để xem '
+            'lịch trống, giá phòng và gọi cho bạn (không cần cài app).',
+            style: GoogleFonts.beVietnamPro(
+              fontSize: 13,
+              height: 1.45,
+              color: colors.textSecondary,
+            ),
+          ),
+          const SizedBox(height: 16),
+          // Link preview box.
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+            decoration: BoxDecoration(
+              color: colors.bgSurfaceContainer,
+              borderRadius: BorderRadius.circular(AppRadius.md),
+              border: Border.all(color: colors.borderDefault),
+            ),
+            child: Row(
+              children: [
+                Icon(Icons.link_rounded, size: 18, color: colors.textTertiary),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    url,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: GoogleFonts.beVietnamPro(
+                      fontSize: 13,
+                      color: colors.textSecondary,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 16),
+          // Primary: native share sheet.
+          Builder(
+            builder: (btnCtx) => SizedBox(
+              width: double.infinity,
+              child: FilledButton.icon(
+                onPressed: () {
+                  final origin = _rectFromContext(btnCtx);
+                  Navigator.pop(context);
+                  onShare(origin);
+                },
+                icon: const Icon(Icons.ios_share_rounded, size: 18),
+                label: Text(
+                  'Chia sẻ',
+                  style: GoogleFonts.beVietnamPro(
+                    fontWeight: FontWeight.w700,
+                    fontSize: 15,
+                  ),
+                ),
+                style: FilledButton.styleFrom(
+                  backgroundColor: colors.brand,
+                  foregroundColor: Colors.white,
+                  minimumSize: const Size(double.infinity, 50),
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(height: 10),
+          // Secondary: copy + preview.
+          Row(
+            children: [
+              Expanded(
+                child: OutlinedButton.icon(
+                  onPressed: () {
+                    Navigator.pop(context);
+                    onCopy();
+                  },
+                  icon: const Icon(Icons.copy_rounded, size: 17),
+                  label: Text(
+                    'Copy link',
+                    style: GoogleFonts.beVietnamPro(
+                      fontWeight: FontWeight.w600,
+                      fontSize: 14,
+                    ),
+                  ),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: colors.textPrimary,
+                    minimumSize: const Size(double.infinity, 48),
+                    side: BorderSide(color: colors.borderDefault),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: OutlinedButton.icon(
+                  onPressed: () {
+                    Navigator.pop(context);
+                    onPreview();
+                  },
+                  icon: const Icon(Icons.open_in_new_rounded, size: 17),
+                  label: Text(
+                    'Mở thử',
+                    style: GoogleFonts.beVietnamPro(
+                      fontWeight: FontWeight.w600,
+                      fontSize: 14,
+                    ),
+                  ),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: colors.textPrimary,
+                    minimumSize: const Size(double.infinity, 48),
+                    side: BorderSide(color: colors.borderDefault),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ],
       ),
     );
   }

@@ -10,9 +10,15 @@ class AppConstants {
   /// images never leak into another account (see VerifyFlowController).
   static const String verifyDraftKey = 'verify_flow_draft_v1';
 
-  static const String appStoreUrl =
-      'https://apps.apple.com/app/halong24h/id000000000';
-  static const String appDownloadPage = 'https://halong24h.vn/download';
+  /// Prefix trang lịch phòng công khai của OWNER (web sale, không cần login).
+  /// OWNER share `${zaloCalendarUrlPrefix}{ownerId}` để khách/SALE xem lịch +
+  /// gọi Zalo. Domain prod cố định nên hardcode (xem spec Share link Zalo).
+  static const String zaloCalendarUrlPrefix =
+      'https://sale.halong24h.com/zalo-cal/';
+
+  /// Build link lịch phòng công khai cho 1 OWNER.
+  static String zaloCalendarUrl(String ownerId) =>
+      '$zaloCalendarUrlPrefix$ownerId';
 
   // Support contact — shown on the KYC pending screen + anywhere the user
   // needs to reach the Halong24h team.
