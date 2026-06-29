@@ -1,5 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../data/repositories/dashboard_repository.dart';
+import '../../../data/repositories/report_repository.dart';
 
 /// Dashboard KPI data model
 class DashboardStats {
@@ -46,6 +47,39 @@ class DashboardStats {
 
 final dashboardRepositoryProvider =
     Provider<DashboardRepository>((ref) => DashboardRepository());
+
+/// Shared report repository (data layer) — reused by the dashboard revenue
+/// chart. Not a cross-feature import: ReportRepository lives in `data/`.
+final dashboardReportRepositoryProvider =
+    Provider<ReportRepository>((ref) => ReportRepository());
+
+/// One day's revenue for the dashboard monthly chart.
+class DailyRevenue {
+  final DateTime date;
+  final double revenue;
+
+  const DailyRevenue({required this.date, required this.revenue});
+}
+
+/// Daily revenue for the current month — feeds the dashboard revenue chart.
+/// Source: `/reports?period=month` (`revenueByDay`), already scoped by the
+/// backend to the current user's own properties.
+final monthlyRevenueTrendProvider =
+    FutureProvider.autoDispose<List<DailyRevenue>>((ref) async {
+  final link = ref.keepAlive();
+  Future.delayed(const Duration(minutes: 2), link.close);
+  final repo = ref.read(dashboardReportRepositoryProvider);
+  final result = await repo.getReport(period: 'month');
+  if (!result.success) throw Exception(result.message);
+  final raw = result.data?['revenueByDay'] as List? ?? const [];
+  return raw
+      .whereType<Map<String, dynamic>>()
+      .map((e) => DailyRevenue(
+            date: DateTime.parse(e['date'] as String),
+            revenue: (e['revenue'] as num?)?.toDouble() ?? 0,
+          ))
+      .toList();
+});
 
 /// Dismiss state for "STAFF not assigned to owner" banner.
 /// Invalidated on each new login so banner shows once per session.

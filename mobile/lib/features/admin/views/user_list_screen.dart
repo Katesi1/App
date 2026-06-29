@@ -51,7 +51,7 @@ class _UserListScreenState extends ConsumerState<UserListScreen>
     return StaffEntitlement.evaluate(
       isAdmin: user?.isAdmin ?? false,
       isOwner: user?.isOwner ?? false,
-      isKycApproved: user?.isKycApproved ?? false,
+      isKycApproved: user?.isKycVerified ?? false,
       subscriptionStatus: user?.subscriptionStatus ?? 'none',
       planId: user?.subscriptionPlanId,
       usedSlots: used,

@@ -2,6 +2,9 @@
     <uses-permission android:name="android.permission.INTERNET" />
     <!-- FCM cần POST_NOTIFICATIONS từ Android 13 (API 33+) -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <!-- Map picker: lấy vị trí hiện tại ghim cơ sở lên bản đồ -->
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
+    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
     <application
         android:label="Halong24h"
         android:name="${applicationName}"

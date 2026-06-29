@@ -29,6 +29,11 @@ class UserModel {
   @JsonKey(defaultValue: 'none')
   final String kycStatus; // none | pending | approved | rejected
   final String? kycSubmissionId;
+
+  // Admin-granted KYC bypass (BE §2.5, v1.16). When true the user can create
+  // properties without an approved KYC — treated as verified everywhere.
+  @JsonKey(defaultValue: false)
+  final bool kycBypass;
   @JsonKey(defaultValue: 'none')
   final String
       subscriptionStatus; // none | trial | active | past_due | cancelled
@@ -66,6 +71,7 @@ class UserModel {
     this.saleMembershipStatus,
     this.kycStatus = 'none',
     this.kycSubmissionId,
+    this.kycBypass = false,
     this.subscriptionStatus = 'none',
     this.subscriptionPlanId,
     this.subscriptionCycle,
@@ -155,9 +161,16 @@ class UserModel {
   bool get isKycRejected => kycStatus == 'rejected';
   bool get isKycNone => kycStatus == 'none';
 
-  /// OWNERs without an approved KYC are blocked from creating/editing
-  /// properties. ADMIN and SALE don't go through KYC.
-  bool get needsKyc => isOwner && !isKycApproved;
+  /// Derived verified flag (BE §2.5): an admin-granted [kycBypass] counts as
+  /// verified regardless of [kycStatus]. Use this — not [isKycApproved] — for
+  /// any gate that decides whether the user may create/edit properties or
+  /// whether the KYC banner/CTA should show.
+  bool get isKycVerified => kycBypass || isKycApproved;
+
+  /// OWNERs who are not KYC-verified are blocked from creating/editing
+  /// properties. ADMIN and SALE don't go through KYC. A [kycBypass] owner is
+  /// verified, so they don't need KYC.
+  bool get needsKyc => isOwner && !isKycVerified;
 
   /// Mutate permission for management data: ADMIN/OWNER always, SALE only
   /// when their membership is active.
@@ -204,6 +217,7 @@ class UserModel {
     String? saleMembershipStatus,
     String? kycStatus,
     String? kycSubmissionId,
+    bool? kycBypass,
     String? subscriptionStatus,
     String? subscriptionPlanId,
     String? subscriptionCycle,
@@ -233,6 +247,7 @@ class UserModel {
         saleMembershipStatus: saleMembershipStatus ?? this.saleMembershipStatus,
         kycStatus: kycStatus ?? this.kycStatus,
         kycSubmissionId: kycSubmissionId ?? this.kycSubmissionId,
+        kycBypass: kycBypass ?? this.kycBypass,
         subscriptionStatus: subscriptionStatus ?? this.subscriptionStatus,
         subscriptionPlanId: subscriptionPlanId ?? this.subscriptionPlanId,
         subscriptionCycle: subscriptionCycle ?? this.subscriptionCycle,

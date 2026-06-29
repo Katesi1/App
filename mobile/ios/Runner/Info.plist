@@ -97,6 +97,10 @@
 		     sẽ bị iOS crash app với privacy violation. -->
 		<key>NSMicrophoneUsageDescription</key>
 		<string>Halong24h không thu âm — chỉ dùng camera để quét CCCD và xác minh khuôn mặt.</string>
+		<!-- ── Quyền vị trí cho map picker (chọn vị trí cơ sở khi tạo phòng) ──
+		     Chỉ dùng khi app đang mở để lấy vị trí hiện tại ghim lên bản đồ. -->
+		<key>NSLocationWhenInUseUsageDescription</key>
+		<string>Halong24h cần vị trí của bạn để ghim chính xác vị trí cơ sở (homestay/villa) lên bản đồ khi tạo phòng.</string>
 		<!-- App only uses standard HTTPS + iOS keychain — no custom crypto.
 		     Setting this to false skips App Store Connect's Export Compliance
 		     prompt on every upload (would otherwise block TestFlight install

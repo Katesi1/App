@@ -1,3 +1,4 @@
+import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -104,7 +105,7 @@ class DashboardScreen extends ConsumerWidget {
                 // /auth/profile (backend), NOT verifyFlowController (local).
                 // The banner itself drops all payment/trial wording on iOS
                 // (see _VerifyCTABanner).
-                if (user != null && user.isOwner && !user.isKycApproved)
+                if (user != null && user.isOwner && !user.isKycVerified)
                   Padding(
                     padding: const EdgeInsets.fromLTRB(16, 0, 16, 0),
                     child: Transform.translate(
@@ -121,7 +122,7 @@ class DashboardScreen extends ConsumerWidget {
                 if (AppConfig.showPaidUpgradeUI &&
                     user != null &&
                     user.isOwner &&
-                    user.isKycApproved &&
+                    user.isKycVerified &&
                     !user.isSubscriptionActive)
                   Padding(
                     padding: const EdgeInsets.fromLTRB(16, 0, 16, 0),
@@ -219,9 +220,9 @@ class DashboardScreen extends ConsumerWidget {
                               child: _KpiCard(
                                 label: 'Tổng phòng',
                                 value: AppHelpers.formatIntOrDash(
-                                    stats.globalTotalRooms),
+                                    stats.totalRooms),
                                 sub:
-                                    '${AppHelpers.formatIntOrDash(stats.totalRooms)} của tôi',
+                                    '${AppHelpers.formatIntOrDash(stats.activeRooms)} đang hoạt động',
                                 accentColor: colors.brand,
                                 icon: Icons.apartment_rounded,
                               ),
@@ -231,9 +232,8 @@ class DashboardScreen extends ConsumerWidget {
                               child: _KpiCard(
                                 label: 'Phòng trống',
                                 value: AppHelpers.formatIntOrDash(
-                                    stats.globalEmptyRooms),
-                                sub:
-                                    '${AppHelpers.formatIntOrDash(stats.emptyRooms)} của tôi',
+                                    stats.emptyRooms),
+                                sub: 'Sẵn sàng đón khách',
                                 accentColor: colors.success,
                                 icon: Icons.check_circle_outline_rounded,
                               ),
@@ -279,6 +279,13 @@ class DashboardScreen extends ConsumerWidget {
                     todayRevenue: stats.todayRevenue,
                     now: now,
                   ),
+                ),
+
+                // ── Daily revenue chart (current month) ─────────────────
+                const SizedBox(height: 12),
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 0),
+                  child: _MonthlyRevenueChartCard(month: now.month),
                 ),
 
                 const SizedBox(height: 28),
@@ -957,6 +964,217 @@ class _RevenueCard extends StatelessWidget {
           ),
         ),
       ),
+    );
+  }
+}
+
+// ─── Monthly Revenue Chart ────────────────────────────────────────────────────
+/// Area-line chart of the current user's daily revenue this month.
+/// Data: [monthlyRevenueTrendProvider] (`/reports?period=month` → revenueByDay).
+class _MonthlyRevenueChartCard extends ConsumerWidget {
+  final int month;
+  const _MonthlyRevenueChartCard({required this.month});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final colors = context.colors;
+    final async = ref.watch(monthlyRevenueTrendProvider);
+
+    return Container(
+      padding: const EdgeInsets.fromLTRB(16, 14, 16, 12),
+      decoration: BoxDecoration(
+        color: colors.bgSurface,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(
+              alpha: Theme.of(context).brightness == Brightness.dark
+                  ? 0.30
+                  : 0.06,
+            ),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.show_chart_rounded, size: 16, color: colors.success),
+              const SizedBox(width: 6),
+              Text(
+                'DOANH THU THEO NGÀY · THÁNG $month',
+                style: GoogleFonts.beVietnamPro(
+                  fontSize: 10,
+                  fontWeight: FontWeight.w600,
+                  color: colors.textSecondary,
+                  letterSpacing: 1.0,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+          SizedBox(
+            height: 150,
+            child: async.when(
+              loading: () => Center(
+                child: SizedBox(
+                  height: 22,
+                  width: 22,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2.5,
+                    color: colors.success,
+                  ),
+                ),
+              ),
+              error: (_, __) => Center(
+                child: Text(
+                  'Chưa tải được biểu đồ doanh thu',
+                  style: GoogleFonts.beVietnamPro(
+                    fontSize: 12,
+                    color: colors.textTertiary,
+                  ),
+                ),
+              ),
+              data: (points) {
+                final hasRevenue = points.any((p) => p.revenue > 0);
+                if (points.isEmpty || !hasRevenue) {
+                  return Center(
+                    child: Text(
+                      'Chưa có doanh thu trong tháng này',
+                      style: GoogleFonts.beVietnamPro(
+                        fontSize: 12,
+                        color: colors.textTertiary,
+                      ),
+                    ),
+                  );
+                }
+                return LineChart(_buildChart(points, colors));
+              },
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  LineChartData _buildChart(List<DailyRevenue> points, AppColorScheme colors) {
+    final spots = <FlSpot>[];
+    for (var i = 0; i < points.length; i++) {
+      spots.add(FlSpot(i.toDouble(), points[i].revenue / 1000000)); // → triệu
+    }
+
+    final maxY = spots.map((s) => s.y).reduce((a, b) => a > b ? a : b);
+    final yStep = (maxY / 3).ceilToDouble();
+
+    return LineChartData(
+      lineTouchData: LineTouchData(
+        touchTooltipData: LineTouchTooltipData(
+          getTooltipColor: (_) => colors.textPrimary,
+          getTooltipItems: (touched) => touched.map((s) {
+            final p = points[s.x.toInt()];
+            return LineTooltipItem(
+              '${p.date.day}/${p.date.month} · '
+              '${AppHelpers.formatPriceOrDash(p.revenue)}',
+              GoogleFonts.beVietnamPro(
+                fontSize: 11,
+                fontWeight: FontWeight.w600,
+                color: Colors.white,
+              ),
+            );
+          }).toList(),
+        ),
+      ),
+      gridData: FlGridData(
+        show: true,
+        drawVerticalLine: false,
+        horizontalInterval: yStep > 0 ? yStep : 1,
+        getDrawingHorizontalLine: (_) => FlLine(
+          color: colors.borderSubtle,
+          strokeWidth: 1,
+          dashArray: const [4, 4],
+        ),
+      ),
+      borderData: FlBorderData(show: false),
+      titlesData: FlTitlesData(
+        leftTitles: AxisTitles(
+          sideTitles: SideTitles(
+            showTitles: true,
+            reservedSize: 32,
+            interval: yStep > 0 ? yStep : 1,
+            getTitlesWidget: (value, _) => Padding(
+              padding: const EdgeInsets.only(right: 4),
+              child: Text(
+                '${value.toStringAsFixed(0)}tr',
+                style: GoogleFonts.beVietnamPro(
+                  fontSize: 9,
+                  color: colors.textTertiary,
+                ),
+              ),
+            ),
+          ),
+        ),
+        rightTitles:
+            const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+        topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+        bottomTitles: AxisTitles(
+          sideTitles: SideTitles(
+            showTitles: true,
+            reservedSize: 22,
+            interval: (points.length / 5).ceilToDouble(),
+            getTitlesWidget: (value, _) {
+              final idx = value.toInt();
+              if (idx < 0 || idx >= points.length) {
+                return const SizedBox.shrink();
+              }
+              return Padding(
+                padding: const EdgeInsets.only(top: 6),
+                child: Text(
+                  '${points[idx].date.day}',
+                  style: GoogleFonts.beVietnamPro(
+                    fontSize: 9,
+                    color: colors.textTertiary,
+                  ),
+                ),
+              );
+            },
+          ),
+        ),
+      ),
+      minY: 0,
+      maxY: maxY * 1.15,
+      lineBarsData: [
+        LineChartBarData(
+          spots: spots,
+          isCurved: true,
+          curveSmoothness: 0.3,
+          color: colors.success,
+          barWidth: 2.5,
+          dotData: FlDotData(
+            show: true,
+            checkToShowDot: (spot, _) => spot.x.toInt() % 3 == 0,
+            getDotPainter: (spot, _, __, ___) => FlDotCirclePainter(
+              radius: 2.5,
+              color: colors.success,
+              strokeColor: colors.bgSurface,
+              strokeWidth: 1.5,
+            ),
+          ),
+          belowBarData: BarAreaData(
+            show: true,
+            gradient: LinearGradient(
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+              colors: [
+                colors.success.withValues(alpha: 0.18),
+                colors.success.withValues(alpha: 0),
+              ],
+            ),
+          ),
+        ),
+      ],
     );
   }
 }

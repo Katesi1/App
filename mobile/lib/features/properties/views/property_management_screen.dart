@@ -339,7 +339,7 @@ class _PropertyManagementScreenState
     // Gate on the SERVER truth (user.kycStatus), not the local verify draft —
     // a pending owner must NOT be offered KYC again.
     final needsVerify =
-        (user?.isOwner ?? false) && !(user?.isKycApproved ?? false);
+        (user?.isOwner ?? false) && !(user?.isKycVerified ?? false);
 
     // KYC (identity) is the only gate — no subscription/payment requirement.
     if (!needsVerify) {

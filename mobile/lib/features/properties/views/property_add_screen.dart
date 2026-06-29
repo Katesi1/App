@@ -1,6 +1,8 @@
 import 'dart:io';
+import 'package:geolocator/geolocator.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart' show TextInputFormatter;
+import 'package:flutter/services.dart'
+    show TextInputFormatter, LengthLimitingTextInputFormatter;
 import '../../../core/utils/vnd_input_formatter.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -14,6 +16,18 @@ import '../../../shared/widgets/loading_widget.dart';
 import '../../../shared/widgets/subscription_locked_sheet.dart';
 import '../../rooms/controllers/room_controller.dart';
 import '../controllers/property_controller.dart';
+
+/// Vị trí cơ sở lấy từ GPS (lat/lng) + link Google Maps tự sinh.
+class PickedLocation {
+  final double latitude;
+  final double longitude;
+
+  const PickedLocation(this.latitude, this.longitude);
+
+  /// Link Google Maps chuẩn để lưu vào `mapLink` (mở được cả web + app).
+  String get mapLink =>
+      'https://www.google.com/maps/search/?api=1&query=$latitude,$longitude';
+}
 
 class PropertyAddScreen extends ConsumerStatefulWidget {
   const PropertyAddScreen({super.key});
@@ -37,10 +51,13 @@ class _PropertyAddScreenState extends ConsumerState<PropertyAddScreen> {
   final _nameCtrl = TextEditingController();
   final _descriptionCtrl = TextEditingController();
   final _addressCtrl = TextEditingController();
-  final _mapLinkCtrl = TextEditingController();
+
+  // Vị trí cơ sở lấy từ GPS (lat/lng + link).
+  PickedLocation? _picked;
+  bool _locating = false;
 
   int _bedrooms = 5;
-  int _bathrooms = 2;
+  int _bathrooms = 5;
 
   final _standardGuestsCtrl = TextEditingController();
   final _maxGuestsCtrl = TextEditingController();
@@ -140,7 +157,6 @@ class _PropertyAddScreenState extends ConsumerState<PropertyAddScreen> {
     _nameCtrl.dispose();
     _descriptionCtrl.dispose();
     _addressCtrl.dispose();
-    _mapLinkCtrl.dispose();
     _rulesCtrl.dispose();
     _notesCtrl.dispose();
     // _bathrooms is an int field, no controller to dispose
@@ -154,6 +170,13 @@ class _PropertyAddScreenState extends ConsumerState<PropertyAddScreen> {
     super.dispose();
   }
 
+  @override
+  void initState() {
+    super.initState();
+    // Điền sẵn nhà tắm + sức chứa theo số phòng ngủ mặc định.
+    _applyRoomDefaults();
+  }
+
   Future<void> _pickImages() async {
     final images = await ImagePicker().pickMultiImage(imageQuality: 80);
     if (images.isNotEmpty && mounted) {
@@ -164,6 +187,77 @@ class _PropertyAddScreenState extends ConsumerState<PropertyAddScreen> {
           }
         }
       });
+    }
+  }
+
+  /// Chọn số phòng ngủ → tự điền nhà tắm + sức chứa cho bớt thao tác.
+  void _selectBedrooms(int count) {
+    setState(() {
+      _bedrooms = count;
+      _applyRoomDefaults();
+    });
+  }
+
+  /// Quy ước tự điền: nhà tắm = số phòng ngủ (studio/1PN → 1 WC);
+  /// tiêu chuẩn = tối đa = số phòng ngủ × 2 (studio tính như 1 phòng).
+  /// Người dùng vẫn có thể chỉnh tay sau đó.
+  void _applyRoomDefaults() {
+    final effectiveRooms = _bedrooms == 0 ? 1 : _bedrooms;
+    _bathrooms = effectiveRooms;
+    final guests = (effectiveRooms * 2).toString();
+    _standardGuestsCtrl.text = guests;
+    _maxGuestsCtrl.text = guests;
+  }
+
+  /// Bottom sheet nhập số phòng ngủ lớn (≥10).
+  Future<void> _openBedroomCountSheet() async {
+    final result = await showModalBottomSheet<int>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => _BedroomCountSheet(
+        initial: _bedrooms >= 10 ? _bedrooms : 10,
+      ),
+    );
+    if (result != null) _selectBedrooms(result);
+  }
+
+  /// Lấy vị trí hiện tại (GPS) ghim cho cơ sở. Không cần Google Maps/billing.
+  Future<void> _useCurrentLocation() async {
+    if (_locating) return;
+    setState(() => _locating = true);
+    try {
+      final enabled = await Geolocator.isLocationServiceEnabled();
+      if (!enabled) {
+        if (mounted) {
+          AppSnackBar.error(context, 'Vui lòng bật dịch vụ vị trí (GPS)');
+        }
+        return;
+      }
+      var permission = await Geolocator.checkPermission();
+      if (permission == LocationPermission.denied) {
+        permission = await Geolocator.requestPermission();
+      }
+      if (permission == LocationPermission.denied ||
+          permission == LocationPermission.deniedForever) {
+        if (mounted) {
+          AppSnackBar.error(context, 'Chưa cấp quyền truy cập vị trí');
+        }
+        return;
+      }
+      final pos = await Geolocator.getCurrentPosition(
+        locationSettings:
+            const LocationSettings(accuracy: LocationAccuracy.high),
+      );
+      if (mounted) {
+        setState(() => _picked = PickedLocation(pos.latitude, pos.longitude));
+      }
+    } catch (_) {
+      if (mounted) {
+        AppSnackBar.error(context, 'Không lấy được vị trí hiện tại');
+      }
+    } finally {
+      if (mounted) setState(() => _locating = false);
     }
   }
 
@@ -192,8 +286,11 @@ class _PropertyAddScreenState extends ConsumerState<PropertyAddScreen> {
         'rules': _notesCtrl.text.trim().isNotEmpty
             ? '${_rulesCtrl.text.trim()}\n\n--- LƯU Ý ---\n${_notesCtrl.text.trim()}'
             : _rulesCtrl.text.trim(),
-      if (_mapLinkCtrl.text.trim().isNotEmpty)
-        'mapLink': _mapLinkCtrl.text.trim(),
+      if (_picked != null) ...{
+        'latitude': _picked!.latitude,
+        'longitude': _picked!.longitude,
+        'mapLink': _picked!.mapLink,
+      },
       if (_weekdayPriceCtrl.text.isNotEmpty)
         'weekdayPrice': _parsePrice(_weekdayPriceCtrl.text),
       if (_weekendPriceCtrl.text.isNotEmpty)
@@ -452,6 +549,9 @@ class _PropertyAddScreenState extends ConsumerState<PropertyAddScreen> {
                         ctrl: _codeCtrl,
                         label: 'Mã căn *',
                         hint: 'VD: C3-06',
+                        inputFormatters: [
+                          LengthLimitingTextInputFormatter(20),
+                        ],
                         validator: (v) =>
                             v?.trim().isEmpty == true ? 'Nhập mã căn' : null),
                     const SizedBox(height: AppSpacing.md),
@@ -496,10 +596,16 @@ class _PropertyAddScreenState extends ConsumerState<PropertyAddScreen> {
                         label: 'Khu vực / Địa chỉ',
                         hint: 'VD: Bãi Cháy, Hạ Long'),
                     const SizedBox(height: AppSpacing.md),
-                    _Field(
-                        ctrl: _mapLinkCtrl,
-                        label: 'Link Google Maps',
-                        hint: 'Dán link Google Maps tại đây'),
+                    Text('Vị trí cơ sở',
+                        style: GoogleFonts.beVietnamPro(
+                            fontSize: 13, fontWeight: FontWeight.w500)),
+                    const SizedBox(height: 6),
+                    _LocationTile(
+                      picked: _picked,
+                      loading: _locating,
+                      onTap: _useCurrentLocation,
+                      onClear: () => setState(() => _picked = null),
+                    ),
                   ],
                 ),
               ).animate(delay: 100.ms).fadeIn(duration: 300.ms),
@@ -521,16 +627,16 @@ class _PropertyAddScreenState extends ConsumerState<PropertyAddScreen> {
                         _Chip(
                             label: 'Studio',
                             on: _bedrooms == 0,
-                            onTap: () => setState(() => _bedrooms = 0)),
+                            onTap: () => _selectBedrooms(0)),
                         for (var i = 1; i <= 9; i++)
                           _Chip(
                               label: '${i}PN',
                               on: _bedrooms == i,
-                              onTap: () => setState(() => _bedrooms = i)),
+                              onTap: () => _selectBedrooms(i)),
                         _Chip(
-                            label: '10PN+',
+                            label: _bedrooms >= 10 ? '${_bedrooms}PN' : '10PN+',
                             on: _bedrooms >= 10,
-                            onTap: () => setState(() => _bedrooms = 10)),
+                            onTap: _openBedroomCountSheet),
                       ],
                     ),
                     const SizedBox(height: AppSpacing.md),
@@ -1044,6 +1150,225 @@ class _Chip extends StatelessWidget {
                 fontSize: 13,
                 fontWeight: FontWeight.w600,
                 color: on ? Colors.white : colors.textPrimary)),
+      ),
+    );
+  }
+}
+
+/// Nút lấy vị trí hiện tại (GPS) cho cơ sở — không cần Google Maps/billing.
+class _LocationTile extends StatelessWidget {
+  final PickedLocation? picked;
+  final bool loading;
+  final VoidCallback onTap;
+  final VoidCallback onClear;
+
+  const _LocationTile({
+    required this.picked,
+    required this.loading,
+    required this.onTap,
+    required this.onClear,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.colors;
+    final has = picked != null;
+    return GestureDetector(
+      onTap: loading ? null : onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+        decoration: BoxDecoration(
+          color: has ? colors.brand.withValues(alpha: 0.08) : colors.bgSurface,
+          borderRadius: BorderRadius.circular(AppRadius.md),
+          border: Border.all(
+            color: has ? colors.brand : colors.borderDefault,
+            width: has ? 1.5 : 1,
+          ),
+        ),
+        child: Row(
+          children: [
+            if (loading)
+              SizedBox(
+                width: 22,
+                height: 22,
+                child: CircularProgressIndicator(
+                    strokeWidth: 2.5, color: colors.brand),
+              )
+            else
+              Icon(has ? Icons.place_rounded : Icons.my_location_rounded,
+                  color: has ? colors.brand : colors.textSecondary, size: 22),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    loading
+                        ? 'Đang lấy vị trí...'
+                        : (has ? 'Đã ghim vị trí' : 'Lấy vị trí hiện tại'),
+                    style: GoogleFonts.beVietnamPro(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                      color: has ? colors.textPrimary : colors.textSecondary,
+                    ),
+                  ),
+                  if (has && !loading) ...[
+                    const SizedBox(height: 2),
+                    Text(
+                      '${picked!.latitude.toStringAsFixed(6)}, '
+                      '${picked!.longitude.toStringAsFixed(6)}',
+                      style: GoogleFonts.beVietnamPro(
+                        fontSize: 12,
+                        color: colors.textSecondary,
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+            if (has && !loading)
+              GestureDetector(
+                onTap: onClear,
+                child: Icon(Icons.close_rounded,
+                    size: 20, color: colors.textSecondary),
+              )
+            else if (!loading)
+              Icon(Icons.chevron_right_rounded,
+                  size: 22, color: colors.textSecondary),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Bottom sheet nhập số phòng ngủ lớn (≥10) với stepper + nhập tay.
+class _BedroomCountSheet extends StatefulWidget {
+  final int initial;
+  const _BedroomCountSheet({required this.initial});
+
+  @override
+  State<_BedroomCountSheet> createState() => _BedroomCountSheetState();
+}
+
+class _BedroomCountSheetState extends State<_BedroomCountSheet> {
+  static const _min = 10;
+  static const _max = 99;
+  late int _count = widget.initial.clamp(_min, _max);
+
+  void _set(int v) => setState(() => _count = v.clamp(_min, _max));
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.colors;
+    return Container(
+      padding: EdgeInsets.fromLTRB(
+        AppSpacing.lg,
+        AppSpacing.md,
+        AppSpacing.lg,
+        AppSpacing.lg + MediaQuery.of(context).viewInsets.bottom,
+      ),
+      decoration: BoxDecoration(
+        color: colors.bgSurface,
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Center(
+            child: Container(
+              width: 40,
+              height: 4,
+              decoration: BoxDecoration(
+                color: colors.borderDefault,
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+          ),
+          const SizedBox(height: AppSpacing.lg),
+          Text('Số phòng ngủ',
+              style: GoogleFonts.beVietnamPro(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w700,
+                  color: colors.textPrimary)),
+          const SizedBox(height: 4),
+          Text('Nhập số phòng ngủ cho cơ sở lớn (từ 10 trở lên)',
+              style: GoogleFonts.beVietnamPro(
+                  fontSize: 13, color: colors.textSecondary)),
+          const SizedBox(height: AppSpacing.lg),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              _StepperBtn(
+                icon: Icons.remove_rounded,
+                enabled: _count > _min,
+                onTap: () => _set(_count - 1),
+              ),
+              Column(
+                children: [
+                  Text('$_count',
+                      style: GoogleFonts.beVietnamPro(
+                          fontSize: 40,
+                          fontWeight: FontWeight.w700,
+                          color: colors.brand)),
+                  Text('phòng ngủ',
+                      style: GoogleFonts.beVietnamPro(
+                          fontSize: 12, color: colors.textSecondary)),
+                ],
+              ),
+              _StepperBtn(
+                icon: Icons.add_rounded,
+                enabled: _count < _max,
+                onTap: () => _set(_count + 1),
+              ),
+            ],
+          ),
+          const SizedBox(height: AppSpacing.lg),
+          FilledButton(
+            onPressed: () => Navigator.of(context).pop(_count),
+            style: FilledButton.styleFrom(
+              backgroundColor: colors.brand,
+              foregroundColor: Colors.white,
+              minimumSize: const Size(double.infinity, 52),
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(AppRadius.md)),
+            ),
+            child: Text('Xác nhận',
+                style: GoogleFonts.beVietnamPro(
+                    fontWeight: FontWeight.w700, fontSize: 15)),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _StepperBtn extends StatelessWidget {
+  final IconData icon;
+  final bool enabled;
+  final VoidCallback onTap;
+  const _StepperBtn(
+      {required this.icon, required this.enabled, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.colors;
+    return GestureDetector(
+      onTap: enabled ? onTap : null,
+      child: Container(
+        width: 56,
+        height: 56,
+        decoration: BoxDecoration(
+          color: enabled
+              ? colors.brand.withValues(alpha: 0.1)
+              : colors.bgSurface,
+          borderRadius: BorderRadius.circular(AppRadius.md),
+          border: Border.all(
+              color: enabled ? colors.brand : colors.borderDefault),
+        ),
+        child: Icon(icon,
+            color: enabled ? colors.brand : colors.textSecondary, size: 26),
       ),
     );
   }
