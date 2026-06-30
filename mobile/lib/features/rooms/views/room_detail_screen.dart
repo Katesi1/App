@@ -42,7 +42,6 @@ class RoomDetailScreen extends ConsumerWidget {
             SliverToBoxAdapter(
               child: _ImageGalleryHeader(room: room, roomId: roomId),
             ),
-
             SliverToBoxAdapter(
               child: Padding(
                 padding: const EdgeInsets.fromLTRB(20, 16, 20, 40),
@@ -105,9 +104,7 @@ class RoomDetailScreen extends ConsumerWidget {
                         .animate()
                         .fadeIn(duration: 300.ms)
                         .slideY(begin: 0.08, end: 0),
-
                     const SizedBox(height: 10),
-
                     Text(
                       room.priceDisplay,
                       style: GoogleFonts.beVietnamPro(
@@ -118,9 +115,7 @@ class RoomDetailScreen extends ConsumerWidget {
                             : colors.textSecondary,
                       ),
                     ),
-
                     const SizedBox(height: 16),
-
                     Wrap(
                       spacing: 10,
                       runSpacing: 8,
@@ -147,7 +142,6 @@ class RoomDetailScreen extends ConsumerWidget {
                           ),
                       ],
                     ).animate(delay: 100.ms).fadeIn(duration: 300.ms),
-
                     if (room.amenities.isNotEmpty) ...[
                       const SizedBox(height: 16),
                       Wrap(
@@ -157,9 +151,7 @@ class RoomDetailScreen extends ConsumerWidget {
                             room.amenities.map((a) => _AmenityChip(a)).toList(),
                       ),
                     ],
-
                     const SizedBox(height: 24),
-
                     _DetailRow(
                       title: 'Địa chỉ',
                       icon: Icons.location_on_outlined,
@@ -167,18 +159,14 @@ class RoomDetailScreen extends ConsumerWidget {
                           ? room.address!
                           : '-',
                     ),
-
                     const SizedBox(height: 16),
-
                     _DetailSection(
                       title: 'Mô tả',
                       value: room.description?.isNotEmpty == true
                           ? room.description!
                           : '-',
                     ),
-
                     const SizedBox(height: 24),
-
                     if (room.rules != null && room.rules!.isNotEmpty) ...[
                       _DetailSection(
                         title: 'Quy định',
@@ -195,7 +183,6 @@ class RoomDetailScreen extends ConsumerWidget {
                       ],
                       const SizedBox(height: 24),
                     ],
-
                     if (room.price != null) ...[
                       Text(
                         'Bảng giá',
@@ -209,7 +196,6 @@ class RoomDetailScreen extends ConsumerWidget {
                       _PriceGrid(price: room.price!),
                       const SizedBox(height: 24),
                     ],
-
                     SizedBox(
                       width: double.infinity,
                       height: 48,
@@ -379,26 +365,27 @@ class _ImageGalleryHeaderState extends State<_ImageGalleryHeader> {
               ),
             ),
 
-            // Share button
-            Positioned(
-              top: topPadding + 8,
-              right: 16,
-              child: _CircleBtn(
-                icon: Icons.share_rounded,
-                onTap: (btnContext) {
-                  final box =
-                      btnContext.findRenderObject() as RenderBox?;
-                  final origin = box != null
-                      ? box.localToGlobal(Offset.zero) & box.size
-                      : null;
-                  Share.share(
-                    _buildShareText(widget.room),
-                    subject: '${widget.room.code} · ${widget.room.name}',
-                    sharePositionOrigin: origin,
-                  );
-                },
+            // Share button — chỉ hiện khi phòng đã duyệt + đang hoạt động.
+            // Người nhận mở link xem web preview (không kèm giá).
+            if (room.canShare)
+              Positioned(
+                top: topPadding + 8,
+                right: 16,
+                child: _CircleBtn(
+                  icon: Icons.share_rounded,
+                  onTap: (btnContext) {
+                    final box = btnContext.findRenderObject() as RenderBox?;
+                    final origin = box != null
+                        ? box.localToGlobal(Offset.zero) & box.size
+                        : null;
+                    Share.share(
+                      room.shareUrl,
+                      subject: 'Phòng ${room.name} ${room.code} — Halong24h',
+                      sharePositionOrigin: origin,
+                    );
+                  },
+                ),
               ),
-            ),
 
             // Image badge (always shown when images exist).
             if (images.isNotEmpty)
@@ -479,78 +466,6 @@ class _ImageGalleryHeaderState extends State<_ImageGalleryHeader> {
           ),
       ],
     );
-  }
-
-  String _buildShareText(RoomModel room) {
-    final buf = StringBuffer();
-
-    buf.writeln('🏠 ${room.code} · ${room.name}');
-
-    if (room.homestay != null) {
-      buf.writeln('📍 ${room.homestay!.name}');
-      if (room.homestay!.address.isNotEmpty) {
-        buf.writeln('   ${room.homestay!.address}');
-      }
-    } else if (room.address?.isNotEmpty == true) {
-      buf.writeln('📍 ${room.address}');
-    }
-
-    buf.writeln();
-    buf.writeln('━━━━━━━━━━━━━━━━━');
-
-    buf.writeln('🛏  Phòng ngủ: ${room.bedrooms}');
-    if (room.bathrooms > 0) {
-      buf.writeln('🚿 Phòng tắm: ${room.bathrooms}');
-    }
-    buf.writeln('👥 Sức chứa: tối đa ${room.maxGuests} người');
-    if (room.standardGuests != room.maxGuests) {
-      buf.writeln('   (tiêu chuẩn ${room.standardGuests} người)');
-    }
-
-    if (room.amenities.isNotEmpty) {
-      buf.writeln();
-      buf.writeln('✅ Tiện ích:');
-      for (final a in room.amenities) {
-        buf.writeln('   • $a');
-      }
-    }
-
-    if (room.description?.isNotEmpty == true) {
-      buf.writeln();
-      buf.writeln('📝 Mô tả:');
-      buf.writeln(room.description);
-    }
-
-    if (room.adultSurcharge != null && room.adultSurcharge! > 0) {
-      buf.writeln();
-      buf.writeln(
-          '💰 Phụ thu người lớn: ${_fmtPrice(room.adultSurcharge!)}đ/người');
-    }
-    if (room.childSurcharge != null && room.childSurcharge! > 0) {
-      buf.writeln(
-          '💰 Phụ thu trẻ em: ${_fmtPrice(room.childSurcharge!)}đ/người');
-    }
-
-    if (room.cancellationPolicy != null) {
-      const policyLabels = ['Linh hoạt', 'Vừa phải', 'Nghiêm ngặt'];
-      final label = (room.cancellationPolicy! < policyLabels.length)
-          ? policyLabels[room.cancellationPolicy!]
-          : '${room.cancellationPolicy}';
-      buf.writeln();
-      buf.writeln('📋 Chính sách huỷ:');
-      buf.writeln(label);
-    }
-
-    buf.writeln();
-    buf.writeln('━━━━━━━━━━━━━━━━━');
-    buf.write('Liên hệ để đặt phòng! 🌊');
-
-    return buf.toString();
-  }
-
-  String _fmtPrice(double p) {
-    if (p >= 1000000) return '${(p / 1000000).toStringAsFixed(1)}tr';
-    return '${(p / 1000).toStringAsFixed(0)}k';
   }
 
   void _openGallery(

@@ -98,4 +98,19 @@ class AppHelpers {
         return '';
     }
   }
+
+  // ── Relative time (chat, notifications) ───────────────────────────────────
+
+  /// Thời gian tương đối ngắn gọn: "now", "5 phút", "3 giờ", "2 ngày",
+  /// rồi về dd/MM. Dùng cho inbox chat / danh sách thông báo.
+  static String timeAgo(DateTime time) {
+    final diff = DateTime.now().difference(time);
+    if (diff.inMinutes < 1) return 'Vừa xong';
+    if (diff.inMinutes < 60) return '${diff.inMinutes} phút';
+    if (diff.inHours < 24) return '${diff.inHours} giờ';
+    if (diff.inDays < 7) return '${diff.inDays} ngày';
+    final local = time.toLocal();
+    return '${local.day.toString().padLeft(2, '0')}/'
+        '${local.month.toString().padLeft(2, '0')}';
+  }
 }

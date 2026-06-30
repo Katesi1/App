@@ -61,6 +61,9 @@ dependencies:
   # Share
   share_plus: ^10.1.4
 
+  # Chat realtime — Socket.IO client (BE chạy Socket.IO v4 trên NestJS).
+  socket_io_client: ^2.0.3+1
+
   # Splash
   flutter_native_splash: ^2.4.0
 

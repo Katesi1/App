@@ -1,6 +1,12 @@
 class ApiConstants {
   static const String baseUrl = 'https://api.halong24h.com';
 
+  // Web preview cho share link 1 phòng (team web render qua
+  // GET /properties/share/:id). Người nhận mở link xem thông tin phòng,
+  // KHÔNG kèm giá bán & thông tin chủ nhà.
+  static const String shareWebBaseUrl = 'https://preview.halong24h.com';
+  static String propertyShareUrl(String id) => '$shareWebBaseUrl/$id';
+
   // Auth
   static const String login = '/auth/login';
   static const String register = '/auth/register';
@@ -121,6 +127,17 @@ class ApiConstants {
   // Generic uploads (BE §23) — attachment cho support ticket / feedback.
   static const String uploads = '/uploads';
   static String uploadDetail(String id) => '/uploads/$id';
+
+  // Chat (BE §17) — REST history + Socket.IO realtime.
+  static const String conversations = '/conversations';
+  static const String conversationsUnreadCount = '/conversations/unread-count';
+  static String conversationDetail(String id) => '/conversations/$id';
+  static String conversationMessages(String id) =>
+      '/conversations/$id/messages';
+  static String conversationRead(String id) => '/conversations/$id/read';
+
+  /// Socket.IO namespace cho chat realtime (host = [baseUrl]).
+  static const String chatSocketNamespace = '/chat';
 
   // Profile account modules (BE §24 — support, feedback, GDPR, consent, prefs).
   static const String supportTickets = '/support/tickets';

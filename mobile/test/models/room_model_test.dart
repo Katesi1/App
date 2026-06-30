@@ -163,6 +163,43 @@ void main() {
     });
   });
 
+  group('RoomModel share link', () {
+    RoomModel build({bool? isActive, String? moderationStatus}) =>
+        RoomModel.fromJson({
+          'id': 'r-1',
+          'homestayId': 'hs-1',
+          'name': 'Test',
+          'code': 'P.1',
+          if (isActive != null) 'isActive': isActive,
+          if (moderationStatus != null) 'moderationStatus': moderationStatus,
+        });
+
+    test('moderationStatus defaults to approved when missing', () {
+      expect(build().moderationStatus, 'approved');
+    });
+
+    test('shareUrl points to preview web with property id', () {
+      expect(build().shareUrl, 'https://preview.halong24h.com/r-1');
+    });
+
+    test('canShare true when active and approved', () {
+      expect(build(isActive: true, moderationStatus: 'approved').canShare,
+          isTrue);
+    });
+
+    test('canShare false when inactive', () {
+      expect(build(isActive: false, moderationStatus: 'approved').canShare,
+          isFalse);
+    });
+
+    test('canShare false when not approved', () {
+      for (final status in ['pending', 'rejected', 'suspended']) {
+        expect(build(isActive: true, moderationStatus: status).canShare, isFalse,
+            reason: 'status=$status should not be shareable');
+      }
+    });
+  });
+
   group('RoomPriceModel', () {
     test('minPrice returns lowest non-holiday price', () {
       final price = RoomPriceModel.fromJson({

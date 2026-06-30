@@ -21,6 +21,8 @@ import '../../features/auth/views/splash_screen.dart';
 import '../../features/staff/views/invite_accept_screen.dart';
 import '../../features/bookings/views/booking_calendar_screen.dart';
 import '../../features/bookings/views/owner_calendar_screen.dart';
+import '../../features/chat/views/chat_inbox_screen.dart';
+import '../../features/chat/views/chat_thread_screen.dart';
 import '../../features/bookings/views/booking_list_screen.dart';
 import '../../features/bookings/views/front_desk_screen.dart';
 import '../../features/dashboard/views/dashboard_screen.dart';
@@ -236,6 +238,26 @@ final routerProvider = Provider<GoRouter>((ref) {
               key: state.pageKey,
               child: NotificationDetailScreen(
                 id: state.pathParameters['id']!,
+              ),
+            ),
+          ),
+        ],
+      ),
+
+      // ── Chat (inbox + thread). FCM chat_message deeplink → /conversations/:id
+      GoRoute(
+        path: '/conversations',
+        pageBuilder: (_, state) => slideUpPage(
+          key: state.pageKey,
+          child: const ChatInboxScreen(),
+        ),
+        routes: [
+          GoRoute(
+            path: ':id',
+            pageBuilder: (_, state) => slideUpPage(
+              key: state.pageKey,
+              child: ChatThreadScreen(
+                conversationId: state.pathParameters['id']!,
               ),
             ),
           ),

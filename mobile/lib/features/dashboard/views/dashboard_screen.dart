@@ -13,6 +13,7 @@ import '../../../data/models/user_model.dart';
 import '../../../data/repositories/user_repository.dart';
 import '../../auth/controllers/auth_controller.dart';
 import '../../bookings/controllers/booking_controller.dart';
+import '../../chat/controllers/chat_controller.dart';
 import '../../dashboard/controllers/dashboard_controller.dart';
 import '../../verify/data/models/verify_enums.dart';
 import '../../verify/views/paywall_modal.dart';
@@ -53,7 +54,8 @@ class DashboardScreen extends ConsumerWidget {
     ref.listen<AuthState>(authProvider, (prev, next) {
       if (next.autoRestoredNotice) {
         ref.read(authProvider.notifier).consumeRestoredNotice();
-        AppSnackBar.success(context, 'Yêu cầu xoá tài khoản đã được huỷ. Tài khoản của bạn đã được khôi phục.');
+        AppSnackBar.success(context,
+            'Yêu cầu xoá tài khoản đã được huỷ. Tài khoản của bạn đã được khôi phục.');
       }
     });
     final now = DateTime.now();
@@ -133,9 +135,7 @@ class DashboardScreen extends ConsumerWidget {
                   ),
 
                 // SALE not yet assigned to owner warning.
-                if (user != null &&
-                    user.isSale &&
-                    !user.isSaleMembershipActive)
+                if (user != null && user.isSale && !user.isSaleMembershipActive)
                   Consumer(
                     builder: (context, ref, _) {
                       final dismissed =
@@ -575,7 +575,7 @@ class _SectionLabel extends StatelessWidget {
 }
 
 // ─── Dashboard Header ──────────────────────────────────────────────────────────
-class _DashHeader extends StatelessWidget {
+class _DashHeader extends ConsumerWidget {
   final String userName;
   final String formattedDate;
 
@@ -585,7 +585,7 @@ class _DashHeader extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final colors = context.colors;
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final headerGradient = isDark
@@ -666,6 +666,9 @@ class _DashHeader extends StatelessWidget {
                   ],
                 ),
               ),
+              // Chat — icon + badge số tin chưa đọc.
+              _ChatHeaderButton(unread: ref.watch(chatUnreadCountProvider)),
+              const SizedBox(width: 10),
               // Notification
               GestureDetector(
                 onTap: () => context.push('/notifications'),
@@ -728,6 +731,59 @@ class _DashHeader extends StatelessWidget {
               ),
             ],
           ),
+        ],
+      ),
+    );
+  }
+}
+
+// ─── Chat header button (icon + unread badge) ───────────────────────────────────
+class _ChatHeaderButton extends StatelessWidget {
+  final int unread;
+  const _ChatHeaderButton({required this.unread});
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: () => context.push('/conversations'),
+      child: Stack(
+        clipBehavior: Clip.none,
+        children: [
+          Container(
+            width: 40,
+            height: 40,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: Colors.white.withValues(alpha: 0.12),
+              border: Border.all(color: Colors.white.withValues(alpha: 0.15)),
+            ),
+            child: const Icon(Icons.chat_bubble_outline_rounded,
+                color: Colors.white, size: 20),
+          ),
+          if (unread > 0)
+            Positioned(
+              top: -4,
+              right: -4,
+              child: Container(
+                constraints: const BoxConstraints(minWidth: 18),
+                height: 18,
+                padding: const EdgeInsets.symmetric(horizontal: 5),
+                decoration: BoxDecoration(
+                  color: AppColors.gold500,
+                  borderRadius: BorderRadius.circular(9),
+                  border: Border.all(color: AppColors.jade500, width: 1.5),
+                ),
+                alignment: Alignment.center,
+                child: Text(
+                  unread > 99 ? '99+' : '$unread',
+                  style: GoogleFonts.beVietnamPro(
+                    fontSize: 10,
+                    fontWeight: FontWeight.w700,
+                    color: Colors.white,
+                  ),
+                ),
+              ),
+            ),
         ],
       ),
     );
@@ -988,9 +1044,8 @@ class _MonthlyRevenueChartCard extends ConsumerWidget {
         boxShadow: [
           BoxShadow(
             color: Colors.black.withValues(
-              alpha: Theme.of(context).brightness == Brightness.dark
-                  ? 0.30
-                  : 0.06,
+              alpha:
+                  Theme.of(context).brightness == Brightness.dark ? 0.30 : 0.06,
             ),
             blurRadius: 12,
             offset: const Offset(0, 4),
@@ -1514,8 +1569,7 @@ class _SubscriptionBanner extends ConsumerWidget {
 
     // Trial variant allows dismiss (positive). Past-due / cancelled do not.
     final isTrial = user.isInTrial;
-    final dismissed =
-        isTrial && ref.watch(trialBannerDismissedProvider);
+    final dismissed = isTrial && ref.watch(trialBannerDismissedProvider);
     if (dismissed) return const SizedBox.shrink();
 
     final (
@@ -1894,7 +1948,8 @@ class _VerifyCTABanner extends StatelessWidget {
               : '4 bước · Trial 7 ngày miễn phí khi xong.',
           AppConfig.hidePaidUpgradeUI ? 'Xác thực' : 'Bắt đầu',
           '/verify/cccd-front',
-          AppConfig.showPaidUpgradeUI, // useModal: false on iOS → direct capture
+          AppConfig
+              .showPaidUpgradeUI, // useModal: false on iOS → direct capture
         ),
     };
 

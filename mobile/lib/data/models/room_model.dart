@@ -1,3 +1,5 @@
+import '../../core/constants/api_constants.dart';
+
 class RoomImageModel {
   final String id;
   final String roomId;
@@ -101,13 +103,15 @@ class RoomModel {
   final String? mapLink;
   final List<String> amenities;
   final int? cancellationPolicy; // 0=FLEXIBLE, 1=MODERATE, 2=STRICT
-  final String?
-      view; // "sea" = sea view, "city" = city view, null = none
+  final String? view; // "sea" = sea view, "city" = city view, null = none
   final String? rules; // House rules (single text string)
   final List<String> services; // Paid services
   final double? adultSurcharge;
   final double? childSurcharge;
   final bool isActive;
+  // Trạng thái kiểm duyệt cơ sở: pending | approved | rejected | suspended.
+  // Mặc định 'approved' (BE tạo property mới = approved; legacy đã sweep).
+  final String moderationStatus;
   final List<RoomImageModel> images;
   final RoomPriceModel? price;
   final HomestaySimpleModel? homestay;
@@ -133,6 +137,7 @@ class RoomModel {
     this.adultSurcharge,
     this.childSurcharge,
     this.isActive = true,
+    this.moderationStatus = 'approved',
     this.images = const [],
     this.price,
     this.homestay,
@@ -166,6 +171,7 @@ class RoomModel {
         adultSurcharge: (json['adultSurcharge'] as num?)?.toDouble(),
         childSurcharge: (json['childSurcharge'] as num?)?.toDouble(),
         isActive: json['isActive'] ?? true,
+        moderationStatus: json['moderationStatus'] ?? 'approved',
         images: (json['images'] as List<dynamic>?)
                 ?.map((e) => RoomImageModel.fromJson(e))
                 .toList() ??
@@ -196,6 +202,14 @@ class RoomModel {
             ? HomestaySimpleModel.fromJson(json['property'] ?? json['homestay'])
             : null,
       );
+
+  /// Chỉ cho share khi phòng đang hoạt động VÀ đã được duyệt — khớp với
+  /// visibility rule của web khách (isActive && moderationStatus=='approved').
+  /// Nếu không thoả, link sẽ 404 trên web nên ẩn/disable nút share.
+  bool get canShare => isActive && moderationStatus == 'approved';
+
+  /// URL web preview cho khách xem thông tin phòng (không kèm giá).
+  String get shareUrl => ApiConstants.propertyShareUrl(id);
 
   String? get coverImageUrl {
     if (images.isEmpty) return null;
