@@ -101,6 +101,11 @@
 		     Chỉ dùng khi app đang mở để lấy vị trí hiện tại ghim lên bản đồ. -->
 		<key>NSLocationWhenInUseUsageDescription</key>
 		<string>Halong24h cần vị trí của bạn để ghim chính xác vị trí cơ sở (homestay/villa) lên bản đồ khi tạo phòng.</string>
+		<!-- App chỉ dùng vị trí khi đang mở (when-in-use). Apple vẫn yêu cầu
+		     purpose string cho API "Always" vì SDK bên thứ ba có tham chiếu tới
+		     (ITMS-90683) — app không chạy nền theo dõi vị trí. -->
+		<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
+		<string>Halong24h cần vị trí của bạn để ghim chính xác vị trí cơ sở (homestay/villa) lên bản đồ khi tạo phòng. App chỉ dùng vị trí khi bạn đang mở app, không theo dõi nền.</string>
 		<!-- App only uses standard HTTPS + iOS keychain — no custom crypto.
 		     Setting this to false skips App Store Connect's Export Compliance
 		     prompt on every upload (would otherwise block TestFlight install
