@@ -300,89 +300,55 @@ class DashboardScreen extends ConsumerWidget {
                       const SizedBox(height: 12),
                       SizedBox(
                         height: 96,
-                        child: Stack(
+                        child: _QuickActionsScroller(
                           children: [
-                            ListView(
-                              scrollDirection: Axis.horizontal,
-                              // Compensates parent Column's horizontal: 16 so
-                              // first/last items don't touch screen edges.
-                              padding: EdgeInsets.zero,
-                              physics: const BouncingScrollPhysics(),
-                              children: [
-                                _QuickAction(
-                                  icon: Icons.add_rounded,
-                                  label: 'Booking',
-                                  color: colors.brand,
-                                  onTap: () => context.push('/bookings'),
-                                ),
-                                const SizedBox(width: 10),
-                                _QuickAction(
-                                  icon: Icons.login_rounded,
-                                  label: 'Check-in',
-                                  color: colors.brandLight,
-                                  onTap: () => context.push('/front-desk'),
-                                ),
-                                const SizedBox(width: 10),
-                                _QuickAction(
-                                  icon: Icons.logout_rounded,
-                                  label: 'Check-out',
-                                  color: colors.brandSecondary,
-                                  onTap: () => context
-                                      .push('/front-desk?tab=departures'),
-                                ),
-                                if (user?.canManageProperty ?? false) ...[
-                                  const SizedBox(width: 10),
-                                  _QuickAction(
-                                    icon: Icons.add_home_rounded,
-                                    label: 'Thêm phòng',
-                                    color: colors.success,
-                                    onTap: () =>
-                                        context.push('/properties/new'),
-                                  ),
-                                ],
-                                if (user?.isOwner ?? false) ...[
-                                  const SizedBox(width: 10),
-                                  _QuickAction(
-                                    icon: Icons.group_add_rounded,
-                                    label: 'Nhân viên',
-                                    color: colors.brandSecondary,
-                                    onTap: () => context.push('/admin/users'),
-                                  ),
-                                ],
-                                // Đệm phải để item cuối không bị mũi tên gợi ý
-                                // che mất khi cuộn tới cuối.
-                                const SizedBox(width: 28),
-                              ],
+                            _QuickAction(
+                              icon: Icons.add_rounded,
+                              label: 'Booking',
+                              color: colors.brand,
+                              onTap: () => context.push('/bookings'),
                             ),
-                            // Gợi ý "còn cuộn ngang": fade mờ + mũi tên ở mép
-                            // phải, giúp OWNER không rành biết còn thao tác bên
-                            // phải (vd "Nhân viên").
-                            Positioned(
-                              right: 0,
-                              top: 0,
-                              bottom: 0,
-                              child: IgnorePointer(
-                                child: Container(
-                                  width: 44,
-                                  alignment: Alignment.centerRight,
-                                  decoration: BoxDecoration(
-                                    gradient: LinearGradient(
-                                      begin: Alignment.centerLeft,
-                                      end: Alignment.centerRight,
-                                      colors: [
-                                        colors.bgCanvas.withValues(alpha: 0),
-                                        colors.bgCanvas,
-                                      ],
-                                    ),
-                                  ),
-                                  child: Icon(
-                                    Icons.chevron_right_rounded,
-                                    size: 22,
-                                    color: colors.textSecondary,
-                                  ),
-                                ),
+                            const SizedBox(width: 10),
+                            _QuickAction(
+                              icon: Icons.login_rounded,
+                              label: 'Check-in',
+                              color: colors.brandLight,
+                              onTap: () => context.push('/front-desk'),
+                            ),
+                            const SizedBox(width: 10),
+                            _QuickAction(
+                              icon: Icons.logout_rounded,
+                              label: 'Check-out',
+                              color: colors.brandSecondary,
+                              onTap: () =>
+                                  context.push('/front-desk?tab=departures'),
+                            ),
+                            const SizedBox(width: 10),
+                            _QuickAction(
+                              icon: Icons.chat_bubble_outline_rounded,
+                              label: 'Tin nhắn',
+                              color: colors.brand,
+                              badgeCount: ref.watch(chatUnreadCountProvider),
+                              onTap: () => context.push('/conversations'),
+                            ),
+                            if (user?.canManageProperty ?? false) ...[
+                              const SizedBox(width: 10),
+                              _QuickAction(
+                                icon: Icons.add_home_rounded,
+                                label: 'Thêm phòng',
+                                color: colors.success,
+                                onTap: () => context.push('/properties/new'),
                               ),
-                            ),
+                            ],
+                            if (user?.isOwner ?? false) ...[
+                              const SizedBox(width: 10),
+                              _QuickAction(
+                                icon: Icons.group_add_rounded,
+                                label: 'Nhân viên',
+                                color: colors.brandSecondary,
+                                onTap: () => context.push('/admin/users'),
+                              ),
+                            ],
                           ],
                         ),
                       ),
@@ -666,9 +632,6 @@ class _DashHeader extends ConsumerWidget {
                   ],
                 ),
               ),
-              // Chat — icon + badge số tin chưa đọc.
-              _ChatHeaderButton(unread: ref.watch(chatUnreadCountProvider)),
-              const SizedBox(width: 10),
               // Notification
               GestureDetector(
                 onTap: () => context.push('/notifications'),
@@ -731,59 +694,6 @@ class _DashHeader extends ConsumerWidget {
               ),
             ],
           ),
-        ],
-      ),
-    );
-  }
-}
-
-// ─── Chat header button (icon + unread badge) ───────────────────────────────────
-class _ChatHeaderButton extends StatelessWidget {
-  final int unread;
-  const _ChatHeaderButton({required this.unread});
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: () => context.push('/conversations'),
-      child: Stack(
-        clipBehavior: Clip.none,
-        children: [
-          Container(
-            width: 40,
-            height: 40,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              color: Colors.white.withValues(alpha: 0.12),
-              border: Border.all(color: Colors.white.withValues(alpha: 0.15)),
-            ),
-            child: const Icon(Icons.chat_bubble_outline_rounded,
-                color: Colors.white, size: 20),
-          ),
-          if (unread > 0)
-            Positioned(
-              top: -4,
-              right: -4,
-              child: Container(
-                constraints: const BoxConstraints(minWidth: 18),
-                height: 18,
-                padding: const EdgeInsets.symmetric(horizontal: 5),
-                decoration: BoxDecoration(
-                  color: AppColors.gold500,
-                  borderRadius: BorderRadius.circular(9),
-                  border: Border.all(color: AppColors.jade500, width: 1.5),
-                ),
-                alignment: Alignment.center,
-                child: Text(
-                  unread > 99 ? '99+' : '$unread',
-                  style: GoogleFonts.beVietnamPro(
-                    fontSize: 10,
-                    fontWeight: FontWeight.w700,
-                    color: Colors.white,
-                  ),
-                ),
-              ),
-            ),
         ],
       ),
     );
@@ -1235,17 +1145,101 @@ class _MonthlyRevenueChartCard extends ConsumerWidget {
 }
 
 // ─── Quick Action ──────────────────────────────────────────────────────────────
+// Hàng "thao tác nhanh" cuộn ngang + gợi ý mũi tên ">" ở mép phải. Mũi tên tự
+// ẩn khi đã cuộn tới cuối (hoặc khi nội dung không tràn).
+class _QuickActionsScroller extends StatefulWidget {
+  final List<Widget> children;
+  const _QuickActionsScroller({required this.children});
+
+  @override
+  State<_QuickActionsScroller> createState() => _QuickActionsScrollerState();
+}
+
+class _QuickActionsScrollerState extends State<_QuickActionsScroller> {
+  final _controller = ScrollController();
+  bool _showHint = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller.addListener(_update);
+    // Kiểm tra sau frame đầu: nội dung không tràn → ẩn luôn mũi tên.
+    WidgetsBinding.instance.addPostFrameCallback((_) => _update());
+  }
+
+  void _update() {
+    if (!_controller.hasClients) return;
+    final show = _controller.position.extentAfter > 1;
+    if (show != _showHint) setState(() => _showHint = show);
+  }
+
+  @override
+  void dispose() {
+    _controller.removeListener(_update);
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.colors;
+    return Stack(
+      children: [
+        ListView(
+          controller: _controller,
+          scrollDirection: Axis.horizontal,
+          padding: EdgeInsets.zero,
+          physics: const BouncingScrollPhysics(),
+          children: widget.children,
+        ),
+        Positioned(
+          right: 0,
+          top: 0,
+          bottom: 0,
+          child: IgnorePointer(
+            child: AnimatedOpacity(
+              duration: const Duration(milliseconds: 200),
+              opacity: _showHint ? 1 : 0,
+              child: Container(
+                width: 44,
+                alignment: Alignment.centerRight,
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.centerLeft,
+                    end: Alignment.centerRight,
+                    colors: [
+                      colors.bgCanvas.withValues(alpha: 0),
+                      colors.bgCanvas,
+                    ],
+                  ),
+                ),
+                child: Icon(
+                  Icons.chevron_right_rounded,
+                  size: 22,
+                  color: colors.textSecondary,
+                ),
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
 class _QuickAction extends StatelessWidget {
   final IconData icon;
   final String label;
   final Color color;
   final VoidCallback onTap;
+  final int badgeCount;
 
   const _QuickAction({
     required this.icon,
     required this.label,
     required this.color,
     required this.onTap,
+    this.badgeCount = 0,
   });
 
   @override
@@ -1277,14 +1271,45 @@ class _QuickAction extends StatelessWidget {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Container(
-                width: 44,
-                height: 44,
-                decoration: BoxDecoration(
-                  color: color.withValues(alpha: 0.12),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Icon(icon, color: color, size: 22),
+              Stack(
+                clipBehavior: Clip.none,
+                children: [
+                  Container(
+                    width: 44,
+                    height: 44,
+                    decoration: BoxDecoration(
+                      color: color.withValues(alpha: 0.12),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Icon(icon, color: color, size: 22),
+                  ),
+                  if (badgeCount > 0)
+                    Positioned(
+                      top: -4,
+                      right: -4,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 5, vertical: 1),
+                        constraints: const BoxConstraints(minWidth: 18),
+                        decoration: BoxDecoration(
+                          color: colors.error,
+                          borderRadius: BorderRadius.circular(9),
+                          border:
+                              Border.all(color: colors.bgSurface, width: 1.5),
+                        ),
+                        child: Text(
+                          badgeCount > 99 ? '99+' : '$badgeCount',
+                          textAlign: TextAlign.center,
+                          style: GoogleFonts.beVietnamPro(
+                            fontSize: 9,
+                            fontWeight: FontWeight.w700,
+                            color: Colors.white,
+                            height: 1.3,
+                          ),
+                        ),
+                      ),
+                    ),
+                ],
               ),
               const SizedBox(height: 8),
               Text(

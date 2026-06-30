@@ -523,6 +523,29 @@ class _BookingCardState extends ConsumerState<_BookingCard> {
                       ],
                     ),
 
+                    // Nhắn tin với khách (hội thoại theo booking — realtime).
+                    const SizedBox(height: AppSpacing.sm),
+                    Align(
+                      alignment: Alignment.centerLeft,
+                      child: TextButton.icon(
+                        onPressed: () => context.push(
+                          '/conversations/by-booking/${booking.id}',
+                        ),
+                        style: TextButton.styleFrom(
+                          foregroundColor: colors.brand,
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: AppSpacing.sm, vertical: 2),
+                          minimumSize: Size.zero,
+                          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                        ),
+                        icon: const Icon(Icons.chat_bubble_outline_rounded,
+                            size: 16),
+                        label: Text('Nhắn tin',
+                            style: GoogleFonts.beVietnamPro(
+                                fontSize: 13, fontWeight: FontWeight.w600)),
+                      ),
+                    ),
+
                     // Countdown for HOLD
                     if (isHold && booking.holdRemainingSeconds > 0) ...[
                       const SizedBox(height: AppSpacing.sm),

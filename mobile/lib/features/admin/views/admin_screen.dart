@@ -254,6 +254,17 @@ class AdminScreen extends ConsumerWidget {
                   const SizedBox(height: 10),
 
                   _MenuCard(
+                    icon: Icons.chat_bubble_rounded,
+                    iconBg: AppColors.jade50,
+                    iconColor: colors.brand,
+                    title: 'Tin nhắn',
+                    subtitle: 'Trả lời khách theo từng booking',
+                    onTap: () => context.push('/conversations'),
+                  ),
+
+                  const SizedBox(height: 10),
+
+                  _MenuCard(
                     icon: Icons.calendar_month_rounded,
                     iconBg: colors.successBg,
                     iconColor: colors.success,
@@ -266,7 +277,8 @@ class AdminScreen extends ConsumerWidget {
                   // don't subscribe). Tap → /verify/subscription-detail (chọn
                   // gói + gia hạn qua chuyển khoản VietQR — không IAP).
                   // Hidden on iOS (Guideline 3.1.1: no paid-upgrade UI).
-                  if (AppConfig.showPaidUpgradeUI && (user?.isOwner ?? false)) ...[
+                  if (AppConfig.showPaidUpgradeUI &&
+                      (user?.isOwner ?? false)) ...[
                     const SizedBox(height: 10),
                     _MenuCard(
                       icon: Icons.workspace_premium_rounded,

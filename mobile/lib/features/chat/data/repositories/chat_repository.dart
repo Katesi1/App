@@ -58,6 +58,28 @@ class ChatRepository {
     }
   }
 
+  /// Lấy (hoặc tạo) hội thoại `type=booking` cho 1 booking. BE idempotent:
+  /// gọi nhiều lần cùng `bookingId` → trả về đúng 1 hội thoại (BE §17.1).
+  Future<ApiResponse<Conversation>> createOrGetBookingConversation(
+    String bookingId,
+  ) async {
+    try {
+      final res = await _dio.post(ApiConstants.conversations, data: {
+        'type': 'booking',
+        'bookingId': bookingId,
+      });
+      return ApiResponse(
+        success: true,
+        data: Conversation.fromJson(res.data['data'] as Map<String, dynamic>),
+        message: '',
+      );
+    } on DioException catch (e) {
+      return ApiResponse(success: false, message: parseDioError(e));
+    } catch (_) {
+      return ApiResponse(success: false, message: _badSchema);
+    }
+  }
+
   Future<ApiResponse<Conversation>> getConversation(String id) async {
     try {
       final res = await _dio.get(ApiConstants.conversationDetail(id));

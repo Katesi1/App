@@ -22,7 +22,8 @@ Tài liệu này là **hệ điều hành dự án** — định nghĩa conventi
 - ✅ **Được làm**: CRUD rooms/bookings/homestays/users, auth (phone + Google +
   Apple), dashboard KPI, role-based UI (ADMIN/OWNER/SALE), KYC + subscription
   flow cho OWNER (xem Section 14), admin KYC queue, staff (SALE) scope theo
-  `ownerId`
+  `ownerId`, **chat realtime** (OWNER/SALE trả lời khách qua hội thoại
+  `type=booking`, + support + nội bộ staff — xem `features/chat/`, Socket.IO)
 - ❌ **KHÔNG được làm**: Thêm lại luồng khách đặt phòng / role CUSTOMER vào app
   (app là B2B — khách dùng website), tự ý thêm dependency chưa hỏi, thay đổi
   architecture (MVC → MVVM, BLoC...), bỏ Riverpod sang provider khác, hardcode
@@ -36,6 +37,7 @@ Tài liệu này là **hệ điều hành dự án** — định nghĩa conventi
 | State Management | `flutter_riverpod ^2.6.1` |
 | Navigation | `go_router ^14` |
 | HTTP Client | `dio ^5` |
+| Realtime (chat) | `socket_io_client ^2.0` |
 | Auth | `google_sign_in ^6.2` |
 | Secure Storage | `flutter_secure_storage` |
 | Local Prefs | `shared_preferences` |
@@ -159,6 +161,21 @@ lib/
     notifications/
       controllers/notification_controller.dart  # notificationListProvider, unreadCountProvider, mark-read
       views/                            # notification, notification_detail
+    chat/                        # Tin nhắn realtime OWNER/SALE ↔ khách (booking) + support + nội bộ (staff)
+      controllers/chat_controller.dart  # chatRepositoryProvider, chatSocketServiceProvider, conversationListProvider,
+                                        # conversationDetailProvider, chatThreadProvider (StateNotifier optimistic),
+                                        # chatUnreadCountProvider (badge dashboard)
+      data/models/                      # conversation_model (Conversation, ConversationMember), message_model
+                                        #   (ChatMessage, ChatAttachment, MessageSendStatus)
+      data/repositories/chat_repository.dart  # REST history/inbox/unread/mark-read + fallback gửi tin (ApiResponse)
+      services/chat_socket_service.dart  # Socket.IO `/chat`: sealed ChatSocketEvent, token-refresh reconnect
+      views/                            # chat_inbox (danh sách hội thoại), chat_thread (tin nhắn realtime),
+                                        # chat_booking_resolver (tạo/lấy hội thoại booking rồi → thread)
+      widgets/                          # conversation_tile, message_bubble
+      # Vào chat: (1) Dashboard → thao tác nhanh "Tin nhắn" (badge unread);
+      # (2) Quản lý (/admin) → menu "Tin nhắn"; (3) booking → nút "Nhắn tin" →
+      # /conversations/by-booking/:bookingId (resolver idempotent). FCM
+      # chat_message deeplink → /conversations/:id (main.dart router.go).
     admin/                       # ADMIN-only: user mgmt, KYC queue, RBAC, moderation
       controllers/                      # user_controller, kyc_approval_controller, permission_controller
       data/models/                      # kyc_submission, permission_model

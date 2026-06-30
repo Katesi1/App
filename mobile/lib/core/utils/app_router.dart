@@ -21,6 +21,7 @@ import '../../features/auth/views/splash_screen.dart';
 import '../../features/staff/views/invite_accept_screen.dart';
 import '../../features/bookings/views/booking_calendar_screen.dart';
 import '../../features/bookings/views/owner_calendar_screen.dart';
+import '../../features/chat/views/chat_booking_resolver_screen.dart';
 import '../../features/chat/views/chat_inbox_screen.dart';
 import '../../features/chat/views/chat_thread_screen.dart';
 import '../../features/bookings/views/booking_list_screen.dart';
@@ -252,6 +253,17 @@ final routerProvider = Provider<GoRouter>((ref) {
           child: const ChatInboxScreen(),
         ),
         routes: [
+          // Mở chat từ 1 booking: resolver tạo/lấy hội thoại rồi replace bằng
+          // thread. Đặt TRƯỚC ':id' để 'by-booking' không bị bắt làm id.
+          GoRoute(
+            path: 'by-booking/:bookingId',
+            pageBuilder: (_, state) => slideUpPage(
+              key: state.pageKey,
+              child: ChatBookingResolverScreen(
+                bookingId: state.pathParameters['bookingId']!,
+              ),
+            ),
+          ),
           GoRoute(
             path: ':id',
             pageBuilder: (_, state) => slideUpPage(
