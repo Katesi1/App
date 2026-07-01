@@ -165,6 +165,40 @@ class ChatRepository {
     }
   }
 
+  /// Sửa nội dung tin nhắn (chỉ sender, trong 15 phút). BE broadcast
+  /// `message:edit` qua WS → các client khác tự cập nhật.
+  Future<ApiResponse<ChatMessage>> editMessage(
+    String messageId, {
+    required String content,
+  }) async {
+    try {
+      final res = await _dio.patch(
+        ApiConstants.conversationMessage(messageId),
+        data: {'content': content},
+      );
+      return ApiResponse(
+        success: true,
+        data: ChatMessage.fromJson(res.data['data'] as Map<String, dynamic>),
+        message: '',
+      );
+    } on DioException catch (e) {
+      return ApiResponse(success: false, message: parseDioError(e));
+    } catch (_) {
+      return ApiResponse(success: false, message: _badSchema);
+    }
+  }
+
+  /// Xoá (soft-delete) tin nhắn — sender hoặc admin. BE broadcast
+  /// `message:delete` qua WS.
+  Future<ApiResponse<void>> deleteMessage(String messageId) async {
+    try {
+      await _dio.delete(ApiConstants.conversationMessage(messageId));
+      return ApiResponse(success: true, message: '');
+    } on DioException catch (e) {
+      return ApiResponse(success: false, message: parseDioError(e));
+    }
+  }
+
   static const _badSchema = 'Phản hồi máy chủ không hợp lệ. Vui lòng thử lại.';
 
   /// `{ data: { items:[...] } }` (Shape A) hoặc `{ data: [...] }`.

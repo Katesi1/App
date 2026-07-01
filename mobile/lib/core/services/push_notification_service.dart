@@ -14,12 +14,56 @@ const String _channelDesc =
 
 /// Background message handler — must be a top-level function (FCM requirement).
 /// Runs in a separate isolate → cannot access current state.
+///
+/// Push chuẩn của BE (chat, booking...) đã có `notification` block → OS tự hiện
+/// tray khi app nền/killed; ta `return` sớm để KHÔNG hiện trùng. Handler này chỉ
+/// là lưới an toàn cho push **data-only** (không có `notification` block) — tự
+/// dựng local notification để vẫn có thông báo khi user không mở app.
 @pragma('vm:entry-point')
 Future<void> firebaseMessagingBackgroundHandler(RemoteMessage message) async {
-  // Background: just log. iOS auto-shows banner from `notification.*` payload.
   if (kDebugMode) {
     debugPrint('[FCM] Background message: ${message.messageId}');
   }
+  if (message.notification != null) return; // OS tự hiện — tránh trùng.
+
+  final data = message.data;
+  final title = data['title'] as String?;
+  final body = (data['subtitle'] ?? data['body']) as String?;
+  if (title == null && body == null) return; // silent push (vd refresh) → bỏ.
+
+  // Isolate nền: khởi tạo plugin riêng rồi show. AndroidNotificationDetails tự
+  // tạo channel nếu chưa có.
+  final local = FlutterLocalNotificationsPlugin();
+  const androidInit = AndroidInitializationSettings('@mipmap/ic_launcher');
+  const iosInit = DarwinInitializationSettings(
+    requestAlertPermission: false,
+    requestBadgePermission: false,
+    requestSoundPermission: false,
+  );
+  await local.initialize(
+    const InitializationSettings(android: androidInit, iOS: iosInit),
+  );
+  await local.show(
+    message.hashCode,
+    title,
+    body,
+    NotificationDetails(
+      android: AndroidNotificationDetails(
+        _channelId,
+        _channelName,
+        channelDescription: _channelDesc,
+        importance: Importance.high,
+        priority: Priority.high,
+        icon: '@mipmap/ic_launcher',
+      ),
+      iOS: const DarwinNotificationDetails(
+        presentAlert: true,
+        presentBadge: true,
+        presentSound: true,
+      ),
+    ),
+    payload: data.entries.map((e) => '${e.key}=${e.value}').join('&'),
+  );
 }
 
 /// Singleton service handling FCM lifecycle: permission, token, listeners.
@@ -47,6 +91,12 @@ class PushNotificationService {
   /// state-change pushes — e.g. `pushType=subscription_paid` → refresh the user
   /// profile so the just-activated subscription shows up immediately.
   void Function(Map<String, dynamic> data)? onForegroundData;
+
+  /// Return `true` to suppress the foreground banner for this data payload —
+  /// e.g. một tin nhắn chat của đúng conversation user đang mở (WS `message:new`
+  /// đã render trong thread rồi). Set once at the widget root. KHÔNG ảnh hưởng
+  /// [onForegroundData] (vẫn chạy để cập nhật badge/state).
+  bool Function(Map<String, dynamic> data)? shouldSuppressBanner;
 
   /// Called once at app startup (after `Firebase.initializeApp`).
   /// Does **NOT** request permission here — only sets up listeners. Permission
@@ -166,7 +216,7 @@ class PushNotificationService {
   Future<void> _registerTokenWithBackend(String token) async {
     await _deviceRepo.register(
       fcmToken: token,
-      platform: 'ios',
+      platform: defaultTargetPlatform == TargetPlatform.iOS ? 'ios' : 'android',
       locale: 'vi',
     );
   }
@@ -188,6 +238,11 @@ class PushNotificationService {
     final body = notification?.body ??
         _asString(message.data['subtitle'] ?? message.data['body']);
     if (title == null && body == null) return;
+
+    // Chống trùng: nếu đang xem đúng conversation + socket sống → WS đã render
+    // tin rồi, không hiện banner (rule §4.5 BE). onForegroundData ở trên vẫn đã
+    // chạy để cập nhật badge khi cần.
+    if (shouldSuppressBanner?.call(message.data) == true) return;
 
     // Show local banner — only when there is content. Background banners are
     // shown by the OS automatically; no work needed here.

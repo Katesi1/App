@@ -9,6 +9,7 @@ import '../../../core/theme/app_colors.dart';
 import '../../../core/utils/helpers.dart';
 import '../../../data/models/booking_model.dart';
 import '../../../shared/widgets/loading_widget.dart';
+import '../../../shared/widgets/mark_paid_dialog.dart';
 import '../controllers/booking_controller.dart';
 
 /// Front-desk view — today's arrivals (nhận phòng) and departures (trả phòng).
@@ -114,6 +115,7 @@ class _FrontDeskScreenState extends ConsumerState<FrontDeskScreen> {
                                   tab: _tab,
                                   onConfirm: () => _confirm(list[i]),
                                   onCall: () => _call(list[i]),
+                                  onMarkPaid: () => _markPaid(list[i]),
                                 )
                                     .animate(delay: (i * 40).ms)
                                     .fadeIn(duration: 220.ms)
@@ -150,6 +152,19 @@ class _FrontDeskScreenState extends ConsumerState<FrontDeskScreen> {
     if (!mounted) return;
     _toast(
       ok ? 'Đã xác nhận nhận phòng' : 'Xác nhận thất bại, thử lại',
+      error: !ok,
+    );
+  }
+
+  Future<void> _markPaid(BookingModel b) async {
+    final result = await MarkPaidDialog.show(context, b);
+    if (result == null || !mounted) return;
+    final ok = await ref
+        .read(bookingActionsProvider.notifier)
+        .markPaid(b.id, amount: result.amount);
+    if (!mounted) return;
+    _toast(
+      ok ? 'Đã ghi nhận thanh toán' : 'Ghi nhận thất bại, thử lại',
       error: !ok,
     );
   }
@@ -455,12 +470,14 @@ class _BookingCard extends StatelessWidget {
   final _DeskTab tab;
   final VoidCallback onConfirm;
   final VoidCallback onCall;
+  final VoidCallback onMarkPaid;
 
   const _BookingCard({
     required this.booking,
     required this.tab,
     required this.onConfirm,
     required this.onCall,
+    required this.onMarkPaid,
   });
 
   @override
@@ -608,6 +625,13 @@ class _BookingCard extends StatelessWidget {
                   label:
                       'Cọc ${AppHelpers.formatPrice(booking.depositAmount!)}',
                 ),
+              if (booking.isPaid)
+                _Chip(
+                  icon: Icons.verified_outlined,
+                  label: booking.paidAmount != null
+                      ? 'Đã thu ${AppHelpers.formatPrice(booking.paidAmount!)}'
+                      : 'Đã thanh toán',
+                ),
               if (booking.notes != null && booking.notes!.trim().isNotEmpty)
                 _Chip(
                   icon: Icons.sticky_note_2_outlined,
@@ -647,6 +671,21 @@ class _BookingCard extends StatelessWidget {
               ],
             ],
           ),
+          // Ghi nhận thanh toán — chỉ khi chưa thu tiền.
+          if (!booking.isPaid) ...[
+            const SizedBox(height: 10),
+            SizedBox(
+              width: double.infinity,
+              child: FilledButton.tonalIcon(
+                onPressed: onMarkPaid,
+                icon: const Icon(Icons.payments_rounded, size: 17),
+                label: const Text('Ghi nhận thanh toán'),
+                style: FilledButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(vertical: 11),
+                ),
+              ),
+            ),
+          ],
         ],
       ),
     );

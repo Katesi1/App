@@ -6,6 +6,7 @@ import '../../../core/theme/app_spacing.dart';
 import '../../../shared/widgets/loading_widget.dart';
 import '../../auth/controllers/auth_controller.dart';
 import '../controllers/chat_controller.dart';
+import '../data/models/message_model.dart';
 import '../widgets/message_bubble.dart';
 
 /// Màn hội thoại realtime — lịch sử (REST) + tin tới tức thì (Socket.IO).
@@ -120,12 +121,117 @@ class _ChatThreadScreenState extends ConsumerState<ChatThreadScreen> {
           );
         }
         final message = state.messages[count - 1 - index];
-        return MessageBubble(
-          message: message,
-          isMine: message.senderId == myUserId,
+        final isMine = message.senderId == myUserId;
+        final notifier =
+            ref.read(chatThreadProvider(widget.conversationId).notifier);
+        final canModify = notifier.canModify(message);
+        return GestureDetector(
+          onLongPress: canModify ? () => _showMessageActions(message) : null,
+          child: MessageBubble(message: message, isMine: isMine),
         );
       },
     );
+  }
+
+  /// Bottom sheet hành động cho tin của chính mình (còn trong 15 phút).
+  void _showMessageActions(ChatMessage message) {
+    showModalBottomSheet<void>(
+      context: context,
+      builder: (sheetCtx) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: const Icon(Icons.edit_outlined),
+              title: const Text('Chỉnh sửa'),
+              onTap: () {
+                Navigator.pop(sheetCtx);
+                _editMessage(message);
+              },
+            ),
+            ListTile(
+              leading: Icon(Icons.delete_outline_rounded,
+                  color: context.colors.error),
+              title: Text('Xoá', style: TextStyle(color: context.colors.error)),
+              onTap: () {
+                Navigator.pop(sheetCtx);
+                _deleteMessage(message);
+              },
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _editMessage(ChatMessage message) async {
+    final ctrl = TextEditingController(text: message.content);
+    final newContent = await showDialog<String>(
+      context: context,
+      builder: (dialogCtx) => AlertDialog(
+        title: const Text('Chỉnh sửa tin nhắn'),
+        content: TextField(
+          controller: ctrl,
+          autofocus: true,
+          minLines: 1,
+          maxLines: 5,
+          decoration: const InputDecoration(border: OutlineInputBorder()),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogCtx),
+            child: const Text('Huỷ'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(dialogCtx, ctrl.text.trim()),
+            child: const Text('Lưu'),
+          ),
+        ],
+      ),
+    );
+    ctrl.dispose();
+    if (newContent == null ||
+        newContent.isEmpty ||
+        newContent == message.content) {
+      return;
+    }
+    final error = await ref
+        .read(chatThreadProvider(widget.conversationId).notifier)
+        .edit(message.id, newContent);
+    if (!mounted) return;
+    if (error != null) {
+      AppSnackBar.error(context, error);
+    }
+  }
+
+  Future<void> _deleteMessage(ChatMessage message) async {
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (dialogCtx) => AlertDialog(
+        title: const Text('Xoá tin nhắn'),
+        content: const Text('Bạn có chắc muốn xoá tin nhắn này?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogCtx, false),
+            child: const Text('Không'),
+          ),
+          FilledButton(
+            style:
+                FilledButton.styleFrom(backgroundColor: context.colors.error),
+            onPressed: () => Navigator.pop(dialogCtx, true),
+            child: const Text('Xoá'),
+          ),
+        ],
+      ),
+    );
+    if (ok != true) return;
+    final error = await ref
+        .read(chatThreadProvider(widget.conversationId).notifier)
+        .delete(message.id);
+    if (!mounted) return;
+    if (error != null) {
+      AppSnackBar.error(context, error);
+    }
   }
 }
 

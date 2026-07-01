@@ -208,12 +208,14 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
           ..showSnackBar(
             SnackBar(
               content: Row(
-                children: const [
-                  Icon(Icons.lock_clock_rounded, color: Colors.white, size: 18),
-                  SizedBox(width: 10),
+                children: [
+                  const Icon(Icons.lock_clock_rounded,
+                      color: Colors.white, size: 18),
+                  const SizedBox(width: 10),
                   Expanded(
                     child: Text(
-                      'Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.',
+                      next.forceLogoutMessage ??
+                          'Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.',
                     ),
                   ),
                 ],
@@ -700,8 +702,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
                                               const SizedBox(width: 6),
                                               Text(
                                                 'Tôi có mã mời nhân viên',
-                                                style:
-                                                    GoogleFonts.beVietnamPro(
+                                                style: GoogleFonts.beVietnamPro(
                                                   fontSize: 12,
                                                   fontWeight: FontWeight.w600,
                                                   color: AppColors.muted,

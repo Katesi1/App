@@ -93,7 +93,11 @@ class BookingActionsNotifier extends StateNotifier<AsyncValue<void>> {
   }
 
   void _refreshAll() {
-    _ref.invalidate(bookingListProvider);
+    // Invalidate đúng instance đang được các màn watch (`null` = không filter).
+    // Invalidate cả family (`bookingListProvider`) với autoDispose + keepAlive
+    // chỉ đẩy provider vào loading mà không refetch → kẹt skeleton sau khi
+    // confirm/cancel; instance cụ thể mới refetch dứt điểm.
+    _ref.invalidate(bookingListProvider(null));
     _ref.invalidate(calendarProvider);
     _ref.invalidate(calendarGridProvider);
     _ref.invalidate(dashboardStatsProvider);
@@ -140,6 +144,20 @@ class BookingActionsNotifier extends StateNotifier<AsyncValue<void>> {
     state = const AsyncValue.loading();
     final result = await _repo.cancelBooking(id);
     if (result.success) {
+      _refreshAll();
+      state = const AsyncValue.data(null);
+      return true;
+    }
+    state = AsyncValue.error(result.message, StackTrace.current);
+    return false;
+  }
+
+  /// Ghi nhận thanh toán của khách (cọc/đủ tiền). HOLD → BE tự chuyển CONFIRMED.
+  Future<bool> markPaid(String id, {double? amount}) async {
+    state = const AsyncValue.loading();
+    final result = await _repo.markPaid(id, amount: amount);
+    if (result.success) {
+      _ref.invalidate(bookingDetailProvider(id));
       _refreshAll();
       state = const AsyncValue.data(null);
       return true;

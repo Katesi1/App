@@ -67,7 +67,7 @@ class BookingRepository {
 
   Future<ApiResponse<BookingModel>> confirmBooking(String id) async {
     try {
-      final response = await _dio.patch('${ApiConstants.bookings}/$id/confirm');
+      final response = await _dio.patch(ApiConstants.bookingConfirm(id));
       return ApiResponse(
         success: true,
         data: BookingModel.fromJson(response.data['data']),
@@ -80,8 +80,28 @@ class BookingRepository {
 
   Future<ApiResponse<void>> cancelBooking(String id) async {
     try {
-      await _dio.patch('${ApiConstants.bookings}/$id/cancel');
+      await _dio.patch(ApiConstants.bookingCancel(id));
       return ApiResponse(success: true, message: 'Huỷ booking thành công');
+    } on DioException catch (e) {
+      return ApiResponse(success: false, message: parseDioError(e));
+    }
+  }
+
+  /// Ghi nhận tiền cọc/tiền phòng của KHÁCH (chuyển khoản tay / tiền mặt /
+  /// offline). Body optional `{amount}` — bỏ trống → BE dùng totalAmount hoặc
+  /// depositAmount. Booking HOLD → BE tự chuyển CONFIRMED + clear holdExpireAt.
+  Future<ApiResponse<BookingModel>> markPaid(String id,
+      {double? amount}) async {
+    try {
+      final response = await _dio.patch(
+        ApiConstants.bookingPaid(id),
+        data: amount != null ? {'amount': amount} : null,
+      );
+      return ApiResponse(
+        success: true,
+        data: BookingModel.fromJson(response.data['data']),
+        message: response.data['message'] ?? '',
+      );
     } on DioException catch (e) {
       return ApiResponse(success: false, message: parseDioError(e));
     }
@@ -91,7 +111,7 @@ class BookingRepository {
       String id, Map<String, dynamic> data) async {
     try {
       final response =
-          await _dio.put('${ApiConstants.bookings}/$id', data: data);
+          await _dio.put(ApiConstants.bookingUpdate(id), data: data);
       return ApiResponse(
         success: true,
         data: BookingModel.fromJson(response.data['data']),

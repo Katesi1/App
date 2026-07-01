@@ -44,6 +44,7 @@ class ApiConstants {
   static String bookingDetail(String id) => '/bookings/$id';
   static String bookingConfirm(String id) => '/bookings/$id/confirm';
   static String bookingCancel(String id) => '/bookings/$id/cancel';
+  static String bookingPaid(String id) => '/bookings/$id/paid';
   static String bookingUpdate(String id) => '/bookings/$id';
   static String bookingCalendar(String propertyId) =>
       '/bookings/calendar/$propertyId';
@@ -135,6 +136,10 @@ class ApiConstants {
   static String conversationMessages(String id) =>
       '/conversations/$id/messages';
   static String conversationRead(String id) => '/conversations/$id/read';
+
+  /// PATCH (sửa, body `{content}`) / DELETE (xoá) 1 tin nhắn theo messageId.
+  static String conversationMessage(String messageId) =>
+      '/conversations/messages/$messageId';
 
   /// Socket.IO namespace cho chat realtime (host = [baseUrl]).
   static const String chatSocketNamespace = '/chat';

@@ -3,7 +3,7 @@
 > Tài liệu chính thức cho team FE Web (Next.js admin/host) và App Mobile (Android/iOS).
 > Bao gồm tất cả endpoint, schema response, business rule, WebSocket guide và integration checklist.
 >
-> **Cập nhật**: 2026-06-27 (v1.16 — customer web booking detail mở cho khách + similar properties + enrich BookingDto) · **BE base**: NestJS 11 · **DB**: PostgreSQL + Prisma · **Auth**: JWT · **Real-time**: Socket.IO
+> **Cập nhật**: 2026-07-01 (v1.19 — session tách theo clientType: 1 slot mobile + 1 slot web, không cho phép 2 app hoặc 2 web song song. FE gửi header `X-Client-Type: mobile|web` khi login/refresh) · **BE base**: NestJS 11 · **DB**: PostgreSQL + Prisma · **Auth**: JWT · **Real-time**: Socket.IO
 
 ---
 
@@ -58,6 +58,7 @@ Không có prefix `/api/v1`. Endpoint gọi thẳng `/auth/login`, `/properties`
 | `Accept-Language` | Không | `vi` (mặc định) hoặc `en` — quyết định ngôn ngữ message |
 | `Content-Type: application/json` | Có (POST/PUT/PATCH) | Trừ multipart upload |
 | `X-Partner-Key` | Có (partner only) | Chỉ cho `/partner/*` |
+| `X-Client-Type` | Nên (v1.19+) | `mobile` (app Android/iOS/Flutter) hoặc `web` (browser). Chỉ ảnh hưởng 5 endpoint auth cấp token (`/auth/login|register|google|apple`, `/staff/invites/accept`). Xem §1.6.1 |
 
 ### 1.3 Response envelope
 
@@ -122,6 +123,316 @@ FE đọc `errors[field]` để hiện inline error per-field.
 | Mặc định | 100 req/phút/IP (qua ThrottlerGuard) |
 
 Vượt → `429 Too Many Requests`.
+
+### 1.6.1 Client type — Session slot (v1.19+, 2026-07-01)
+
+> **Đây là section BẮT BUỘC đọc cho cả team Web và App.** Nếu wire sai, user sẽ bị đá session ngẫu nhiên hoặc không refresh được token.
+
+#### 1.6.1.1 Business rule
+
+Hệ thống giới hạn phiên đăng nhập song song **theo loại client**:
+
+| Loại | Số phiên tối đa đồng thời |
+|---|---|
+| App native (Android + iOS + Flutter) | **1 phiên** |
+| Web browser (mọi trình duyệt, mọi tab của cùng browser) | **1 phiên** |
+| Tổng cộng | **2 phiên** (1 app + 1 web) |
+
+**Ví dụ hành vi:**
+
+| Kịch bản | Kết quả |
+|---|---|
+| User đang login app iPhone + đang login web Chrome | ✅ Cả 2 chạy song song |
+| User đang login app iPhone, cài app trên iPad rồi login | iPhone bị đá, iPad thắng |
+| User đang login web Chrome, mở web Firefox rồi login | Chrome bị đá, Firefox thắng |
+| User đang login web Chrome, đăng nhập lại trên app Android | ✅ Cả 2 vẫn chạy (khác slot) |
+| Admin gọi ban / revoke-sessions / user đổi password | Đá **cả 2** phiên |
+| User bấm Logout trên app | Web KHÔNG bị đá |
+| User bấm Logout trên web | App KHÔNG bị đá |
+
+#### 1.6.1.2 Cách phía FE báo BE mình là mobile hay web
+
+Gửi header `X-Client-Type` với 1 trong 2 giá trị `mobile` | `web` khi gọi **5 endpoint cấp token**:
+
+| Endpoint | Mô tả |
+|---|---|
+| `POST /auth/register` | Đăng ký |
+| `POST /auth/login` | Đăng nhập email/phone + password |
+| `POST /auth/google` | Đăng nhập Google |
+| `POST /auth/apple` | Đăng nhập Apple |
+| `POST /staff/invites/accept` | Accept invite tạo SALE |
+
+**KHÔNG cần** gửi header cho các endpoint khác (bao gồm `/auth/refresh`, `/auth/logout`, `/auth/profile`, ...). Lý do: JWT phát ra ở lần login đã nhúng sẵn `clientType` trong payload — refresh/logout đọc từ token.
+
+**Giá trị chấp nhận** (BE `normalizeClientType` tự nhận diện):
+
+| FE gửi | BE hiểu là |
+|---|---|
+| `mobile`, `app`, `ios`, `android` | `mobile` |
+| `web`, hoặc chuỗi khác | `web` |
+| Không gửi | Default: `/auth/apple` → `mobile`; các endpoint còn lại → `web` |
+
+#### 1.6.1.3 Snippet code theo platform
+
+**Web (Axios interceptor — Next.js admin, customer web):**
+
+```typescript
+import axios from 'axios';
+
+export const api = axios.create({
+  baseURL: process.env.NEXT_PUBLIC_API_BASE_URL, // https://api.halong24h.com
+});
+
+// Attach X-Client-Type cho mọi request (harmless cho endpoint không cần)
+api.interceptors.request.use((config) => {
+  config.headers['X-Client-Type'] = 'web';
+  return config;
+});
+```
+
+**Flutter (Dio interceptor — dùng chung Android + iOS):**
+
+```dart
+import 'package:dio/dio.dart';
+import 'dart:io' show Platform;
+
+final dio = Dio(BaseOptions(baseUrl: 'https://api.halong24h.com'));
+
+dio.interceptors.add(InterceptorsWrapper(
+  onRequest: (options, handler) {
+    options.headers['X-Client-Type'] = 'mobile';
+    // Optional: chi tiết platform cho analytics BE
+    // options.headers['X-Device-Platform'] = Platform.isIOS ? 'ios' : 'android';
+    handler.next(options);
+  },
+));
+```
+
+**iOS native (Swift + URLSession):**
+
+```swift
+extension URLRequest {
+    mutating func addClientTypeHeader() {
+        self.setValue("mobile", forHTTPHeaderField: "X-Client-Type")
+    }
+}
+
+// Hoặc dùng URLSessionConfiguration.default để set global
+let config = URLSessionConfiguration.default
+config.httpAdditionalHeaders = ["X-Client-Type": "mobile"]
+let session = URLSession(configuration: config)
+```
+
+**Android native (Kotlin + OkHttp interceptor):**
+
+```kotlin
+val clientTypeInterceptor = Interceptor { chain ->
+    val request = chain.request().newBuilder()
+        .header("X-Client-Type", "mobile")
+        .build()
+    chain.proceed(request)
+}
+
+val okHttp = OkHttpClient.Builder()
+    .addInterceptor(clientTypeInterceptor)
+    .build()
+```
+
+#### 1.6.1.4 Hiện tượng khi phiên bị đá + cách handle
+
+Khi 1 device khác cùng loại login → phiên hiện tại bị mark invalid. **Access token cũ vẫn dùng được 15 phút** (không có cách revoke access token đã phát). Nhưng lần refresh tiếp theo:
+
+```http
+POST /auth/refresh
+{ "refreshToken": "<token cũ>" }
+
+→ 403 Forbidden
+{
+  "success": false,
+  "statusCode": 403,
+  "message": "Refresh token không hợp lệ",
+  "code": "invalidRefreshToken"
+}
+```
+
+**FE phải làm gì khi nhận 403 ở `/auth/refresh`**:
+
+1. Xoá tokens local (Keychain / EncryptedSharedPreferences / cookie).
+2. Xoá state user (Redux/Zustand/Riverpod).
+3. Hiển thị toast: **"Tài khoản đã đăng nhập ở thiết bị khác. Vui lòng đăng nhập lại."**
+4. Chuyển user về màn login.
+
+**Không** retry endpoint gốc. **Không** hiển thị error kỹ thuật "Invalid refresh token".
+
+**Web (Axios response interceptor)**:
+
+```typescript
+api.interceptors.response.use(
+  (res) => res,
+  async (error) => {
+    const original = error.config;
+
+    // 401 access token expire → try refresh
+    if (error.response?.status === 401 && !original._retry) {
+      original._retry = true;
+      try {
+        const { data } = await api.post('/auth/refresh', {
+          refreshToken: tokenStorage.getRefreshToken(),
+        });
+        tokenStorage.save(data.data.accessToken, data.data.refreshToken);
+        original.headers.Authorization = `Bearer ${data.data.accessToken}`;
+        return api(original);
+      } catch (refreshErr: any) {
+        // 403 → phiên bị đá do login ở thiết bị khác
+        if (refreshErr.response?.status === 403) {
+          tokenStorage.clear();
+          store.dispatch(clearUser());
+          toast.error('Tài khoản đã đăng nhập ở thiết bị khác. Vui lòng đăng nhập lại.');
+          router.push('/login');
+        }
+        throw refreshErr;
+      }
+    }
+    throw error;
+  },
+);
+```
+
+**Flutter (Dio auth interceptor)**:
+
+```dart
+class AuthInterceptor extends Interceptor {
+  final AuthService authService;
+  final Dio dio;
+  AuthInterceptor(this.authService, this.dio);
+
+  @override
+  Future<void> onError(DioException err, ErrorInterceptorHandler handler) async {
+    if (err.response?.statusCode == 401 && err.requestOptions.extra['retry'] != true) {
+      try {
+        await authService.refresh();
+        final opts = err.requestOptions;
+        opts.extra['retry'] = true;
+        opts.headers['Authorization'] = 'Bearer ${authService.accessToken}';
+        final response = await dio.fetch(opts);
+        return handler.resolve(response);
+      } on DioException catch (refreshErr) {
+        if (refreshErr.response?.statusCode == 403) {
+          // Phiên bị đá do login ở device khác
+          await authService.logoutLocal(); // clear tokens + state, KHÔNG gọi API
+          navigatorKey.currentState?.pushNamedAndRemoveUntil('/login', (_) => false);
+          ScaffoldMessenger.of(navigatorKey.currentContext!).showSnackBar(
+            const SnackBar(content: Text('Tài khoản đã đăng nhập ở thiết bị khác. Vui lòng đăng nhập lại.')),
+          );
+        }
+        return handler.next(refreshErr);
+      }
+    }
+    return handler.next(err);
+  }
+}
+```
+
+#### 1.6.1.5 Logout — chỉ đá phiên hiện tại
+
+`POST /auth/logout` (Bearer required) chỉ clear cột `refreshTokenMobile` HOẶC `refreshTokenWeb` tương ứng với `clientType` trong access token đang gọi. Phiên còn lại (nếu có) **không bị ảnh hưởng**.
+
+Ví dụ:
+- User đang login app + web.
+- User bấm Logout trên web → BE clear `refreshTokenWeb`. App tiếp tục hoạt động bình thường.
+- User bấm Logout trên app → BE clear `refreshTokenMobile`. Web tiếp tục hoạt động bình thường.
+
+**Nếu FE muốn "Đăng xuất khỏi tất cả thiết bị"**: hiện chưa có endpoint dedicated. Workaround: dùng flow đổi mật khẩu (`POST /auth/change-password`) — flow này chưa clear session, cần bổ sung sau. Hoặc admin gọi `POST /users/:id/revoke-sessions`.
+
+> **Roadmap**: bổ sung `POST /auth/logout-all` (Bearer) — clear cả 2 cột — nếu FE cần. Chưa implement ở v1.19, mở ticket khi cần.
+
+#### 1.6.1.6 JWT payload
+
+Payload access + refresh token giờ có field mới:
+
+```jsonc
+{
+  "sub": "550e8400-e29b-41d4-a716-446655440000",
+  "email": "user@example.com",
+  "role": 1,
+  "clientType": "mobile",   // ← NEW v1.19: "mobile" | "web"
+  "iat": 1735689600,
+  "exp": 1735690500
+}
+```
+
+FE **không cần** decode payload — chỉ BE dùng để phân định slot. FE truyền refresh token nguyên bản qua body `POST /auth/refresh`, BE tự trích `clientType` từ signature-verified payload.
+
+#### 1.6.1.7 Backward-compat khi deploy
+
+Token phát **trước v1.19** không có `clientType` trong payload. BE dùng fallback:
+
+- Xem như phiên `web` (default).
+- Compare refresh token với cột legacy `refreshToken` (cũ) → nếu match → issue token mới vào cột `refreshTokenWeb`.
+
+**Tác động thực tế:**
+- User đang login web-only → không cảm nhận gì. Lần refresh tiếp theo tự "migrate" sang cột `web`.
+- User đang login app-only → sau lần refresh, session được xem là `web`. Nếu sau đó có ai login web → app bị đá. **Đề xuất**: FE App deploy đồng thời với BE để header `X-Client-Type: mobile` xuất hiện ngay lần login mới → migrate sang cột `mobile` đúng slot.
+- User đang login cả web + app: sau khi deploy, một trong hai (cái refresh sau) sẽ chiếm cột `web` → cái còn lại bị đá 1 lần khi refresh. Sau khi FE App wire `X-Client-Type: mobile` và user login lại app → phiên app vào slot `mobile`, không đá web nữa.
+
+#### 1.6.1.8 Test cases để FE tự verify
+
+**Test 1 — App + Web song song (case đúng)**:
+- Login web Chrome → OK.
+- Login app iPhone (cùng account) → OK, web KHÔNG bị đá.
+- Web gọi API bất kỳ → OK (còn hoạt động).
+- App gọi API bất kỳ → OK.
+
+**Test 2 — 2 web browser**:
+- Login web Chrome → OK.
+- Login web Firefox (cùng account) → OK.
+- Đợi 15 phút (hoặc trigger refresh trên Chrome bằng cách để access token hết hạn).
+- Chrome gọi API → 401 → tự refresh → 403 → logout local, toast.
+- Firefox: hoạt động bình thường.
+
+**Test 3 — 2 app device**:
+- Login iPhone → OK.
+- Login iPad (cùng account) → OK.
+- iPhone refresh sau khi access token hết → 403 → logout local, toast.
+- iPad: hoạt động bình thường.
+
+**Test 4 — Logout không đá phiên còn lại**:
+- Login web + app.
+- Bấm logout trên web → OK.
+- App vẫn hoạt động bình thường (thử gọi `GET /auth/profile`).
+
+**Test 5 — Ban đá tất cả**:
+- Login web + app.
+- Admin gọi `POST /users/:id/ban { reason: "..." }`.
+- Web refresh → 401 access hết hạn → refresh → 401 `accountDisabled`.
+- App refresh → tương tự.
+- Cả 2 device đều logout.
+
+**Test 6 — Header sai giá trị**:
+- Login với header `X-Client-Type: xyz` → BE normalize về `web` → OK (không lỗi).
+- Login không gửi header trên `/auth/login` → BE default `web` → OK.
+- Login không gửi header trên `/auth/apple` → BE default `mobile` → OK.
+
+#### 1.6.1.9 Checklist migration cho FE
+
+**Web (Next.js admin + customer)**:
+- [ ] Thêm interceptor Axios/Fetch gắn `X-Client-Type: web` cho mọi request.
+- [ ] Response interceptor: 401 → refresh → 403 → clear local + toast + redirect login.
+- [ ] Toast message chuẩn: "Tài khoản đã đăng nhập ở thiết bị khác. Vui lòng đăng nhập lại."
+- [ ] Verify test case 2 (2 browser), test case 4 (logout không đá app).
+
+**App (Flutter chung Android + iOS)**:
+- [ ] Thêm interceptor Dio gắn `X-Client-Type: mobile` cho mọi request.
+- [ ] Auth interceptor: 401 → refresh → 403 → `logoutLocal()` (xoá tokens + state, KHÔNG gọi API) + Snackbar + navigate login.
+- [ ] Verify test case 3 (2 device), test case 4.
+
+**iOS native (nếu có app Swift riêng)**:
+- [ ] `URLSessionConfiguration.httpAdditionalHeaders = ["X-Client-Type": "mobile"]`.
+- [ ] Handler cho refresh flow như trên.
+
+**Android native (nếu có app Kotlin riêng)**:
+- [ ] OkHttp interceptor gắn `X-Client-Type: mobile`.
+- [ ] Authenticator handle 403 → clear tokens + redirect login.
 
 ### 1.7 Token refresh flow
 
@@ -708,7 +1019,7 @@ Base path: `/properties`.
 | `GET` | `/properties/public/:slug` | **Chi tiết phòng cho customer web** (kèm giá + host) — xem §4.11 |
 | `GET` | `/properties/public/:slug/similar?limit=8` | **Cơ sở tương tự** (carousel cuối trang detail) — xem §4.12 |
 | `GET` | `/properties/public/by-owner/:ownerId` | **Danh sách phòng công khai của 1 chủ nhà** (no auth) — dùng cho link Zalo "lịch phòng" — xem §4.13 |
-| `GET` | `/properties/share/:id` | — (trả PropertyDto không kèm giá, theo `id`, dùng cho share link nội bộ) |
+| `GET` | `/properties/share/:id` | **Preview share link 1 phòng** — KHÔNG trả giá bán + KHÔNG trả host info. CÓ trả surcharge + đầy đủ thông tin phòng. Dùng cho `preview.halong24h.com`. Xem §4.14 |
 
 ### 4.2 Authenticated CRUD
 
@@ -720,6 +1031,13 @@ Base path: `/properties`.
 | `PATCH` | `/properties/:id` | ADMIN/OWNER/SALE (+ permission) |
 | `PUT` | `/properties/:id/prices` | ADMIN/OWNER/SALE (+ permission) |
 | `DELETE` | `/properties/:id` | ADMIN/OWNER (+ permission) |
+
+> **Required price fields (v1.16.7+, 2026-07-01)**: Mọi field giá tiền **bắt buộc, không được null/để trống**.
+> - `POST /properties` — `weekdayPrice`, `weekendPrice`, `holidayPrice`, `adultSurcharge`, `childSurcharge` **đều required** (`int >= 0`). Trước đây optional.
+> - `PUT /properties/:id/prices` — cả 5 field trên **đều required**, FE phải gửi đủ (không còn partial update).
+> - `PATCH /properties/:id` — 5 field giá vẫn optional (chỉ gửi field cần update), nhưng **nếu gửi thì KHÔNG được null** — gửi `null` → 400 validation error.
+> - Booking `depositAmount` (cả `POST /bookings/hold`, `PATCH /bookings/:id`) — optional nhưng **nếu gửi thì không được null**.
+> - `PATCH /bookings/:id/mark-paid` body `amount` — optional với fallback `totalAmount`/`depositAmount`, **nếu gửi thì không được null**.
 
 **`GET /properties` query params:**
 
@@ -1076,6 +1394,74 @@ Endpoint **public** (no auth) cho use case "chủ nhà share lịch phòng vào 
 Mỗi item dùng shape `PropertyCardDto` (§4.6). `isFavorited` luôn `false` (public, không attempt resolve user). `owner.phone` có thể `null` nếu OWNER chưa cập nhật SĐT — FE phải handle gracefully (ẩn nút Zalo).
 
 > **Lưu ý quyền riêng tư**: endpoint này tiết lộ SĐT của OWNER và danh sách phòng. Đây là chủ ý — OWNER chủ động share link Zalo cho team SALE. Nếu sau này cần revoke được link (vd: thay đổi đội ngũ), sẽ phải thêm field `User.publicShareToken` và đổi endpoint sang `/properties/public/by-token/:token` (defer khi cần).
+
+### 4.14 Public share detail — `GET /properties/share/:id`
+
+Endpoint **public** (no auth) cho use case "OWNER share thông tin 1 phòng cụ thể qua Zalo/Messenger/Facebook" — link trỏ về `https://preview.halong24h.com/{propertyId}`. Trang preview hiển thị **đầy đủ thông tin phòng** nhưng **CHE 2 nhóm field nhạy cảm**:
+
+- **KHÔNG** trả thông tin chủ nhà (no `owner` block, no SĐT, no avatar).
+- **KHÔNG** trả giá bán phòng (`weekdayPrice`, `weekendPrice`, `holidayPrice` — tuyệt đối không xuất hiện trong response).
+- **CÓ** trả giá phụ thu (`adultSurcharge`, `childSurcharge`) — vì đây là policy phòng, không phải giá bán.
+
+Visibility: tuân theo rule §4.1 (property `isActive=true, deletedAt=null, moderationStatus='approved'` + owner còn entitlement). Sai → **404**.
+
+**Response shape (v1.16.6 — đã bổ sung surcharge + floorArea + city/district + rating + slug + isHot):**
+
+```json
+{
+  "success": true,
+  "message": "...",
+  "data": {
+    "id": "uuid",
+    "slug": "b1503-03",
+    "name": "B1503",
+    "code": "03",
+    "type": 1,
+    "view": "sea",
+    "address": "Toà Alacarte",
+    "city": "Hạ Long",
+    "district": "Bãi Cháy",
+    "latitude": 20.95,
+    "longitude": 107.05,
+    "mapLink": "https://maps.google.com/...",
+    "bedrooms": 2,
+    "bathrooms": 1,
+    "standardGuests": 2,
+    "maxGuests": 4,
+    "floorArea": 45,
+    "adultSurcharge": 200000,
+    "childSurcharge": 100000,
+    "amenities": ["ac", "wifi", "tv", "pool"],
+    "description": "Alacarte căn góc...",
+    "rules": "Check-in sau 14:00...",
+    "services": ["Đưa đón sân bay"],
+    "cancellationPolicy": 1,
+    "checkInTime": "14:00",
+    "checkOutTime": "12:00",
+    "ratingAvg": 4.92,
+    "reviewCount": 37,
+    "isHot": false,
+    "images": [
+      { "id": "uuid", "imageUrl": "https://...", "isCover": true, "order": 0 }
+    ]
+  }
+}
+```
+
+Ghi chú field:
+- `floorArea` (m²) — `null` nếu owner chưa điền. FE tự ẩn dòng diện tích.
+- `adultSurcharge`, `childSurcharge` (VND) — có thể `null` nếu owner chưa cấu hình → FE hiểu là "không thu phụ thu" / "miễn phí".
+- `city`, `district` — display-only (owner điền tay), `null` nếu chưa nhập.
+- `mapLink` — link Google Maps owner gắn, có thể `null`.
+- `cancellationPolicy` — 0=FLEXIBLE, 1=MODERATE, 2=STRICT (xem [§19 Enums](#19-enums-reference)).
+- `ratingAvg`, `reviewCount` — denormalized; `ratingAvg=0` khi `reviewCount=0` → FE tự ẩn rating section.
+- `isHot` — admin curated badge.
+- `images[]` — đã sort `order` asc; mỗi item có `isCover` để FE chọn ảnh đầu.
+
+**Field cố ý KHÔNG trả** (để FE biết chắc không phải BE quên):
+- `weekdayPrice`, `weekendPrice`, `holidayPrice` — giá bán phòng.
+- `ownerId`, `owner` (name/phone/avatar) — thông tin chủ nhà.
+- `moderationStatus`, `isActive`, `deletedAt` — trạng thái internal.
 
 ---
 
@@ -1576,21 +1962,44 @@ Base path: `/devices`. Auth required.
 
 ### 8.4 FCM push payload
 
-BE gửi data-message (không phải notification message):
+BE gửi **hybrid message** — kèm cả `notification` block (tray auto-display) và `data` block (deep link + metadata). Không phải data-only.
+
+**Top-level `notification`** (Firebase auto-fanout sang cả FCM Android + APNs iOS):
 ```json
 {
-  "type": "booking",
-  "title": "Booking mới",
-  "subtitle": "...",
-  "targetId": "<bookingId>",
-  "targetType": "booking",
-  "notificationId": "<uuid>",
-  "pushType": "booking_confirmed",
-  "deepLink": "/bookings/<bookingId>"
+  "notification": { "title": "Booking mới", "body": "Villa A — booking đã confirm" },
+  "data": {
+    "type": "booking_confirmed",
+    "targetId": "<bookingId>",
+    "deepLink": "/bookings/<bookingId>"
+  }
 }
 ```
 
-`pushType` mới: `chat_message`, `lead_new`, `dispute_opened`, `dispute_resolved`, `subscription_frozen`, `subscription_price_changed`, ...
+**APNs config (iOS)** — v1.19+ (2026-07-01) set tường minh `aps.alert` + `mutable-content: 1` + header `apns-push-type: alert` + `apns-priority: 10`:
+```json
+{
+  "apns": {
+    "headers": { "apns-priority": "10", "apns-push-type": "alert" },
+    "payload": {
+      "aps": {
+        "alert": { "title": "Booking mới", "body": "..." },
+        "sound": "default",
+        "badge": 1,
+        "mutable-content": 1
+      }
+    }
+  }
+}
+```
+
+**Vì sao set tường minh**: trước v1.19, chỉ set top-level `notification` + `apns.payload.aps = { sound, badge }` (không có `alert`). Firebase Admin không tự merge `notification` vào `aps.alert` khi `aps` đã được ghi thủ công → APNs coi payload là silent push → iOS **KHÔNG hiện tray khi app killed**. Android không bị ảnh hưởng.
+
+**FE mobile handler** (tránh double notification khi socket vẫn online):
+- Foreground: đã có event `message:new` từ WebSocket → FE suppress notification tray thủ công.
+- Background/killed: OS tự hiện tray từ `apns.alert` / Android `notification` block. Tap → mở `data.deepLink`.
+
+`pushType` (nằm trong `data.type`): `booking_*`, `payment_*`, `subscription_*`, `chat_message`, `lead_new`, `dispute_opened`, `dispute_resolved`, `subscription_frozen`, `subscription_price_changed`, `kyc_*`, `staff_invite_accepted`, `property_approved | rejected | suspended`, ...
 
 ---
 
@@ -2448,8 +2857,9 @@ socket.on('error', (e) => console.error(e.message));
 ### 17.5 Behavior tự động
 
 - **Token expiry mid-session**: BE set timer theo `payload.exp` ở handshake. Khi access token hết hạn → server emit `error: { code: 'tokenExpired', message: 'Token expired' }` rồi `disconnect(true)`. FE refresh token qua `/auth/refresh` và reconnect lại WS với token mới.
-- **Offline → FCM**: nếu recipient không có socket nào active, BE tự gửi FCM push với `pushType: "chat_message"` và `deepLink: "/conversations/:id"`.
-- **Multi-device**: tất cả socket của 1 user đều nhận → đồng bộ web + mobile.
+- **Luôn push FCM cho chat (v1.18+, 2026-07-01)**: mỗi tin nhắn mới, BE gọi `pushToUser` cho **mọi device** của recipient (không quan tâm socket online hay không). Push với `pushType: "chat_message"`, `deepLink: "/conversations/:id"`. FE mobile foreground handler **phải tự suppress notification tray** khi user đang mở đúng conversation đó (tránh double với `message:new` WS event). Trước v1.18 chỉ push khi user hoàn toàn không có socket → miss case multi-device (mở web + app song song, app không hiện tray).
+- **Không tạo notification DB row cho chat**: khác với booking events (mỗi event tạo 1 row trong `/notifications` inbox), chat message chỉ push FCM — không insert `Notification`. Lý do: volume cao, inbox `/notifications` không phải nơi tra cứu chat; badge tổng dùng `GET /conversations/unread-count`.
+- **Multi-device**: tất cả socket của 1 user đều nhận `message:new` → đồng bộ web + mobile. FCM cũng bắn tới mọi device đã register qua `POST /devices`.
 - **Retention 180 ngày**: cron 3AM xoá messages cũ. Conversation có `hasDispute=true` được giữ.
 - **Presence narrow**: chỉ broadcast tới member của conversation chung (active members, `leftAt=null`), không leak cho user lạ và không gửi cho member đã rời.
 - **Race protection**: tạo conversation cho cùng booking 2 lần đồng thời sẽ trả về conversation đã có (idempotent).
@@ -2467,11 +2877,102 @@ socket.on('error', (e) => console.error(e.message));
 - [ ] Optimistic UI: render local trước, update id từ `message:ack`
 - [ ] Reconnect → re-fetch missed messages qua REST từ `nextCursor` cuối
 
-**Android**:
+**Android (native Kotlin/Java)**:
 - [ ] `io.socket:socket.io-client:2.x`
 - [ ] Connection trong service singleton, refresh token khi cần
 - [ ] FCM handler `chat_message` → mở conversation deeplink
 - [ ] Khi mở chat: REST history → join WS events
+
+**iOS (native Swift)**:
+- [ ] `Socket.IO-Client-Swift` 16.x (tương thích Socket.IO server 4.x mà NestJS 11 đang dùng)
+- [ ] `SocketManager` singleton scope theo AppDelegate/SceneDelegate, disconnect khi logout
+- [ ] APNs push handler cho payload `pushType: "chat_message"` → deep link `/conversations/:id`
+- [ ] Foreground: dựa vào WS event `message:new`, không dùng APNs
+- [ ] Background/killed: dựa vào APNs → khi user mở app, join lại WS + refetch từ `nextCursor`
+
+**Flutter (dùng chung Android + iOS)**:
+- [ ] Package `socket_io_client: ^2.0.3+1` (hỗ trợ Socket.IO 4.x)
+- [ ] Khởi tạo:
+  ```dart
+  final socket = IO.io(
+    '$baseUrl/chat',
+    IO.OptionBuilder()
+      .setTransports(['websocket'])
+      .disableAutoConnect()
+      .setAuth({'token': accessToken})
+      .setQuery({'lang': locale}) // 'vi' hoặc 'en'
+      .enableReconnection()
+      .setReconnectionDelay(1000)
+      .build(),
+  );
+  socket.connect();
+  ```
+- [ ] Wrap trong `ChatSocketService` singleton — inject qua GetIt/Riverpod, KHÔNG connect lại mỗi lần vào màn hình
+- [ ] Nghe `error` với `code == 'tokenExpired'` → gọi `authService.refresh()` → `socket.auth = {...}` → `socket.connect()`
+- [ ] Reconnect thành công → REST `GET /conversations/:id/messages?cursor=<last>` để bù tin bị miss
+- [ ] Firebase Messaging handler cho `data.pushType == 'chat_message'` → navigate `deepLink`
+- [ ] Lifecycle: `AppLifecycleState.paused` không cần disconnect (BE tự cleanup khi socket idle drop), nhưng `AppLifecycleState.detached`/logout thì phải `socket.dispose()`
+
+### 17.7 Sync App ↔ Web ↔ BE — Config bắt buộc phải khớp
+
+Không có secret/API key riêng cho chat. Chỉ 3 thứ dưới đây cần đồng bộ.
+
+**1. Base URL + namespace `/chat`** — cùng host với REST:
+
+| Env | REST base | WebSocket URL |
+|---|---|---|
+| Production | `https://api.halong24h.com` | `https://api.halong24h.com/chat` |
+| Staging | `https://api-staging.halong24h.com` | `https://api-staging.halong24h.com/chat` |
+| Development | `http://localhost:3000` | `http://localhost:3000/chat` |
+
+> Namespace `/chat` là **path của Socket.IO namespace**, KHÔNG phải HTTP path. Client truyền vào `io(url + '/chat')` — socket.io tự upgrade sang `wss://` khi origin là `https://`.
+
+**2. Auth token — dùng LẠI accessToken JWT của REST**
+
+- BE verify bằng `JWT_SECRET` giống hệt HTTP guard — **không có endpoint issue token riêng cho socket**.
+- FE truyền qua `handshake.auth.token` (khuyến nghị) hoặc header `Authorization: Bearer <token>`.
+- Access token TTL 15 phút. Khi hết hạn giữa session:
+  1. BE emit `error: { code: 'tokenExpired', message }` rồi `disconnect(true)`.
+  2. FE gọi `POST /auth/refresh` → nhận `accessToken` mới.
+  3. FE update `socket.auth = { token: newAccessToken }` và `socket.connect()` lại.
+- **KHÔNG** truyền `refreshToken` cho socket — chỉ dùng accessToken.
+
+**3. CORS `ALLOWED_ORIGINS` (BE `.env`) — chỉ ảnh hưởng Web**
+
+```env
+ALLOWED_ORIGINS="https://halong24h.com,https://www.halong24h.com,https://admin.halong24h.com"
+```
+
+- Áp cho cả REST (`main.ts`) và socket namespace `/chat` (`chat.gateway.ts`).
+- Thiếu origin nào → browser đó connect fail với lỗi CORS trong console. **App native (Flutter/iOS/Android) KHÔNG bị CORS chặn** — không cần thêm scheme của app vào đây.
+- Dev local (`NODE_ENV !== 'production'`) BE cho phép **mọi origin** — không cần config.
+
+**4. FCM/APNs — song song, không thay thế WS**
+
+- Không có key riêng cho chat. Reuse Firebase project đã đăng ký ở module `devices` (`POST /devices`).
+- BE chỉ gửi push khi recipient **không có socket nào active**. Nếu FE đang mở app với socket connected → chỉ nhận `message:new`, KHÔNG nhận FCM (tránh double).
+- Payload FCM `data.pushType == 'chat_message'`, `data.deepLink == '/conversations/:id'` — FE map deep link theo router của mình.
+
+**5. Version compat**
+
+| Component | Yêu cầu |
+|---|---|
+| BE Socket.IO server | `4.x` (đi kèm `@nestjs/websockets` + `@nestjs/platform-socket.io`) |
+| Web client | `socket.io-client` `^4.7.0` |
+| Flutter | `socket_io_client` `^2.0.3` |
+| Android native | `io.socket:socket.io-client:2.x` (protocol v4) |
+| iOS native | `Socket.IO-Client-Swift` `~> 16.0` |
+
+**Client cũ dùng `socket.io-client@2.x` trên browser SẼ KHÔNG kết nối được** — không cùng protocol version với server 4.x.
+
+**6. Checklist đồng bộ nhanh khi debug "không nhận message realtime"**
+
+- [ ] FE dùng đúng base URL của env → check request `wss://<host>/chat/?EIO=4&transport=websocket` trong Network tab
+- [ ] Header `Authorization` hoặc `auth.token` chứa **accessToken hiện tại**, chưa expire
+- [ ] Server không trả 401/CORS ở handshake — nếu 401 → token sai; nếu CORS → thêm origin vào `.env`
+- [ ] Sau `connect`, FE có join room `user:<userId>` **tự động** (BE tự join theo JWT payload, không cần FE emit thêm) — verify bằng cách gửi tin từ tài khoản khác vào conversation chung
+- [ ] `message:new` listener đăng ký **trước** khi socket connect, không phải bên trong 1 useEffect cleanup lỗi
+- [ ] Nếu chỉ 1 vài client miss: check `handleDisconnect` log ở BE — có thể socket bị kill do `tokenExpired` timer
 
 ---
 
@@ -2550,7 +3051,8 @@ CONVERSATION_MEMBER_ROLE = 'owner' | 'sale' | 'customer' | 'admin'
 
 #### Setup
 - [ ] HTTP client (Axios/Fetch) với interceptor `Authorization` + `Accept-Language`
-- [ ] Refresh-token interceptor (401 → refresh → retry, 401 lần 2 → logout)
+- [ ] **v1.19+**: interceptor gắn `X-Client-Type: web` cho mọi request (xem §1.6.1.3)
+- [ ] Refresh-token interceptor (401 → refresh → retry, **403 ở /auth/refresh → phiên bị đá do login thiết bị khác** → clear tokens + toast + redirect login)
 - [ ] Lưu token httpOnly cookie hoặc EncryptedStorage
 - [ ] Global error toast theo HTTP status mapping
 
@@ -2586,7 +3088,8 @@ CONVERSATION_MEMBER_ROLE = 'owner' | 'sale' | 'customer' | 'admin'
 
 #### Setup
 - [ ] OkHttp/URLSession interceptor `Authorization` + `Accept-Language`
-- [ ] Authenticator xử lý 401 → refresh
+- [ ] **v1.19+**: interceptor gắn `X-Client-Type: mobile` cho mọi request (xem §1.6.1.3)
+- [ ] Authenticator xử lý 401 → refresh, **403 ở /auth/refresh → phiên bị đá do login device khác** → `logoutLocal()` (xoá tokens + state) + snackbar + navigate login
 - [ ] EncryptedSharedPreferences/Keychain lưu token
 - [ ] Đăng ký FCM token sau login (`POST /devices`) + mỗi `onNewToken`
 - [ ] Huỷ FCM token khi logout (`DELETE /devices/:token`)
@@ -2641,6 +3144,59 @@ CONVERSATION_MEMBER_ROLE = 'owner' | 'sale' | 'customer' | 'admin'
 ---
 
 ## 21. Changelog & Bug fixes
+
+### v1.19 — 2026-07-01 (Session split theo clientType: 1 slot mobile + 1 slot web)
+
+Giới hạn phiên đăng nhập song song. Trước v1.19: `User.refreshToken` (1 cột) → 1 session tổng cộng cho mọi loại client. Từ v1.19: tách thành 2 slot độc lập theo `clientType`.
+
+| Thay đổi | Chi tiết |
+|---|---|
+| Schema | Thêm 2 cột `refreshTokenMobile`, `refreshTokenWeb`. Giữ cột legacy `refreshToken` để tương thích ngược 1 lần refresh cho token phát trước v1.19. |
+| Migration | `20260701120000_split_refresh_token_by_client_type` — additive, không phá dữ liệu. |
+| Header mới | `X-Client-Type: mobile\|web` — FE gửi khi gọi 5 endpoint cấp token (`/auth/login`, `/auth/register`, `/auth/google`, `/auth/apple`, `/staff/invites/accept`). |
+| JWT payload | Thêm field `clientType` — BE dùng để phân định slot khi refresh/logout. |
+| Logout behavior | `POST /auth/logout` giờ chỉ đá phiên hiện tại (`clientType` trong access token). Phiên còn lại không bị ảnh hưởng. |
+| Ban / revoke-sessions / reset password | Vẫn đá cả 2 phiên. |
+| Backward-compat | Token cũ (không có `clientType`) → fallback so với cột legacy 1 lần, xem như phiên `web`. |
+
+**Breaking cho FE:**
+- **Web + App**: cần thêm interceptor gắn header `X-Client-Type` (xem §1.6.1.3 snippet code).
+- **Error handling**: response interceptor cần bắt `403 auth.invalidRefreshToken` ở `/auth/refresh` → clear tokens local + toast "Tài khoản đã đăng nhập ở thiết bị khác" + redirect login (xem §1.6.1.4).
+- **Sau deploy**: user đang login song song web + app trước đây → sẽ có 1 phiên bị đá 1 lần khi refresh. Sau đó session ổn định vào đúng slot. **Đề xuất** deploy FE App + FE Web đồng thời với BE để giảm impact.
+
+Xem chi tiết đầy đủ (business rule, snippet code cho Web/Flutter/Swift/Kotlin, test cases, migration checklist) tại **§1.6.1**.
+
+### v1.16.7 — 2026-07-01 (Required price fields — DTO validation siết chặt)
+
+Tất cả field liên quan giá tiền không được null/để trống. Áp dụng cho property prices và booking deposit/amount.
+
+| Endpoint | Thay đổi |
+|---|---|
+| `POST /properties` | `weekdayPrice`, `weekendPrice`, `holidayPrice`, `adultSurcharge`, `childSurcharge` → **required** (`int >= 0`). Trước đây tất cả optional, FE có thể tạo property không giá. |
+| `PUT /properties/:id/prices` | Cả 5 field giá → **required**. Endpoint này dedicated set bảng giá → FE bắt buộc gửi đủ. Trước đây partial update, gửi field nào update field đó. |
+| `PATCH /properties/:id` | 5 field giá vẫn optional (partial update), nhưng `null` → 400 (`ValidateIf` pattern: skip khi undefined, fail khi null). |
+| `POST /bookings/hold` (CreateBookingDto) | `depositAmount` optional, gửi `null` → 400. |
+| `PATCH /bookings/:id` (UpdateBookingDto) | `depositAmount` optional, gửi `null` → 400. |
+| `PATCH /bookings/:id/mark-paid` | `amount` optional với fallback `totalAmount`/`depositAmount`, gửi `null` → 400. |
+
+**Validation behavior**:
+- Required (CREATE flows): omit field → 400. Gửi `null` → 400. Gửi `0` → OK (giá miễn phí hợp lệ).
+- Not-null optional (PATCH flows): omit field → skip update. Gửi `null` → 400. Gửi `0` → OK.
+
+**Breaking**: FE đang submit form tạo property mà bỏ trống giá → BE reject. FE phải ép user nhập đủ 5 giá trước khi submit (hoặc default về 0).
+
+### v1.16.6 — 2026-06-30 (Enrich `/properties/share/:id` cho preview.halong24h.com)
+
+OWNER share link 1 phòng cụ thể qua Zalo/Messenger → trỏ về `https://preview.halong24h.com/{propertyId}`. Endpoint `/properties/share/:id` đã có sẵn từ trước nhưng response thiếu các field web preview cần.
+
+| Thay đổi | Chi tiết |
+|---|---|
+| Bổ sung fields vào response | `slug`, `city`, `district`, `floorArea`, `adultSurcharge`, `childSurcharge`, `ratingAvg`, `reviewCount`, `isHot`. Vẫn KHÔNG trả `weekdayPrice/weekendPrice/holidayPrice` (giá bán) và KHÔNG trả `owner` block (thông tin chủ nhà) — đúng yêu cầu nghiệp vụ. |
+| `images[]` shape chuẩn hoá | Giờ select tường minh `{id, imageUrl, isCover, order}` thay vì lấy hết Prisma scalar (trước đây có `publicId, createdAt, propertyId` dư thừa). |
+| Bỏ field `isActive` khỏi response | Trước đây leak `isActive=true` ra public — vô nghĩa vì WHERE clause đã chỉ trả property `isActive=true`. |
+| Doc bổ sung §4.14 | Spec đầy đủ response shape cho team web preview. |
+
+**Breaking?** Có rủi ro nhỏ: nếu FE cũ đang đọc `data.isActive`/`data.images[].publicId`/`data.images[].createdAt`, sẽ thấy `undefined`. Hiện chưa biết consumer nào dùng — `share/:id` dùng cho internal share link, scope nhỏ. FE web preview là consumer mới, đọc spec mới.
 
 ### v1.16 — 2026-06-27 (Customer web booking detail + similar properties + enriched BookingDto)
 

@@ -5,6 +5,16 @@ import 'package:dio/dio.dart';
 import '../constants/api_constants.dart';
 import '../storage/secure_storage.dart';
 
+/// Lý do buộc đăng xuất — phân biệt để hiện đúng thông báo cho user.
+enum ForceLogoutReason {
+  /// Refresh token hết hạn / không hợp lệ / mất mạng khi refresh.
+  sessionExpired,
+
+  /// BE trả 403 tại `/auth/refresh` (v1.19): slot session bị chiếm bởi 1 thiết
+  /// bị khác CÙNG loại (mobile) → phiên này bị đá.
+  sessionKicked,
+}
+
 class ApiClient {
   static late final Dio _dio;
   static bool _initialized = false;
@@ -14,11 +24,12 @@ class ApiClient {
   /// Subscriber: `AuthNotifier` (see `auth_controller.dart`). On receive:
   /// 1. SecureStorage has already been cleared by the interceptor
   /// 2. AuthNotifier resets state → router auto-redirects to `/login`
-  /// 3. Login screen shows snackbar "Session expired"
-  static final StreamController<void> _forceLogoutController =
-      StreamController<void>.broadcast();
+  /// 3. Login screen shows snackbar theo [ForceLogoutReason]
+  static final StreamController<ForceLogoutReason> _forceLogoutController =
+      StreamController<ForceLogoutReason>.broadcast();
 
-  static Stream<void> get onForceLogout => _forceLogoutController.stream;
+  static Stream<ForceLogoutReason> get onForceLogout =>
+      _forceLogoutController.stream;
 
   static Dio get instance {
     if (!_initialized) _init();
@@ -30,7 +41,13 @@ class ApiClient {
       baseUrl: ApiConstants.baseUrl,
       connectTimeout: const Duration(seconds: 30),
       receiveTimeout: const Duration(seconds: 30),
-      headers: {'Content-Type': 'application/json'},
+      // X-Client-Type (v1.19): BE tách session slot theo client. App luôn là
+      // 'mobile' → BE lưu vào slot mobile riêng, không đá phiên web song song.
+      // Harmless cho endpoint không cần (§1.6.1.2).
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Client-Type': 'mobile',
+      },
     ));
 
     _dio.interceptors.add(_AuthInterceptor(_dio));
@@ -109,19 +126,31 @@ class _AuthInterceptor extends Interceptor {
     }
 
     _isRefreshing = true;
+    // Chỉ true khi CHÍNH request refresh trả 403 (session bị đá), không phải khi
+    // retry request gốc lỗi sau khi refresh đã thành công.
+    var kicked = false;
     try {
       final refreshToken = await SecureStorage.getRefreshToken();
       if (refreshToken == null) {
+        await SecureStorage.clear();
+        ApiClient._forceLogoutController.add(ForceLogoutReason.sessionExpired);
         await _failAll(err);
         handler.next(err);
         return;
       }
 
-      final response = await _dio.post(
-        ApiConstants.refresh,
-        data: {'refreshToken': refreshToken},
-        options: Options(headers: {'Authorization': null}),
-      );
+      final Response response;
+      try {
+        response = await _dio.post(
+          ApiConstants.refresh,
+          data: {'refreshToken': refreshToken},
+          options: Options(headers: {'Authorization': null}),
+        );
+      } on DioException catch (refreshErr) {
+        // 403 = slot session bị thiết bị khác cùng loại chiếm (v1.19).
+        kicked = refreshErr.response?.statusCode == 403;
+        rethrow;
+      }
 
       final responseData = response.data['data'];
       if (responseData is! Map) {
@@ -147,9 +176,14 @@ class _AuthInterceptor extends Interceptor {
       await _replayQueue(newAccessToken, err);
     } catch (_) {
       // Refresh failed → clear token + broadcast force-logout to AuthNotifier
-      // (state reset → router redirects to /login + snackbar).
+      // (state reset → router redirects to /login + snackbar). 403 → phiên bị
+      // đá do đăng nhập ở thiết bị khác; còn lại → hết hạn thường.
       await SecureStorage.clear();
-      ApiClient._forceLogoutController.add(null);
+      ApiClient._forceLogoutController.add(
+        kicked
+            ? ForceLogoutReason.sessionKicked
+            : ForceLogoutReason.sessionExpired,
+      );
       await _failAll(err);
       handler.next(err);
     } finally {

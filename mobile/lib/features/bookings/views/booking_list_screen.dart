@@ -11,6 +11,7 @@ import '../../../data/models/booking_model.dart';
 import '../../auth/controllers/auth_controller.dart';
 import '../../../shared/widgets/app_scaffold.dart';
 import '../../../shared/widgets/loading_widget.dart';
+import '../../../shared/widgets/mark_paid_dialog.dart';
 import '../controllers/booking_controller.dart';
 
 class BookingListScreen extends ConsumerStatefulWidget {
@@ -360,6 +361,23 @@ class _BookingCardState extends ConsumerState<_BookingCard> {
     }
   }
 
+  Future<void> _markPaid() async {
+    final result = await MarkPaidDialog.show(context, widget.booking);
+    if (result == null) return;
+    setState(() => _actionLoading = true);
+    final success = await ref
+        .read(bookingActionsProvider.notifier)
+        .markPaid(widget.booking.id, amount: result.amount);
+    if (!mounted) return;
+    setState(() => _actionLoading = false);
+    if (success) {
+      AppSnackBar.success(context, 'Đã ghi nhận thanh toán');
+      widget.onAction();
+    } else {
+      AppSnackBar.error(context, 'Không thể ghi nhận, thử lại sau');
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final colors = context.colors;
@@ -520,6 +538,22 @@ class _BookingCardState extends ConsumerState<_BookingCard> {
                             color: colors.textSecondary,
                           ),
                         ),
+                        if (booking.isPaid) ...[
+                          const SizedBox(width: AppSpacing.md),
+                          Icon(Icons.verified_rounded,
+                              size: 14, color: colors.success),
+                          const SizedBox(width: 4),
+                          Text(
+                            booking.paidAmount != null
+                                ? 'Đã thu ${_formatPrice(booking.paidAmount!)}'
+                                : 'Đã thanh toán',
+                            style: GoogleFonts.beVietnamPro(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w600,
+                              color: colors.success,
+                            ),
+                          ),
+                        ],
                       ],
                     ),
 
@@ -625,6 +659,28 @@ class _BookingCardState extends ConsumerState<_BookingCard> {
                                 ],
                               ],
                             ),
+                    ],
+
+                    // Ghi nhận thanh toán (cọc/đủ tiền của khách) — chỉ
+                    // người quản lý, khi chưa thu tiền & booking còn hiệu lực.
+                    if (widget.canManage &&
+                        !booking.isPaid &&
+                        booking.status != BookingStatus.cancelled &&
+                        booking.status != BookingStatus.noShow) ...[
+                      const SizedBox(height: AppSpacing.sm),
+                      SizedBox(
+                        width: double.infinity,
+                        child: FilledButton.tonalIcon(
+                          onPressed: _actionLoading ? null : _markPaid,
+                          icon: const Icon(Icons.payments_rounded, size: 16),
+                          label: Text('Ghi nhận thanh toán',
+                              style: GoogleFonts.beVietnamPro(
+                                  fontWeight: FontWeight.w700, fontSize: 13)),
+                          style: FilledButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(vertical: 6),
+                          ),
+                        ),
+                      ),
                     ],
                   ],
                 ),

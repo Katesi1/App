@@ -184,8 +184,8 @@ class ChatThreadNotifier extends StateNotifier<ChatThreadState> {
     }
   }
 
-  /// Gửi tin: optimistic trước, reconcile qua `message:ack`/`message:new`.
-  /// Socket rớt → fallback REST.
+  /// Gửi tin: hiển thị optimistic trước, gửi qua REST (nguồn sự thật) rồi thay
+  /// bằng tin thật. WS chỉ lo tin đến từ người khác (`_upsertIncoming`).
   Future<void> send(String content) async {
     final text = content.trim();
     if (text.isEmpty) return;
@@ -201,19 +201,69 @@ class ChatThreadNotifier extends StateNotifier<ChatThreadState> {
     );
     state = state.copyWith(messages: [...state.messages, optimistic]);
 
-    if (_socket.isConnected) {
-      _socket.sendMessage(conversationId, text);
-      return; // ack/new sẽ thay thế optimistic
-    }
-    // Fallback REST khi socket chưa kết nối.
+    // Gửi qua REST làm nguồn sự thật: BE tự broadcast `message:new` qua WS cho
+    // các thành viên khác, đồng thời trả về tin thật để thay optimistic NGAY —
+    // không phụ thuộc việc WS có gửi ack lại cho chính người gửi hay không
+    // (trước đây tin bị "kẹt"/ẩn tới khi refresh khi ack/new không về).
     final result = await _repo.sendMessage(conversationId, content: text);
     if (!mounted) return;
-    _replaceLocal(
-      localKey,
-      result.success
-          ? result.data!
-          : optimistic.copyWith(sendStatus: MessageSendStatus.failed),
-    );
+    if (!result.success) {
+      _replaceLocal(
+        localKey,
+        optimistic.copyWith(sendStatus: MessageSendStatus.failed),
+      );
+      return;
+    }
+    // Nếu WS đã kịp chèn tin thật (cùng id) trước khi REST trả về → bỏ
+    // optimistic để tránh trùng; ngược lại thay optimistic bằng tin thật.
+    final realId = result.data!.id;
+    if (state.messages.any((m) => m.id == realId)) {
+      state = state.copyWith(
+        messages: state.messages.where((m) => m.localKey != localKey).toList(),
+      );
+    } else {
+      _replaceLocal(localKey, result.data!);
+    }
+  }
+
+  /// Cửa sổ sửa/xoá tin của chính mình (BE enforce 15 phút kể từ khi gửi).
+  static const editWindow = Duration(minutes: 15);
+
+  /// Tin có thể sửa/xoá: của mình, đã gửi xong, chưa xoá, không phải system,
+  /// và còn trong cửa sổ 15 phút.
+  bool canModify(ChatMessage m) {
+    if (m.senderId != myUserId) return false;
+    if (m.isDeleted || m.isSystem) return false;
+    if (m.sendStatus != MessageSendStatus.sent) return false;
+    final created = m.createdAt;
+    if (created == null) return true;
+    return DateTime.now().difference(created) <= editWindow;
+  }
+
+  /// Sửa tin nhắn. Trả `null` nếu thành công, ngược lại trả message lỗi.
+  /// BE broadcast `message:edit` → các client khác cũng cập nhật.
+  Future<String?> edit(String messageId, String content) async {
+    final text = content.trim();
+    if (text.isEmpty) return 'Nội dung không được để trống';
+    final result = await _repo.editMessage(messageId, content: text);
+    if (!mounted) return null;
+    if (result.success) {
+      final m = result.data!;
+      _applyEdit(messageId, m.content, m.editedAt ?? DateTime.now());
+      return null;
+    }
+    return result.message;
+  }
+
+  /// Xoá (soft-delete) tin nhắn. Trả `null` nếu thành công.
+  Future<String?> delete(String messageId) async {
+    final result = await _repo.deleteMessage(messageId);
+    if (!mounted) return null;
+    if (result.success) {
+      _applyDelete(messageId);
+      return null;
+    }
+    return result.message;
   }
 
   void _onEvent(ChatSocketEvent e) {

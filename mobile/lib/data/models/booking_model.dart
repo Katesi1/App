@@ -13,6 +13,10 @@ class BookingModel {
   final String? customerName;
   final String? customerPhone;
   final double? depositAmount;
+  // Payment (set qua PATCH /bookings/:id/paid) — null cho tới khi ghi nhận tiền.
+  final double? totalAmount;
+  final double? paidAmount;
+  final DateTime? paidAt;
   final int guestCount;
   final String? notes;
   final int holdRemainingSeconds;
@@ -36,6 +40,9 @@ class BookingModel {
     this.customerName,
     this.customerPhone,
     this.depositAmount,
+    this.totalAmount,
+    this.paidAmount,
+    this.paidAt,
     this.guestCount = 2,
     this.notes,
     this.holdRemainingSeconds = 0,
@@ -61,6 +68,10 @@ class BookingModel {
         customerName: json['customerName'],
         customerPhone: json['customerPhone'],
         depositAmount: (json['depositAmount'] as num?)?.toDouble(),
+        totalAmount: (json['totalAmount'] as num?)?.toDouble(),
+        paidAmount: (json['paidAmount'] as num?)?.toDouble(),
+        paidAt:
+            json['paidAt'] != null ? DateTime.tryParse(json['paidAt']) : null,
         guestCount: json['guestCount'] ?? 2,
         notes: json['notes'],
         holdRemainingSeconds: json['holdRemainingSeconds'] ?? 0,
@@ -75,6 +86,9 @@ class BookingModel {
       );
 
   int get nights => checkoutDate.difference(checkinDate).inDays;
+
+  /// Đã ghi nhận thanh toán (cọc hoặc đủ tiền) qua PATCH /bookings/:id/paid.
+  bool get isPaid => paidAt != null;
 
   String get propertyName => property?['name'] ?? 'N/A';
 

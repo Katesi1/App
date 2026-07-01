@@ -36,6 +36,10 @@ class AuthState {
   /// snackbar + calls `consumeForceLogoutFlag()` to reset.
   final bool forceLoggedOut;
 
+  /// Thông báo kèm theo [forceLoggedOut] — khác nhau giữa "hết phiên" và "bị đá
+  /// do đăng nhập thiết bị khác" (v1.19). Login screen hiển thị message này.
+  final String? forceLogoutMessage;
+
   /// Set to true when refreshProfile() detects that a pending deletion was
   /// auto-cancelled by the server (deletionScheduledAt was non-null, now null).
   /// Dashboard listens via ref.listen and shows a toast, then calls
@@ -48,6 +52,7 @@ class AuthState {
     this.isLoggedIn = false,
     this.error,
     this.forceLoggedOut = false,
+    this.forceLogoutMessage,
     this.autoRestoredNotice = false,
   });
 
@@ -57,6 +62,7 @@ class AuthState {
     bool? isLoggedIn,
     String? error,
     bool? forceLoggedOut,
+    String? forceLogoutMessage,
     bool? autoRestoredNotice,
   }) =>
       AuthState(
@@ -65,6 +71,7 @@ class AuthState {
         isLoggedIn: isLoggedIn ?? this.isLoggedIn,
         error: error,
         forceLoggedOut: forceLoggedOut ?? this.forceLoggedOut,
+        forceLogoutMessage: forceLogoutMessage ?? this.forceLogoutMessage,
         autoRestoredNotice: autoRestoredNotice ?? this.autoRestoredNotice,
       );
 }
@@ -73,7 +80,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
   final AuthRepository _repo;
   final Ref _ref;
 
-  StreamSubscription<void>? _forceLogoutSub;
+  StreamSubscription<ForceLogoutReason>? _forceLogoutSub;
 
   AuthNotifier(this._repo, this._ref) : super(AuthState()) {
     _init();
@@ -81,9 +88,17 @@ class AuthNotifier extends StateNotifier<AuthState> {
     // SecureStorage has already been cleared by the interceptor before this
     // event fires — we just need to reset state so the router redirects to
     // /login + raise the flag so the login screen shows a snackbar.
-    _forceLogoutSub = ApiClient.onForceLogout.listen((_) {
+    _forceLogoutSub = ApiClient.onForceLogout.listen((reason) {
       if (!mounted) return;
-      state = AuthState(forceLoggedOut: true);
+      state = AuthState(
+        forceLoggedOut: true,
+        forceLogoutMessage: switch (reason) {
+          ForceLogoutReason.sessionKicked =>
+            'Tài khoản đã đăng nhập ở thiết bị khác. Vui lòng đăng nhập lại.',
+          ForceLogoutReason.sessionExpired =>
+            'Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.',
+        },
+      );
     });
   }
 

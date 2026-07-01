@@ -13,6 +13,7 @@ import 'core/services/push_notification_service.dart';
 import 'core/theme/app_theme.dart';
 import 'core/utils/app_router.dart';
 import 'features/auth/controllers/auth_controller.dart';
+import 'features/chat/controllers/chat_controller.dart';
 import 'shared/providers/theme_provider.dart';
 import 'shared/widgets/soft_update_prompt.dart';
 
@@ -107,10 +108,17 @@ class _HomestayAppState extends ConsumerState<HomestayApp>
       };
 
       // Silent foreground data push (no tap) — e.g. `subscription_paid` arrives
-      // while the user waits on the payment screen → refresh profile in place.
+      // while the user waits on the payment screen → refresh profile in place;
+      // chat_message → cập nhật badge chưa đọc.
       PushNotificationService.instance.onForegroundData = (data) {
         _maybeRefreshOnSubscriptionPush(data);
+        _maybeBumpChatBadge(data);
       };
+
+      // Foreground chat push: nếu đang mở đúng conversation + socket sống thì
+      // ẩn banner (WS `message:new` đã render tin) — chống trùng (rule §4.5 BE).
+      PushNotificationService.instance.shouldSuppressBanner =
+          _isViewingConversation;
 
       // Check app version against BE — if force-update, block UI immediately;
       // if soft-update, show a dismissible dialog. Run after the first frame
@@ -129,6 +137,39 @@ class _HomestayAppState extends ConsumerState<HomestayApp>
     final auth = ref.read(authProvider);
     if (!auth.isLoggedIn) return;
     ref.read(authProvider.notifier).refreshProfile();
+  }
+
+  /// Chat push đến khi app foreground → refresh badge chưa đọc. WS đã lo khi
+  /// socket sống, gọi thêm để chắc chắn khi socket rớt. Đọc `.notifier` cũng
+  /// khởi tạo socket/unread nếu chưa có.
+  void _maybeBumpChatBadge(Map<String, dynamic> data) {
+    if (data['pushType'] != 'chat_message') return;
+    if (!ref.read(authProvider).isLoggedIn) return;
+    ref.read(chatUnreadCountProvider.notifier).refresh();
+  }
+
+  /// true nếu app đang mở đúng màn conversation của tin push + socket còn sống
+  /// → suppress banner foreground (rule §4.5 BE).
+  bool _isViewingConversation(Map<String, dynamic> data) {
+    if (data['pushType'] != 'chat_message') return false;
+    final convId = _extractConversationId(data);
+    if (convId == null) return false;
+    if (!ref.read(chatSocketServiceProvider).isConnected) return false;
+    final path =
+        ref.read(routerProvider).routerDelegate.currentConfiguration.uri.path;
+    return path == '/conversations/$convId';
+  }
+
+  /// Lấy conversationId từ `targetId` hoặc parse từ `deepLink` (/conversations/:id).
+  String? _extractConversationId(Map<String, dynamic> data) {
+    final target = data['targetId'];
+    if (target is String && target.isNotEmpty) return target;
+    final deepLink = data['deepLink'];
+    if (deepLink is String) {
+      final segs = Uri.tryParse(deepLink)?.pathSegments ?? const [];
+      if (segs.length >= 2 && segs[0] == 'conversations') return segs[1];
+    }
+    return null;
   }
 
   Future<void> _checkAppVersion() async {
@@ -167,6 +208,13 @@ class _HomestayAppState extends ConsumerState<HomestayApp>
   Widget build(BuildContext context) {
     final router = ref.watch(routerProvider);
     final themeMode = ref.watch(themeProvider);
+
+    // Eager-connect socket chat ngay khi đã login (không chờ mở dashboard/chat)
+    // → tin realtime + đồng bộ đọc/typing hoạt động ở mọi màn, và badge/thông
+    // báo luôn cập nhật. Socket tự huỷ khi logout (userId null).
+    if (ref.watch(authProvider.select((s) => s.isLoggedIn))) {
+      ref.watch(chatSocketServiceProvider);
+    }
 
     return MaterialApp.router(
       title: 'Halong24h',
