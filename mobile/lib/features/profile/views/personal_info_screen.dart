@@ -1,8 +1,10 @@
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:intl/intl.dart';
 import '../../../core/theme/app_color_scheme.dart';
 import '../../../core/theme/app_colors.dart';
@@ -10,6 +12,7 @@ import '../../../core/theme/app_spacing.dart';
 import '../../../core/utils/phone_input.dart';
 import '../../../features/auth/controllers/auth_controller.dart';
 import '../../../shared/widgets/loading_widget.dart';
+import '../controllers/account_controller.dart';
 
 // gradient.brandHero stop "jade-mid" per spec section 3.7 — no token defined yet.
 const _jadeMidLight = Color(0xFF1B7E94);
@@ -33,6 +36,12 @@ class _PersonalInfoScreenState extends ConsumerState<PersonalInfoScreen> {
   DateTime? _dateOfBirth;
   bool _isLoading = false;
 
+  // Avatar: upload ảnh trước qua POST /uploads → giữ URL https gửi kèm khi lưu.
+  String? _avatarUrl;
+  bool _uploadingAvatar = false;
+  // Chặn mở picker chồng nhau (tap 2 lần) — iOS present 2 VC cùng lúc gây treo.
+  bool _pickerBusy = false;
+
   @override
   void initState() {
     super.initState();
@@ -40,6 +49,7 @@ class _PersonalInfoScreenState extends ConsumerState<PersonalInfoScreen> {
     _nameController = TextEditingController(text: user?.name ?? '');
     _phoneController = TextEditingController(text: user?.phone ?? '');
     _emailController = TextEditingController(text: user?.email ?? '');
+    _avatarUrl = user?.avatar;
     _gender = user?.gender ?? 0;
 
     if (user?.dateOfBirth != null && user!.dateOfBirth!.isNotEmpty) {
@@ -92,6 +102,49 @@ class _PersonalInfoScreenState extends ConsumerState<PersonalInfoScreen> {
     }
   }
 
+  /// Chọn ảnh từ thư viện → upload POST /uploads (Cloudinary) → giữ URL https.
+  /// Endpoint update không nhận multipart trực tiếp (đồng nhất với avatar
+  /// Google/Apple sign-in).
+  Future<void> _pickAvatar() async {
+    if (_pickerBusy || _uploadingAvatar) return;
+    _pickerBusy = true;
+
+    // requestFullMetadata: false → dùng thẳng kết quả PHPicker, KHÔNG đọc
+    // metadata → không cần quyền full thư viện ảnh (tránh treo app trên iOS
+    // khi quyền ảnh đang ở mức "Giới hạn"). Đủ để lấy file upload.
+    XFile? picked;
+    try {
+      picked = await ImagePicker().pickImage(
+        source: ImageSource.gallery,
+        imageQuality: 80,
+        requestFullMetadata: false,
+      );
+    } catch (e) {
+      if (mounted) {
+        AppSnackBar.error(context, 'Không mở được thư viện ảnh, thử lại');
+      }
+      return;
+    } finally {
+      _pickerBusy = false;
+    }
+    if (picked == null || !mounted) return;
+
+    setState(() => _uploadingAvatar = true);
+    final result =
+        await ref.read(accountRepositoryProvider).uploadFile(picked.path);
+    if (!mounted) return;
+    setState(() => _uploadingAvatar = false);
+
+    if (result.success && result.data != null) {
+      setState(() => _avatarUrl = result.data!.url);
+    } else {
+      AppSnackBar.error(
+        context,
+        result.message.isEmpty ? 'Tải ảnh thất bại' : result.message,
+      );
+    }
+  }
+
   Future<void> _save() async {
     if (!_formKey.currentState!.validate()) return;
 
@@ -102,6 +155,10 @@ class _PersonalInfoScreenState extends ConsumerState<PersonalInfoScreen> {
       'phone': _phoneController.text.trim(),
       'gender': _gender,
     };
+
+    if (_avatarUrl != null && _avatarUrl!.isNotEmpty) {
+      data['avatar'] = _avatarUrl;
+    }
 
     final email = _emailController.text.trim();
     if (email.isNotEmpty) {
@@ -348,8 +405,13 @@ class _PersonalInfoScreenState extends ConsumerState<PersonalInfoScreen> {
 
           const SizedBox(height: 20),
 
-          // Avatar centered
-          _HeaderAvatar(initial: initial),
+          // Avatar centered — chạm để đổi ảnh đại diện
+          _HeaderAvatar(
+            initial: initial,
+            avatarUrl: _avatarUrl,
+            uploading: _uploadingAvatar,
+            onTap: _pickAvatar,
+          ),
         ],
       ),
     ).animate().fadeIn(duration: 400.ms).slideY(begin: -0.04, end: 0);
@@ -418,59 +480,125 @@ class _PersonalInfoScreenState extends ConsumerState<PersonalInfoScreen> {
 
 class _HeaderAvatar extends StatelessWidget {
   final String initial;
-  const _HeaderAvatar({required this.initial});
+  final String? avatarUrl;
+  final bool uploading;
+  final VoidCallback onTap;
+
+  const _HeaderAvatar({
+    required this.initial,
+    required this.avatarUrl,
+    required this.uploading,
+    required this.onTap,
+  });
 
   @override
   Widget build(BuildContext context) {
     final colors = context.colors;
-    return Stack(
-      alignment: Alignment.center,
-      children: [
-        // Gradient ring
-        Container(
-          width: 96,
-          height: 96,
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            gradient: LinearGradient(
-              colors: [colors.brand, AppColors.gold500],
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
+    return GestureDetector(
+      onTap: onTap,
+      child: Stack(
+        alignment: Alignment.center,
+        children: [
+          // Gradient ring
+          Container(
+            width: 96,
+            height: 96,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              gradient: LinearGradient(
+                colors: [colors.brand, AppColors.gold500],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
             ),
           ),
-        ),
-        // White gap
-        Container(
-          width: 90,
-          height: 90,
-          decoration: const BoxDecoration(
-            shape: BoxShape.circle,
-            color: Colors.white,
-          ),
-        ),
-        // Inner avatar
-        Container(
-          width: 84,
-          height: 84,
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            gradient: LinearGradient(
-              colors: [AppColors.jade500, _jadeMidLight],
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-            ),
-          ),
-          alignment: Alignment.center,
-          child: Text(
-            initial,
-            style: GoogleFonts.beVietnamPro(
+          // White gap
+          Container(
+            width: 90,
+            height: 90,
+            decoration: const BoxDecoration(
+              shape: BoxShape.circle,
               color: Colors.white,
-              fontWeight: FontWeight.w700,
-              fontSize: 32,
             ),
           ),
+          // Inner avatar: ảnh mạng nếu có, else chữ cái đầu
+          ClipOval(
+            child: SizedBox(
+              width: 84,
+              height: 84,
+              child: (avatarUrl != null && avatarUrl!.isNotEmpty)
+                  ? CachedNetworkImage(
+                      imageUrl: avatarUrl!,
+                      fit: BoxFit.cover,
+                      memCacheWidth: 200,
+                      placeholder: (_, __) => _initialFallback(),
+                      errorWidget: (_, __, ___) => _initialFallback(),
+                    )
+                  : _initialFallback(),
+            ),
+          ),
+          // Loading overlay khi đang upload
+          if (uploading)
+            Container(
+              width: 84,
+              height: 84,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: Colors.black.withValues(alpha: 0.4),
+              ),
+              alignment: Alignment.center,
+              child: const SizedBox(
+                width: 24,
+                height: 24,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2.5,
+                  color: Colors.white,
+                ),
+              ),
+            ),
+          // Camera edit badge (bottom-right)
+          Positioned(
+            right: 2,
+            bottom: 2,
+            child: Container(
+              width: 30,
+              height: 30,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: colors.brand,
+                border: Border.all(color: Colors.white, width: 2.5),
+              ),
+              child: const Icon(
+                Icons.camera_alt_rounded,
+                color: Colors.white,
+                size: 15,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _initialFallback() {
+    return DecoratedBox(
+      decoration: const BoxDecoration(
+        gradient: LinearGradient(
+          colors: [AppColors.jade500, _jadeMidLight],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
         ),
-      ],
+      ),
+      child: Center(
+        child: Text(
+          initial,
+          style: GoogleFonts.beVietnamPro(
+            color: Colors.white,
+            fontWeight: FontWeight.w700,
+            fontSize: 32,
+          ),
+        ),
+      ),
     );
   }
 }

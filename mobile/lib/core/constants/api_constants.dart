@@ -156,6 +156,9 @@ class ApiConstants {
   static const String notificationPreferences =
       '/users/me/notification-preferences';
 
+  // Owner bank payout account (admin-approved) — GET status, PUT submit/edit.
+  static const String myBank = '/users/me/bank';
+
   // Notifications
   static const String notifications = '/notifications';
   static const String notificationsUnreadCount = '/notifications/unread-count';

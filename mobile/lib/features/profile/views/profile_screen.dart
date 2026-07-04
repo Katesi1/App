@@ -1,3 +1,4 @@
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -103,6 +104,43 @@ class ProfileScreen extends ConsumerWidget {
                 ),
               )
                   .animate(delay: 150.ms)
+                  .fadeIn(duration: 300.ms)
+                  .slideX(begin: 0.05, end: 0),
+
+            if (showVerifySection) const SizedBox(height: 16),
+
+            // Tài khoản nhận tiền cọc (Owner only) — BE sinh VietQR cho khách
+            // trả cọc qua website.
+            if (showVerifySection)
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 20),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _SectionLabel('TÀI KHOẢN NHẬN TIỀN'),
+                    const SizedBox(height: 8),
+                    _MenuCard(
+                      isDark: isDark,
+                      items: [
+                        _MenuItemData(
+                          icon: Icons.account_balance_rounded,
+                          label: 'Tài khoản ngân hàng',
+                          subtitle: switch (user?.bankStatus) {
+                            'approved' =>
+                              '${user!.bankName ?? 'Đã duyệt'} · ${user.bankAccountNumber ?? ''}',
+                            'pending' => 'Đang chờ admin duyệt',
+                            'rejected' => 'Bị từ chối — chạm để gửi lại',
+                            _ => 'Chưa cấu hình — khách chưa thể chuyển cọc',
+                          },
+                          iconColor: colors.brand,
+                          onTap: () => context.push('/profile/bank-account'),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              )
+                  .animate(delay: 175.ms)
                   .fadeIn(duration: 300.ms)
                   .slideX(begin: 0.05, end: 0),
 
@@ -551,7 +589,7 @@ class _ProfileHeader extends StatelessWidget {
           const SizedBox(height: 20),
 
           // Avatar with gradient ring + pulsing shimmer
-          _GradientAvatar(initial: initial),
+          _GradientAvatar(initial: initial, avatarUrl: user?.avatar),
 
           const SizedBox(height: 16),
 
@@ -627,7 +665,8 @@ class _ProfileHeader extends StatelessWidget {
 
 class _GradientAvatar extends StatefulWidget {
   final String initial;
-  const _GradientAvatar({required this.initial});
+  final String? avatarUrl;
+  const _GradientAvatar({required this.initial, this.avatarUrl});
 
   @override
   State<_GradientAvatar> createState() => _GradientAvatarState();
@@ -703,29 +742,45 @@ class _GradientAvatarState extends State<_GradientAvatar>
             ),
           ),
 
-          // Avatar inner circle
-          Container(
-            width: 88,
-            height: 88,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              gradient: LinearGradient(
-                colors: [AppColors.jade500, _jadeMidLight],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              ),
-            ),
-            alignment: Alignment.center,
-            child: Text(
-              widget.initial,
-              style: GoogleFonts.beVietnamPro(
-                color: Colors.white,
-                fontWeight: FontWeight.w700,
-                fontSize: 34,
-              ),
+          // Avatar inner circle: ảnh mạng nếu có, else chữ cái đầu
+          ClipOval(
+            child: SizedBox(
+              width: 88,
+              height: 88,
+              child: (widget.avatarUrl?.isNotEmpty ?? false)
+                  ? CachedNetworkImage(
+                      imageUrl: widget.avatarUrl!,
+                      fit: BoxFit.cover,
+                      memCacheWidth: 200,
+                      placeholder: (_, __) => _initialFallback(),
+                      errorWidget: (_, __, ___) => _initialFallback(),
+                    )
+                  : _initialFallback(),
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _initialFallback() {
+    return DecoratedBox(
+      decoration: const BoxDecoration(
+        gradient: LinearGradient(
+          colors: [AppColors.jade500, _jadeMidLight],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+      ),
+      child: Center(
+        child: Text(
+          widget.initial,
+          style: GoogleFonts.beVietnamPro(
+            color: Colors.white,
+            fontWeight: FontWeight.w700,
+            fontSize: 34,
+          ),
+        ),
       ),
     );
   }

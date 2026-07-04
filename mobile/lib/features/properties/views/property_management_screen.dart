@@ -6,6 +6,7 @@ import 'package:google_fonts/google_fonts.dart';
 import '../../../core/theme/app_color_scheme.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../data/models/homestay_model.dart';
+import '../../../shared/widgets/bank_required_dialog.dart';
 import '../../../shared/widgets/keep_alive_tab.dart';
 import '../../../shared/widgets/loading_widget.dart';
 import '../../auth/controllers/auth_controller.dart';
@@ -341,9 +342,12 @@ class _PropertyManagementScreenState
     final needsVerify =
         (user?.isOwner ?? false) && !(user?.isKycVerified ?? false);
 
-    // KYC (identity) is the only gate — no subscription/payment requirement.
+    // KYC (identity) → sau đó bắt buộc tài khoản nhận tiền đã duyệt.
     if (!needsVerify) {
-      context.push('/properties/new');
+      final ok = await ensureBankForPropertyCreate(context, user);
+      if (ok && mounted) {
+        context.push('/properties/new');
+      }
       return;
     }
 

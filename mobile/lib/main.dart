@@ -14,6 +14,7 @@ import 'core/theme/app_theme.dart';
 import 'core/utils/app_router.dart';
 import 'features/auth/controllers/auth_controller.dart';
 import 'features/chat/controllers/chat_controller.dart';
+import 'features/profile/controllers/bank_controller.dart';
 import 'shared/providers/theme_provider.dart';
 import 'shared/widgets/soft_update_prompt.dart';
 
@@ -113,6 +114,7 @@ class _HomestayAppState extends ConsumerState<HomestayApp>
       PushNotificationService.instance.onForegroundData = (data) {
         _maybeRefreshOnSubscriptionPush(data);
         _maybeBumpChatBadge(data);
+        _maybeRefreshOnBankPush(data);
       };
 
       // Foreground chat push: nếu đang mở đúng conversation + socket sống thì
@@ -137,6 +139,17 @@ class _HomestayAppState extends ConsumerState<HomestayApp>
     final auth = ref.read(authProvider);
     if (!auth.isLoggedIn) return;
     ref.read(authProvider.notifier).refreshProfile();
+  }
+
+  /// Kết quả admin duyệt tài khoản nhận tiền (bank_approved / bank_rejected)
+  /// → refresh profile (badge/gate) + invalidate bankStatusProvider để màn
+  /// tài khoản ngân hàng cập nhật trạng thái ngay.
+  void _maybeRefreshOnBankPush(Map<String, dynamic> data) {
+    final pushType = data['pushType'];
+    if (pushType != 'bank_approved' && pushType != 'bank_rejected') return;
+    if (!ref.read(authProvider).isLoggedIn) return;
+    ref.read(authProvider.notifier).refreshProfile();
+    ref.invalidate(bankStatusProvider);
   }
 
   /// Chat push đến khi app foreground → refresh badge chưa đọc. WS đã lo khi

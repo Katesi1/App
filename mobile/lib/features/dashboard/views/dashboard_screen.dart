@@ -18,6 +18,7 @@ import '../../dashboard/controllers/dashboard_controller.dart';
 import '../../verify/data/models/verify_enums.dart';
 import '../../verify/views/paywall_modal.dart';
 import '../../../shared/widgets/app_scaffold.dart';
+import '../../../shared/widgets/bank_required_dialog.dart';
 import '../../../shared/widgets/loading_widget.dart';
 import '../../../shared/widgets/pagination_bar.dart';
 
@@ -337,7 +338,13 @@ class DashboardScreen extends ConsumerWidget {
                                 icon: Icons.add_home_rounded,
                                 label: 'Thêm phòng',
                                 color: colors.success,
-                                onTap: () => context.push('/properties/new'),
+                                onTap: () async {
+                                  if (await ensureBankForPropertyCreate(
+                                          context, user) &&
+                                      context.mounted) {
+                                    context.push('/properties/new');
+                                  }
+                                },
                               ),
                             ],
                             if (user?.isOwner ?? false) ...[

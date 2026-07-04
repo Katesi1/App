@@ -60,7 +60,9 @@ class AppHelpers {
 
   static String formatPrice(double price) {
     if (price >= 1000000) {
-      return '${(price / 1000000).toStringAsFixed(1)}tr';
+      final str = (price / 1000000).toStringAsFixed(1);
+      // Bỏ ".0" thừa: 2.0tr → 2tr, giữ phần lẻ 2.5tr.
+      return '${str.endsWith('.0') ? str.substring(0, str.length - 2) : str}tr';
     }
     return '${(price / 1000).toStringAsFixed(0)}k';
   }
@@ -68,6 +70,27 @@ class AppHelpers {
   static String formatPriceTotal(double pricePerNight, int nights) {
     final total = pricePerNight * nights;
     return formatPrice(total);
+  }
+
+  /// Giá gọn nhưng CHÍNH XÁC (không làm tròn) cho ô lịch chật:
+  ///   2.500.000 → "2tr5"   ·  2.550.000 → "2tr550"
+  ///   2.000.000 → "2tr"    ·  2.050.000 → "2tr50"   ·  900.000 → "900k"
+  /// Phần sau "tr" là số nghìn còn lại: bội của trăm nghìn rút gọn 1 chữ số
+  /// (500→"5"), còn lại giữ nguyên số nghìn (550→"550").
+  static String formatPriceCompact(double price) {
+    if (price < 1000000) {
+      return '${(price / 1000).round()}k';
+    }
+    final k = (price / 1000).round(); // tổng nghìn
+    final tr = k ~/ 1000; // số triệu
+    final rem = k % 1000; // nghìn còn lại 0..999
+    if (rem == 0) {
+      return '${tr}tr';
+    }
+    if (rem % 100 == 0) {
+      return '${tr}tr${rem ~/ 100}';
+    }
+    return '${tr}tr$rem';
   }
 
   /// Display KPI number; 0 → "-" (avoids "0k" being misread as "Ok").

@@ -4,6 +4,7 @@ import 'package:intl/intl.dart';
 
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_spacing.dart';
+import '../../core/utils/helpers.dart';
 
 // ─── Shared data models ──────────────────────────────────────────────────────
 
@@ -147,7 +148,8 @@ class _CalendarGridWidgetState extends State<CalendarGridWidget> {
     final rooms = widget.rooms;
 
     const roomColWidth = 104.0;
-    const cellWidth = 54.0;
+    // Rộng hơn để hiển thị đủ giá chính xác (vd "2tr550") không bị cắt.
+    const cellWidth = 64.0;
     const cellHeight = 50.0;
     const headerHeight = 44.0;
     final gridWidth = dates.length * cellWidth;
@@ -448,7 +450,7 @@ class _CalendarGridWidgetState extends State<CalendarGridWidget> {
             if (cell.price > 0) ...[
               const SizedBox(height: 2),
               Text(
-                _formatShortPrice(cell.price),
+                AppHelpers.formatPriceCompact(cell.price),
                 style: GoogleFonts.beVietnamPro(
                   fontSize: 9,
                   fontWeight: FontWeight.w500,
@@ -632,17 +634,6 @@ class _CalendarGridWidgetState extends State<CalendarGridWidget> {
         DateTime.sunday => 'CN',
         _ => '',
       };
-
-  String _formatShortPrice(double price) {
-    if (price >= 1000000) {
-      final tr = price / 1000000;
-      if (tr == tr.roundToDouble()) {
-        return '${tr.toInt()}tr';
-      }
-      return '${tr.toStringAsFixed(0)}tr';
-    }
-    return '${(price / 1000).toInt()}k';
-  }
 }
 
 // ─── Shared UI components ────────────────────────────────────────────────────

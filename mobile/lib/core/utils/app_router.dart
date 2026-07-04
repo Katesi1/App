@@ -39,6 +39,7 @@ import '../../features/properties/views/property_location_screen.dart';
 import '../../features/properties/views/property_pricing_screen.dart';
 import '../../features/properties/views/property_rules_screen.dart';
 import '../../features/properties/views/property_services_screen.dart';
+import '../../features/profile/views/bank_account_screen.dart';
 import '../../features/profile/views/change_password_screen.dart';
 import '../../features/profile/views/consent_screen.dart';
 import '../../features/profile/views/data_request_screen.dart';
@@ -296,6 +297,13 @@ final routerProvider = Provider<GoRouter>((ref) {
             pageBuilder: (_, state) => slideUpPage(
               key: state.pageKey,
               child: const ChangePasswordScreen(),
+            ),
+          ),
+          GoRoute(
+            path: 'bank-account',
+            pageBuilder: (_, state) => slideUpPage(
+              key: state.pageKey,
+              child: const BankAccountScreen(),
             ),
           ),
           GoRoute(

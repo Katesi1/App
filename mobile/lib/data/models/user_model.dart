@@ -25,6 +25,21 @@ class UserModel {
   final String? ownerId;
   final String? saleMembershipStatus;
 
+  // Bank payout info (BE §2.5) — OWNER tự cấu hình để BE sinh VietQR cho khách
+  // trả cọc qua website. `bankBin` = mã NAPAS 6 số; `bankAccountNumber` = 6–20
+  // số. Các role khác thường null.
+  final String? bankBin;
+  final String? bankName;
+  final String? bankAccountNumber;
+  final String? bankAccountName;
+
+  // Trạng thái duyệt tài khoản nhận tiền (BE §bank): none | pending | approved
+  // | rejected. Nguồn nhanh cho badge + gate tạo phòng; chi tiết đầy đủ lấy từ
+  // GET /users/me/bank.
+  @JsonKey(defaultValue: 'none')
+  final String bankStatus;
+  final String? bankRejectReason;
+
   // KYC + Subscription state mirrored from GET /auth/profile.
   @JsonKey(defaultValue: 'none')
   final String kycStatus; // none | pending | approved | rejected
@@ -69,6 +84,12 @@ class UserModel {
     this.dateOfBirth,
     this.ownerId,
     this.saleMembershipStatus,
+    this.bankBin,
+    this.bankName,
+    this.bankAccountNumber,
+    this.bankAccountName,
+    this.bankStatus = 'none',
+    this.bankRejectReason,
     this.kycStatus = 'none',
     this.kycSubmissionId,
     this.kycBypass = false,
@@ -155,6 +176,13 @@ class UserModel {
   /// Effective owner id: OWNER → self, SALE → their ownerId, otherwise null.
   String? get effectiveOwnerId => isOwner ? id : (isSale ? ownerId : null);
 
+  /// Tài khoản nhận tiền đã được admin DUYỆT → dùng được để sinh VietQR cho
+  /// khách trả cọc, và là điều kiện bắt buộc để OWNER tạo phòng.
+  bool get hasApprovedBank => bankStatus == 'approved';
+  bool get isBankPending => bankStatus == 'pending';
+  bool get isBankRejected => bankStatus == 'rejected';
+  bool get isBankNone => bankStatus == 'none';
+
   // KYC helpers.
   bool get isKycApproved => kycStatus == 'approved';
   bool get isKycPending => kycStatus == 'pending';
@@ -215,6 +243,12 @@ class UserModel {
     String? dateOfBirth,
     String? ownerId,
     String? saleMembershipStatus,
+    String? bankBin,
+    String? bankName,
+    String? bankAccountNumber,
+    String? bankAccountName,
+    String? bankStatus,
+    String? bankRejectReason,
     String? kycStatus,
     String? kycSubmissionId,
     bool? kycBypass,
@@ -245,6 +279,12 @@ class UserModel {
         dateOfBirth: dateOfBirth ?? this.dateOfBirth,
         ownerId: ownerId ?? this.ownerId,
         saleMembershipStatus: saleMembershipStatus ?? this.saleMembershipStatus,
+        bankBin: bankBin ?? this.bankBin,
+        bankName: bankName ?? this.bankName,
+        bankAccountNumber: bankAccountNumber ?? this.bankAccountNumber,
+        bankAccountName: bankAccountName ?? this.bankAccountName,
+        bankStatus: bankStatus ?? this.bankStatus,
+        bankRejectReason: bankRejectReason ?? this.bankRejectReason,
         kycStatus: kycStatus ?? this.kycStatus,
         kycSubmissionId: kycSubmissionId ?? this.kycSubmissionId,
         kycBypass: kycBypass ?? this.kycBypass,

@@ -52,14 +52,28 @@ void main() {
   group('AppHelpers.formatPrice', () {
     test('formats millions as "tr"', () {
       expect(AppHelpers.formatPrice(1500000), '1.5tr');
-      expect(AppHelpers.formatPrice(2000000), '2.0tr');
-      expect(AppHelpers.formatPrice(1000000), '1.0tr');
+      expect(AppHelpers.formatPrice(2500000), '2.5tr');
+      // Số triệu chẵn bỏ ".0" thừa.
+      expect(AppHelpers.formatPrice(2000000), '2tr');
+      expect(AppHelpers.formatPrice(1000000), '1tr');
     });
 
     test('formats thousands as "k"', () {
       expect(AppHelpers.formatPrice(800000), '800k');
       expect(AppHelpers.formatPrice(500000), '500k');
       expect(AppHelpers.formatPrice(50000), '50k');
+    });
+  });
+
+  group('AppHelpers.formatPriceCompact', () {
+    test('shows exact price without rounding', () {
+      expect(AppHelpers.formatPriceCompact(2500000), '2tr5');
+      expect(AppHelpers.formatPriceCompact(2550000), '2tr550');
+      expect(AppHelpers.formatPriceCompact(2000000), '2tr');
+      expect(AppHelpers.formatPriceCompact(2050000), '2tr50');
+      expect(AppHelpers.formatPriceCompact(1200000), '1tr2');
+      expect(AppHelpers.formatPriceCompact(900000), '900k');
+      expect(AppHelpers.formatPriceCompact(3000000), '3tr');
     });
   });
 

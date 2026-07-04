@@ -9,6 +9,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../../../core/constants/app_constants.dart';
 import '../../../core/theme/app_color_scheme.dart';
 import '../../../core/theme/app_spacing.dart';
+import '../../../core/utils/helpers.dart';
 import '../../../data/models/calendar_model.dart';
 import '../../../data/models/user_model.dart';
 import '../../../shared/widgets/calendar_grid_widget.dart';
@@ -672,12 +673,8 @@ class _OwnerCalendarScreenState extends ConsumerState<OwnerCalendarScreen> {
     );
   }
 
-  String _formatPrice(double price) {
-    if (price >= 1000000) {
-      return '${(price / 1000000).toStringAsFixed(1)}tr đ/đêm';
-    }
-    return '${(price / 1000).toInt()}k đ/đêm';
-  }
+  String _formatPrice(double price) =>
+      '${AppHelpers.formatPriceCompact(price)} đ/đêm';
 
   // ─── Chia sẻ lịch phòng qua Zalo ──────────────────────────────────────────
 

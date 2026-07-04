@@ -337,44 +337,6 @@ class AdminScreen extends ConsumerWidget {
 
                   const SizedBox(height: 28),
 
-                  // ── Quick Actions ───────────────────────────
-                  Text(
-                    'THAO TÁC NHANH',
-                    style: GoogleFonts.beVietnamPro(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w600,
-                      color: colors.textSecondary,
-                      letterSpacing: 1.2,
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-
-                  Row(
-                    children: [
-                      if (isAdmin) ...[
-                        Expanded(
-                          child: _QuickAction(
-                            icon: Icons.person_add_rounded,
-                            label: 'Thêm\nnhân viên',
-                            color: colors.brand,
-                            onTap: () => context.push('/admin/users/new'),
-                          ),
-                        ),
-                        const SizedBox(width: 10),
-                      ],
-                      Expanded(
-                        child: _QuickAction(
-                          icon: Icons.add_home_work_rounded,
-                          label: 'Thêm\nphòng',
-                          color: colors.brandLight,
-                          onTap: () => context.push('/properties/new'),
-                        ),
-                      ),
-                    ],
-                  ),
-
-                  const SizedBox(height: 28),
-
                   // Recent staff.
                   Text(
                     'NHÂN VIÊN GẦN ĐÂY',
@@ -666,67 +628,6 @@ class _MenuCard extends StatelessWidget {
                 Icons.chevron_right_rounded,
                 color: colors.textTertiary,
                 size: 20,
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-// ─── Quick Action ────────────────────────────────────────────────────────────
-class _QuickAction extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  final Color color;
-  final VoidCallback onTap;
-
-  const _QuickAction({
-    required this.icon,
-    required this.label,
-    required this.color,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final colors = context.colors;
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    return Material(
-      color: colors.bgSurface,
-      borderRadius: BorderRadius.circular(AppRadius.lg),
-      elevation: 1,
-      shadowColor: Colors.black.withValues(alpha: isDark ? 0.30 : 0.06),
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(AppRadius.lg),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(
-            vertical: 16,
-            horizontal: 12,
-          ),
-          child: Column(
-            children: [
-              Container(
-                width: 44,
-                height: 44,
-                decoration: BoxDecoration(
-                  color: color.withValues(alpha: 0.12),
-                  borderRadius: BorderRadius.circular(AppRadius.md),
-                ),
-                child: Icon(icon, color: color, size: 22),
-              ),
-              const SizedBox(height: 8),
-              Text(
-                label,
-                textAlign: TextAlign.center,
-                style: GoogleFonts.beVietnamPro(
-                  fontSize: 11,
-                  fontWeight: FontWeight.w600,
-                  color: colors.textPrimary,
-                  height: 1.3,
-                ),
               ),
             ],
           ),
