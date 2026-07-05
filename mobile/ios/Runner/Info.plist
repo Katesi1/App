@@ -2,6 +2,14 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 	<dict>
+		<!-- Cho phép nhận push nền (FCM): data-only/silent push đánh thức app để
+		     chạy background handler (dựng local notification, refresh state như
+		     subscription_paid/bank_approved). Push alert vẫn hiện tray không cần
+		     key này, nhưng key này bật "lưới an toàn" cho data-only push. -->
+		<key>UIBackgroundModes</key>
+		<array>
+			<string>remote-notification</string>
+		</array>
 		<key>CADisableMinimumFrameDurationOnPhone</key>
 		<true/>
 		<key>CFBundleDevelopmentRegion</key>

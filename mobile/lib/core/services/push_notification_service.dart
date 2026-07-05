@@ -1,8 +1,10 @@
 import 'dart:async';
 
+import 'package:device_info_plus/device_info_plus.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 
 import '../../data/repositories/device_repository.dart';
 
@@ -150,6 +152,14 @@ class PushNotificationService {
     }
   }
 
+  /// Đăng ký lại token khi app resume NẾU chưa có (khôi phục trường hợp lần
+  /// trước xin quyền/getToken thất bại). No-op nếu đã có token → tránh spam
+  /// POST /devices mỗi lần foreground.
+  Future<void> ensureRegistered() async {
+    if (_currentToken != null) return;
+    await registerForUser();
+  }
+
   /// Call after user login — request permission, get token, send to BE.
   /// Idempotent.
   Future<void> registerForUser() async {
@@ -163,8 +173,28 @@ class PushNotificationService {
       return;
     }
 
-    // iOS: needs APNs token before getToken (Firebase handles this, but there
-    // are edge cases on the simulator). Try-catch to avoid crashing the app.
+    // iOS: getToken() cần APNs token có trước, nếu không sẽ trả null (nguyên
+    // nhân 0 token iOS). Sau requestPermission, APNs token có thể chưa sẵn ngay
+    // → chờ/retry vài giây trước khi getToken.
+    if (defaultTargetPlatform == TargetPlatform.iOS) {
+      try {
+        var apns = await _fcm.getAPNSToken();
+        // APNs token về bất đồng bộ sau khi iOS đăng ký với Apple; mạng chậm có
+        // thể mất vài giây → chờ tối đa ~10s. Nếu vẫn null (mạng chặn APNs /
+        // provisioning thiếu Push) thì ensureRegistered() sẽ thử lại lần resume.
+        for (var i = 0; i < 10 && apns == null; i++) {
+          await Future.delayed(const Duration(seconds: 1));
+          apns = await _fcm.getAPNSToken();
+        }
+        if (apns == null && kDebugMode) {
+          debugPrint('[FCM] APNs token vẫn null sau 10s — mạng chặn APNs hoặc '
+              'thiếu Push capability trên provisioning');
+        }
+      } catch (e) {
+        if (kDebugMode) debugPrint('[FCM] getAPNSToken failed: $e');
+      }
+    }
+
     try {
       final token = await _fcm.getToken();
       if (token == null) {
@@ -172,6 +202,7 @@ class PushNotificationService {
         return;
       }
       _currentToken = token;
+      if (kDebugMode) debugPrint('[FCM] token: $token'); // copy để test push
       await _registerTokenWithBackend(token);
 
       // Listen for token refresh (FCM rotates periodically).
@@ -214,9 +245,32 @@ class PushNotificationService {
   static String? _asString(Object? v) => v is String ? v : v?.toString();
 
   Future<void> _registerTokenWithBackend(String token) async {
+    // Best-effort metadata (BE §20.2) — không chặn đăng ký token nếu thất bại.
+    String? deviceModel;
+    String? osVersion;
+    String? appVersion;
+    try {
+      appVersion = (await PackageInfo.fromPlatform()).version;
+      final info = DeviceInfoPlugin();
+      if (defaultTargetPlatform == TargetPlatform.iOS) {
+        final ios = await info.iosInfo;
+        deviceModel = ios.utsname.machine; // vd iPhone16,2
+        osVersion = 'iOS ${ios.systemVersion}';
+      } else {
+        final android = await info.androidInfo;
+        deviceModel = '${android.manufacturer} ${android.model}';
+        osVersion = 'Android ${android.version.release}';
+      }
+    } catch (_) {
+      // thiếu metadata vẫn đăng ký token bình thường
+    }
+
     await _deviceRepo.register(
       fcmToken: token,
       platform: defaultTargetPlatform == TargetPlatform.iOS ? 'ios' : 'android',
+      deviceModel: deviceModel,
+      osVersion: osVersion,
+      appVersion: appVersion,
       locale: 'vi',
     );
   }

@@ -14,6 +14,7 @@ import 'core/theme/app_theme.dart';
 import 'core/utils/app_router.dart';
 import 'features/auth/controllers/auth_controller.dart';
 import 'features/chat/controllers/chat_controller.dart';
+import 'features/notifications/controllers/notification_controller.dart';
 import 'features/profile/controllers/bank_controller.dart';
 import 'shared/providers/theme_provider.dart';
 import 'shared/widgets/soft_update_prompt.dart';
@@ -115,6 +116,7 @@ class _HomestayAppState extends ConsumerState<HomestayApp>
         _maybeRefreshOnSubscriptionPush(data);
         _maybeBumpChatBadge(data);
         _maybeRefreshOnBankPush(data);
+        _maybeBumpNotificationBadge(data);
       };
 
       // Foreground chat push: nếu đang mở đúng conversation + socket sống thì
@@ -129,13 +131,20 @@ class _HomestayAppState extends ConsumerState<HomestayApp>
     });
   }
 
+  /// pushType lấy từ `data.type` (contract BE §8.4). Fallback `pushType` cho
+  /// payload cũ để an toàn khi chuyển đổi.
+  String? _pushTypeOf(Map<String, dynamic> data) {
+    final t = data['type'] ?? data['pushType'];
+    return t is String ? t : null;
+  }
+
   /// Refresh the signed-in user's profile when a subscription-related push
   /// arrives, so a freshly-activated plan (admin marked the VietQR transfer as
   /// paid) is reflected in `currentUserProvider` immediately. Covers the
   /// `subscription_paid` push and other `subscription_*` state changes.
   void _maybeRefreshOnSubscriptionPush(Map<String, dynamic> data) {
-    final pushType = data['pushType'];
-    if (pushType is! String || !pushType.startsWith('subscription')) return;
+    final pushType = _pushTypeOf(data);
+    if (pushType == null || !pushType.startsWith('subscription')) return;
     final auth = ref.read(authProvider);
     if (!auth.isLoggedIn) return;
     ref.read(authProvider.notifier).refreshProfile();
@@ -145,7 +154,7 @@ class _HomestayAppState extends ConsumerState<HomestayApp>
   /// → refresh profile (badge/gate) + invalidate bankStatusProvider để màn
   /// tài khoản ngân hàng cập nhật trạng thái ngay.
   void _maybeRefreshOnBankPush(Map<String, dynamic> data) {
-    final pushType = data['pushType'];
+    final pushType = _pushTypeOf(data);
     if (pushType != 'bank_approved' && pushType != 'bank_rejected') return;
     if (!ref.read(authProvider).isLoggedIn) return;
     ref.read(authProvider.notifier).refreshProfile();
@@ -156,15 +165,25 @@ class _HomestayAppState extends ConsumerState<HomestayApp>
   /// socket sống, gọi thêm để chắc chắn khi socket rớt. Đọc `.notifier` cũng
   /// khởi tạo socket/unread nếu chưa có.
   void _maybeBumpChatBadge(Map<String, dynamic> data) {
-    if (data['pushType'] != 'chat_message') return;
+    if (_pushTypeOf(data) != 'chat_message') return;
     if (!ref.read(authProvider).isLoggedIn) return;
     ref.read(chatUnreadCountProvider.notifier).refresh();
+  }
+
+  /// Push thông báo (booking/property/calendar/kyc...) đến khi app foreground →
+  /// refresh badge chuông thông báo (GET /notifications/unread-count). Chat có
+  /// badge riêng nên loại trừ.
+  void _maybeBumpNotificationBadge(Map<String, dynamic> data) {
+    final pushType = _pushTypeOf(data);
+    if (pushType == null || pushType == 'chat_message') return;
+    if (!ref.read(authProvider).isLoggedIn) return;
+    ref.invalidate(unreadCountProvider);
   }
 
   /// true nếu app đang mở đúng màn conversation của tin push + socket còn sống
   /// → suppress banner foreground (rule §4.5 BE).
   bool _isViewingConversation(Map<String, dynamic> data) {
-    if (data['pushType'] != 'chat_message') return false;
+    if (_pushTypeOf(data) != 'chat_message') return false;
     final convId = _extractConversationId(data);
     if (convId == null) return false;
     if (!ref.read(chatSocketServiceProvider).isConnected) return false;
@@ -213,6 +232,9 @@ class _HomestayAppState extends ConsumerState<HomestayApp>
       final auth = ref.read(authProvider);
       if (auth.isLoggedIn) {
         ref.read(authProvider.notifier).refreshProfile();
+        // Khôi phục FCM token nếu lần đăng ký trước thất bại (xin quyền/getToken
+        // lỗi) — no-op nếu đã có token. Giúp giảm tỉ lệ owner 0-device.
+        PushNotificationService.instance.ensureRegistered();
       }
     }
   }

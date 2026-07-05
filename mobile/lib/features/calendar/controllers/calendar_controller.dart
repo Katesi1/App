@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../data/models/calendar_model.dart';
 import '../../../data/repositories/calendar_repository.dart';
@@ -42,11 +43,24 @@ class CalendarGridParams {
 final calendarGridProvider =
     FutureProvider.family.autoDispose<CalendarGrid, CalendarGridParams>(
   (ref, params) async {
-    // Auto-refresh every 30s — timer cancels when no screens watch.
-    final timer = Timer.periodic(const Duration(seconds: 30), (_) {
-      ref.invalidateSelf();
-    });
-    ref.onDispose(timer.cancel);
+    // Auto-refresh mỗi 60s NHƯNG chỉ khi (a) app đang foreground và (b) có màn
+    // đang xem lịch — tránh gọi mạng nền gây nóng máy/hao pin khi máy trong túi
+    // hoặc user đã sang tab khác (cache vẫn giữ 5 phút bên dưới).
+    Timer? timer;
+    void startPolling() {
+      timer?.cancel();
+      timer = Timer.periodic(const Duration(seconds: 60), (_) {
+        if (WidgetsBinding.instance.lifecycleState ==
+            AppLifecycleState.resumed) {
+          ref.invalidateSelf();
+        }
+      });
+    }
+
+    startPolling();
+    ref.onCancel(() => timer?.cancel()); // rời màn → ngừng poll (giữ cache)
+    ref.onResume(startPolling); // quay lại trong 5' → poll tiếp
+    ref.onDispose(() => timer?.cancel());
 
     // Keep cache 5 minutes when switching tabs to avoid immediate refetch.
     final link = ref.keepAlive();

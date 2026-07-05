@@ -8,6 +8,7 @@ import '../providers/theme_provider.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_spacing.dart';
 import '../../features/notifications/controllers/notification_controller.dart';
+import 'bank_required_dialog.dart';
 
 class AppScaffold extends ConsumerWidget {
   final String title;
@@ -120,9 +121,8 @@ class _BottomNav extends ConsumerStatefulWidget {
 }
 
 class _BottomNavState extends ConsumerState<_BottomNav> {
-  late int _current;
-
   // ── Nav items per role ─────────────────────────────────────────────
+  // SALE (system): Tổng quan · Phòng · Lịch · Báo cáo.
   static const _staffNavItems = <_NavItem>[
     _NavItem(
       icon: Icons.home_outlined,
@@ -157,25 +157,70 @@ class _BottomNavState extends ConsumerState<_BottomNav> {
     route: '/admin',
   );
 
+  // OWNER: Tổng quan · Báo cáo · Thêm phòng (action) · Thông báo (action) ·
+  // Quản lý. Bỏ Phòng + Lịch theo yêu cầu. "Thêm phòng"/"Thông báo" là action
+  // (push overlay), không phải tab — nên không có trạng thái chọn.
+  static const _ownerNavItems = <_NavItem>[
+    _NavItem(
+      icon: Icons.home_outlined,
+      activeIcon: Icons.home_rounded,
+      label: 'Tổng quan',
+      route: '/dashboard',
+    ),
+    _NavItem(
+      icon: Icons.bar_chart_outlined,
+      activeIcon: Icons.bar_chart_rounded,
+      label: 'Báo cáo',
+      route: '/reports',
+    ),
+    _NavItem(
+      icon: Icons.add_home_outlined,
+      activeIcon: Icons.add_home_rounded,
+      label: 'Thêm phòng',
+      action: _NavAction.addProperty,
+    ),
+    _NavItem(
+      icon: Icons.notifications_outlined,
+      activeIcon: Icons.notifications_rounded,
+      label: 'Thông báo',
+      action: _NavAction.notifications,
+    ),
+    _adminExtraItem,
+  ];
+
   List<_NavItem> _getNavItems(UserModel? user) {
     if (user == null) return _staffNavItems;
-    if (user.isAdmin || user.isOwner) {
-      return [..._staffNavItems, _adminExtraItem];
-    }
+    if (user.isOwner) return _ownerNavItems;
+    if (user.isAdmin) return [..._staffNavItems, _adminExtraItem];
     return _staffNavItems;
   }
 
-  @override
-  void initState() {
-    super.initState();
-    _current = widget.selectedIndex;
+  /// Chỉ số tab đang chọn — suy TỪ ROUTE hiện tại (bền vững khi mỗi role có
+  /// bộ tab khác nhau/khác thứ tự). Action item (route null) không bao giờ
+  /// được chọn. Fallback về selectedIndex do màn truyền nếu route không khớp.
+  int _selectedIndex(List<_NavItem> items) {
+    final loc =
+        GoRouter.of(context).routerDelegate.currentConfiguration.uri.path;
+    for (var i = 0; i < items.length; i++) {
+      final r = items[i].route;
+      if (r != null && (loc == r || loc.startsWith('$r/'))) return i;
+    }
+    final idx = widget.selectedIndex;
+    return (idx >= 0 && idx < items.length) ? idx : 0;
   }
 
-  @override
-  void didUpdateWidget(_BottomNav old) {
-    super.didUpdateWidget(old);
-    if (old.selectedIndex != widget.selectedIndex) {
-      setState(() => _current = widget.selectedIndex);
+  Future<void> _handleAction(_NavAction action) async {
+    switch (action) {
+      case _NavAction.notifications:
+        context.push('/notifications');
+      case _NavAction.addProperty:
+        // Cùng gate với nút "Thêm phòng" ở dashboard: KYC (router) + tài khoản
+        // nhận tiền đã duyệt (popup). SALE/ADMIN không dùng nav này.
+        final user = ref.read(currentUserProvider);
+        final ok = await ensureBankForPropertyCreate(context, user);
+        if (ok && mounted) {
+          context.push('/properties/new');
+        }
     }
   }
 
@@ -183,11 +228,7 @@ class _BottomNavState extends ConsumerState<_BottomNav> {
   Widget build(BuildContext context) {
     final user = ref.watch(currentUserProvider);
     final navItems = _getNavItems(user);
-
-    // Clamp index to valid range
-    if (_current >= navItems.length) {
-      _current = 0;
-    }
+    final current = _selectedIndex(navItems);
 
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
@@ -221,7 +262,7 @@ class _BottomNavState extends ConsumerState<_BottomNav> {
             ),
             child: Row(
               children: List.generate(navItems.length, (i) {
-                return _buildNavItem(i, navItems[i]);
+                return _buildNavItem(navItems[i], isSelected: i == current);
               }),
             ),
           ),
@@ -230,8 +271,7 @@ class _BottomNavState extends ConsumerState<_BottomNav> {
     );
   }
 
-  Widget _buildNavItem(int index, _NavItem item) {
-    final isSelected = _current == index;
+  Widget _buildNavItem(_NavItem item, {required bool isSelected}) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final activeColor = isDark ? AppColors.oceanBright : AppColors.ocean;
     final inactiveColor = isDark ? AppColors.darkHint : AppColors.slate;
@@ -239,8 +279,11 @@ class _BottomNavState extends ConsumerState<_BottomNav> {
     return Expanded(
       child: GestureDetector(
         onTap: () {
-          setState(() => _current = index);
-          context.go(item.route);
+          if (item.action != null) {
+            _handleAction(item.action!);
+          } else if (item.route != null) {
+            context.go(item.route!);
+          }
         },
         behavior: HitTestBehavior.opaque,
         child: Column(
@@ -329,15 +372,20 @@ class _NotificationBell extends ConsumerWidget {
   }
 }
 
+/// Hành động của nav item không phải tab (không có route/trang cố định).
+enum _NavAction { addProperty, notifications }
+
 class _NavItem {
   final IconData icon;
   final IconData activeIcon;
   final String label;
-  final String route;
+  final String? route; // null nếu là action
+  final _NavAction? action; // != null → push overlay thay vì đổi tab
   const _NavItem({
     required this.icon,
     required this.activeIcon,
     required this.label,
-    required this.route,
+    this.route,
+    this.action,
   });
 }
