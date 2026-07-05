@@ -37,212 +37,220 @@ class RoomDetailScreen extends ConsumerWidget {
       ),
       data: (room) => Scaffold(
         backgroundColor: colors.bgCanvas,
-        body: CustomScrollView(
-          slivers: [
-            SliverToBoxAdapter(
-              child: _ImageGalleryHeader(room: room, roomId: roomId),
-            ),
-            SliverToBoxAdapter(
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(20, 16, 20, 40),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                _titleText(room),
-                                style: GoogleFonts.beVietnamPro(
-                                  fontSize: 22,
-                                  fontWeight: FontWeight.w700,
-                                  color: colors.textPrimary,
-                                ),
-                              ),
-                              const SizedBox(height: 4),
-                              if (room.homestay != null)
+        body: RefreshIndicator(
+          onRefresh: () async {
+            ref.invalidate(roomDetailProvider(roomId));
+            await ref.read(roomDetailProvider(roomId).future);
+          },
+          child: CustomScrollView(
+            physics: const AlwaysScrollableScrollPhysics(),
+            slivers: [
+              SliverToBoxAdapter(
+                child: _ImageGalleryHeader(room: room, roomId: roomId),
+              ),
+              SliverToBoxAdapter(
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(20, 16, 20, 40),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
                                 Text(
-                                  '${room.homestay!.name} · ${room.homestay!.address}',
+                                  _titleText(room),
                                   style: GoogleFonts.beVietnamPro(
-                                    color: colors.textSecondary,
-                                    fontSize: 14,
+                                    fontSize: 22,
+                                    fontWeight: FontWeight.w700,
+                                    color: colors.textPrimary,
                                   ),
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
                                 ),
-                            ],
-                          ),
-                        ),
-                        Builder(builder: (_) {
-                          final statusColor = room.isActive
-                              ? colors.success
-                              : colors.textTertiary;
-                          return Container(
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 10, vertical: 4),
-                            decoration: BoxDecoration(
-                              color: statusColor.withValues(
-                                  alpha: isDark ? 0.18 : 0.10),
-                              borderRadius: BorderRadius.circular(20),
+                                const SizedBox(height: 4),
+                                if (room.homestay != null)
+                                  Text(
+                                    '${room.homestay!.name} · ${room.homestay!.address}',
+                                    style: GoogleFonts.beVietnamPro(
+                                      color: colors.textSecondary,
+                                      fontSize: 14,
+                                    ),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                              ],
                             ),
-                            child: Text(
-                              room.isActive ? 'Hoạt động' : 'Tạm nghỉ',
-                              style: GoogleFonts.beVietnamPro(
-                                fontSize: 11,
-                                fontWeight: FontWeight.w600,
-                                color: statusColor,
+                          ),
+                          Builder(builder: (_) {
+                            final statusColor = room.isActive
+                                ? colors.success
+                                : colors.textTertiary;
+                            return Container(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 10, vertical: 4),
+                              decoration: BoxDecoration(
+                                color: statusColor.withValues(
+                                    alpha: isDark ? 0.18 : 0.10),
+                                borderRadius: BorderRadius.circular(20),
                               ),
-                            ),
-                          );
-                        }),
-                      ],
-                    )
-                        .animate()
-                        .fadeIn(duration: 300.ms)
-                        .slideY(begin: 0.08, end: 0),
-                    const SizedBox(height: 10),
-                    Text(
-                      room.priceDisplay,
-                      style: GoogleFonts.beVietnamPro(
-                        fontSize: 20,
-                        fontWeight: FontWeight.w700,
-                        color: room.price != null
-                            ? colors.textBrand
-                            : colors.textSecondary,
+                              child: Text(
+                                room.isActive ? 'Hoạt động' : 'Tạm nghỉ',
+                                style: GoogleFonts.beVietnamPro(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w600,
+                                  color: statusColor,
+                                ),
+                              ),
+                            );
+                          }),
+                        ],
+                      )
+                          .animate()
+                          .fadeIn(duration: 300.ms)
+                          .slideY(begin: 0.08, end: 0),
+                      const SizedBox(height: 10),
+                      Text(
+                        room.priceDisplay,
+                        style: GoogleFonts.beVietnamPro(
+                          fontSize: 20,
+                          fontWeight: FontWeight.w700,
+                          color: room.price != null
+                              ? colors.textBrand
+                              : colors.textSecondary,
+                        ),
                       ),
-                    ),
-                    const SizedBox(height: 16),
-                    Wrap(
-                      spacing: 10,
-                      runSpacing: 8,
-                      children: [
-                        _InfoChip(
-                          icon: Icons.bed_outlined,
-                          label: room.bedrooms == 0
-                              ? 'Studio'
-                              : '${room.bedrooms} PN',
-                        ),
-                        if (room.bathrooms > 0)
-                          _InfoChip(
-                            icon: Icons.bathtub_outlined,
-                            label: '${room.bathrooms} WC',
-                          ),
-                        _InfoChip(
-                          icon: Icons.people_outline_rounded,
-                          label: '${room.standardGuests} người',
-                        ),
-                        if (room.maxGuests > room.standardGuests)
-                          _InfoChip(
-                            icon: Icons.group_add_outlined,
-                            label: 'Tối đa ${room.maxGuests}',
-                          ),
-                      ],
-                    ).animate(delay: 100.ms).fadeIn(duration: 300.ms),
-                    if (room.amenities.isNotEmpty) ...[
                       const SizedBox(height: 16),
                       Wrap(
-                        spacing: 6,
-                        runSpacing: 6,
-                        children:
-                            room.amenities.map((a) => _AmenityChip(a)).toList(),
-                      ),
-                    ],
-                    const SizedBox(height: 24),
-                    _DetailRow(
-                      title: 'Địa chỉ',
-                      icon: Icons.location_on_outlined,
-                      value: room.address?.isNotEmpty == true
-                          ? room.address!
-                          : '-',
-                    ),
-                    const SizedBox(height: 16),
-                    _DetailSection(
-                      title: 'Mô tả',
-                      value: room.description?.isNotEmpty == true
-                          ? room.description!
-                          : '-',
-                    ),
-                    const SizedBox(height: 24),
-                    if (room.rules != null && room.rules!.isNotEmpty) ...[
-                      _DetailSection(
-                        title: 'Quy định',
-                        value: room.rules!.contains('\n\n--- LƯU Ý ---\n')
-                            ? room.rules!.split('\n\n--- LƯU Ý ---\n')[0]
-                            : room.rules!,
-                      ),
-                      if (room.rules!.contains('\n\n--- LƯU Ý ---\n')) ...[
+                        spacing: 10,
+                        runSpacing: 8,
+                        children: [
+                          _InfoChip(
+                            icon: Icons.bed_outlined,
+                            label: room.bedrooms == 0
+                                ? 'Studio'
+                                : '${room.bedrooms} PN',
+                          ),
+                          if (room.bathrooms > 0)
+                            _InfoChip(
+                              icon: Icons.bathtub_outlined,
+                              label: '${room.bathrooms} WC',
+                            ),
+                          _InfoChip(
+                            icon: Icons.people_outline_rounded,
+                            label: '${room.standardGuests} người',
+                          ),
+                          if (room.maxGuests > room.standardGuests)
+                            _InfoChip(
+                              icon: Icons.group_add_outlined,
+                              label: 'Tối đa ${room.maxGuests}',
+                            ),
+                        ],
+                      ).animate(delay: 100.ms).fadeIn(duration: 300.ms),
+                      if (room.amenities.isNotEmpty) ...[
                         const SizedBox(height: 16),
-                        _DetailSection(
-                          title: 'Lưu ý',
-                          value: room.rules!.split('\n\n--- LƯU Ý ---\n')[1],
+                        Wrap(
+                          spacing: 6,
+                          runSpacing: 6,
+                          children: room.amenities
+                              .map((a) => _AmenityChip(a))
+                              .toList(),
                         ),
                       ],
                       const SizedBox(height: 24),
-                    ],
-                    if (room.price != null) ...[
-                      Text(
-                        'Bảng giá',
-                        style: GoogleFonts.beVietnamPro(
-                          fontSize: 13,
-                          fontWeight: FontWeight.w700,
-                          color: colors.textPrimary,
-                        ),
+                      _DetailRow(
+                        title: 'Địa chỉ',
+                        icon: Icons.location_on_outlined,
+                        value: room.address?.isNotEmpty == true
+                            ? room.address!
+                            : '-',
                       ),
-                      const SizedBox(height: 8),
-                      _PriceGrid(price: room.price!),
+                      const SizedBox(height: 16),
+                      _DetailSection(
+                        title: 'Mô tả',
+                        value: room.description?.isNotEmpty == true
+                            ? room.description!
+                            : '-',
+                      ),
                       const SizedBox(height: 24),
-                    ],
-                    SizedBox(
-                      width: double.infinity,
-                      height: 48,
-                      child: Container(
-                        decoration: BoxDecoration(
-                          gradient: LinearGradient(
-                            colors: isDark
-                                ? [colors.brand, colors.brandLight]
-                                : const [
-                                    AppColors.jade900,
-                                    AppColors.jade500,
-                                  ],
-                          ),
-                          borderRadius: BorderRadius.circular(AppRadius.md),
-                          boxShadow: [
-                            BoxShadow(
-                              color: colors.brand
-                                  .withValues(alpha: isDark ? 0.40 : 0.30),
-                              blurRadius: 16,
-                              offset: const Offset(0, 4),
-                            ),
-                          ],
+                      if (room.rules != null && room.rules!.isNotEmpty) ...[
+                        _DetailSection(
+                          title: 'Quy định',
+                          value: room.rules!.contains('\n\n--- LƯU Ý ---\n')
+                              ? room.rules!.split('\n\n--- LƯU Ý ---\n')[0]
+                              : room.rules!,
                         ),
-                        child: Material(
-                          color: Colors.transparent,
-                          child: InkWell(
-                            onTap: () => context.push('/rooms/$roomId/hold'),
+                        if (room.rules!.contains('\n\n--- LƯU Ý ---\n')) ...[
+                          const SizedBox(height: 16),
+                          _DetailSection(
+                            title: 'Lưu ý',
+                            value: room.rules!.split('\n\n--- LƯU Ý ---\n')[1],
+                          ),
+                        ],
+                        const SizedBox(height: 24),
+                      ],
+                      if (room.price != null) ...[
+                        Text(
+                          'Bảng giá',
+                          style: GoogleFonts.beVietnamPro(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w700,
+                            color: colors.textPrimary,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        _PriceGrid(price: room.price!),
+                        const SizedBox(height: 24),
+                      ],
+                      SizedBox(
+                        width: double.infinity,
+                        height: 48,
+                        child: Container(
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              colors: isDark
+                                  ? [colors.brand, colors.brandLight]
+                                  : const [
+                                      AppColors.jade900,
+                                      AppColors.jade500,
+                                    ],
+                            ),
                             borderRadius: BorderRadius.circular(AppRadius.md),
-                            child: Center(
-                              child: Text(
-                                'Tạo booking',
-                                style: GoogleFonts.beVietnamPro(
-                                  color: colors.textOnPrimary,
-                                  fontWeight: FontWeight.w600,
-                                  fontSize: 14,
+                            boxShadow: [
+                              BoxShadow(
+                                color: colors.brand
+                                    .withValues(alpha: isDark ? 0.40 : 0.30),
+                                blurRadius: 16,
+                                offset: const Offset(0, 4),
+                              ),
+                            ],
+                          ),
+                          child: Material(
+                            color: Colors.transparent,
+                            child: InkWell(
+                              onTap: () => context.push('/rooms/$roomId/hold'),
+                              borderRadius: BorderRadius.circular(AppRadius.md),
+                              child: Center(
+                                child: Text(
+                                  'Tạo booking',
+                                  style: GoogleFonts.beVietnamPro(
+                                    color: colors.textOnPrimary,
+                                    fontWeight: FontWeight.w600,
+                                    fontSize: 14,
+                                  ),
                                 ),
                               ),
                             ),
                           ),
                         ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );

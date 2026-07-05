@@ -216,51 +216,60 @@ class _ContentState extends ConsumerState<_Content> {
 
     return Stack(
       children: [
-        ListView(
-          padding: EdgeInsets.fromLTRB(
-            AppSpacing.md,
-            AppSpacing.md,
-            AppSpacing.md,
-            s.isPending ? 120 : AppSpacing.md,
-          ),
-          children: [
-            if (!s.isPending) _ResolvedBanner(submission: s),
-            if (!s.isPending) const SizedBox(height: AppSpacing.md),
-            if (s.isOverdue && s.isPending) ...[
-              const _OverdueBanner(),
+        RefreshIndicator(
+          onRefresh: () async {
+            ref.invalidate(kycSubmissionProvider(s.id));
+            await ref.read(kycSubmissionProvider(s.id).future);
+          },
+          child: ListView(
+            physics: const AlwaysScrollableScrollPhysics(),
+            padding: EdgeInsets.fromLTRB(
+              AppSpacing.md,
+              AppSpacing.md,
+              AppSpacing.md,
+              s.isPending ? 120 : AppSpacing.md,
+            ),
+            children: [
+              if (!s.isPending) _ResolvedBanner(submission: s),
+              if (!s.isPending) const SizedBox(height: AppSpacing.md),
+              if (s.isOverdue && s.isPending) ...[
+                const _OverdueBanner(),
+                const SizedBox(height: AppSpacing.md),
+              ],
+              _OwnerInfoCard(submission: s),
               const SizedBox(height: AppSpacing.md),
+              _SectionLabel('CCCD MẶT TRƯỚC'),
+              const SizedBox(height: 8),
+              _CCCDFrontSection(
+                upload: s.cccdFront,
+                isRejectable: s.isPending,
+                isRejected: _rejectingItems.contains(RejectableItem.cccdFront),
+                onToggleReject: (v) =>
+                    _toggleReject(RejectableItem.cccdFront, v),
+              ),
+              const SizedBox(height: AppSpacing.md),
+              _SectionLabel('CCCD MẶT SAU'),
+              const SizedBox(height: 8),
+              _ImageOnlySection(
+                upload: s.cccdBack,
+                isRejectable: s.isPending,
+                isRejected: _rejectingItems.contains(RejectableItem.cccdBack),
+                onToggleReject: (v) =>
+                    _toggleReject(RejectableItem.cccdBack, v),
+              ),
+              const SizedBox(height: AppSpacing.md),
+              _SectionLabel('SELFIE FACE MATCH'),
+              const SizedBox(height: 8),
+              _SelfieSection(
+                submission: s,
+                isRejectable: s.isPending,
+                isRejected: _rejectingItems.contains(RejectableItem.selfie),
+                onToggleReject: (v) => _toggleReject(RejectableItem.selfie, v),
+              ),
+              const SizedBox(height: AppSpacing.md),
+              _SubscriptionSection(submission: s),
             ],
-            _OwnerInfoCard(submission: s),
-            const SizedBox(height: AppSpacing.md),
-            _SectionLabel('CCCD MẶT TRƯỚC'),
-            const SizedBox(height: 8),
-            _CCCDFrontSection(
-              upload: s.cccdFront,
-              isRejectable: s.isPending,
-              isRejected: _rejectingItems.contains(RejectableItem.cccdFront),
-              onToggleReject: (v) => _toggleReject(RejectableItem.cccdFront, v),
-            ),
-            const SizedBox(height: AppSpacing.md),
-            _SectionLabel('CCCD MẶT SAU'),
-            const SizedBox(height: 8),
-            _ImageOnlySection(
-              upload: s.cccdBack,
-              isRejectable: s.isPending,
-              isRejected: _rejectingItems.contains(RejectableItem.cccdBack),
-              onToggleReject: (v) => _toggleReject(RejectableItem.cccdBack, v),
-            ),
-            const SizedBox(height: AppSpacing.md),
-            _SectionLabel('SELFIE FACE MATCH'),
-            const SizedBox(height: 8),
-            _SelfieSection(
-              submission: s,
-              isRejectable: s.isPending,
-              isRejected: _rejectingItems.contains(RejectableItem.selfie),
-              onToggleReject: (v) => _toggleReject(RejectableItem.selfie, v),
-            ),
-            const SizedBox(height: AppSpacing.md),
-            _SubscriptionSection(submission: s),
-          ],
+          ),
         ),
         if (s.isPending)
           Positioned(

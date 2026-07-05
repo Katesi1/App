@@ -112,16 +112,22 @@ class _BankAccountScreenState extends ConsumerState<BankAccountScreen> {
           ),
         ),
       ),
-      body: bankAsync.when(
-        loading: () => const LoadingWidget(),
-        error: (e, _) => ErrorStateWidget(
-          message: e.toString().replaceAll('Exception: ', ''),
-          onRetry: () => ref.invalidate(bankStatusProvider),
-        ),
-        data: (result) {
-          final editing = _editing ?? result.isNone;
-          return editing ? _buildForm(result) : _buildStatusView(result);
+      body: RefreshIndicator(
+        onRefresh: () async {
+          ref.invalidate(bankStatusProvider);
+          await ref.read(bankStatusProvider.future);
         },
+        child: bankAsync.when(
+          loading: () => const LoadingWidget(),
+          error: (e, _) => ErrorStateWidget(
+            message: e.toString().replaceAll('Exception: ', ''),
+            onRetry: () => ref.invalidate(bankStatusProvider),
+          ),
+          data: (result) {
+            final editing = _editing ?? result.isNone;
+            return editing ? _buildForm(result) : _buildStatusView(result);
+          },
+        ),
       ),
     );
   }
@@ -132,6 +138,7 @@ class _BankAccountScreenState extends ConsumerState<BankAccountScreen> {
     final info = result.displayInfo;
 
     return SingleChildScrollView(
+      physics: const AlwaysScrollableScrollPhysics(),
       padding: const EdgeInsets.fromLTRB(20, 20, 20, 32),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -170,6 +177,7 @@ class _BankAccountScreenState extends ConsumerState<BankAccountScreen> {
   Widget _buildForm(BankStatusResult result) {
     final colors = context.colors;
     return SingleChildScrollView(
+      physics: const AlwaysScrollableScrollPhysics(),
       padding: const EdgeInsets.fromLTRB(20, 20, 20, 32),
       child: Form(
         key: _formKey,
@@ -179,8 +187,7 @@ class _BankAccountScreenState extends ConsumerState<BankAccountScreen> {
             _InfoBanner(colors: colors),
             if (result.isRejected && result.rejectReason != null) ...[
               const SizedBox(height: 16),
-              _StatusBanner(
-                  status: result.status, reason: result.rejectReason),
+              _StatusBanner(status: result.status, reason: result.rejectReason),
             ],
             const SizedBox(height: 20),
 
@@ -242,11 +249,13 @@ class _BankAccountScreenState extends ConsumerState<BankAccountScreen> {
               const SizedBox(height: 10),
               Center(
                 child: TextButton(
-                  onPressed:
-                      _submitting ? null : () => setState(() => _editing = false),
+                  onPressed: _submitting
+                      ? null
+                      : () => setState(() => _editing = false),
                   child: Text(
                     'Huỷ',
-                    style: GoogleFonts.beVietnamPro(color: colors.textSecondary),
+                    style:
+                        GoogleFonts.beVietnamPro(color: colors.textSecondary),
                   ),
                 ),
               ),
@@ -718,8 +727,7 @@ class _BankPickerSheetState extends State<_BankPickerSheet> {
         return Container(
           decoration: BoxDecoration(
             color: colors.bgSurface,
-            borderRadius:
-                const BorderRadius.vertical(top: Radius.circular(24)),
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
           ),
           child: Column(
             children: [
@@ -741,8 +749,8 @@ class _BankPickerSheetState extends State<_BankPickerSheet> {
                     hintText: 'Tìm ngân hàng...',
                     prefixIcon: const Icon(Icons.search_rounded),
                     isDense: true,
-                    contentPadding:
-                        const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                    contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 12, vertical: 12),
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(AppRadius.md),
                       borderSide: BorderSide(color: colors.borderDefault),

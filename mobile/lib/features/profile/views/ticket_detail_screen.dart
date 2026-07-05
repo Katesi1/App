@@ -88,19 +88,26 @@ class _TicketDetailScreenState extends ConsumerState<TicketDetailScreen> {
         data: (ticket) => Column(
           children: [
             Expanded(
-              child: ListView(
-                padding: const EdgeInsets.all(AppSpacing.md),
-                children: [
-                  _HeaderCard(ticket: ticket),
-                  const SizedBox(height: AppSpacing.md),
-                  if (ticket.messages.isEmpty)
-                    Text(
-                      'Chưa có trao đổi nào.',
-                      style: TextStyle(color: colors.textTertiary),
-                    )
-                  else
-                    ...ticket.messages.map((m) => _MessageBubble(message: m)),
-                ],
+              child: RefreshIndicator(
+                onRefresh: () async {
+                  ref.invalidate(ticketDetailProvider(widget.ticketId));
+                  await ref.read(ticketDetailProvider(widget.ticketId).future);
+                },
+                child: ListView(
+                  physics: const AlwaysScrollableScrollPhysics(),
+                  padding: const EdgeInsets.all(AppSpacing.md),
+                  children: [
+                    _HeaderCard(ticket: ticket),
+                    const SizedBox(height: AppSpacing.md),
+                    if (ticket.messages.isEmpty)
+                      Text(
+                        'Chưa có trao đổi nào.',
+                        style: TextStyle(color: colors.textTertiary),
+                      )
+                    else
+                      ...ticket.messages.map((m) => _MessageBubble(message: m)),
+                  ],
+                ),
               ),
             ),
             if (!ticket.isClosed)

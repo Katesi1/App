@@ -52,49 +52,63 @@ class _NotificationScreenState extends ConsumerState<NotificationScreen> {
 
           // ── List ───────────────────────────────────────────
           Expanded(
-            child: notificationsAsync.when(
-              data: (notifications) {
-                final filtered = _selectedType == null
-                    ? notifications
-                    : notifications
-                        .where((n) => n.type == _selectedType)
-                        .toList();
-
-                if (filtered.isEmpty) {
-                  return const EmptyStateWidget(
-                    icon: Icons.notifications_off_outlined,
-                    message: 'Không có thông báo',
-                    subMessage: 'Bạn sẽ nhận thông báo khi có cập nhật mới',
-                  );
-                }
-
-                return ListView.builder(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: AppSpacing.md,
-                    vertical: AppSpacing.xs,
-                  ),
-                  itemCount: filtered.length,
-                  itemBuilder: (context, index) {
-                    final notification = filtered[index];
-                    return _NotificationCard(
-                      notification: notification,
-                      onTap: () {
-                        // Navigate to detail. Detail screen auto-marks as read
-                        // after mount + shows smart "Open link" button per
-                        // targetType (booking/kyc/payment).
-                        context.push('/notifications/${notification.id}');
-                      },
-                    );
-                  },
-                );
+            child: RefreshIndicator(
+              onRefresh: () async {
+                ref.invalidate(notificationListProvider);
+                await ref.read(notificationListProvider.future);
               },
-              loading: () => SkeletonList(
-                skeleton: const UserCardSkeleton(),
-                count: 6,
-              ),
-              error: (e, _) => ErrorStateWidget(
-                message: e.toString().replaceAll('Exception: ', ''),
-                onRetry: () => ref.invalidate(notificationListProvider),
+              child: notificationsAsync.when(
+                data: (notifications) {
+                  final filtered = _selectedType == null
+                      ? notifications
+                      : notifications
+                          .where((n) => n.type == _selectedType)
+                          .toList();
+
+                  if (filtered.isEmpty) {
+                    return ListView(
+                      physics: const AlwaysScrollableScrollPhysics(),
+                      children: const [
+                        SizedBox(height: 120),
+                        EmptyStateWidget(
+                          icon: Icons.notifications_off_outlined,
+                          message: 'Không có thông báo',
+                          subMessage:
+                              'Bạn sẽ nhận thông báo khi có cập nhật mới',
+                        ),
+                      ],
+                    );
+                  }
+
+                  return ListView.builder(
+                    physics: const AlwaysScrollableScrollPhysics(),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: AppSpacing.md,
+                      vertical: AppSpacing.xs,
+                    ),
+                    itemCount: filtered.length,
+                    itemBuilder: (context, index) {
+                      final notification = filtered[index];
+                      return _NotificationCard(
+                        notification: notification,
+                        onTap: () {
+                          // Navigate to detail. Detail screen auto-marks as read
+                          // after mount + shows smart "Open link" button per
+                          // targetType (booking/kyc/payment).
+                          context.push('/notifications/${notification.id}');
+                        },
+                      );
+                    },
+                  );
+                },
+                loading: () => SkeletonList(
+                  skeleton: const UserCardSkeleton(),
+                  count: 6,
+                ),
+                error: (e, _) => ErrorStateWidget(
+                  message: e.toString().replaceAll('Exception: ', ''),
+                  onRetry: () => ref.invalidate(notificationListProvider),
+                ),
               ),
             ),
           ),

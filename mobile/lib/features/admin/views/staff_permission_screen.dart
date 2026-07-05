@@ -66,41 +66,49 @@ class _StaffPermissionScreenState extends ConsumerState<StaffPermissionScreen> {
           return Column(
             children: [
               Expanded(
-                child: ListView(
-                  padding: const EdgeInsets.all(AppSpacing.md),
-                  children: [
-                    if (perms.userName.isNotEmpty)
-                      Container(
-                        padding: const EdgeInsets.all(AppSpacing.md),
-                        decoration: BoxDecoration(
-                          color: colors.bgSurfaceContainer,
-                          borderRadius: BorderRadius.circular(AppRadius.lg),
-                        ),
-                        child: Row(
-                          children: [
-                            Icon(Icons.badge_outlined, color: colors.brand),
-                            const SizedBox(width: 10),
-                            Expanded(
-                              child: Text(
-                                perms.userName,
-                                style: TextStyle(
-                                  fontWeight: FontWeight.w700,
-                                  color: colors.textPrimary,
+                child: RefreshIndicator(
+                  onRefresh: () async {
+                    ref.invalidate(staffPermissionsProvider(widget.userId));
+                    await ref
+                        .read(staffPermissionsProvider(widget.userId).future);
+                  },
+                  child: ListView(
+                    physics: const AlwaysScrollableScrollPhysics(),
+                    padding: const EdgeInsets.all(AppSpacing.md),
+                    children: [
+                      if (perms.userName.isNotEmpty)
+                        Container(
+                          padding: const EdgeInsets.all(AppSpacing.md),
+                          decoration: BoxDecoration(
+                            color: colors.bgSurfaceContainer,
+                            borderRadius: BorderRadius.circular(AppRadius.lg),
+                          ),
+                          child: Row(
+                            children: [
+                              Icon(Icons.badge_outlined, color: colors.brand),
+                              const SizedBox(width: 10),
+                              Expanded(
+                                child: Text(
+                                  perms.userName,
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.w700,
+                                    color: colors.textPrimary,
+                                  ),
                                 ),
                               ),
-                            ),
-                          ],
+                            ],
+                          ),
+                        ),
+                      const SizedBox(height: AppSpacing.md),
+                      ...perms.modules.map(
+                        (m) => _ModuleCard(
+                          perm: m,
+                          onChanged: (updated) => setState(
+                              () => _draft = perms.withModule(updated)),
                         ),
                       ),
-                    const SizedBox(height: AppSpacing.md),
-                    ...perms.modules.map(
-                      (m) => _ModuleCard(
-                        perm: m,
-                        onChanged: (updated) =>
-                            setState(() => _draft = perms.withModule(updated)),
-                      ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
               ),
               SafeArea(

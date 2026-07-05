@@ -159,7 +159,13 @@ class _OwnerCalendarScreenState extends ConsumerState<OwnerCalendarScreen> {
             onNext: () => _navigate(1),
           ),
           Expanded(
-            child: _buildGridBody(gridAsync, gridParams, colors),
+            child: RefreshIndicator(
+              onRefresh: () async {
+                ref.invalidate(calendarGridProvider(gridParams));
+                await ref.read(calendarGridProvider(gridParams).future);
+              },
+              child: _buildGridBody(gridAsync, gridParams, colors),
+            ),
           ),
         ],
       ),
@@ -208,9 +214,15 @@ class _OwnerCalendarScreenState extends ConsumerState<OwnerCalendarScreen> {
       data: (grid) {
         final rooms = _mapProperties(grid.properties);
         if (rooms.isEmpty) {
-          return const EmptyStateWidget(
-            icon: Icons.calendar_today_outlined,
-            message: 'Không có phòng nào',
+          return ListView(
+            physics: const AlwaysScrollableScrollPhysics(),
+            children: const [
+              SizedBox(height: 120),
+              EmptyStateWidget(
+                icon: Icons.calendar_today_outlined,
+                message: 'Không có phòng nào',
+              ),
+            ],
           );
         }
         // Cache for next navigation.

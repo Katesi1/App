@@ -45,9 +45,7 @@ class _NotificationDetailScreenState
     final notification = _findById(list, widget.id);
     if (notification == null || notification.isRead) return;
     _markedAsRead = true;
-    await ref
-        .read(notificationActionsProvider.notifier)
-        .markAsRead(widget.id);
+    await ref.read(notificationActionsProvider.notifier).markAsRead(widget.id);
   }
 
   NotificationModel? _findById(List<NotificationModel> list, String id) {
@@ -67,29 +65,41 @@ class _NotificationDetailScreenState
       appBar: AppBar(
         title: const Text('Chi tiết thông báo'),
       ),
-      body: listAsync.when(
-        loading: () => const LoadingWidget(),
-        error: (e, _) => ErrorStateWidget(
-          message: e.toString().replaceAll('Exception: ', ''),
-          onRetry: () => ref.invalidate(notificationListProvider),
-        ),
-        data: (list) {
-          final notification = _findById(list, widget.id);
-          if (notification == null) {
-            return const EmptyStateWidget(
-              icon: Icons.notifications_off_outlined,
-              message: 'Không tìm thấy thông báo',
-              subMessage: 'Thông báo có thể đã bị xoá',
-            );
-          }
-          // Mark-as-read after list loads successfully (postFrame in init
-          // runs before list async load completes).
-          if (!_markedAsRead && !notification.isRead) {
-            WidgetsBinding.instance
-                .addPostFrameCallback((_) => _maybeMarkRead());
-          }
-          return _DetailBody(notification: notification);
+      body: RefreshIndicator(
+        onRefresh: () async {
+          ref.invalidate(notificationListProvider);
+          await ref.read(notificationListProvider.future);
         },
+        child: listAsync.when(
+          loading: () => const LoadingWidget(),
+          error: (e, _) => ErrorStateWidget(
+            message: e.toString().replaceAll('Exception: ', ''),
+            onRetry: () => ref.invalidate(notificationListProvider),
+          ),
+          data: (list) {
+            final notification = _findById(list, widget.id);
+            if (notification == null) {
+              return ListView(
+                physics: const AlwaysScrollableScrollPhysics(),
+                children: const [
+                  SizedBox(height: 120),
+                  EmptyStateWidget(
+                    icon: Icons.notifications_off_outlined,
+                    message: 'Không tìm thấy thông báo',
+                    subMessage: 'Thông báo có thể đã bị xoá',
+                  ),
+                ],
+              );
+            }
+            // Mark-as-read after list loads successfully (postFrame in init
+            // runs before list async load completes).
+            if (!_markedAsRead && !notification.isRead) {
+              WidgetsBinding.instance
+                  .addPostFrameCallback((_) => _maybeMarkRead());
+            }
+            return _DetailBody(notification: notification);
+          },
+        ),
       ),
     );
   }
@@ -105,6 +115,7 @@ class _DetailBody extends StatelessWidget {
     final (IconData icon, Color color) = _iconForType(colors);
 
     return ListView(
+      physics: const AlwaysScrollableScrollPhysics(),
       padding: const EdgeInsets.all(AppSpacing.md),
       children: [
         // Header card: icon + type badge.

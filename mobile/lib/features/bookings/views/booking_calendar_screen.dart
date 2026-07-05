@@ -133,47 +133,60 @@ class _BookingCalendarScreenState extends ConsumerState<BookingCalendarScreen> {
             onNext: () => _navigate(1),
           ),
           Expanded(
-            child: gridAsync.when(
-              loading: () => const LoadingWidget(),
-              error: (e, _) => ErrorStateWidget(
-                message: e.toString().replaceAll('Exception: ', ''),
-                onRetry: () => ref.invalidate(calendarGridProvider(gridParams)),
-              ),
-              data: (grid) {
-                final rooms = _mapProperties(grid.properties);
-                if (rooms.isEmpty) {
-                  return const EmptyStateWidget(
-                    icon: Icons.calendar_today_outlined,
-                    message: 'Không có phòng nào',
-                  );
-                }
-                return AnimatedSwitcher(
-                  duration: const Duration(milliseconds: 220),
-                  switchInCurve: Curves.easeOutCubic,
-                  switchOutCurve: Curves.easeInCubic,
-                  transitionBuilder: (child, animation) {
-                    final offset = Tween<Offset>(
-                      begin: const Offset(0.04, 0),
-                      end: Offset.zero,
-                    ).animate(animation);
-                    return FadeTransition(
-                      opacity: animation,
-                      child: SlideTransition(position: offset, child: child),
-                    );
-                  },
-                  child: CalendarGridWidget(
-                    key: ValueKey(
-                        '${_viewMode.name}_${gridParams.startDate}_${gridParams.endDate}'),
-                    rooms: rooms,
-                    viewMode: _viewMode,
-                    weekStart: _weekStart,
-                    monthStart: _monthStart,
-                    onCellTap: (room, date, cell) =>
-                        _showContactModal(context, room, date, cell),
-                    legendTapHint: 'Tap ô = liên hệ',
-                  ),
-                );
+            child: RefreshIndicator(
+              onRefresh: () async {
+                ref.invalidate(calendarGridProvider(gridParams));
+                await ref.read(calendarGridProvider(gridParams).future);
               },
+              child: gridAsync.when(
+                loading: () => const LoadingWidget(),
+                error: (e, _) => ErrorStateWidget(
+                  message: e.toString().replaceAll('Exception: ', ''),
+                  onRetry: () =>
+                      ref.invalidate(calendarGridProvider(gridParams)),
+                ),
+                data: (grid) {
+                  final rooms = _mapProperties(grid.properties);
+                  if (rooms.isEmpty) {
+                    return ListView(
+                      physics: const AlwaysScrollableScrollPhysics(),
+                      children: const [
+                        SizedBox(height: 120),
+                        EmptyStateWidget(
+                          icon: Icons.calendar_today_outlined,
+                          message: 'Không có phòng nào',
+                        ),
+                      ],
+                    );
+                  }
+                  return AnimatedSwitcher(
+                    duration: const Duration(milliseconds: 220),
+                    switchInCurve: Curves.easeOutCubic,
+                    switchOutCurve: Curves.easeInCubic,
+                    transitionBuilder: (child, animation) {
+                      final offset = Tween<Offset>(
+                        begin: const Offset(0.04, 0),
+                        end: Offset.zero,
+                      ).animate(animation);
+                      return FadeTransition(
+                        opacity: animation,
+                        child: SlideTransition(position: offset, child: child),
+                      );
+                    },
+                    child: CalendarGridWidget(
+                      key: ValueKey(
+                          '${_viewMode.name}_${gridParams.startDate}_${gridParams.endDate}'),
+                      rooms: rooms,
+                      viewMode: _viewMode,
+                      weekStart: _weekStart,
+                      monthStart: _monthStart,
+                      onCellTap: (room, date, cell) =>
+                          _showContactModal(context, room, date, cell),
+                      legendTapHint: 'Tap ô = liên hệ',
+                    ),
+                  );
+                },
+              ),
             ),
           ),
         ],
