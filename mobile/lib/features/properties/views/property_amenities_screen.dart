@@ -138,139 +138,148 @@ class _PropertyAmenitiesScreenState
           ),
           centerTitle: true,
         ),
-        body: roomAsync.when(
-          loading: () => const LoadingWidget(),
-          error: (e, _) => ErrorStateWidget(
-            message: e.toString().replaceAll('Exception: ', ''),
-            onRetry: () =>
-                ref.invalidate(roomDetailProvider(widget.homestayId)),
-          ),
-          data: (room) {
-            _initFromRoom();
+        body: RefreshIndicator(
+          onRefresh: () async {
+            ref.invalidate(roomDetailProvider(widget.homestayId));
+            await ref.read(roomDetailProvider(widget.homestayId).future);
+          },
+          child: roomAsync.when(
+            loading: () => const LoadingWidget(),
+            error: (e, _) => ErrorStateWidget(
+              message: e.toString().replaceAll('Exception: ', ''),
+              onRetry: () =>
+                  ref.invalidate(roomDetailProvider(widget.homestayId)),
+            ),
+            data: (room) {
+              _initFromRoom();
 
-            final allPreset = _amenityGroups.values.expand((v) => v).toSet();
-            final extraAmenities = _selectedAmenities
-                .where((a) => !allPreset.contains(a))
-                .toList();
+              final allPreset = _amenityGroups.values.expand((v) => v).toSet();
+              final extraAmenities = _selectedAmenities
+                  .where((a) => !allPreset.contains(a))
+                  .toList();
 
-            return Column(
-              children: [
-                Expanded(
-                  child: ListView(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: AppSpacing.md,
-                    ),
-                    children: [
-                      const SizedBox(height: AppSpacing.sm),
-                      ..._amenityGroups.entries.map((group) => Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Padding(
-                                padding: const EdgeInsets.only(
-                                  bottom: AppSpacing.xs,
-                                  top: AppSpacing.md,
-                                ),
-                                child: Text(
-                                  group.key.toUpperCase(),
-                                  style: GoogleFonts.beVietnamPro(
-                                    fontSize: 11,
-                                    fontWeight: FontWeight.w600,
-                                    color: colors.textSecondary,
-                                    letterSpacing: 1.2,
+              return Column(
+                children: [
+                  Expanded(
+                    child: ListView(
+                      physics: const AlwaysScrollableScrollPhysics(),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: AppSpacing.md,
+                      ),
+                      children: [
+                        const SizedBox(height: AppSpacing.sm),
+                        ..._amenityGroups.entries.map((group) => Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Padding(
+                                  padding: const EdgeInsets.only(
+                                    bottom: AppSpacing.xs,
+                                    top: AppSpacing.md,
+                                  ),
+                                  child: Text(
+                                    group.key.toUpperCase(),
+                                    style: GoogleFonts.beVietnamPro(
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.w600,
+                                      color: colors.textSecondary,
+                                      letterSpacing: 1.2,
+                                    ),
                                   ),
                                 ),
-                              ),
-                              ...group.value.map((amenity) {
-                                final on = _selectedAmenities.contains(amenity);
-                                return _AmenityRow(
-                                  name: amenity,
-                                  enabled: on,
-                                  onToggle: () => setState(() {
-                                    if (on) {
-                                      _selectedAmenities.remove(amenity);
-                                    } else {
-                                      _selectedAmenities.add(amenity);
-                                    }
-                                  }),
-                                );
-                              }),
-                            ],
-                          )),
-                      if (extraAmenities.isNotEmpty) ...[
-                        Padding(
-                          padding: const EdgeInsets.only(
-                            bottom: AppSpacing.xs,
-                            top: AppSpacing.md,
-                          ),
-                          child: Text(
-                            'KHÁC',
-                            style: GoogleFonts.beVietnamPro(
-                              fontSize: 11,
-                              fontWeight: FontWeight.w600,
-                              color: colors.textSecondary,
-                              letterSpacing: 1.2,
-                            ),
-                          ),
-                        ),
-                        ...extraAmenities.map((amenity) => _AmenityRow(
-                              name: amenity,
-                              enabled: true,
-                              onToggle: () => setState(() {
-                                _selectedAmenities.remove(amenity);
-                              }),
+                                ...group.value.map((amenity) {
+                                  final on =
+                                      _selectedAmenities.contains(amenity);
+                                  return _AmenityRow(
+                                    name: amenity,
+                                    enabled: on,
+                                    onToggle: () => setState(() {
+                                      if (on) {
+                                        _selectedAmenities.remove(amenity);
+                                      } else {
+                                        _selectedAmenities.add(amenity);
+                                      }
+                                    }),
+                                  );
+                                }),
+                              ],
                             )),
-                      ],
-                      const SizedBox(height: AppSpacing.lg),
-                    ],
-                  ),
-                ),
-                SafeArea(
-                  child: Padding(
-                    padding: const EdgeInsets.all(AppSpacing.md),
-                    child: SizedBox(
-                      width: double.infinity,
-                      height: 48,
-                      child: DecoratedBox(
-                        decoration: BoxDecoration(
-                          gradient: LinearGradient(
-                            colors: [colors.brand, colors.brandLight],
-                          ),
-                          borderRadius: BorderRadius.circular(AppRadius.md),
-                        ),
-                        child: ElevatedButton(
-                          onPressed: _isLoading ? null : _onSave,
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.transparent,
-                            shadowColor: Colors.transparent,
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(AppRadius.md),
+                        if (extraAmenities.isNotEmpty) ...[
+                          Padding(
+                            padding: const EdgeInsets.only(
+                              bottom: AppSpacing.xs,
+                              top: AppSpacing.md,
+                            ),
+                            child: Text(
+                              'KHÁC',
+                              style: GoogleFonts.beVietnamPro(
+                                fontSize: 11,
+                                fontWeight: FontWeight.w600,
+                                color: colors.textSecondary,
+                                letterSpacing: 1.2,
+                              ),
                             ),
                           ),
-                          child: _isLoading
-                              ? const SizedBox(
-                                  width: 20,
-                                  height: 20,
-                                  child: CircularProgressIndicator(
-                                    strokeWidth: 2,
-                                    color: Colors.white,
+                          ...extraAmenities.map((amenity) => _AmenityRow(
+                                name: amenity,
+                                enabled: true,
+                                onToggle: () => setState(() {
+                                  _selectedAmenities.remove(amenity);
+                                }),
+                              )),
+                        ],
+                        const SizedBox(height: AppSpacing.lg),
+                      ],
+                    ),
+                  ),
+                  SafeArea(
+                    child: Padding(
+                      padding: const EdgeInsets.all(AppSpacing.md),
+                      child: SizedBox(
+                        width: double.infinity,
+                        height: 48,
+                        child: DecoratedBox(
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              colors: [colors.brand, colors.brandLight],
+                            ),
+                            borderRadius: BorderRadius.circular(AppRadius.md),
+                          ),
+                          child: ElevatedButton(
+                            onPressed: _isLoading ? null : _onSave,
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.transparent,
+                              shadowColor: Colors.transparent,
+                              shape: RoundedRectangleBorder(
+                                borderRadius:
+                                    BorderRadius.circular(AppRadius.md),
+                              ),
+                            ),
+                            child: _isLoading
+                                ? const SizedBox(
+                                    width: 20,
+                                    height: 20,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2,
+                                      color: Colors.white,
+                                    ),
+                                  )
+                                : Text(
+                                    'Lưu',
+                                    style: GoogleFonts.beVietnamPro(
+                                      fontSize: 15,
+                                      fontWeight: FontWeight.w600,
+                                      color: Colors.white,
+                                    ),
                                   ),
-                                )
-                              : Text(
-                                  'Lưu',
-                                  style: GoogleFonts.beVietnamPro(
-                                    fontSize: 15,
-                                    fontWeight: FontWeight.w600,
-                                    color: Colors.white,
-                                  ),
-                                ),
+                          ),
                         ),
                       ),
                     ),
                   ),
-                ),
-              ],
-            );
-          },
+                ],
+              );
+            },
+          ),
         ),
       ),
     );

@@ -123,79 +123,86 @@ class _SelectPlanScreenState extends ConsumerState<SelectPlanScreen> {
         overline: 'NÂNG GÓI · SUBSCRIPTION',
         title: 'Chọn gói phù hợp',
       ),
-      body: plansAsync.when(
-        loading: () => const Center(child: CircularProgressIndicator()),
-        error: (e, _) => Center(child: Text('Lỗi: $e')),
-        data: (plans) {
-          final selectedPlan = PlanPriceCalculator.planFor(_selected!, plans);
-          // Quote lại khi selection/cycle đổi (sau frame để tránh setState lúc build).
-          WidgetsBinding.instance.addPostFrameCallback((_) {
-            if (mounted) _maybeQuote(selectedPlan);
-          });
-
-          return Stack(
-            children: [
-              ListView(
-                padding: const EdgeInsets.fromLTRB(
-                  AppSpacing.md,
-                  AppSpacing.md,
-                  AppSpacing.md,
-                  120,
-                ),
-                children: [
-                  _BillingToggle(
-                    cycle: _cycle,
-                    onChanged: (c) => setState(() => _cycle = c),
-                  ),
-                  const SizedBox(height: AppSpacing.md),
-                  ...plans.asMap().entries.map(
-                        (e) => Padding(
-                          padding: const EdgeInsets.only(top: 12),
-                          child: PlanCard(
-                            plan: e.value,
-                            cycle: _cycle,
-                            isSelected: e.value.tier == _selected,
-                            onTap: () => _onPlanTap(e.value),
-                          )
-                              .animate(delay: (60 * e.key).ms)
-                              .fadeIn(duration: 280.ms)
-                              .slideY(begin: 0.08, end: 0),
-                        ),
-                      ),
-                  const SizedBox(height: AppSpacing.md),
-                  _TrialBanner(),
-                ],
-              ),
-              Positioned(
-                left: 0,
-                right: 0,
-                bottom: 0,
-                child: _CTABar(
-                  planName: selectedPlan.tier.displayName,
-                  isEnterprise: selectedPlan.isEnterprise,
-                  quoting: _quoting,
-                  quoteError: _quoteError,
-                  total: _quote?.totalAmount,
-                  kind: _quote?.kind,
-                  onTap: () {
-                    if (selectedPlan.isEnterprise) {
-                      context.push('/profile/help');
-                      return;
-                    }
-                    if (_quoteError != null) {
-                      _maybeQuote(selectedPlan); // retry
-                      return;
-                    }
-                    ref
-                        .read(verifyFlowControllerProvider.notifier)
-                        .selectPlan(selectedPlan, _cycle);
-                    context.push('/verify/payment');
-                  },
-                ),
-              ),
-            ],
-          );
+      body: RefreshIndicator(
+        onRefresh: () async {
+          ref.invalidate(verifyPlansProvider);
+          await ref.read(verifyPlansProvider.future);
         },
+        child: plansAsync.when(
+          loading: () => const Center(child: CircularProgressIndicator()),
+          error: (e, _) => Center(child: Text('Lỗi: $e')),
+          data: (plans) {
+            final selectedPlan = PlanPriceCalculator.planFor(_selected!, plans);
+            // Quote lại khi selection/cycle đổi (sau frame để tránh setState lúc build).
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              if (mounted) _maybeQuote(selectedPlan);
+            });
+
+            return Stack(
+              children: [
+                ListView(
+                  physics: const AlwaysScrollableScrollPhysics(),
+                  padding: const EdgeInsets.fromLTRB(
+                    AppSpacing.md,
+                    AppSpacing.md,
+                    AppSpacing.md,
+                    120,
+                  ),
+                  children: [
+                    _BillingToggle(
+                      cycle: _cycle,
+                      onChanged: (c) => setState(() => _cycle = c),
+                    ),
+                    const SizedBox(height: AppSpacing.md),
+                    ...plans.asMap().entries.map(
+                          (e) => Padding(
+                            padding: const EdgeInsets.only(top: 12),
+                            child: PlanCard(
+                              plan: e.value,
+                              cycle: _cycle,
+                              isSelected: e.value.tier == _selected,
+                              onTap: () => _onPlanTap(e.value),
+                            )
+                                .animate(delay: (60 * e.key).ms)
+                                .fadeIn(duration: 280.ms)
+                                .slideY(begin: 0.08, end: 0),
+                          ),
+                        ),
+                    const SizedBox(height: AppSpacing.md),
+                    _TrialBanner(),
+                  ],
+                ),
+                Positioned(
+                  left: 0,
+                  right: 0,
+                  bottom: 0,
+                  child: _CTABar(
+                    planName: selectedPlan.tier.displayName,
+                    isEnterprise: selectedPlan.isEnterprise,
+                    quoting: _quoting,
+                    quoteError: _quoteError,
+                    total: _quote?.totalAmount,
+                    kind: _quote?.kind,
+                    onTap: () {
+                      if (selectedPlan.isEnterprise) {
+                        context.push('/profile/help');
+                        return;
+                      }
+                      if (_quoteError != null) {
+                        _maybeQuote(selectedPlan); // retry
+                        return;
+                      }
+                      ref
+                          .read(verifyFlowControllerProvider.notifier)
+                          .selectPlan(selectedPlan, _cycle);
+                      context.push('/verify/payment');
+                    },
+                  ),
+                ),
+              ],
+            );
+          },
+        ),
       ),
     );
   }

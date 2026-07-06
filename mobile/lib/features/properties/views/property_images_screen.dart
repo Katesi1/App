@@ -210,18 +210,25 @@ class _PropertyImagesScreenState extends ConsumerState<PropertyImagesScreen> {
             ),
         ],
       ),
-      body: roomAsync.when(
-        loading: () => const LoadingWidget(),
-        error: (e, _) => ErrorStateWidget(
-          message: e.toString().replaceAll('Exception: ', ''),
-          onRetry: () => ref.invalidate(roomDetailProvider(widget.homestayId)),
-        ),
-        data: (room) {
-          if (room.images.isEmpty) {
-            return _buildEmptyState(context);
-          }
-          return _buildImageGrid(context, room.images);
+      body: RefreshIndicator(
+        onRefresh: () async {
+          ref.invalidate(roomDetailProvider(widget.homestayId));
+          await ref.read(roomDetailProvider(widget.homestayId).future);
         },
+        child: roomAsync.when(
+          loading: () => const LoadingWidget(),
+          error: (e, _) => ErrorStateWidget(
+            message: e.toString().replaceAll('Exception: ', ''),
+            onRetry: () =>
+                ref.invalidate(roomDetailProvider(widget.homestayId)),
+          ),
+          data: (room) {
+            if (room.images.isEmpty) {
+              return _buildEmptyState(context);
+            }
+            return _buildImageGrid(context, room.images);
+          },
+        ),
       ),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: _uploading ? null : _showPickerSheet,
@@ -241,37 +248,43 @@ class _PropertyImagesScreenState extends ConsumerState<PropertyImagesScreen> {
   Widget _buildEmptyState(BuildContext context) {
     final colors = context.colors;
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    return Center(
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Container(
-            width: 100,
-            height: 100,
-            decoration: BoxDecoration(
-              color: colors.brand.withValues(alpha: isDark ? 0.18 : 0.12),
-              borderRadius: BorderRadius.circular(AppRadius.full),
-            ),
-            child: Icon(Icons.photo_library_outlined,
-                size: 48, color: colors.brand),
+    return ListView(
+      physics: const AlwaysScrollableScrollPhysics(),
+      children: [
+        const SizedBox(height: 120),
+        Center(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 100,
+                height: 100,
+                decoration: BoxDecoration(
+                  color: colors.brand.withValues(alpha: isDark ? 0.18 : 0.12),
+                  borderRadius: BorderRadius.circular(AppRadius.full),
+                ),
+                child: Icon(Icons.photo_library_outlined,
+                    size: 48, color: colors.brand),
+              ),
+              const SizedBox(height: AppSpacing.lg),
+              Text('Chưa có ảnh nào',
+                  style: GoogleFonts.beVietnamPro(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w700,
+                    color: colors.textPrimary,
+                  )),
+              const SizedBox(height: AppSpacing.sm),
+              Text('Thêm ảnh để khách hàng hình dung\nvề căn phòng của bạn.',
+                  textAlign: TextAlign.center,
+                  style: GoogleFonts.beVietnamPro(
+                    fontSize: 14,
+                    color: colors.textSecondary,
+                    height: 1.5,
+                  )),
+            ],
           ),
-          const SizedBox(height: AppSpacing.lg),
-          Text('Chưa có ảnh nào',
-              style: GoogleFonts.beVietnamPro(
-                fontSize: 18,
-                fontWeight: FontWeight.w700,
-                color: colors.textPrimary,
-              )),
-          const SizedBox(height: AppSpacing.sm),
-          Text('Thêm ảnh để khách hàng hình dung\nvề căn phòng của bạn.',
-              textAlign: TextAlign.center,
-              style: GoogleFonts.beVietnamPro(
-                fontSize: 14,
-                color: colors.textSecondary,
-                height: 1.5,
-              )),
-        ],
-      ),
+        ),
+      ],
     );
   }
 
@@ -294,6 +307,7 @@ class _PropertyImagesScreenState extends ConsumerState<PropertyImagesScreen> {
         ),
         Expanded(
           child: GridView.builder(
+            physics: const AlwaysScrollableScrollPhysics(),
             padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
             gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
               crossAxisCount: 2,

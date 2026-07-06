@@ -111,68 +111,82 @@ class _PropertyServicesScreenState
           ),
         ],
       ),
-      body: roomAsync.when(
-        loading: () => const LoadingWidget(),
-        error: (e, _) => ErrorStateWidget(
-          message: e.toString().replaceAll('Exception: ', ''),
-          onRetry: () => ref.invalidate(roomDetailProvider(widget.homestayId)),
-        ),
-        data: (_) {
-          _initFromRoom();
-          if (_services.isEmpty) {
-            return Center(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
+      body: RefreshIndicator(
+        onRefresh: () async {
+          ref.invalidate(roomDetailProvider(widget.homestayId));
+          await ref.read(roomDetailProvider(widget.homestayId).future);
+        },
+        child: roomAsync.when(
+          loading: () => const LoadingWidget(),
+          error: (e, _) => ErrorStateWidget(
+            message: e.toString().replaceAll('Exception: ', ''),
+            onRetry: () =>
+                ref.invalidate(roomDetailProvider(widget.homestayId)),
+          ),
+          data: (_) {
+            _initFromRoom();
+            if (_services.isEmpty) {
+              return ListView(
+                physics: const AlwaysScrollableScrollPhysics(),
                 children: [
-                  Icon(Icons.room_service_outlined,
-                      size: 48, color: colors.textTertiary),
-                  const SizedBox(height: 12),
-                  Text('Chưa có dịch vụ nào',
-                      style: GoogleFonts.beVietnamPro(
-                        fontSize: 15,
-                        color: colors.textSecondary,
-                      )),
-                  const SizedBox(height: 8),
-                  TextButton.icon(
-                    onPressed: _addService,
-                    icon: const Icon(Icons.add_rounded),
-                    label: const Text('Thêm dịch vụ'),
+                  const SizedBox(height: 120),
+                  Center(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.room_service_outlined,
+                            size: 48, color: colors.textTertiary),
+                        const SizedBox(height: 12),
+                        Text('Chưa có dịch vụ nào',
+                            style: GoogleFonts.beVietnamPro(
+                              fontSize: 15,
+                              color: colors.textSecondary,
+                            )),
+                        const SizedBox(height: 8),
+                        TextButton.icon(
+                          onPressed: _addService,
+                          icon: const Icon(Icons.add_rounded),
+                          label: const Text('Thêm dịch vụ'),
+                        ),
+                      ],
+                    ),
                   ),
                 ],
+              );
+            }
+            return ListView.separated(
+              physics: const AlwaysScrollableScrollPhysics(),
+              padding: const EdgeInsets.all(AppSpacing.md),
+              itemCount: _services.length,
+              separatorBuilder: (_, __) =>
+                  Divider(height: 1, color: colors.borderDefault),
+              itemBuilder: (_, i) => ListTile(
+                contentPadding: EdgeInsets.zero,
+                leading: Container(
+                  width: 40,
+                  height: 40,
+                  decoration: BoxDecoration(
+                    color: colors.brand.withValues(alpha: isDark ? 0.18 : 0.12),
+                    borderRadius: BorderRadius.circular(AppRadius.sm),
+                  ),
+                  child: Icon(Icons.room_service_outlined,
+                      color: colors.brand, size: 20),
+                ),
+                title: Text(_services[i],
+                    style: GoogleFonts.beVietnamPro(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w500,
+                      color: colors.textPrimary,
+                    )),
+                trailing: IconButton(
+                  onPressed: () => setState(() => _services.removeAt(i)),
+                  icon: Icon(Icons.delete_outline_rounded,
+                      color: colors.error, size: 20),
+                ),
               ),
             );
-          }
-          return ListView.separated(
-            padding: const EdgeInsets.all(AppSpacing.md),
-            itemCount: _services.length,
-            separatorBuilder: (_, __) =>
-                Divider(height: 1, color: colors.borderDefault),
-            itemBuilder: (_, i) => ListTile(
-              contentPadding: EdgeInsets.zero,
-              leading: Container(
-                width: 40,
-                height: 40,
-                decoration: BoxDecoration(
-                  color: colors.brand.withValues(alpha: isDark ? 0.18 : 0.12),
-                  borderRadius: BorderRadius.circular(AppRadius.sm),
-                ),
-                child: Icon(Icons.room_service_outlined,
-                    color: colors.brand, size: 20),
-              ),
-              title: Text(_services[i],
-                  style: GoogleFonts.beVietnamPro(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w500,
-                    color: colors.textPrimary,
-                  )),
-              trailing: IconButton(
-                onPressed: () => setState(() => _services.removeAt(i)),
-                icon: Icon(Icons.delete_outline_rounded,
-                    color: colors.error, size: 20),
-              ),
-            ),
-          );
-        },
+          },
+        ),
       ),
       bottomNavigationBar: SafeArea(
         child: Padding(

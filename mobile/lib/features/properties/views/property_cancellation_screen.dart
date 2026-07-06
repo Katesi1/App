@@ -90,73 +90,81 @@ class _PropertyCancellationScreenState
     return Scaffold(
       backgroundColor: colors.bgCanvas,
       appBar: AppBar(title: const Text('Chính sách huỷ')),
-      body: roomAsync.when(
-        loading: () => const LoadingWidget(),
-        error: (e, _) => ErrorStateWidget(
-          message: e.toString().replaceAll('Exception: ', ''),
-          onRetry: () => ref.invalidate(roomDetailProvider(widget.homestayId)),
-        ),
-        data: (_) {
-          _initFromRoom();
-          return ListView(
-            padding: const EdgeInsets.all(AppSpacing.md),
-            children: _policies.map((p) {
-              final on = _selected == p.value;
-              return Padding(
-                padding: const EdgeInsets.only(bottom: AppSpacing.sm),
-                child: GestureDetector(
-                  onTap: () => setState(() => _selected = p.value),
-                  child: AnimatedContainer(
-                    duration: const Duration(milliseconds: 200),
-                    padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      color: on
-                          ? p.color.withValues(alpha: isDark ? 0.18 : 0.08)
-                          : colors.bgSurface,
-                      borderRadius: BorderRadius.circular(AppRadius.md),
-                      border: Border.all(
-                        color: on ? p.color : colors.borderDefault,
-                        width: on ? 1.5 : 1,
+      body: RefreshIndicator(
+        onRefresh: () async {
+          ref.invalidate(roomDetailProvider(widget.homestayId));
+          await ref.read(roomDetailProvider(widget.homestayId).future);
+        },
+        child: roomAsync.when(
+          loading: () => const LoadingWidget(),
+          error: (e, _) => ErrorStateWidget(
+            message: e.toString().replaceAll('Exception: ', ''),
+            onRetry: () =>
+                ref.invalidate(roomDetailProvider(widget.homestayId)),
+          ),
+          data: (_) {
+            _initFromRoom();
+            return ListView(
+              physics: const AlwaysScrollableScrollPhysics(),
+              padding: const EdgeInsets.all(AppSpacing.md),
+              children: _policies.map((p) {
+                final on = _selected == p.value;
+                return Padding(
+                  padding: const EdgeInsets.only(bottom: AppSpacing.sm),
+                  child: GestureDetector(
+                    onTap: () => setState(() => _selected = p.value),
+                    child: AnimatedContainer(
+                      duration: const Duration(milliseconds: 200),
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: on
+                            ? p.color.withValues(alpha: isDark ? 0.18 : 0.08)
+                            : colors.bgSurface,
+                        borderRadius: BorderRadius.circular(AppRadius.md),
+                        border: Border.all(
+                          color: on ? p.color : colors.borderDefault,
+                          width: on ? 1.5 : 1,
+                        ),
+                      ),
+                      child: Row(
+                        children: [
+                          Icon(
+                            on
+                                ? Icons.radio_button_checked_rounded
+                                : Icons.radio_button_unchecked_rounded,
+                            color: on ? p.color : colors.textSecondary,
+                            size: 22,
+                          ),
+                          const SizedBox(width: 14),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(p.label,
+                                    style: GoogleFonts.beVietnamPro(
+                                      fontSize: 15,
+                                      fontWeight: FontWeight.w600,
+                                      color: on ? p.color : colors.textPrimary,
+                                    )),
+                                const SizedBox(height: 2),
+                                Text(p.desc,
+                                    style: GoogleFonts.beVietnamPro(
+                                      fontSize: 12,
+                                      color: colors.textSecondary,
+                                    )),
+                              ],
+                            ),
+                          ),
+                          Icon(p.icon, color: p.color, size: 24),
+                        ],
                       ),
                     ),
-                    child: Row(
-                      children: [
-                        Icon(
-                          on
-                              ? Icons.radio_button_checked_rounded
-                              : Icons.radio_button_unchecked_rounded,
-                          color: on ? p.color : colors.textSecondary,
-                          size: 22,
-                        ),
-                        const SizedBox(width: 14),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(p.label,
-                                  style: GoogleFonts.beVietnamPro(
-                                    fontSize: 15,
-                                    fontWeight: FontWeight.w600,
-                                    color: on ? p.color : colors.textPrimary,
-                                  )),
-                              const SizedBox(height: 2),
-                              Text(p.desc,
-                                  style: GoogleFonts.beVietnamPro(
-                                    fontSize: 12,
-                                    color: colors.textSecondary,
-                                  )),
-                            ],
-                          ),
-                        ),
-                        Icon(p.icon, color: p.color, size: 24),
-                      ],
-                    ),
                   ),
-                ),
-              );
-            }).toList(),
-          );
-        },
+                );
+              }).toList(),
+            );
+          },
+        ),
       ),
       bottomNavigationBar: SafeArea(
         child: Padding(

@@ -94,141 +94,139 @@ class _PropertyInfoScreenState extends ConsumerState<PropertyInfoScreen> {
       onTap: () => FocusScope.of(context).unfocus(),
       child: Scaffold(
         appBar: AppBar(title: const Text('Thông tin chi tiết')),
-        body: roomAsync.when(
-          loading: () => const LoadingWidget(),
-          error: (e, _) => ErrorStateWidget(
-            message: e.toString().replaceAll('Exception: ', ''),
-            onRetry: () =>
-                ref.invalidate(roomDetailProvider(widget.homestayId)),
-          ),
-          data: (room) {
-            _initFromRoom();
-            return Form(
-              key: _formKey,
-              child: ListView(
-                padding: const EdgeInsets.all(AppSpacing.md),
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(14),
-                    decoration: BoxDecoration(
-                      color: colors.bgSurfaceContainer,
-                      borderRadius: BorderRadius.circular(AppRadius.md),
+        body: RefreshIndicator(
+          onRefresh: () async {
+            ref.invalidate(roomDetailProvider(widget.homestayId));
+            await ref.read(roomDetailProvider(widget.homestayId).future);
+          },
+          child: roomAsync.when(
+            loading: () => const LoadingWidget(),
+            error: (e, _) => ErrorStateWidget(
+              message: e.toString().replaceAll('Exception: ', ''),
+              onRetry: () =>
+                  ref.invalidate(roomDetailProvider(widget.homestayId)),
+            ),
+            data: (room) {
+              _initFromRoom();
+              return Form(
+                key: _formKey,
+                child: ListView(
+                  physics: const AlwaysScrollableScrollPhysics(),
+                  padding: const EdgeInsets.all(AppSpacing.md),
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(14),
+                      decoration: BoxDecoration(
+                        color: colors.bgSurfaceContainer,
+                        borderRadius: BorderRadius.circular(AppRadius.md),
+                      ),
+                      child: Row(
+                        children: [
+                          Icon(Icons.tag_rounded,
+                              size: 18, color: colors.brand),
+                          const SizedBox(width: 10),
+                          Text('Mã căn: ',
+                              style: GoogleFonts.beVietnamPro(
+                                fontSize: 13,
+                                color: colors.textSecondary,
+                              )),
+                          Text(_code,
+                              style: GoogleFonts.beVietnamPro(
+                                fontSize: 15,
+                                fontWeight: FontWeight.w700,
+                                color: colors.textBrand,
+                              )),
+                        ],
+                      ),
                     ),
-                    child: Row(
+                    const SizedBox(height: AppSpacing.lg),
+                    _label(context, 'Mô tả'),
+                    const SizedBox(height: AppSpacing.xs),
+                    TextFormField(
+                      controller: _descriptionCtrl,
+                      maxLines: 4,
+                      style: GoogleFonts.beVietnamPro(fontSize: 14),
+                      decoration:
+                          _inputDecoration(context, 'Mô tả ngắn về phòng...'),
+                    ),
+                    const SizedBox(height: AppSpacing.lg),
+                    _label(context, 'Số phòng ngủ'),
+                    const SizedBox(height: AppSpacing.xs),
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
                       children: [
-                        Icon(Icons.tag_rounded, size: 18, color: colors.brand),
-                        const SizedBox(width: 10),
-                        Text('Mã căn: ',
-                            style: GoogleFonts.beVietnamPro(
-                              fontSize: 13,
-                              color: colors.textSecondary,
-                            )),
-                        Text(_code,
-                            style: GoogleFonts.beVietnamPro(
-                              fontSize: 15,
-                              fontWeight: FontWeight.w700,
-                              color: colors.textBrand,
-                            )),
+                        _chip(context, 'Studio', _bedrooms == 0,
+                            () => setState(() => _bedrooms = 0)),
+                        for (var i = 1; i <= 9; i++)
+                          _chip(context, '${i}PN', _bedrooms == i,
+                              () => setState(() => _bedrooms = i)),
+                        _chip(context, '10PN+', (_bedrooms ?? 0) >= 10,
+                            () => setState(() => _bedrooms = 10)),
                       ],
                     ),
-                  ),
-
-                  const SizedBox(height: AppSpacing.lg),
-
-                  _label(context, 'Mô tả'),
-                  const SizedBox(height: AppSpacing.xs),
-                  TextFormField(
-                    controller: _descriptionCtrl,
-                    maxLines: 4,
-                    style: GoogleFonts.beVietnamPro(fontSize: 14),
-                    decoration:
-                        _inputDecoration(context, 'Mô tả ngắn về phòng...'),
-                  ),
-
-                  const SizedBox(height: AppSpacing.lg),
-
-                  _label(context, 'Số phòng ngủ'),
-                  const SizedBox(height: AppSpacing.xs),
-                  Wrap(
-                    spacing: 8,
-                    runSpacing: 8,
-                    children: [
-                      _chip(context, 'Studio', _bedrooms == 0,
-                          () => setState(() => _bedrooms = 0)),
-                      for (var i = 1; i <= 9; i++)
-                        _chip(context, '${i}PN', _bedrooms == i,
-                            () => setState(() => _bedrooms = i)),
-                      _chip(context, '10PN+', (_bedrooms ?? 0) >= 10,
-                          () => setState(() => _bedrooms = 10)),
-                    ],
-                  ),
-
-                  const SizedBox(height: AppSpacing.lg),
-
-                  _label(context, 'Số nhà tắm / WC'),
-                  const SizedBox(height: AppSpacing.xs),
-                  Wrap(
-                    spacing: 8,
-                    runSpacing: 8,
-                    children: [
-                      for (var i = 1; i <= 9; i++)
-                        _chip(context, '$i WC', _bathrooms == i,
-                            () => setState(() => _bathrooms = i)),
-                      _chip(context, '10+', (_bathrooms ?? 0) >= 10,
-                          () => setState(() => _bathrooms = 10)),
-                    ],
-                  ),
-
-                  const SizedBox(height: AppSpacing.lg),
-
-                  _label(context, 'View'),
-                  const SizedBox(height: AppSpacing.xs),
-                  Wrap(
-                    spacing: 8,
-                    runSpacing: 8,
-                    children: [
-                      _chip(context, 'Không có', _selectedView == null,
-                          () => setState(() => _selectedView = null)),
-                      _chip(context, 'View biển', _selectedView == 'sea',
-                          () => setState(() => _selectedView = 'sea')),
-                      _chip(context, 'View thành phố', _selectedView == 'city',
-                          () => setState(() => _selectedView = 'city')),
-                    ],
-                  ),
-
-                  const SizedBox(height: AppSpacing.lg),
-
-                  _label(context, 'Sức chứa tiêu chuẩn (người)'),
-                  const SizedBox(height: AppSpacing.xs),
-                  Wrap(
-                    spacing: 8,
-                    runSpacing: 8,
-                    children: [
-                      for (var i = 1; i <= 20; i++)
-                        _chip(context, '$i', _standardGuests == i,
-                            () => setState(() => _standardGuests = i)),
-                    ],
-                  ),
-
-                  const SizedBox(height: AppSpacing.lg),
-
-                  _label(context, 'Sức chứa tối đa (người)'),
-                  const SizedBox(height: AppSpacing.xs),
-                  Wrap(
-                    spacing: 8,
-                    runSpacing: 8,
-                    children: [
-                      for (var i = 1; i <= 20; i++)
-                        _chip(context, '$i', _maxGuests == i,
-                            () => setState(() => _maxGuests = i)),
-                    ],
-                  ),
-
-                  const SizedBox(height: AppSpacing.lg),
-                ],
-              ),
-            );
-          },
+                    const SizedBox(height: AppSpacing.lg),
+                    _label(context, 'Số nhà tắm / WC'),
+                    const SizedBox(height: AppSpacing.xs),
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: [
+                        for (var i = 1; i <= 9; i++)
+                          _chip(context, '$i WC', _bathrooms == i,
+                              () => setState(() => _bathrooms = i)),
+                        _chip(context, '10+', (_bathrooms ?? 0) >= 10,
+                            () => setState(() => _bathrooms = 10)),
+                      ],
+                    ),
+                    const SizedBox(height: AppSpacing.lg),
+                    _label(context, 'View'),
+                    const SizedBox(height: AppSpacing.xs),
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: [
+                        _chip(context, 'Không có', _selectedView == null,
+                            () => setState(() => _selectedView = null)),
+                        _chip(context, 'View biển', _selectedView == 'sea',
+                            () => setState(() => _selectedView = 'sea')),
+                        _chip(
+                            context,
+                            'View thành phố',
+                            _selectedView == 'city',
+                            () => setState(() => _selectedView = 'city')),
+                      ],
+                    ),
+                    const SizedBox(height: AppSpacing.lg),
+                    _label(context, 'Sức chứa tiêu chuẩn (người)'),
+                    const SizedBox(height: AppSpacing.xs),
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: [
+                        for (var i = 1; i <= 20; i++)
+                          _chip(context, '$i', _standardGuests == i,
+                              () => setState(() => _standardGuests = i)),
+                      ],
+                    ),
+                    const SizedBox(height: AppSpacing.lg),
+                    _label(context, 'Sức chứa tối đa (người)'),
+                    const SizedBox(height: AppSpacing.xs),
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: [
+                        for (var i = 1; i <= 20; i++)
+                          _chip(context, '$i', _maxGuests == i,
+                              () => setState(() => _maxGuests = i)),
+                      ],
+                    ),
+                    const SizedBox(height: AppSpacing.lg),
+                  ],
+                ),
+              );
+            },
+          ),
         ),
         bottomNavigationBar: SafeArea(
           child: Padding(

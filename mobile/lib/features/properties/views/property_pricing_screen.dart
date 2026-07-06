@@ -112,38 +112,46 @@ class _PropertyPricingScreenState extends ConsumerState<PropertyPricingScreen> {
       child: Scaffold(
         backgroundColor: colors.bgCanvas,
         appBar: AppBar(title: const Text('Bảng giá')),
-        body: roomAsync.when(
-          loading: () => const LoadingWidget(),
-          error: (e, _) => ErrorStateWidget(
-            message: e.toString().replaceAll('Exception: ', ''),
-            onRetry: () =>
-                ref.invalidate(roomDetailProvider(widget.homestayId)),
-          ),
-          data: (_) {
-            _initFromRoom();
-            return ListView(
-              padding: const EdgeInsets.all(AppSpacing.md),
-              children: [
-                _section(context, 'GIÁ PHÒNG'),
-                const SizedBox(height: AppSpacing.sm),
-                _field(
-                    context, _weekdayCtrl, 'Giá ngày thường (T2-T6)', 'đ/đêm'),
-                const SizedBox(height: AppSpacing.md),
-                _field(context, _weekendCtrl, 'Giá cuối tuần (T7-CN)', 'đ/đêm'),
-                const SizedBox(height: AppSpacing.md),
-                _field(context, _holidayCtrl, 'Giá ngày lễ', 'đ/đêm'),
-                const SizedBox(height: AppSpacing.xl),
-                _section(context, 'PHỤ THU'),
-                const SizedBox(height: AppSpacing.sm),
-                _field(context, _adultSurchargeCtrl, 'Phụ thu người lớn',
-                    'đ/người'),
-                const SizedBox(height: AppSpacing.md),
-                _field(
-                    context, _childSurchargeCtrl, 'Phụ thu trẻ em', 'đ/người'),
-                const SizedBox(height: AppSpacing.lg),
-              ],
-            );
+        body: RefreshIndicator(
+          onRefresh: () async {
+            ref.invalidate(roomDetailProvider(widget.homestayId));
+            await ref.read(roomDetailProvider(widget.homestayId).future);
           },
+          child: roomAsync.when(
+            loading: () => const LoadingWidget(),
+            error: (e, _) => ErrorStateWidget(
+              message: e.toString().replaceAll('Exception: ', ''),
+              onRetry: () =>
+                  ref.invalidate(roomDetailProvider(widget.homestayId)),
+            ),
+            data: (_) {
+              _initFromRoom();
+              return ListView(
+                physics: const AlwaysScrollableScrollPhysics(),
+                padding: const EdgeInsets.all(AppSpacing.md),
+                children: [
+                  _section(context, 'GIÁ PHÒNG'),
+                  const SizedBox(height: AppSpacing.sm),
+                  _field(context, _weekdayCtrl, 'Giá ngày thường (T2-T6)',
+                      'đ/đêm'),
+                  const SizedBox(height: AppSpacing.md),
+                  _field(
+                      context, _weekendCtrl, 'Giá cuối tuần (T7-CN)', 'đ/đêm'),
+                  const SizedBox(height: AppSpacing.md),
+                  _field(context, _holidayCtrl, 'Giá ngày lễ', 'đ/đêm'),
+                  const SizedBox(height: AppSpacing.xl),
+                  _section(context, 'PHỤ THU'),
+                  const SizedBox(height: AppSpacing.sm),
+                  _field(context, _adultSurchargeCtrl, 'Phụ thu người lớn',
+                      'đ/người'),
+                  const SizedBox(height: AppSpacing.md),
+                  _field(context, _childSurchargeCtrl, 'Phụ thu trẻ em',
+                      'đ/người'),
+                  const SizedBox(height: AppSpacing.lg),
+                ],
+              );
+            },
+          ),
         ),
         bottomNavigationBar: _saveBtn(context),
       ),

@@ -208,334 +208,343 @@ class _HoldRoomScreenState extends ConsumerState<HoldRoomScreen> {
       appBar: AppBar(
         title: const Text('Giữ phòng'),
       ),
-      body: roomAsync.when(
-        loading: () => const LoadingWidget(),
-        error: (e, _) => ErrorStateWidget(message: e.toString()),
-        data: (room) => SingleChildScrollView(
-          padding: const EdgeInsets.all(AppSpacing.md),
-          child: Form(
-            key: _formKey,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // ── Room info card ─────────────────────────────────
-                Container(
-                  padding: const EdgeInsets.all(AppSpacing.md),
-                  decoration: BoxDecoration(
-                    color: colors.brand.withValues(alpha: 0.07),
-                    borderRadius: BorderRadius.circular(AppRadius.lg),
-                    border:
-                        Border.all(color: colors.brand.withValues(alpha: 0.2)),
-                  ),
-                  child: Row(
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.all(AppSpacing.sm),
-                        decoration: BoxDecoration(
-                          color: colors.brand.withValues(alpha: 0.12),
-                          shape: BoxShape.circle,
-                        ),
-                        child: Icon(Icons.bed_outlined,
-                            color: colors.brand, size: 22),
-                      ),
-                      const SizedBox(width: AppSpacing.md),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              room.name,
-                              style: GoogleFonts.beVietnamPro(
-                                fontWeight: FontWeight.w700,
-                                fontSize: 15,
-                                color: colors.textPrimary,
-                              ),
-                            ),
-                            if (room.homestay != null)
-                              Text(
-                                room.homestay!.name,
-                                style: GoogleFonts.beVietnamPro(
-                                  fontSize: 12,
-                                  color: colors.textSecondary,
-                                ),
-                              ),
-                          ],
-                        ),
-                      ),
-                      Text(
-                        room.priceDisplay,
-                        style: GoogleFonts.beVietnamPro(
-                          color: colors.brand,
-                          fontWeight: FontWeight.w800,
-                          fontSize: 14,
-                        ),
-                      ),
-                    ],
-                  ),
-                ).animate().fadeIn(duration: 300.ms),
-
-                const SizedBox(height: AppSpacing.lg),
-
-                // ── Date picker ────────────────────────────────────
-                RequiredLabel(
-                  'Ngày lưu trú *',
-                  style: GoogleFonts.beVietnamPro(
-                    fontWeight: FontWeight.w700,
-                    fontSize: 14,
-                    color: colors.textSecondary,
-                  ),
-                ),
-                const SizedBox(height: AppSpacing.sm),
-
-                Row(
-                  children: [
-                    Expanded(
-                      child: _DateButton(
-                        label: 'Check-in',
-                        icon: Icons.login_rounded,
-                        date: _checkinDate,
-                        onTap: () => _pickDate(true),
-                      ),
-                    ),
-                    Padding(
-                      padding:
-                          const EdgeInsets.symmetric(horizontal: AppSpacing.sm),
-                      child: Icon(Icons.arrow_forward_rounded,
-                          color: colors.textTertiary, size: 20),
-                    ),
-                    Expanded(
-                      child: _DateButton(
-                        label: 'Check-out',
-                        icon: Icons.logout_rounded,
-                        date: _checkoutDate,
-                        onTap: () => _pickDate(false),
-                      ),
-                    ),
-                  ],
-                ).animate(delay: 50.ms).fadeIn(duration: 300.ms),
-
-                // Date conflict warning
-                if (_dateConflicts.isNotEmpty) ...[
-                  const SizedBox(height: AppSpacing.sm),
+      body: RefreshIndicator(
+        onRefresh: () async {
+          ref.invalidate(roomDetailProvider(widget.propertyId));
+          await ref.read(roomDetailProvider(widget.propertyId).future);
+        },
+        child: roomAsync.when(
+          loading: () => const LoadingWidget(),
+          error: (e, _) => ErrorStateWidget(message: e.toString()),
+          data: (room) => SingleChildScrollView(
+            physics: const AlwaysScrollableScrollPhysics(),
+            padding: const EdgeInsets.all(AppSpacing.md),
+            child: Form(
+              key: _formKey,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // ── Room info card ─────────────────────────────────
                   Container(
-                    width: double.infinity,
                     padding: const EdgeInsets.all(AppSpacing.md),
                     decoration: BoxDecoration(
-                      color: colors.errorBg,
-                      borderRadius: BorderRadius.circular(AppRadius.md),
-                      border: Border.all(
-                        color: colors.error.withValues(alpha: 0.3),
-                      ),
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          children: [
-                            Icon(Icons.warning_amber_rounded,
-                                color: colors.error, size: 18),
-                            const SizedBox(width: 6),
-                            Text(
-                              'Ngày không khả dụng',
-                              style: GoogleFonts.beVietnamPro(
-                                fontSize: 13,
-                                fontWeight: FontWeight.w700,
-                                color: colors.error,
-                              ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 6),
-                        ...(_dateConflicts.map((c) => Padding(
-                              padding: const EdgeInsets.only(bottom: 2),
-                              child: Text(
-                                '• $c',
-                                style: GoogleFonts.beVietnamPro(
-                                  fontSize: 12,
-                                  color: colors.error,
-                                ),
-                              ),
-                            ))),
-                      ],
-                    ),
-                  ),
-                ],
-
-                // Night count + estimated price
-                if (_nights > 0) ...[
-                  const SizedBox(height: AppSpacing.sm),
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: AppSpacing.md, vertical: AppSpacing.sm),
-                    decoration: BoxDecoration(
                       color: colors.brand.withValues(alpha: 0.07),
-                      borderRadius: BorderRadius.circular(AppRadius.md),
+                      borderRadius: BorderRadius.circular(AppRadius.lg),
+                      border: Border.all(
+                          color: colors.brand.withValues(alpha: 0.2)),
                     ),
                     child: Row(
                       children: [
-                        Icon(Icons.nights_stay_outlined,
-                            size: 16, color: colors.brand),
-                        const SizedBox(width: AppSpacing.sm),
+                        Container(
+                          padding: const EdgeInsets.all(AppSpacing.sm),
+                          decoration: BoxDecoration(
+                            color: colors.brand.withValues(alpha: 0.12),
+                            shape: BoxShape.circle,
+                          ),
+                          child: Icon(Icons.bed_outlined,
+                              color: colors.brand, size: 22),
+                        ),
+                        const SizedBox(width: AppSpacing.md),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                room.name,
+                                style: GoogleFonts.beVietnamPro(
+                                  fontWeight: FontWeight.w700,
+                                  fontSize: 15,
+                                  color: colors.textPrimary,
+                                ),
+                              ),
+                              if (room.homestay != null)
+                                Text(
+                                  room.homestay!.name,
+                                  style: GoogleFonts.beVietnamPro(
+                                    fontSize: 12,
+                                    color: colors.textSecondary,
+                                  ),
+                                ),
+                            ],
+                          ),
+                        ),
                         Text(
-                          '$_nights đêm',
+                          room.priceDisplay,
                           style: GoogleFonts.beVietnamPro(
                             color: colors.brand,
-                            fontWeight: FontWeight.w700,
+                            fontWeight: FontWeight.w800,
                             fontSize: 14,
                           ),
                         ),
-                        if (room.price != null) ...[
-                          const SizedBox(width: AppSpacing.sm),
-                          Text(
-                            '≈ ${_estimateTotal(room.price!.weekdayPrice, _nights)}đ',
-                            style: GoogleFonts.beVietnamPro(
-                              color: colors.brand.withValues(alpha: 0.7),
-                              fontSize: 13,
-                            ),
-                          ),
-                        ],
                       ],
                     ),
+                  ).animate().fadeIn(duration: 300.ms),
+
+                  const SizedBox(height: AppSpacing.lg),
+
+                  // ── Date picker ────────────────────────────────────
+                  RequiredLabel(
+                    'Ngày lưu trú *',
+                    style: GoogleFonts.beVietnamPro(
+                      fontWeight: FontWeight.w700,
+                      fontSize: 14,
+                      color: colors.textSecondary,
+                    ),
                   ),
-                ],
+                  const SizedBox(height: AppSpacing.sm),
 
-                const SizedBox(height: AppSpacing.lg),
-
-                // ── Customer info ──────────────────────────────────
-                Text(
-                  'Thông tin khách hàng',
-                  style: GoogleFonts.beVietnamPro(
-                    fontWeight: FontWeight.w700,
-                    fontSize: 14,
-                    color: colors.textSecondary,
-                  ),
-                ),
-                const SizedBox(height: AppSpacing.sm),
-
-                TextFormField(
-                  controller: _customerNameCtrl,
-                  textInputAction: TextInputAction.next,
-                  decoration: InputDecoration(
-                    labelText: 'Tên khách hàng',
-                    prefixIcon:
-                        Icon(Icons.person_outline_rounded, color: colors.brand),
-                  ),
-                ).animate(delay: 100.ms).fadeIn(duration: 300.ms),
-
-                const SizedBox(height: AppSpacing.md),
-
-                TextFormField(
-                  controller: _customerPhoneCtrl,
-                  keyboardType: TextInputType.phone,
-                  textInputAction: TextInputAction.next,
-                  inputFormatters: PhoneInput.formatters,
-                  // SĐT khách bắt buộc để giữ phòng (liên hệ + chống giữ ảo).
-                  validator: PhoneInput.validate,
-                  decoration: InputDecoration(
-                    label: const RequiredLabel('Số điện thoại khách *'),
-                    hintText: '0xxxxxxxxx (10 số)',
-                    counterText: '',
-                    prefixIcon: Icon(Icons.phone_outlined, color: colors.brand),
-                  ),
-                ).animate(delay: 120.ms).fadeIn(duration: 300.ms),
-
-                const SizedBox(height: AppSpacing.md),
-
-                TextFormField(
-                  controller: _depositCtrl,
-                  keyboardType: TextInputType.number,
-                  textInputAction: TextInputAction.next,
-                  inputFormatters: [VndInputFormatter()],
-                  decoration: InputDecoration(
-                    labelText: 'Tiền cọc (50%)',
-                    helperText: _nights > 0
-                        ? '$_nights đêm · Cọc 50%'
-                        : 'Tự tính khi chọn ngày',
-                    suffixText: '₫',
-                    prefixIcon:
-                        Icon(Icons.payments_outlined, color: colors.brand),
-                  ),
-                ).animate(delay: 140.ms).fadeIn(duration: 300.ms),
-
-                const SizedBox(height: AppSpacing.md),
-
-                TextFormField(
-                  controller: _notesCtrl,
-                  maxLines: 3,
-                  textInputAction: TextInputAction.done,
-                  decoration: InputDecoration(
-                    labelText: 'Ghi chú',
-                    prefixIcon: Icon(Icons.notes_rounded, color: colors.brand),
-                    alignLabelWithHint: true,
-                  ),
-                ).animate(delay: 160.ms).fadeIn(duration: 300.ms),
-
-                const SizedBox(height: AppSpacing.md),
-
-                // ── Notice banner ──────────────────────────────────
-                Container(
-                  padding: const EdgeInsets.all(AppSpacing.md),
-                  decoration: BoxDecoration(
-                    color: colors.warningBg,
-                    borderRadius: BorderRadius.circular(AppRadius.md),
-                    border: Border.all(
-                        color: colors.warning.withValues(alpha: 0.3)),
-                  ),
-                  child: Row(
+                  Row(
                     children: [
-                      Icon(Icons.timer_outlined,
-                          color: colors.warning, size: 20),
-                      const SizedBox(width: AppSpacing.sm),
                       Expanded(
-                        child: Text(
-                          'Phòng sẽ được giữ trong 30 phút. Sau đó tự động huỷ nếu chưa xác nhận.',
-                          style: GoogleFonts.beVietnamPro(
-                            color: colors.warning,
-                            fontSize: 13,
-                            fontWeight: FontWeight.w500,
-                          ),
+                        child: _DateButton(
+                          label: 'Check-in',
+                          icon: Icons.login_rounded,
+                          date: _checkinDate,
+                          onTap: () => _pickDate(true),
+                        ),
+                      ),
+                      Padding(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: AppSpacing.sm),
+                        child: Icon(Icons.arrow_forward_rounded,
+                            color: colors.textTertiary, size: 20),
+                      ),
+                      Expanded(
+                        child: _DateButton(
+                          label: 'Check-out',
+                          icon: Icons.logout_rounded,
+                          date: _checkoutDate,
+                          onTap: () => _pickDate(false),
                         ),
                       ),
                     ],
-                  ),
-                ).animate(delay: 200.ms).fadeIn(duration: 300.ms),
+                  ).animate(delay: 50.ms).fadeIn(duration: 300.ms),
 
-                const SizedBox(height: AppSpacing.xl),
-
-                // ── Submit button ──────────────────────────────────
-                AnimatedSwitcher(
-                  duration: const Duration(milliseconds: 200),
-                  child: isLoading
-                      ? Center(
-                          child: SizedBox(
-                            height: 52,
-                            child: Center(
-                                child: CircularProgressIndicator(
-                                    color: colors.brand)),
+                  // Date conflict warning
+                  if (_dateConflicts.isNotEmpty) ...[
+                    const SizedBox(height: AppSpacing.sm),
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.all(AppSpacing.md),
+                      decoration: BoxDecoration(
+                        color: colors.errorBg,
+                        borderRadius: BorderRadius.circular(AppRadius.md),
+                        border: Border.all(
+                          color: colors.error.withValues(alpha: 0.3),
+                        ),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              Icon(Icons.warning_amber_rounded,
+                                  color: colors.error, size: 18),
+                              const SizedBox(width: 6),
+                              Text(
+                                'Ngày không khả dụng',
+                                style: GoogleFonts.beVietnamPro(
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w700,
+                                  color: colors.error,
+                                ),
+                              ),
+                            ],
                           ),
-                        )
-                      : FilledButton.icon(
-                          key: const ValueKey('hold-btn'),
-                          onPressed: (_dateConflicts.isEmpty &&
-                                  _cooldownLeft <= Duration.zero)
-                              ? _holdRoom
-                              : null,
-                          icon: const Icon(Icons.lock_clock_rounded),
-                          label: Text(
-                            _cooldownLeft <= Duration.zero
-                                ? 'Giữ phòng 30 phút'
-                                : 'Thử lại sau ${_cooldownLeft.inSeconds + 1}s',
+                          const SizedBox(height: 6),
+                          ...(_dateConflicts.map((c) => Padding(
+                                padding: const EdgeInsets.only(bottom: 2),
+                                child: Text(
+                                  '• $c',
+                                  style: GoogleFonts.beVietnamPro(
+                                    fontSize: 12,
+                                    color: colors.error,
+                                  ),
+                                ),
+                              ))),
+                        ],
+                      ),
+                    ),
+                  ],
+
+                  // Night count + estimated price
+                  if (_nights > 0) ...[
+                    const SizedBox(height: AppSpacing.sm),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: AppSpacing.md, vertical: AppSpacing.sm),
+                      decoration: BoxDecoration(
+                        color: colors.brand.withValues(alpha: 0.07),
+                        borderRadius: BorderRadius.circular(AppRadius.md),
+                      ),
+                      child: Row(
+                        children: [
+                          Icon(Icons.nights_stay_outlined,
+                              size: 16, color: colors.brand),
+                          const SizedBox(width: AppSpacing.sm),
+                          Text(
+                            '$_nights đêm',
                             style: GoogleFonts.beVietnamPro(
-                                fontWeight: FontWeight.w700, fontSize: 15),
+                              color: colors.brand,
+                              fontWeight: FontWeight.w700,
+                              fontSize: 14,
+                            ),
                           ),
-                          style: FilledButton.styleFrom(
-                            backgroundColor: colors.brand,
-                            foregroundColor: Colors.white,
-                            minimumSize: const Size(double.infinity, 52),
+                          if (room.price != null) ...[
+                            const SizedBox(width: AppSpacing.sm),
+                            Text(
+                              '≈ ${_estimateTotal(room.price!.weekdayPrice, _nights)}đ',
+                              style: GoogleFonts.beVietnamPro(
+                                color: colors.brand.withValues(alpha: 0.7),
+                                fontSize: 13,
+                              ),
+                            ),
+                          ],
+                        ],
+                      ),
+                    ),
+                  ],
+
+                  const SizedBox(height: AppSpacing.lg),
+
+                  // ── Customer info ──────────────────────────────────
+                  Text(
+                    'Thông tin khách hàng',
+                    style: GoogleFonts.beVietnamPro(
+                      fontWeight: FontWeight.w700,
+                      fontSize: 14,
+                      color: colors.textSecondary,
+                    ),
+                  ),
+                  const SizedBox(height: AppSpacing.sm),
+
+                  TextFormField(
+                    controller: _customerNameCtrl,
+                    textInputAction: TextInputAction.next,
+                    decoration: InputDecoration(
+                      labelText: 'Tên khách hàng',
+                      prefixIcon: Icon(Icons.person_outline_rounded,
+                          color: colors.brand),
+                    ),
+                  ).animate(delay: 100.ms).fadeIn(duration: 300.ms),
+
+                  const SizedBox(height: AppSpacing.md),
+
+                  TextFormField(
+                    controller: _customerPhoneCtrl,
+                    keyboardType: TextInputType.phone,
+                    textInputAction: TextInputAction.next,
+                    inputFormatters: PhoneInput.formatters,
+                    // SĐT khách bắt buộc để giữ phòng (liên hệ + chống giữ ảo).
+                    validator: PhoneInput.validate,
+                    decoration: InputDecoration(
+                      label: const RequiredLabel('Số điện thoại khách *'),
+                      hintText: '0xxxxxxxxx (10 số)',
+                      counterText: '',
+                      prefixIcon:
+                          Icon(Icons.phone_outlined, color: colors.brand),
+                    ),
+                  ).animate(delay: 120.ms).fadeIn(duration: 300.ms),
+
+                  const SizedBox(height: AppSpacing.md),
+
+                  TextFormField(
+                    controller: _depositCtrl,
+                    keyboardType: TextInputType.number,
+                    textInputAction: TextInputAction.next,
+                    inputFormatters: [VndInputFormatter()],
+                    decoration: InputDecoration(
+                      labelText: 'Tiền cọc (50%)',
+                      helperText: _nights > 0
+                          ? '$_nights đêm · Cọc 50%'
+                          : 'Tự tính khi chọn ngày',
+                      suffixText: '₫',
+                      prefixIcon:
+                          Icon(Icons.payments_outlined, color: colors.brand),
+                    ),
+                  ).animate(delay: 140.ms).fadeIn(duration: 300.ms),
+
+                  const SizedBox(height: AppSpacing.md),
+
+                  TextFormField(
+                    controller: _notesCtrl,
+                    maxLines: 3,
+                    textInputAction: TextInputAction.done,
+                    decoration: InputDecoration(
+                      labelText: 'Ghi chú',
+                      prefixIcon:
+                          Icon(Icons.notes_rounded, color: colors.brand),
+                      alignLabelWithHint: true,
+                    ),
+                  ).animate(delay: 160.ms).fadeIn(duration: 300.ms),
+
+                  const SizedBox(height: AppSpacing.md),
+
+                  // ── Notice banner ──────────────────────────────────
+                  Container(
+                    padding: const EdgeInsets.all(AppSpacing.md),
+                    decoration: BoxDecoration(
+                      color: colors.warningBg,
+                      borderRadius: BorderRadius.circular(AppRadius.md),
+                      border: Border.all(
+                          color: colors.warning.withValues(alpha: 0.3)),
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(Icons.timer_outlined,
+                            color: colors.warning, size: 20),
+                        const SizedBox(width: AppSpacing.sm),
+                        Expanded(
+                          child: Text(
+                            'Phòng sẽ được giữ trong 30 phút. Sau đó tự động huỷ nếu chưa xác nhận.',
+                            style: GoogleFonts.beVietnamPro(
+                              color: colors.warning,
+                              fontSize: 13,
+                              fontWeight: FontWeight.w500,
+                            ),
                           ),
                         ),
-                ).animate(delay: 300.ms).fadeIn(duration: 300.ms),
-              ],
+                      ],
+                    ),
+                  ).animate(delay: 200.ms).fadeIn(duration: 300.ms),
+
+                  const SizedBox(height: AppSpacing.xl),
+
+                  // ── Submit button ──────────────────────────────────
+                  AnimatedSwitcher(
+                    duration: const Duration(milliseconds: 200),
+                    child: isLoading
+                        ? Center(
+                            child: SizedBox(
+                              height: 52,
+                              child: Center(
+                                  child: CircularProgressIndicator(
+                                      color: colors.brand)),
+                            ),
+                          )
+                        : FilledButton.icon(
+                            key: const ValueKey('hold-btn'),
+                            onPressed: (_dateConflicts.isEmpty &&
+                                    _cooldownLeft <= Duration.zero)
+                                ? _holdRoom
+                                : null,
+                            icon: const Icon(Icons.lock_clock_rounded),
+                            label: Text(
+                              _cooldownLeft <= Duration.zero
+                                  ? 'Giữ phòng 30 phút'
+                                  : 'Thử lại sau ${_cooldownLeft.inSeconds + 1}s',
+                              style: GoogleFonts.beVietnamPro(
+                                  fontWeight: FontWeight.w700, fontSize: 15),
+                            ),
+                            style: FilledButton.styleFrom(
+                              backgroundColor: colors.brand,
+                              foregroundColor: Colors.white,
+                              minimumSize: const Size(double.infinity, 52),
+                            ),
+                          ),
+                  ).animate(delay: 300.ms).fadeIn(duration: 300.ms),
+                ],
+              ),
             ),
           ),
         ),

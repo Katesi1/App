@@ -98,94 +98,101 @@ class _PropertyRulesScreenState extends ConsumerState<PropertyRulesScreen> {
       child: Scaffold(
         backgroundColor: colors.bgCanvas,
         appBar: AppBar(title: const Text('Quy định')),
-        body: roomAsync.when(
-          loading: () => const LoadingWidget(),
-          error: (e, _) => ErrorStateWidget(
-            message: e.toString().replaceAll('Exception: ', ''),
-            onRetry: () =>
-                ref.invalidate(roomDetailProvider(widget.homestayId)),
-          ),
-          data: (_) {
-            _initFromRoom();
-            return ListView(
-              padding: const EdgeInsets.all(AppSpacing.md),
-              children: [
-                Text('Nội quy phòng',
+        body: RefreshIndicator(
+          onRefresh: () async {
+            ref.invalidate(roomDetailProvider(widget.homestayId));
+            await ref.read(roomDetailProvider(widget.homestayId).future);
+          },
+          child: roomAsync.when(
+            loading: () => const LoadingWidget(),
+            error: (e, _) => ErrorStateWidget(
+              message: e.toString().replaceAll('Exception: ', ''),
+              onRetry: () =>
+                  ref.invalidate(roomDetailProvider(widget.homestayId)),
+            ),
+            data: (_) {
+              _initFromRoom();
+              return ListView(
+                physics: const AlwaysScrollableScrollPhysics(),
+                padding: const EdgeInsets.all(AppSpacing.md),
+                children: [
+                  Text('Nội quy phòng',
+                      style: GoogleFonts.beVietnamPro(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w500,
+                          color: colors.textPrimary)),
+                  const SizedBox(height: AppSpacing.xs),
+                  TextFormField(
+                    controller: _rulesCtrl,
+                    maxLines: 12,
                     style: GoogleFonts.beVietnamPro(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w500,
-                        color: colors.textPrimary)),
-                const SizedBox(height: AppSpacing.xs),
-                TextFormField(
-                  controller: _rulesCtrl,
-                  maxLines: 12,
-                  style: GoogleFonts.beVietnamPro(
-                      fontSize: 14, height: 1.6, color: colors.textPrimary),
-                  decoration: InputDecoration(
-                    hintText: 'Nhập quy định...',
-                    hintStyle: GoogleFonts.beVietnamPro(
-                        fontSize: 14,
-                        color: colors.textSecondary.withValues(alpha: 0.6)),
-                    filled: true,
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(AppRadius.md),
-                      borderSide: BorderSide.none,
+                        fontSize: 14, height: 1.6, color: colors.textPrimary),
+                    decoration: InputDecoration(
+                      hintText: 'Nhập quy định...',
+                      hintStyle: GoogleFonts.beVietnamPro(
+                          fontSize: 14,
+                          color: colors.textSecondary.withValues(alpha: 0.6)),
+                      filled: true,
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(AppRadius.md),
+                        borderSide: BorderSide.none,
+                      ),
+                      contentPadding: const EdgeInsets.all(14),
                     ),
-                    contentPadding: const EdgeInsets.all(14),
                   ),
-                ),
-                const SizedBox(height: AppSpacing.md),
-                Container(
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: colors.warningBg,
-                    borderRadius: BorderRadius.circular(AppRadius.md),
-                  ),
-                  child: Row(
-                    children: [
-                      Icon(Icons.info_outline_rounded,
-                          size: 18, color: colors.warning),
-                      const SizedBox(width: 10),
-                      Expanded(
-                        child: Text(
-                          'Nội dung quy định sẽ hiển thị cho khách hàng khi xem chi tiết phòng.',
-                          style: GoogleFonts.beVietnamPro(
-                            fontSize: 12,
-                            color: colors.textPrimary,
+                  const SizedBox(height: AppSpacing.md),
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: colors.warningBg,
+                      borderRadius: BorderRadius.circular(AppRadius.md),
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(Icons.info_outline_rounded,
+                            size: 18, color: colors.warning),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Text(
+                            'Nội dung quy định sẽ hiển thị cho khách hàng khi xem chi tiết phòng.',
+                            style: GoogleFonts.beVietnamPro(
+                              fontSize: 12,
+                              color: colors.textPrimary,
+                            ),
                           ),
                         ),
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: AppSpacing.xl),
-                Text('Lưu ý bán phòng',
-                    style: GoogleFonts.beVietnamPro(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w500,
-                        color: colors.textPrimary)),
-                const SizedBox(height: AppSpacing.xs),
-                TextFormField(
-                  controller: _notesCtrl,
-                  maxLines: 6,
-                  style: GoogleFonts.beVietnamPro(
-                      fontSize: 14, height: 1.6, color: colors.textPrimary),
-                  decoration: InputDecoration(
-                    hintText: 'VD: Ưu tiên bán cặp cuối tuần...',
-                    hintStyle: GoogleFonts.beVietnamPro(
-                        fontSize: 14,
-                        color: colors.textSecondary.withValues(alpha: 0.6)),
-                    filled: true,
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(AppRadius.md),
-                      borderSide: BorderSide.none,
+                      ],
                     ),
-                    contentPadding: const EdgeInsets.all(14),
                   ),
-                ),
-              ],
-            );
-          },
+                  const SizedBox(height: AppSpacing.xl),
+                  Text('Lưu ý bán phòng',
+                      style: GoogleFonts.beVietnamPro(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w500,
+                          color: colors.textPrimary)),
+                  const SizedBox(height: AppSpacing.xs),
+                  TextFormField(
+                    controller: _notesCtrl,
+                    maxLines: 6,
+                    style: GoogleFonts.beVietnamPro(
+                        fontSize: 14, height: 1.6, color: colors.textPrimary),
+                    decoration: InputDecoration(
+                      hintText: 'VD: Ưu tiên bán cặp cuối tuần...',
+                      hintStyle: GoogleFonts.beVietnamPro(
+                          fontSize: 14,
+                          color: colors.textSecondary.withValues(alpha: 0.6)),
+                      filled: true,
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(AppRadius.md),
+                        borderSide: BorderSide.none,
+                      ),
+                      contentPadding: const EdgeInsets.all(14),
+                    ),
+                  ),
+                ],
+              );
+            },
+          ),
         ),
         bottomNavigationBar: SafeArea(
           child: Padding(

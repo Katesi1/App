@@ -52,71 +52,78 @@ class _NotificationPreferencesScreenState
 
     return Scaffold(
       appBar: AppBar(title: const Text('Tùy chọn thông báo')),
-      body: prefsAsync.when(
-        loading: () => const LoadingWidget(),
-        error: (e, _) => ErrorStateWidget(
-          message: e.toString().replaceAll('Exception: ', ''),
-          onRetry: () => ref.invalidate(notificationPrefsProvider),
-        ),
-        data: (serverPrefs) {
-          final prefs = _draft ?? serverPrefs;
-          return ListView(
-            padding: const EdgeInsets.all(AppSpacing.md),
-            children: [
-              Container(
-                padding: const EdgeInsets.all(AppSpacing.md),
-                decoration: BoxDecoration(
-                  color: colors.bgSurfaceContainer,
-                  borderRadius: BorderRadius.circular(AppRadius.lg),
-                ),
-                child: Text(
-                  'Bật/tắt thông báo theo từng nhóm để tránh bỏ lỡ cập nhật quan trọng.',
-                  style: TextStyle(color: colors.textSecondary),
-                ),
-              ),
-              const SizedBox(height: AppSpacing.md),
-              _Tile(
-                value: prefs.booking,
-                title: 'Booking',
-                subtitle: 'Nhận thông báo xác nhận, huỷ, thay đổi lịch đặt',
-                icon: Icons.calendar_month_outlined,
-                onChanged: (v) =>
-                    setState(() => _draft = prefs.copyWith(booking: v)),
-              ),
-              _Tile(
-                value: prefs.payment,
-                title: 'Thanh toán',
-                subtitle: 'Nhận thông báo hóa đơn, hoàn tiền, giao dịch',
-                icon: Icons.payments_outlined,
-                onChanged: (v) =>
-                    setState(() => _draft = prefs.copyWith(payment: v)),
-              ),
-              _Tile(
-                value: prefs.system,
-                title: 'Hệ thống',
-                subtitle:
-                    'Nhận thông báo bảo trì, cập nhật và bảo mật tài khoản',
-                icon: Icons.settings_outlined,
-                onChanged: (v) =>
-                    setState(() => _draft = prefs.copyWith(system: v)),
-              ),
-              _Tile(
-                value: prefs.quietHours,
-                title: 'Giờ yên lặng',
-                subtitle:
-                    'Giảm thông báo từ ${prefs.quietFrom} đến ${prefs.quietTo}',
-                icon: Icons.dark_mode_outlined,
-                onChanged: (v) =>
-                    setState(() => _draft = prefs.copyWith(quietHours: v)),
-              ),
-              const SizedBox(height: AppSpacing.md),
-              FilledButton(
-                onPressed: _saving ? null : _save,
-                child: Text(_saving ? 'Đang lưu...' : 'Lưu'),
-              ),
-            ],
-          );
+      body: RefreshIndicator(
+        onRefresh: () async {
+          ref.invalidate(notificationPrefsProvider);
+          await ref.read(notificationPrefsProvider.future);
         },
+        child: prefsAsync.when(
+          loading: () => const LoadingWidget(),
+          error: (e, _) => ErrorStateWidget(
+            message: e.toString().replaceAll('Exception: ', ''),
+            onRetry: () => ref.invalidate(notificationPrefsProvider),
+          ),
+          data: (serverPrefs) {
+            final prefs = _draft ?? serverPrefs;
+            return ListView(
+              physics: const AlwaysScrollableScrollPhysics(),
+              padding: const EdgeInsets.all(AppSpacing.md),
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(AppSpacing.md),
+                  decoration: BoxDecoration(
+                    color: colors.bgSurfaceContainer,
+                    borderRadius: BorderRadius.circular(AppRadius.lg),
+                  ),
+                  child: Text(
+                    'Bật/tắt thông báo theo từng nhóm để tránh bỏ lỡ cập nhật quan trọng.',
+                    style: TextStyle(color: colors.textSecondary),
+                  ),
+                ),
+                const SizedBox(height: AppSpacing.md),
+                _Tile(
+                  value: prefs.booking,
+                  title: 'Booking',
+                  subtitle: 'Nhận thông báo xác nhận, huỷ, thay đổi lịch đặt',
+                  icon: Icons.calendar_month_outlined,
+                  onChanged: (v) =>
+                      setState(() => _draft = prefs.copyWith(booking: v)),
+                ),
+                _Tile(
+                  value: prefs.payment,
+                  title: 'Thanh toán',
+                  subtitle: 'Nhận thông báo hóa đơn, hoàn tiền, giao dịch',
+                  icon: Icons.payments_outlined,
+                  onChanged: (v) =>
+                      setState(() => _draft = prefs.copyWith(payment: v)),
+                ),
+                _Tile(
+                  value: prefs.system,
+                  title: 'Hệ thống',
+                  subtitle:
+                      'Nhận thông báo bảo trì, cập nhật và bảo mật tài khoản',
+                  icon: Icons.settings_outlined,
+                  onChanged: (v) =>
+                      setState(() => _draft = prefs.copyWith(system: v)),
+                ),
+                _Tile(
+                  value: prefs.quietHours,
+                  title: 'Giờ yên lặng',
+                  subtitle:
+                      'Giảm thông báo từ ${prefs.quietFrom} đến ${prefs.quietTo}',
+                  icon: Icons.dark_mode_outlined,
+                  onChanged: (v) =>
+                      setState(() => _draft = prefs.copyWith(quietHours: v)),
+                ),
+                const SizedBox(height: AppSpacing.md),
+                FilledButton(
+                  onPressed: _saving ? null : _save,
+                  child: Text(_saving ? 'Đang lưu...' : 'Lưu'),
+                ),
+              ],
+            );
+          },
+        ),
       ),
     );
   }
