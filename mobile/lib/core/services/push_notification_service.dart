@@ -24,7 +24,9 @@ const String _channelDesc =
 @pragma('vm:entry-point')
 Future<void> firebaseMessagingBackgroundHandler(RemoteMessage message) async {
   if (kDebugMode) {
-    debugPrint('[FCM] Background message: ${message.messageId}');
+    debugPrint('[FCM] Background message: ${message.messageId} '
+        'type=${message.data['type']} '
+        'hasNotif=${message.notification != null} data=${message.data}');
   }
   if (message.notification != null) return; // OS tự hiện — tránh trùng.
 
@@ -168,6 +170,10 @@ class PushNotificationService {
       badge: true,
       sound: true,
     );
+    if (kDebugMode) {
+      debugPrint('[FCM] authorizationStatus: '
+          '${settings.authorizationStatus}');
+    }
     if (settings.authorizationStatus == AuthorizationStatus.denied) {
       if (kDebugMode) debugPrint('[FCM] User denied notification permission');
       return;
@@ -276,6 +282,12 @@ class PushNotificationService {
   }
 
   void _onForegroundMessage(RemoteMessage message) {
+    if (kDebugMode) {
+      debugPrint('[FCM] onMessage type=${message.data['type']} '
+          'hasNotif=${message.notification != null} '
+          'title=${message.notification?.title ?? message.data['title']} '
+          'data=${message.data}');
+    }
     // Surface data-only messages (BE sends data-messages per API spec §8.4) to
     // the app so it can react silently — e.g. refresh profile on
     // `subscription_paid`. Runs regardless of whether a banner is shown.

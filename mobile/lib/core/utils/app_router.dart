@@ -4,6 +4,9 @@ import 'package:go_router/go_router.dart';
 
 import '../../features/admin/views/admin_screen.dart';
 import '../../features/admin/views/abuse_reports_screen.dart';
+import '../../features/admin/views/admin_bank_detail_screen.dart';
+import '../../features/admin/views/admin_bank_list_screen.dart';
+import '../../features/admin/data/models/admin_bank_account.dart';
 import '../../features/admin/views/kyc_approval_detail_screen.dart';
 import '../../features/admin/views/kyc_approval_list_screen.dart';
 import '../../features/admin/views/moderation_audit_screen.dart';
@@ -141,6 +144,7 @@ String? resolveRedirectPath({
       '/admin/abuse-reports',
       '/admin/moderation-audit',
       '/admin/kyc',
+      '/admin/bank-accounts',
       '/admin/role-permissions',
     ];
     final isAdminOnly = isUserFormRoute ||
@@ -691,6 +695,29 @@ final routerProvider = Provider<GoRouter>((ref) {
               key: state.pageKey,
               child: KYCApprovalDetailScreen(
                 submissionId: state.pathParameters['id']!,
+              ),
+            ),
+          ),
+        ],
+      ),
+
+      // ── Admin – Bank payout approval queue ────────────────────────
+      GoRoute(
+        path: '/admin/bank-accounts',
+        pageBuilder: (_, state) => slideUpPage(
+          key: state.pageKey,
+          child: const AdminBankListScreen(),
+        ),
+        routes: [
+          GoRoute(
+            path: ':id',
+            pageBuilder: (_, state) => slideUpPage(
+              key: state.pageKey,
+              child: AdminBankDetailScreen(
+                accountId: state.pathParameters['id']!,
+                account: state.extra is AdminBankAccount
+                    ? state.extra as AdminBankAccount
+                    : null,
               ),
             ),
           ),

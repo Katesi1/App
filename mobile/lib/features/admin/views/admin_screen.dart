@@ -12,6 +12,7 @@ import '../../../shared/widgets/loading_widget.dart';
 import '../../auth/controllers/auth_controller.dart';
 import '../../bookings/controllers/booking_controller.dart';
 import '../../properties/controllers/property_controller.dart';
+import '../controllers/admin_bank_controller.dart';
 import '../controllers/kyc_approval_controller.dart';
 import '../controllers/user_controller.dart';
 
@@ -27,6 +28,8 @@ class AdminScreen extends ConsumerWidget {
     final homestaysAsync = ref.watch(homestayListProvider(true));
     final bookingsAsync = ref.watch(bookingListProvider(null));
     final pendingKycCount = ref.watch(pendingKycCountProvider).valueOrNull ?? 0;
+    final pendingBankCount =
+        ref.watch(pendingBankCountProvider).valueOrNull ?? 0;
 
     return AppScaffold(
       title: '',
@@ -314,6 +317,18 @@ class AdminScreen extends ConsumerWidget {
                           ? '$pendingKycCount chờ'
                           : 'Trống',
                       onTap: () => context.push('/admin/kyc'),
+                    ),
+                    const SizedBox(height: 10),
+                    _MenuCard(
+                      icon: Icons.account_balance_rounded,
+                      iconBg: colors.successBg,
+                      iconColor: colors.success,
+                      title: 'Duyệt tài khoản ngân hàng',
+                      subtitle: 'Xét duyệt tài khoản nhận tiền của chủ nhà',
+                      trailing: pendingBankCount > 0
+                          ? '$pendingBankCount chờ'
+                          : 'Trống',
+                      onTap: () => context.push('/admin/bank-accounts'),
                     ),
                     const SizedBox(height: 10),
                     _MenuCard(

@@ -33,9 +33,10 @@ class RoomRepository {
   /// backend scopes the result by role/ownership).
   Future<ApiResponse<List<RoomModel>>> getAllRooms() async {
     try {
-      // Public cross-owner list (SALE + chủ nhà xem chéo của nhau).
-      // `/properties` (owner-scoped) chỉ dùng cho phần quản lý/CRUD.
-      final response = await _dio.get(ApiConstants.propertiesPublic);
+      // Owner-scoped list — backend tự giới hạn theo token:
+      // OWNER / SALE-gắn-owner chỉ thấy phòng của owner mình;
+      // ADMIN / SALE hệ thống (scope=system) thấy toàn bộ.
+      final response = await _dio.get(ApiConstants.properties);
       final list = (response.data['data'] as List)
           .map((e) => RoomModel.fromJson(e))
           .where((r) => r.isActive)

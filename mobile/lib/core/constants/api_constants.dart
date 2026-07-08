@@ -85,6 +85,13 @@ class ApiConstants {
   static String adminKycReject(String id) =>
       '/admin/kyc/submissions/$id/reject';
 
+  // Admin bank payout approval (ADMIN-only) — queue + approve/reject.
+  static const String adminBankAccounts = '/admin/bank-accounts';
+  static String adminBankApprove(String userId) =>
+      '/admin/users/$userId/bank/approve';
+  static String adminBankReject(String userId) =>
+      '/admin/users/$userId/bank/reject';
+
   // Per-user SALE permissions (ADMIN-only) — GET/PUT.
   static String userPermissions(String userId) => '/permissions/$userId';
 

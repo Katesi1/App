@@ -12,9 +12,11 @@ import 'core/services/app_version_service.dart';
 import 'core/services/push_notification_service.dart';
 import 'core/theme/app_theme.dart';
 import 'core/utils/app_router.dart';
+import 'core/utils/notification_deep_link.dart';
 import 'features/auth/controllers/auth_controller.dart';
 import 'features/chat/controllers/chat_controller.dart';
 import 'features/notifications/controllers/notification_controller.dart';
+import 'features/admin/controllers/admin_bank_controller.dart';
 import 'features/profile/controllers/bank_controller.dart';
 import 'shared/providers/theme_provider.dart';
 import 'shared/widgets/soft_update_prompt.dart';
@@ -99,14 +101,13 @@ class _HomestayAppState extends ConsumerState<HomestayApp>
         // guards update before we navigate.
         _maybeRefreshOnSubscriptionPush(data);
 
-        final deepLink = data['deepLink'];
-        if (deepLink is! String || deepLink.isEmpty) return;
-        final uri = Uri.tryParse(deepLink);
-        if (uri == null) return;
-        // Only allow relative paths (no scheme/host) to prevent open
-        // redirects from spoofed notifications.
-        if (uri.hasScheme || uri.hasAuthority) return;
-        ref.read(routerProvider).go(deepLink);
+        // BE gửi deepLink dạng path web (`/host/...`, `/my-bookings`...) không
+        // khớp router app → dịch qua pushType/path sang route app (fallback
+        // `/notifications` khi đích chưa có route). Resolver chỉ trả path nội bộ
+        // nên vẫn an toàn open-redirect.
+        final route = resolveNotificationRoute(data);
+        if (route == null) return;
+        ref.read(routerProvider).go(route);
       };
 
       // Silent foreground data push (no tap) — e.g. `subscription_paid` arrives
@@ -150,15 +151,19 @@ class _HomestayAppState extends ConsumerState<HomestayApp>
     ref.read(authProvider.notifier).refreshProfile();
   }
 
-  /// Kết quả admin duyệt tài khoản nhận tiền (bank_approved / bank_rejected)
-  /// → refresh profile (badge/gate) + invalidate bankStatusProvider để màn
-  /// tài khoản ngân hàng cập nhật trạng thái ngay.
+  /// Push liên quan tài khoản nhận tiền:
+  /// - OWNER: `bank_approved` / `bank_rejected` → refresh profile (badge/gate)
+  ///   + invalidate bankStatusProvider để màn tài khoản ngân hàng cập nhật.
+  /// - ADMIN: `bank_submitted` → invalidate queue duyệt để badge cập nhật ngay.
   void _maybeRefreshOnBankPush(Map<String, dynamic> data) {
     final pushType = _pushTypeOf(data);
-    if (pushType != 'bank_approved' && pushType != 'bank_rejected') return;
     if (!ref.read(authProvider).isLoggedIn) return;
-    ref.read(authProvider.notifier).refreshProfile();
-    ref.invalidate(bankStatusProvider);
+    if (pushType == 'bank_approved' || pushType == 'bank_rejected') {
+      ref.read(authProvider.notifier).refreshProfile();
+      ref.invalidate(bankStatusProvider);
+    } else if (pushType == 'bank_submitted') {
+      ref.invalidate(bankQueueProvider);
+    }
   }
 
   /// Chat push đến khi app foreground → refresh badge chưa đọc. WS đã lo khi
