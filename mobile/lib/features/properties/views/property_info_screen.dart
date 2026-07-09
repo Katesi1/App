@@ -25,6 +25,7 @@ class _PropertyInfoScreenState extends ConsumerState<PropertyInfoScreen> {
   int? _bedrooms;
   int? _bathrooms;
   int? _standardGuests;
+  int? _standardChildren;
   int? _maxGuests;
   String? _selectedView;
   String _code = '';
@@ -53,6 +54,7 @@ class _PropertyInfoScreenState extends ConsumerState<PropertyInfoScreen> {
     _bedrooms = room.bedrooms;
     _bathrooms = room.bathrooms;
     _standardGuests = room.standardGuests;
+    _standardChildren = room.standardChildren;
     _maxGuests = room.maxGuests;
     _selectedView = room.view;
   }
@@ -66,6 +68,7 @@ class _PropertyInfoScreenState extends ConsumerState<PropertyInfoScreen> {
       'bedrooms': _bedrooms,
       'bathrooms': _bathrooms,
       'standardGuests': _standardGuests,
+      'standardChildren': _standardChildren,
       'maxGuests': _maxGuests,
       'view': _selectedView,
     };
@@ -207,6 +210,18 @@ class _PropertyInfoScreenState extends ConsumerState<PropertyInfoScreen> {
                         for (var i = 1; i <= 20; i++)
                           _chip(context, '$i', _standardGuests == i,
                               () => setState(() => _standardGuests = i)),
+                      ],
+                    ),
+                    const SizedBox(height: AppSpacing.lg),
+                    _label(context, 'Sức chứa trẻ em (đã bao trong giá)'),
+                    const SizedBox(height: AppSpacing.xs),
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: [
+                        for (var i = 0; i <= 20; i++)
+                          _chip(context, '$i', _standardChildren == i,
+                              () => setState(() => _standardChildren = i)),
                       ],
                     ),
                     const SizedBox(height: AppSpacing.lg),

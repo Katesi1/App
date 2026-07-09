@@ -97,6 +97,8 @@ class RoomModel {
   final int bedrooms;
   final int bathrooms;
   final int standardGuests;
+  // Sức chứa trẻ em tiêu chuẩn (đã bao trong giá). BE v1.27+, mặc định 0.
+  final int standardChildren;
   final int maxGuests;
   final String? description;
   final String? address;
@@ -125,6 +127,7 @@ class RoomModel {
     this.bedrooms = 1,
     this.bathrooms = 1,
     this.standardGuests = 2,
+    this.standardChildren = 0,
     this.maxGuests = 2,
     this.description,
     this.address,
@@ -153,6 +156,7 @@ class RoomModel {
         bedrooms: json['bedrooms'] ?? 1,
         bathrooms: json['bathrooms'] ?? 1,
         standardGuests: json['standardGuests'] ?? 2,
+        standardChildren: json['standardChildren'] ?? 0,
         maxGuests: json['maxGuests'] ?? 2,
         description: json['description'],
         address: json['address'],

@@ -399,6 +399,33 @@ class DashboardScreen extends ConsumerWidget {
                   ),
                 ],
 
+                // Room viewing + sharing — OWNER. The OWNER bottom nav dropped
+                // the "Phòng" tab, so this is the entry point to browse rooms →
+                // detail → copy the public share link for guests. Read/share
+                // only, separate from property management CRUD (/admin).
+                if (user != null && user.isOwner) ...[
+                  const SizedBox(height: 28),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        _SectionLabel('PHÒNG CỦA TÔI'),
+                        const SizedBox(height: 12),
+                        _ManageShortcut(
+                          icon: Icons.meeting_room_rounded,
+                          iconColor: colors.brand,
+                          title: 'Xem & chia sẻ phòng',
+                          subtitle:
+                              'Xem danh sách, chi tiết phòng và lấy link '
+                              'chia sẻ gửi cho khách',
+                          onTap: () => context.push('/rooms'),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+
                 const SizedBox(height: 28),
 
                 // Recent bookings section.

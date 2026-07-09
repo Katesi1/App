@@ -5,7 +5,6 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 
 import '../../../core/theme/app_color_scheme.dart';
-import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../data/models/notification_model.dart';
 import '../../../shared/widgets/loading_widget.dart';
@@ -114,54 +113,85 @@ class _DetailBody extends StatelessWidget {
     final colors = context.colors;
     final (IconData icon, Color color) = _iconForType(colors);
 
+    final hasContent = notification.subtitle.isNotEmpty;
+
     return ListView(
       physics: const AlwaysScrollableScrollPhysics(),
       padding: const EdgeInsets.all(AppSpacing.md),
       children: [
-        // Header card: icon + type badge.
+        // Hero header: icon + type pill + title + timestamp in one surface.
         Container(
-          padding: const EdgeInsets.all(AppSpacing.md),
+          padding: const EdgeInsets.all(AppSpacing.lg),
           decoration: BoxDecoration(
             color: colors.bgSurface,
-            borderRadius: BorderRadius.circular(AppRadius.md),
-            border: Border.all(color: colors.borderDefault),
+            borderRadius: BorderRadius.circular(AppRadius.lg),
+            border: Border.all(color: colors.borderSubtle),
           ),
-          child: Row(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Container(
-                width: 48,
-                height: 48,
-                decoration: BoxDecoration(
-                  color: color.withValues(alpha: 0.12),
-                  borderRadius: BorderRadius.circular(AppRadius.sm),
-                ),
-                child: Icon(icon, color: color, size: 24),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
+              Row(
+                children: [
+                  Container(
+                    width: 56,
+                    height: 56,
+                    decoration: BoxDecoration(
+                      color: color.withValues(alpha: 0.12),
+                      shape: BoxShape.circle,
+                    ),
+                    child: Icon(icon, color: color, size: 28),
+                  ),
+                  const SizedBox(width: AppSpacing.md),
+                  // Type pill.
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 6,
+                    ),
+                    decoration: BoxDecoration(
+                      color: color.withValues(alpha: 0.12),
+                      borderRadius: BorderRadius.circular(AppRadius.full),
+                    ),
+                    child: Text(
                       notification.type.label.toUpperCase(),
                       style: GoogleFonts.beVietnamPro(
-                        fontSize: 10,
+                        fontSize: 11,
                         fontWeight: FontWeight.w700,
                         letterSpacing: 0.5,
                         color: color,
                       ),
                     ),
-                    const SizedBox(height: 2),
-                    Text(
-                      _formatDate(notification.createdAt),
-                      style: GoogleFonts.beVietnamPro(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w500,
-                        color: colors.textTertiary,
-                      ),
-                    ),
-                  ],
+                  ),
+                ],
+              ),
+              const SizedBox(height: AppSpacing.lg),
+              Text(
+                notification.title,
+                style: GoogleFonts.beVietnamPro(
+                  fontSize: 20,
+                  fontWeight: FontWeight.w700,
+                  color: colors.textPrimary,
+                  height: 1.3,
                 ),
+              ),
+              const SizedBox(height: AppSpacing.sm),
+              Row(
+                children: [
+                  Icon(
+                    Icons.schedule_rounded,
+                    size: 14,
+                    color: colors.textTertiary,
+                  ),
+                  const SizedBox(width: 6),
+                  Text(
+                    _formatDate(notification.createdAt),
+                    style: GoogleFonts.beVietnamPro(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w500,
+                      color: colors.textTertiary,
+                    ),
+                  ),
+                ],
               ),
             ],
           ),
@@ -169,48 +199,48 @@ class _DetailBody extends StatelessWidget {
 
         const SizedBox(height: AppSpacing.md),
 
+        // Content body.
         Text(
-          notification.title,
+          'NỘI DUNG',
           style: GoogleFonts.beVietnamPro(
-            fontSize: 18,
-            fontWeight: FontWeight.w700,
-            color: colors.textPrimary,
-            height: 1.35,
+            fontSize: 11,
+            fontWeight: FontWeight.w600,
+            letterSpacing: 0.5,
+            color: colors.textTertiary,
           ),
         ),
-
         const SizedBox(height: AppSpacing.sm),
-
         Text(
-          notification.subtitle.isEmpty
-              ? '(Không có nội dung chi tiết)'
-              : notification.subtitle,
+          hasContent ? notification.subtitle : '(Không có nội dung chi tiết)',
           style: GoogleFonts.beVietnamPro(
-            fontSize: 14,
+            fontSize: 15,
             fontWeight: FontWeight.w500,
-            color: colors.textSecondary,
-            height: 1.55,
+            color: hasContent ? colors.textSecondary : colors.textTertiary,
+            fontStyle: hasContent ? FontStyle.normal : FontStyle.italic,
+            height: 1.6,
           ),
         ),
 
-        const SizedBox(height: AppSpacing.lg),
+        const SizedBox(height: AppSpacing.xl),
 
         // Smart action button (if target present).
         if (_resolveTargetRoute(notification) != null)
           SizedBox(
             width: double.infinity,
-            height: 48,
+            height: 52,
             child: FilledButton.icon(
               onPressed: () => _openTarget(context),
               icon: const Icon(Icons.open_in_new_rounded, size: 18),
               label: Text(_targetButtonLabel(notification)),
               style: FilledButton.styleFrom(
-                backgroundColor: colors.brand,
-                foregroundColor: AppColors.darkBg,
+                backgroundColor: colors.brand.withValues(alpha: 0.12),
+                foregroundColor: colors.textBrand,
+                elevation: 0,
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(AppRadius.md),
                 ),
                 textStyle: GoogleFonts.beVietnamPro(
+                  fontSize: 15,
                   fontWeight: FontWeight.w700,
                 ),
               ),

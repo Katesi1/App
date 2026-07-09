@@ -61,6 +61,7 @@ class _PropertyAddScreenState extends ConsumerState<PropertyAddScreen> {
   int _bathrooms = 5;
 
   final _standardGuestsCtrl = TextEditingController();
+  final _standardChildrenCtrl = TextEditingController();
   final _maxGuestsCtrl = TextEditingController();
 
   final _weekdayPriceCtrl = TextEditingController();
@@ -166,6 +167,7 @@ class _PropertyAddScreenState extends ConsumerState<PropertyAddScreen> {
     _notesCtrl.dispose();
     // _bathrooms is an int field, no controller to dispose
     _standardGuestsCtrl.dispose();
+    _standardChildrenCtrl.dispose();
     _maxGuestsCtrl.dispose();
     _weekdayPriceCtrl.dispose();
     _weekendPriceCtrl.dispose();
@@ -303,6 +305,7 @@ class _PropertyAddScreenState extends ConsumerState<PropertyAddScreen> {
       'bedrooms': _bedrooms,
       'bathrooms': _bathrooms,
       'standardGuests': int.tryParse(_standardGuestsCtrl.text) ?? _bedrooms * 2,
+      'standardChildren': int.tryParse(_standardChildrenCtrl.text) ?? 0,
       'maxGuests': int.tryParse(_maxGuestsCtrl.text) ?? _bedrooms * 2,
       'amenities': _selectedAmenities.toList(),
       'cancellationPolicy': _cancellationPolicy,
@@ -718,8 +721,15 @@ class _PropertyAddScreenState extends ConsumerState<PropertyAddScreen> {
                         Expanded(
                             child: _Field(
                                 ctrl: _standardGuestsCtrl,
-                                label: 'Tiêu chuẩn',
+                                label: 'Người lớn',
                                 hint: 'VD: 10',
+                                keyboard: TextInputType.number)),
+                        const SizedBox(width: AppSpacing.md),
+                        Expanded(
+                            child: _Field(
+                                ctrl: _standardChildrenCtrl,
+                                label: 'Trẻ em',
+                                hint: 'VD: 2',
                                 keyboard: TextInputType.number)),
                         const SizedBox(width: AppSpacing.md),
                         Expanded(
@@ -731,7 +741,9 @@ class _PropertyAddScreenState extends ConsumerState<PropertyAddScreen> {
                       ],
                     ),
                     const SizedBox(height: 6),
-                    Text('Khách vượt tiêu chuẩn sẽ tính phụ thu',
+                    Text(
+                        'Người lớn + trẻ em là sức chứa tiêu chuẩn (đã bao '
+                        'trong giá); khách vượt sẽ tính phụ thu',
                         style: GoogleFonts.beVietnamPro(
                             fontSize: 11,
                             color: colors.textSecondary,

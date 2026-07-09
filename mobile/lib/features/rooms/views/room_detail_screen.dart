@@ -139,8 +139,15 @@ class RoomDetailScreen extends ConsumerWidget {
                             ),
                           _InfoChip(
                             icon: Icons.people_outline_rounded,
-                            label: '${room.standardGuests} người',
+                            label: room.standardChildren > 0
+                                ? '${room.standardGuests} người lớn'
+                                : '${room.standardGuests} người',
                           ),
+                          if (room.standardChildren > 0)
+                            _InfoChip(
+                              icon: Icons.child_care_rounded,
+                              label: '${room.standardChildren} trẻ em',
+                            ),
                           if (room.maxGuests > room.standardGuests)
                             _InfoChip(
                               icon: Icons.group_add_outlined,

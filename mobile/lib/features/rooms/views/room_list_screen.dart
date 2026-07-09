@@ -145,10 +145,13 @@ class _RoomListScreenState extends ConsumerState<RoomListScreen>
       list = list.where((r) => _selectedViews.contains(r.view)).toList();
     }
 
-    // Filter by guest count: standardGuests >= total (adults + children).
-    final totalGuests = _adults + _children;
-    if (totalGuests > 0) {
-      list = list.where((r) => r.standardGuests >= totalGuests).toList();
+    // Filter theo sức chứa tiêu chuẩn — người lớn và trẻ em tách riêng
+    // (khớp BE v1.27: adults→standardGuests, children→standardChildren).
+    if (_adults > 0) {
+      list = list.where((r) => r.standardGuests >= _adults).toList();
+    }
+    if (_children > 0) {
+      list = list.where((r) => r.standardChildren >= _children).toList();
     }
 
     return list;
@@ -262,223 +265,228 @@ class _RoomListScreenState extends ConsumerState<RoomListScreen>
                   mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                // Handle bar
-                Center(
-                  child: Container(
-                    margin: const EdgeInsets.only(top: 12),
-                    width: 40,
-                    height: 4,
-                    decoration: BoxDecoration(
-                      color: colors.borderDefault,
-                      borderRadius: BorderRadius.circular(2),
-                    ),
-                  ),
-                ),
-                // Header
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(20, 16, 20, 12),
-                  child: Row(
-                    children: [
-                      Text(
-                        'Bộ lọc',
-                        style: GoogleFonts.beVietnamPro(
-                          fontSize: 17,
-                          fontWeight: FontWeight.w700,
-                          color: colors.textPrimary,
-                        ),
-                      ),
-                      const Spacer(),
-                      GestureDetector(
-                        onTap: () {
-                          setSheetState(() {
-                            tempViews.clear();
-                            tempPriceAsc = null;
-                            tempCheckIn = null;
-                            tempCheckOut = null;
-                            tempAdults = 0;
-                            tempChildren = 0;
-                          });
-                        },
-                        child: Text(
-                          'Đặt lại',
-                          style: GoogleFonts.beVietnamPro(
-                            fontSize: 13,
-                            fontWeight: FontWeight.w500,
-                            color: colors.textBrand,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                Divider(height: 1, color: colors.borderDefault),
-
-                SectionLabel(label: 'VIEW'),
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 20),
-                  child: Wrap(
-                    spacing: 10,
-                    runSpacing: 8,
-                    children: _viewLabels.entries.map((e) {
-                      final selected = tempViews.contains(e.key);
-                      return FilterChipTile(
-                        label: e.value,
-                        icon: switch (e.key) {
-                          'sea' => Icons.waves_rounded,
-                          'city' => Icons.location_city_rounded,
-                          _ => Icons.home_rounded,
-                        },
-                        isSelected: selected,
-                        onTap: () => toggleSet(tempViews, e.key),
-                      );
-                    }).toList(),
-                  ),
-                ),
-
-                SectionLabel(label: 'SẮP XẾP GIÁ'),
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 20),
-                  child: Wrap(
-                    spacing: 10,
-                    runSpacing: 8,
-                    children: [
-                      FilterChipTile(
-                        label: 'Mặc định',
-                        icon: Icons.sort_rounded,
-                        isSelected: tempPriceAsc == null,
-                        onTap: () => setSheetState(() => tempPriceAsc = null),
-                      ),
-                      FilterChipTile(
-                        label: 'Giá tăng dần',
-                        icon: Icons.arrow_upward_rounded,
-                        isSelected: tempPriceAsc == true,
-                        onTap: () => setSheetState(() => tempPriceAsc = true),
-                      ),
-                      FilterChipTile(
-                        label: 'Giá giảm dần',
-                        icon: Icons.arrow_downward_rounded,
-                        isSelected: tempPriceAsc == false,
-                        onTap: () => setSheetState(() => tempPriceAsc = false),
-                      ),
-                    ],
-                  ),
-                ),
-
-                SectionLabel(label: 'NGÀY'),
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 20),
-                  child: Row(
-                    children: [
-                      Expanded(
-                        child: DatePickerTile(
-                          label: 'Check-in',
-                          value: formatDate(tempCheckIn),
-                          hasValue: tempCheckIn != null,
-                          onTap: () => pickSheetDate(isCheckIn: true),
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: DatePickerTile(
-                          label: 'Check-out',
-                          value: formatDate(tempCheckOut),
-                          hasValue: tempCheckOut != null,
-                          onTap: () => pickSheetDate(isCheckIn: false),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-
-                SectionLabel(label: 'SỐ KHÁCH'),
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 20),
-                  child: Row(
-                    children: [
-                      Expanded(
-                        child: TextField(
-                          keyboardType: TextInputType.number,
-                          decoration: InputDecoration(
-                            labelText: 'Người lớn',
-                            hintText: '0',
-                            prefixIcon: const Icon(Icons.person_outline_rounded,
-                                size: 20),
-                            border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(10),
-                            ),
-                            contentPadding: const EdgeInsets.symmetric(
-                                horizontal: 12, vertical: 12),
-                          ),
-                          controller: TextEditingController(
-                              text: tempAdults > 0 ? '$tempAdults' : ''),
-                          onChanged: (v) => setSheetState(
-                              () => tempAdults = int.tryParse(v) ?? 0),
-                        ),
-                      ),
-                      const SizedBox(width: 16),
-                      Expanded(
-                        child: TextField(
-                          keyboardType: TextInputType.number,
-                          decoration: InputDecoration(
-                            labelText: 'Trẻ em',
-                            hintText: '0',
-                            prefixIcon:
-                                const Icon(Icons.child_care_rounded, size: 20),
-                            border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(10),
-                            ),
-                            contentPadding: const EdgeInsets.symmetric(
-                                horizontal: 12, vertical: 12),
-                          ),
-                          controller: TextEditingController(
-                              text: tempChildren > 0 ? '$tempChildren' : ''),
-                          onChanged: (v) => setSheetState(
-                              () => tempChildren = int.tryParse(v) ?? 0),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-
-                const SizedBox(height: 20),
-                // Apply button
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
-                  child: SizedBox(
-                    width: double.infinity,
-                    height: 48,
-                    child: ElevatedButton(
-                      onPressed: () {
-                        setState(() {
-                          _selectedViews
-                            ..clear()
-                            ..addAll(tempViews);
-                          _priceAscending = tempPriceAsc;
-                          _checkIn = tempCheckIn;
-                          _checkOut = tempCheckOut;
-                          _adults = tempAdults;
-                          _children = tempChildren;
-                        });
-                        Navigator.pop(ctx);
-                      },
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: colors.brand,
-                        foregroundColor: colors.textOnPrimary,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        elevation: 0,
-                      ),
-                      child: Text(
-                        'Áp dụng',
-                        style: GoogleFonts.beVietnamPro(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w600,
+                    // Handle bar
+                    Center(
+                      child: Container(
+                        margin: const EdgeInsets.only(top: 12),
+                        width: 40,
+                        height: 4,
+                        decoration: BoxDecoration(
+                          color: colors.borderDefault,
+                          borderRadius: BorderRadius.circular(2),
                         ),
                       ),
                     ),
-                  ),
-                ),
+                    // Header
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(20, 16, 20, 12),
+                      child: Row(
+                        children: [
+                          Text(
+                            'Bộ lọc',
+                            style: GoogleFonts.beVietnamPro(
+                              fontSize: 17,
+                              fontWeight: FontWeight.w700,
+                              color: colors.textPrimary,
+                            ),
+                          ),
+                          const Spacer(),
+                          GestureDetector(
+                            onTap: () {
+                              setSheetState(() {
+                                tempViews.clear();
+                                tempPriceAsc = null;
+                                tempCheckIn = null;
+                                tempCheckOut = null;
+                                tempAdults = 0;
+                                tempChildren = 0;
+                              });
+                            },
+                            child: Text(
+                              'Đặt lại',
+                              style: GoogleFonts.beVietnamPro(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w500,
+                                color: colors.textBrand,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    Divider(height: 1, color: colors.borderDefault),
+
+                    SectionLabel(label: 'VIEW'),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 20),
+                      child: Wrap(
+                        spacing: 10,
+                        runSpacing: 8,
+                        children: _viewLabels.entries.map((e) {
+                          final selected = tempViews.contains(e.key);
+                          return FilterChipTile(
+                            label: e.value,
+                            icon: switch (e.key) {
+                              'sea' => Icons.waves_rounded,
+                              'city' => Icons.location_city_rounded,
+                              _ => Icons.home_rounded,
+                            },
+                            isSelected: selected,
+                            onTap: () => toggleSet(tempViews, e.key),
+                          );
+                        }).toList(),
+                      ),
+                    ),
+
+                    SectionLabel(label: 'SẮP XẾP GIÁ'),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 20),
+                      child: Wrap(
+                        spacing: 10,
+                        runSpacing: 8,
+                        children: [
+                          FilterChipTile(
+                            label: 'Mặc định',
+                            icon: Icons.sort_rounded,
+                            isSelected: tempPriceAsc == null,
+                            onTap: () =>
+                                setSheetState(() => tempPriceAsc = null),
+                          ),
+                          FilterChipTile(
+                            label: 'Giá tăng dần',
+                            icon: Icons.arrow_upward_rounded,
+                            isSelected: tempPriceAsc == true,
+                            onTap: () =>
+                                setSheetState(() => tempPriceAsc = true),
+                          ),
+                          FilterChipTile(
+                            label: 'Giá giảm dần',
+                            icon: Icons.arrow_downward_rounded,
+                            isSelected: tempPriceAsc == false,
+                            onTap: () =>
+                                setSheetState(() => tempPriceAsc = false),
+                          ),
+                        ],
+                      ),
+                    ),
+
+                    SectionLabel(label: 'NGÀY'),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 20),
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: DatePickerTile(
+                              label: 'Check-in',
+                              value: formatDate(tempCheckIn),
+                              hasValue: tempCheckIn != null,
+                              onTap: () => pickSheetDate(isCheckIn: true),
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: DatePickerTile(
+                              label: 'Check-out',
+                              value: formatDate(tempCheckOut),
+                              hasValue: tempCheckOut != null,
+                              onTap: () => pickSheetDate(isCheckIn: false),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+
+                    SectionLabel(label: 'SỐ KHÁCH'),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 20),
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: TextField(
+                              keyboardType: TextInputType.number,
+                              decoration: InputDecoration(
+                                labelText: 'Người lớn',
+                                hintText: '0',
+                                prefixIcon: const Icon(
+                                    Icons.person_outline_rounded,
+                                    size: 20),
+                                border: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(10),
+                                ),
+                                contentPadding: const EdgeInsets.symmetric(
+                                    horizontal: 12, vertical: 12),
+                              ),
+                              controller: TextEditingController(
+                                  text: tempAdults > 0 ? '$tempAdults' : ''),
+                              onChanged: (v) => setSheetState(
+                                  () => tempAdults = int.tryParse(v) ?? 0),
+                            ),
+                          ),
+                          const SizedBox(width: 16),
+                          Expanded(
+                            child: TextField(
+                              keyboardType: TextInputType.number,
+                              decoration: InputDecoration(
+                                labelText: 'Trẻ em',
+                                hintText: '0',
+                                prefixIcon: const Icon(Icons.child_care_rounded,
+                                    size: 20),
+                                border: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(10),
+                                ),
+                                contentPadding: const EdgeInsets.symmetric(
+                                    horizontal: 12, vertical: 12),
+                              ),
+                              controller: TextEditingController(
+                                  text:
+                                      tempChildren > 0 ? '$tempChildren' : ''),
+                              onChanged: (v) => setSheetState(
+                                  () => tempChildren = int.tryParse(v) ?? 0),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+
+                    const SizedBox(height: 20),
+                    // Apply button
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
+                      child: SizedBox(
+                        width: double.infinity,
+                        height: 48,
+                        child: ElevatedButton(
+                          onPressed: () {
+                            setState(() {
+                              _selectedViews
+                                ..clear()
+                                ..addAll(tempViews);
+                              _priceAscending = tempPriceAsc;
+                              _checkIn = tempCheckIn;
+                              _checkOut = tempCheckOut;
+                              _adults = tempAdults;
+                              _children = tempChildren;
+                            });
+                            Navigator.pop(ctx);
+                          },
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: colors.brand,
+                            foregroundColor: colors.textOnPrimary,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            elevation: 0,
+                          ),
+                          child: Text(
+                            'Áp dụng',
+                            style: GoogleFonts.beVietnamPro(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
                     SizedBox(
                       height: MediaQuery.of(ctx).padding.bottom,
                     ),
@@ -560,6 +568,17 @@ class _RoomListScreenState extends ConsumerState<RoomListScreen>
                         ),
                         Row(
                           children: [
+                            // Back button only when this screen was pushed as
+                            // an overlay (e.g. OWNER from dashboard). As a
+                            // bottom-nav tab (SALE/ADMIN) there is nothing to
+                            // pop, so it stays hidden.
+                            if (context.canPop()) ...[
+                              _HeaderIconBtn(
+                                icon: Icons.arrow_back_rounded,
+                                onTap: () => context.pop(),
+                              ),
+                              const SizedBox(width: 12),
+                            ],
                             Expanded(
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -715,7 +734,6 @@ class _RoomListScreenState extends ConsumerState<RoomListScreen>
                 ),
               ),
             ),
-
             if (_hasActiveFilters)
               SliverToBoxAdapter(
                 child: Padding(

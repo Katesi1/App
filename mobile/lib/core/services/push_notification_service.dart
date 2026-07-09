@@ -23,11 +23,6 @@ const String _channelDesc =
 /// dựng local notification để vẫn có thông báo khi user không mở app.
 @pragma('vm:entry-point')
 Future<void> firebaseMessagingBackgroundHandler(RemoteMessage message) async {
-  if (kDebugMode) {
-    debugPrint('[FCM] Background message: ${message.messageId} '
-        'type=${message.data['type']} '
-        'hasNotif=${message.notification != null} data=${message.data}');
-  }
   if (message.notification != null) return; // OS tự hiện — tránh trùng.
 
   final data = message.data;
@@ -170,12 +165,7 @@ class PushNotificationService {
       badge: true,
       sound: true,
     );
-    if (kDebugMode) {
-      debugPrint('[FCM] authorizationStatus: '
-          '${settings.authorizationStatus}');
-    }
     if (settings.authorizationStatus == AuthorizationStatus.denied) {
-      if (kDebugMode) debugPrint('[FCM] User denied notification permission');
       return;
     }
 
@@ -192,23 +182,15 @@ class PushNotificationService {
           await Future.delayed(const Duration(seconds: 1));
           apns = await _fcm.getAPNSToken();
         }
-        if (apns == null && kDebugMode) {
-          debugPrint('[FCM] APNs token vẫn null sau 10s — mạng chặn APNs hoặc '
-              'thiếu Push capability trên provisioning');
-        }
-      } catch (e) {
-        if (kDebugMode) debugPrint('[FCM] getAPNSToken failed: $e');
+      } catch (_) {
+        // APNs token chưa sẵn — ensureRegistered() sẽ thử lại lần resume.
       }
     }
 
     try {
       final token = await _fcm.getToken();
-      if (token == null) {
-        if (kDebugMode) debugPrint('[FCM] getToken returned null');
-        return;
-      }
+      if (token == null) return;
       _currentToken = token;
-      if (kDebugMode) debugPrint('[FCM] token: $token'); // copy để test push
       await _registerTokenWithBackend(token);
 
       // Listen for token refresh (FCM rotates periodically).
@@ -217,8 +199,8 @@ class PushNotificationService {
         _currentToken = newToken;
         await _registerTokenWithBackend(newToken);
       });
-    } catch (e) {
-      if (kDebugMode) debugPrint('[FCM] getToken failed: $e');
+    } catch (_) {
+      // getToken thất bại — ensureRegistered() sẽ thử lại lần resume.
     }
   }
 
@@ -282,12 +264,6 @@ class PushNotificationService {
   }
 
   void _onForegroundMessage(RemoteMessage message) {
-    if (kDebugMode) {
-      debugPrint('[FCM] onMessage type=${message.data['type']} '
-          'hasNotif=${message.notification != null} '
-          'title=${message.notification?.title ?? message.data['title']} '
-          'data=${message.data}');
-    }
     // Surface data-only messages (BE sends data-messages per API spec §8.4) to
     // the app so it can react silently — e.g. refresh profile on
     // `subscription_paid`. Runs regardless of whether a banner is shown.
