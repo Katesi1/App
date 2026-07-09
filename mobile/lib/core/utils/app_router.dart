@@ -28,6 +28,7 @@ import '../../features/chat/views/chat_booking_resolver_screen.dart';
 import '../../features/chat/views/chat_inbox_screen.dart';
 import '../../features/chat/views/chat_thread_screen.dart';
 import '../../features/bookings/views/booking_list_screen.dart';
+import '../../features/bookings/views/booking_detail_screen.dart';
 import '../../features/bookings/views/front_desk_screen.dart';
 import '../../features/dashboard/views/dashboard_screen.dart';
 import '../../features/properties/views/property_amenities_screen.dart';
@@ -442,6 +443,17 @@ final routerProvider = Provider<GoRouter>((ref) {
           key: state.pageKey,
           child: const BookingListScreen(),
         ),
+        routes: [
+          GoRoute(
+            path: ':id',
+            pageBuilder: (_, state) => horizontalPage(
+              key: state.pageKey,
+              child: BookingDetailScreen(
+                bookingId: state.pathParameters['id']!,
+              ),
+            ),
+          ),
+        ],
       ),
 
       // ── Front desk (check-in / check-out by day) ───────────────────

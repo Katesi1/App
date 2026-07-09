@@ -394,299 +394,303 @@ class _BookingCardState extends ConsumerState<_BookingCard> {
           borderRadius: BorderRadius.circular(AppRadius.lg)),
       elevation: 2,
       shadowColor: Colors.black.withValues(alpha: isDark ? 0.30 : 0.06),
-      child: IntrinsicHeight(
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            // ── Left status bar ─────────────────────────────────────
-            Container(width: 4, color: statusColor),
+      child: InkWell(
+        onTap: () => context.push('/bookings/${booking.id}'),
+        child: IntrinsicHeight(
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              // ── Left status bar ─────────────────────────────────────
+              Container(width: 4, color: statusColor),
 
-            // ── Content ─────────────────────────────────────────────
-            Expanded(
-              child: Padding(
-                padding: const EdgeInsets.all(AppSpacing.md),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // Room + status chip
-                    Row(
-                      children: [
-                        Expanded(
-                          child: Text(
-                            booking.propertyName,
-                            style: GoogleFonts.beVietnamPro(
-                              fontWeight: FontWeight.w700,
-                              fontSize: 15,
-                              color: colors.textPrimary,
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: AppSpacing.sm),
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: AppSpacing.sm, vertical: 3),
-                          decoration: BoxDecoration(
-                            color: statusColor.withValues(
-                                alpha: isDark ? 0.18 : 0.1),
-                            borderRadius: BorderRadius.circular(AppRadius.full),
-                            border: Border.all(
-                                color: statusColor.withValues(alpha: 0.4)),
-                          ),
-                          child: Text(
-                            booking.status.label,
-                            style: GoogleFonts.beVietnamPro(
-                              color: statusColor,
-                              fontSize: 11,
-                              fontWeight: FontWeight.w700,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-
-                    // Homestay
-                    Text(
-                      booking.propertyName,
-                      style: GoogleFonts.beVietnamPro(
-                        fontSize: 12,
-                        color: colors.textSecondary,
-                      ),
-                    ),
-
-                    const SizedBox(height: AppSpacing.sm),
-
-                    // Dates
-                    Row(
-                      children: [
-                        Icon(Icons.date_range_rounded,
-                            size: 14, color: colors.textTertiary),
-                        const SizedBox(width: 4),
-                        Text(
-                          '${fmt.format(booking.checkinDate)} → ${fmt.format(booking.checkoutDate)}',
-                          style: GoogleFonts.beVietnamPro(
-                            fontSize: 13,
-                            color: colors.textSecondary,
-                          ),
-                        ),
-                        const SizedBox(width: AppSpacing.sm),
-                        Text(
-                          '(${booking.nights} đêm)',
-                          style: GoogleFonts.beVietnamPro(
-                            fontSize: 11,
-                            color: colors.brand,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ],
-                    ),
-
-                    // Customer
-                    if (booking.customerName != null) ...[
-                      const SizedBox(height: 3),
+              // ── Content ─────────────────────────────────────────────
+              Expanded(
+                child: Padding(
+                  padding: const EdgeInsets.all(AppSpacing.md),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Room + status chip
                       Row(
                         children: [
-                          Icon(Icons.person_outline_rounded,
+                          Expanded(
+                            child: Text(
+                              booking.propertyName,
+                              style: GoogleFonts.beVietnamPro(
+                                fontWeight: FontWeight.w700,
+                                fontSize: 15,
+                                color: colors.textPrimary,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: AppSpacing.sm),
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: AppSpacing.sm, vertical: 3),
+                            decoration: BoxDecoration(
+                              color: statusColor.withValues(
+                                  alpha: isDark ? 0.18 : 0.1),
+                              borderRadius:
+                                  BorderRadius.circular(AppRadius.full),
+                              border: Border.all(
+                                  color: statusColor.withValues(alpha: 0.4)),
+                            ),
+                            child: Text(
+                              booking.status.label,
+                              style: GoogleFonts.beVietnamPro(
+                                color: statusColor,
+                                fontSize: 11,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+
+                      // Homestay
+                      Text(
+                        booking.propertyName,
+                        style: GoogleFonts.beVietnamPro(
+                          fontSize: 12,
+                          color: colors.textSecondary,
+                        ),
+                      ),
+
+                      const SizedBox(height: AppSpacing.sm),
+
+                      // Dates
+                      Row(
+                        children: [
+                          Icon(Icons.date_range_rounded,
                               size: 14, color: colors.textTertiary),
                           const SizedBox(width: 4),
                           Text(
-                            booking.customerName!,
+                            '${fmt.format(booking.checkinDate)} → ${fmt.format(booking.checkoutDate)}',
                             style: GoogleFonts.beVietnamPro(
                               fontSize: 13,
                               color: colors.textSecondary,
                             ),
                           ),
-                          if (booking.customerPhone != null) ...[
-                            const SizedBox(width: AppSpacing.sm),
-                            Text(
-                              booking.customerPhone!,
-                              style: GoogleFonts.beVietnamPro(
-                                fontSize: 12,
-                                color: colors.textTertiary,
-                              ),
+                          const SizedBox(width: AppSpacing.sm),
+                          Text(
+                            '(${booking.nights} đêm)',
+                            style: GoogleFonts.beVietnamPro(
+                              fontSize: 11,
+                              color: colors.brand,
+                              fontWeight: FontWeight.w600,
                             ),
-                          ],
+                          ),
                         ],
                       ),
-                    ],
 
-                    // Price + guest count row
-                    const SizedBox(height: AppSpacing.sm),
-                    Row(
-                      children: [
-                        if (booking.depositAmount != null &&
-                            booking.depositAmount! > 0) ...[
-                          Icon(Icons.payments_outlined,
+                      // Customer
+                      if (booking.customerName != null) ...[
+                        const SizedBox(height: 3),
+                        Row(
+                          children: [
+                            Icon(Icons.person_outline_rounded,
+                                size: 14, color: colors.textTertiary),
+                            const SizedBox(width: 4),
+                            Text(
+                              booking.customerName!,
+                              style: GoogleFonts.beVietnamPro(
+                                fontSize: 13,
+                                color: colors.textSecondary,
+                              ),
+                            ),
+                            if (booking.customerPhone != null) ...[
+                              const SizedBox(width: AppSpacing.sm),
+                              Text(
+                                booking.customerPhone!,
+                                style: GoogleFonts.beVietnamPro(
+                                  fontSize: 12,
+                                  color: colors.textTertiary,
+                                ),
+                              ),
+                            ],
+                          ],
+                        ),
+                      ],
+
+                      // Price + guest count row
+                      const SizedBox(height: AppSpacing.sm),
+                      Row(
+                        children: [
+                          if (booking.depositAmount != null &&
+                              booking.depositAmount! > 0) ...[
+                            Icon(Icons.payments_outlined,
+                                size: 14, color: colors.textTertiary),
+                            const SizedBox(width: 4),
+                            Text(
+                              _formatPrice(booking.depositAmount!),
+                              style: GoogleFonts.beVietnamPro(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w600,
+                                color: colors.brand,
+                              ),
+                            ),
+                            const SizedBox(width: AppSpacing.md),
+                          ],
+                          Icon(Icons.people_outline_rounded,
                               size: 14, color: colors.textTertiary),
                           const SizedBox(width: 4),
                           Text(
-                            _formatPrice(booking.depositAmount!),
+                            '${booking.guestCount} khách',
                             style: GoogleFonts.beVietnamPro(
                               fontSize: 13,
-                              fontWeight: FontWeight.w600,
-                              color: colors.brand,
+                              color: colors.textSecondary,
                             ),
                           ),
-                          const SizedBox(width: AppSpacing.md),
-                        ],
-                        Icon(Icons.people_outline_rounded,
-                            size: 14, color: colors.textTertiary),
-                        const SizedBox(width: 4),
-                        Text(
-                          '${booking.guestCount} khách',
-                          style: GoogleFonts.beVietnamPro(
-                            fontSize: 13,
-                            color: colors.textSecondary,
-                          ),
-                        ),
-                        if (booking.isPaid) ...[
-                          const SizedBox(width: AppSpacing.md),
-                          Icon(Icons.verified_rounded,
-                              size: 14, color: colors.success),
-                          const SizedBox(width: 4),
-                          Text(
-                            booking.paidAmount != null
-                                ? 'Đã thu ${_formatPrice(booking.paidAmount!)}'
-                                : 'Đã thanh toán',
-                            style: GoogleFonts.beVietnamPro(
-                              fontSize: 13,
-                              fontWeight: FontWeight.w600,
-                              color: colors.success,
-                            ),
-                          ),
-                        ],
-                      ],
-                    ),
-
-                    // Nhắn tin với khách (hội thoại theo booking — realtime).
-                    const SizedBox(height: AppSpacing.sm),
-                    Align(
-                      alignment: Alignment.centerLeft,
-                      child: TextButton.icon(
-                        onPressed: () => context.push(
-                          '/conversations/by-booking/${booking.id}',
-                        ),
-                        style: TextButton.styleFrom(
-                          foregroundColor: colors.brand,
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: AppSpacing.sm, vertical: 2),
-                          minimumSize: Size.zero,
-                          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                        ),
-                        icon: const Icon(Icons.chat_bubble_outline_rounded,
-                            size: 16),
-                        label: Text('Nhắn tin',
-                            style: GoogleFonts.beVietnamPro(
-                                fontSize: 13, fontWeight: FontWeight.w600)),
-                      ),
-                    ),
-
-                    // Countdown for HOLD
-                    if (isHold && booking.holdRemainingSeconds > 0) ...[
-                      const SizedBox(height: AppSpacing.sm),
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: AppSpacing.sm, vertical: 4),
-                        decoration: BoxDecoration(
-                          color: colors.warning
-                              .withValues(alpha: isDark ? 0.18 : 0.1),
-                          borderRadius: BorderRadius.circular(AppRadius.sm),
-                          border: Border.all(
-                              color: colors.warning.withValues(alpha: 0.3)),
-                        ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(Icons.timer_outlined,
-                                size: 13, color: colors.warning),
+                          if (booking.isPaid) ...[
+                            const SizedBox(width: AppSpacing.md),
+                            Icon(Icons.verified_rounded,
+                                size: 14, color: colors.success),
                             const SizedBox(width: 4),
                             Text(
-                              'Còn ${(booking.holdRemainingSeconds / 60).ceil()} phút',
+                              booking.paidAmount != null
+                                  ? 'Đã thu ${_formatPrice(booking.paidAmount!)}'
+                                  : 'Đã thanh toán',
                               style: GoogleFonts.beVietnamPro(
-                                color: colors.warning,
-                                fontSize: 12,
+                                fontSize: 13,
                                 fontWeight: FontWeight.w600,
+                                color: colors.success,
                               ),
                             ),
                           ],
+                        ],
+                      ),
+
+                      // Nhắn tin với khách (hội thoại theo booking — realtime).
+                      const SizedBox(height: AppSpacing.sm),
+                      Align(
+                        alignment: Alignment.centerLeft,
+                        child: TextButton.icon(
+                          onPressed: () => context.push(
+                            '/conversations/by-booking/${booking.id}',
+                          ),
+                          style: TextButton.styleFrom(
+                            foregroundColor: colors.brand,
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: AppSpacing.sm, vertical: 2),
+                            minimumSize: Size.zero,
+                            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                          ),
+                          icon: const Icon(Icons.chat_bubble_outline_rounded,
+                              size: 16),
+                          label: Text('Nhắn tin',
+                              style: GoogleFonts.beVietnamPro(
+                                  fontSize: 13, fontWeight: FontWeight.w600)),
                         ),
                       ),
-                    ],
 
-                    // Action buttons (for HOLD bookings)
-                    if (isHold) ...[
-                      const SizedBox(height: AppSpacing.md),
-                      _actionLoading
-                          ? const Center(
-                              child: SizedBox(
-                                  height: 32,
-                                  width: 32,
-                                  child: CircularProgressIndicator(
-                                      strokeWidth: 2)))
-                          : Row(
-                              children: [
-                                Expanded(
-                                  child: OutlinedButton(
-                                    onPressed: _cancel,
-                                    style: OutlinedButton.styleFrom(
-                                      foregroundColor: colors.error,
-                                      side: BorderSide(color: colors.error),
-                                      padding: const EdgeInsets.symmetric(
-                                          vertical: 6),
-                                    ),
-                                    child: Text('Huỷ',
-                                        style: GoogleFonts.beVietnamPro(
-                                            fontWeight: FontWeight.w700,
-                                            fontSize: 13)),
-                                  ),
+                      // Countdown for HOLD
+                      if (isHold && booking.holdRemainingSeconds > 0) ...[
+                        const SizedBox(height: AppSpacing.sm),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: AppSpacing.sm, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: colors.warning
+                                .withValues(alpha: isDark ? 0.18 : 0.1),
+                            borderRadius: BorderRadius.circular(AppRadius.sm),
+                            border: Border.all(
+                                color: colors.warning.withValues(alpha: 0.3)),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(Icons.timer_outlined,
+                                  size: 13, color: colors.warning),
+                              const SizedBox(width: 4),
+                              Text(
+                                'Còn ${(booking.holdRemainingSeconds / 60).ceil()} phút',
+                                style: GoogleFonts.beVietnamPro(
+                                  color: colors.warning,
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w600,
                                 ),
-                                if (widget.canManage) ...[
-                                  const SizedBox(width: AppSpacing.sm),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+
+                      // Action buttons (for HOLD bookings)
+                      if (isHold) ...[
+                        const SizedBox(height: AppSpacing.md),
+                        _actionLoading
+                            ? const Center(
+                                child: SizedBox(
+                                    height: 32,
+                                    width: 32,
+                                    child: CircularProgressIndicator(
+                                        strokeWidth: 2)))
+                            : Row(
+                                children: [
                                   Expanded(
-                                    child: FilledButton(
-                                      onPressed: _confirm,
-                                      style: FilledButton.styleFrom(
-                                        backgroundColor: colors.success,
-                                        foregroundColor: Colors.white,
+                                    child: OutlinedButton(
+                                      onPressed: _cancel,
+                                      style: OutlinedButton.styleFrom(
+                                        foregroundColor: colors.error,
+                                        side: BorderSide(color: colors.error),
                                         padding: const EdgeInsets.symmetric(
                                             vertical: 6),
                                       ),
-                                      child: Text('Xác nhận',
+                                      child: Text('Huỷ',
                                           style: GoogleFonts.beVietnamPro(
                                               fontWeight: FontWeight.w700,
                                               fontSize: 13)),
                                     ),
                                   ),
+                                  if (widget.canManage) ...[
+                                    const SizedBox(width: AppSpacing.sm),
+                                    Expanded(
+                                      child: FilledButton(
+                                        onPressed: _confirm,
+                                        style: FilledButton.styleFrom(
+                                          backgroundColor: colors.success,
+                                          foregroundColor: Colors.white,
+                                          padding: const EdgeInsets.symmetric(
+                                              vertical: 6),
+                                        ),
+                                        child: Text('Xác nhận',
+                                            style: GoogleFonts.beVietnamPro(
+                                                fontWeight: FontWeight.w700,
+                                                fontSize: 13)),
+                                      ),
+                                    ),
+                                  ],
                                 ],
-                              ],
-                            ),
-                    ],
+                              ),
+                      ],
 
-                    // Ghi nhận thanh toán (cọc/đủ tiền của khách) — chỉ
-                    // người quản lý, khi chưa thu tiền & booking còn hiệu lực.
-                    if (widget.canManage &&
-                        !booking.isPaid &&
-                        booking.status != BookingStatus.cancelled &&
-                        booking.status != BookingStatus.noShow) ...[
-                      const SizedBox(height: AppSpacing.sm),
-                      SizedBox(
-                        width: double.infinity,
-                        child: FilledButton.tonalIcon(
-                          onPressed: _actionLoading ? null : _markPaid,
-                          icon: const Icon(Icons.payments_rounded, size: 16),
-                          label: Text('Ghi nhận thanh toán',
-                              style: GoogleFonts.beVietnamPro(
-                                  fontWeight: FontWeight.w700, fontSize: 13)),
-                          style: FilledButton.styleFrom(
-                            padding: const EdgeInsets.symmetric(vertical: 6),
+                      // Ghi nhận thanh toán (cọc/đủ tiền của khách) — chỉ
+                      // người quản lý, khi chưa thu tiền & booking còn hiệu lực.
+                      if (widget.canManage &&
+                          !booking.isPaid &&
+                          booking.status != BookingStatus.cancelled &&
+                          booking.status != BookingStatus.noShow) ...[
+                        const SizedBox(height: AppSpacing.sm),
+                        SizedBox(
+                          width: double.infinity,
+                          child: FilledButton.tonalIcon(
+                            onPressed: _actionLoading ? null : _markPaid,
+                            icon: const Icon(Icons.payments_rounded, size: 16),
+                            label: Text('Ghi nhận thanh toán',
+                                style: GoogleFonts.beVietnamPro(
+                                    fontWeight: FontWeight.w700, fontSize: 13)),
+                            style: FilledButton.styleFrom(
+                              padding: const EdgeInsets.symmetric(vertical: 6),
+                            ),
                           ),
                         ),
-                      ),
+                      ],
                     ],
-                  ],
+                  ),
                 ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );

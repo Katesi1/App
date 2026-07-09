@@ -5,6 +5,7 @@ import 'package:google_fonts/google_fonts.dart';
 import '../../../core/theme/app_color_scheme.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../data/models/room_model.dart';
+import '../../../shared/widgets/rating_badge.dart';
 
 /// Room card matching HTML design screen 04:
 /// - Image area with gradient bg + status badge top-right
@@ -108,6 +109,17 @@ class _RoomCardState extends State<RoomCard> {
                       ),
                     ),
                   ),
+                  // Rating badge bottom-left — ẩn khi chưa có đánh giá.
+                  if (room.hasRating)
+                    Positioned(
+                      left: 10,
+                      bottom: 10,
+                      child: RatingBadge(
+                        ratingAvg: room.ratingAvg,
+                        reviewCount: room.reviewCount,
+                        onImage: true,
+                      ),
+                    ),
                 ],
               ),
 

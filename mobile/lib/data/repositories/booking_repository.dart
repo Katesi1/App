@@ -107,6 +107,25 @@ class BookingRepository {
     }
   }
 
+  /// Xác nhận khách nhận phòng + thu nốt tiền (§5.5). Body optional `{amount}`:
+  /// gửi amount → cộng dồn vào paidAmount; bỏ trống → BE thu cho đủ totalAmount.
+  /// Yêu cầu booking CONFIRMED → thành công chuyển COMPLETED.
+  Future<ApiResponse<BookingModel>> checkin(String id, {double? amount}) async {
+    try {
+      final response = await _dio.patch(
+        ApiConstants.bookingCheckin(id),
+        data: amount != null ? {'amount': amount} : null,
+      );
+      return ApiResponse(
+        success: true,
+        data: BookingModel.fromJson(response.data['data']),
+        message: response.data['message'] ?? '',
+      );
+    } on DioException catch (e) {
+      return ApiResponse(success: false, message: parseDioError(e));
+    }
+  }
+
   Future<ApiResponse<BookingModel>> updateBooking(
       String id, Map<String, dynamic> data) async {
     try {

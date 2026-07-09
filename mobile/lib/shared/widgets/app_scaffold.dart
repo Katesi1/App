@@ -22,6 +22,10 @@ class AppScaffold extends ConsumerWidget {
   final bool showAppBar;
   final PreferredSizeWidget? customAppBar;
 
+  /// Hiện bộ action mặc định (chuông thông báo, nút đổi theme, avatar). Tắt
+  /// cho các màn chi tiết/overlay — chỉ giữ `actions` do màn tự truyền.
+  final bool showDefaultActions;
+
   const AppScaffold({
     super.key,
     required this.title,
@@ -34,6 +38,7 @@ class AppScaffold extends ConsumerWidget {
     this.resizeToAvoidBottomInset = true,
     this.showAppBar = true,
     this.customAppBar,
+    this.showDefaultActions = true,
   });
 
   @override
@@ -48,57 +53,64 @@ class AppScaffold extends ConsumerWidget {
           (showAppBar
               ? AppBar(
                   title: Text(title),
-                  actions: [
-                    ...?actions,
-                    _NotificationBell(),
-                    IconButton(
-                      tooltip: isDark ? 'Chế độ sáng' : 'Chế độ tối',
-                      icon: AnimatedSwitcher(
-                        duration: const Duration(milliseconds: 300),
-                        transitionBuilder: (child, anim) => RotationTransition(
-                          turns: anim,
-                          child: FadeTransition(opacity: anim, child: child),
-                        ),
-                        child: Icon(
-                          isDark
-                              ? Icons.light_mode_rounded
-                              : Icons.dark_mode_rounded,
-                          key: ValueKey(isDark),
-                          color: isDark ? AppColors.oceanBright : Colors.white,
-                        ),
-                      ),
-                      onPressed: () =>
-                          ref.read(themeProvider.notifier).toggle(),
-                    ),
-                    Padding(
-                      padding: const EdgeInsets.only(right: AppSpacing.sm),
-                      child: GestureDetector(
-                        onTap: () => context.push('/profile'),
-                        child: Container(
-                          width: 36,
-                          height: 36,
-                          decoration: const BoxDecoration(
-                            shape: BoxShape.circle,
-                            gradient: LinearGradient(
-                              colors: [AppColors.teal, AppColors.gold],
+                  actions: showDefaultActions
+                      ? [
+                          ...?actions,
+                          _NotificationBell(),
+                          IconButton(
+                            tooltip: isDark ? 'Chế độ sáng' : 'Chế độ tối',
+                            icon: AnimatedSwitcher(
+                              duration: const Duration(milliseconds: 300),
+                              transitionBuilder: (child, anim) =>
+                                  RotationTransition(
+                                turns: anim,
+                                child:
+                                    FadeTransition(opacity: anim, child: child),
+                              ),
+                              child: Icon(
+                                isDark
+                                    ? Icons.light_mode_rounded
+                                    : Icons.dark_mode_rounded,
+                                key: ValueKey(isDark),
+                                color: isDark
+                                    ? AppColors.oceanBright
+                                    : Colors.white,
+                              ),
                             ),
+                            onPressed: () =>
+                                ref.read(themeProvider.notifier).toggle(),
                           ),
-                          child: Center(
-                            child: Text(
-                              user?.name.isNotEmpty == true
-                                  ? user!.name[0].toUpperCase()
-                                  : 'U',
-                              style: GoogleFonts.beVietnamPro(
-                                color: Colors.white,
-                                fontWeight: FontWeight.w700,
-                                fontSize: 13,
+                          Padding(
+                            padding:
+                                const EdgeInsets.only(right: AppSpacing.sm),
+                            child: GestureDetector(
+                              onTap: () => context.push('/profile'),
+                              child: Container(
+                                width: 36,
+                                height: 36,
+                                decoration: const BoxDecoration(
+                                  shape: BoxShape.circle,
+                                  gradient: LinearGradient(
+                                    colors: [AppColors.teal, AppColors.gold],
+                                  ),
+                                ),
+                                child: Center(
+                                  child: Text(
+                                    user?.name.isNotEmpty == true
+                                        ? user!.name[0].toUpperCase()
+                                        : 'U',
+                                    style: GoogleFonts.beVietnamPro(
+                                      color: Colors.white,
+                                      fontWeight: FontWeight.w700,
+                                      fontSize: 13,
+                                    ),
+                                  ),
+                                ),
                               ),
                             ),
                           ),
-                        ),
-                      ),
-                    ),
-                  ],
+                        ]
+                      : actions,
                 )
               : null),
       body: body,

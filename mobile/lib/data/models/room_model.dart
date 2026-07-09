@@ -114,6 +114,9 @@ class RoomModel {
   // Trạng thái kiểm duyệt cơ sở: pending | approved | rejected | suspended.
   // Mặc định 'approved' (BE tạo property mới = approved; legacy đã sweep).
   final String moderationStatus;
+  // Đánh giá denormalized từ BE (ratingAvg=0 khi reviewCount=0). Spec §4.5/§4.14.
+  final double ratingAvg;
+  final int reviewCount;
   final List<RoomImageModel> images;
   final RoomPriceModel? price;
   final HomestaySimpleModel? homestay;
@@ -141,6 +144,8 @@ class RoomModel {
     this.childSurcharge,
     this.isActive = true,
     this.moderationStatus = 'approved',
+    this.ratingAvg = 0,
+    this.reviewCount = 0,
     this.images = const [],
     this.price,
     this.homestay,
@@ -176,6 +181,8 @@ class RoomModel {
         childSurcharge: (json['childSurcharge'] as num?)?.toDouble(),
         isActive: json['isActive'] ?? true,
         moderationStatus: json['moderationStatus'] ?? 'approved',
+        ratingAvg: (json['ratingAvg'] as num?)?.toDouble() ?? 0,
+        reviewCount: (json['reviewCount'] as num?)?.toInt() ?? 0,
         images: (json['images'] as List<dynamic>?)
                 ?.map((e) => RoomImageModel.fromJson(e))
                 .toList() ??
@@ -214,6 +221,9 @@ class RoomModel {
 
   /// URL web preview cho khách xem thông tin phòng (không kèm giá).
   String get shareUrl => ApiConstants.propertyShareUrl(id);
+
+  /// Có đánh giá để hiển thị badge sao không (ẩn khi chưa ai review — spec §4.14).
+  bool get hasRating => reviewCount > 0;
 
   String? get coverImageUrl {
     if (images.isEmpty) return null;

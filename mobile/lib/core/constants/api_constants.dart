@@ -45,6 +45,7 @@ class ApiConstants {
   static String bookingConfirm(String id) => '/bookings/$id/confirm';
   static String bookingCancel(String id) => '/bookings/$id/cancel';
   static String bookingPaid(String id) => '/bookings/$id/paid';
+  static String bookingCheckin(String id) => '/bookings/$id/checkin';
   static String bookingUpdate(String id) => '/bookings/$id';
   static String bookingCalendar(String propertyId) =>
       '/bookings/calendar/$propertyId';

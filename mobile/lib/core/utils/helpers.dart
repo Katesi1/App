@@ -93,6 +93,16 @@ class AppHelpers {
     return '${tr}tr$rem';
   }
 
+  /// Giá đầy đủ có phân nhóm nghìn cho khối tiền chi tiết (booking detail,
+  /// hoá đơn): 4000000 → "4.000.000 ₫". Khác `formatPrice` (rút gọn "4tr").
+  static String formatVnd(double price) {
+    final grouped = price.round().toString().replaceAllMapped(
+          RegExp(r'(\d)(?=(\d{3})+(?!\d))'),
+          (m) => '${m[1]}.',
+        );
+    return '$grouped ₫';
+  }
+
   /// Display KPI number; 0 → "-" (avoids "0k" being misread as "Ok").
   static String formatIntOrDash(int value) => value == 0 ? '-' : '$value';
 

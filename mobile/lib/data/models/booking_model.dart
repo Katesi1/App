@@ -16,7 +16,19 @@ class BookingModel {
   // Payment (set qua PATCH /bookings/:id/paid) — null cho tới khi ghi nhận tiền.
   final double? totalAmount;
   final double? paidAmount;
+  // `= max(0, totalAmount − paidAmount)`; null khi totalAmount = null. BE trả
+  // sẵn — FE KHÔNG tự trừ (§5.3).
+  final double? remainingAmount;
   final DateTime? paidAt;
+  // Chi tiết tính giá từng đêm để hiển thị minh bạch. null khi chưa cấu hình giá.
+  final BookingPriceBreakdown? priceBreakdown;
+  // URL ảnh bill CK cọc khách gửi từ web (§5.6) — owner đối chiếu trước khi
+  // ghi nhận cọc. null khi khách chưa gửi.
+  final String? depositProofUrl;
+  // Thời điểm owner xác nhận khách nhận phòng qua PATCH /checkin (§5.5).
+  final DateTime? checkedInAt;
+  // Thời điểm booking hoàn tất (owner check-in hoặc cron auto-complete).
+  final DateTime? completedAt;
   final int guestCount;
   final String? notes;
   final int holdRemainingSeconds;
@@ -42,7 +54,12 @@ class BookingModel {
     this.depositAmount,
     this.totalAmount,
     this.paidAmount,
+    this.remainingAmount,
     this.paidAt,
+    this.priceBreakdown,
+    this.depositProofUrl,
+    this.checkedInAt,
+    this.completedAt,
     this.guestCount = 2,
     this.notes,
     this.holdRemainingSeconds = 0,
@@ -70,8 +87,20 @@ class BookingModel {
         depositAmount: (json['depositAmount'] as num?)?.toDouble(),
         totalAmount: (json['totalAmount'] as num?)?.toDouble(),
         paidAmount: (json['paidAmount'] as num?)?.toDouble(),
+        remainingAmount: (json['remainingAmount'] as num?)?.toDouble(),
         paidAt:
             json['paidAt'] != null ? DateTime.tryParse(json['paidAt']) : null,
+        priceBreakdown: json['priceBreakdown'] != null
+            ? BookingPriceBreakdown.fromJson(
+                json['priceBreakdown'] as Map<String, dynamic>)
+            : null,
+        depositProofUrl: json['depositProofUrl'],
+        checkedInAt: json['checkedInAt'] != null
+            ? DateTime.tryParse(json['checkedInAt'])
+            : null,
+        completedAt: json['completedAt'] != null
+            ? DateTime.tryParse(json['completedAt'])
+            : null,
         guestCount: json['guestCount'] ?? 2,
         notes: json['notes'],
         holdRemainingSeconds: json['holdRemainingSeconds'] ?? 0,
@@ -89,6 +118,15 @@ class BookingModel {
 
   /// Đã ghi nhận thanh toán (cọc hoặc đủ tiền) qua PATCH /bookings/:id/paid.
   bool get isPaid => paidAt != null;
+
+  /// Property chưa cấu hình giá → BE trả totalAmount = null (§5.3). UI hiện
+  /// "Chưa chốt giá", KHÔNG hardcode 0 ₫.
+  bool get hasPrice => totalAmount != null;
+
+  /// Booking đang CONFIRMED và chưa check-in → owner có thể xác nhận nhận
+  /// phòng + thu nốt (PATCH /bookings/:id/checkin, §5.5).
+  bool get canCheckin =>
+      status == BookingStatus.confirmed && checkedInAt == null;
 
   String get propertyName => property?['name'] ?? 'N/A';
 
@@ -108,6 +146,65 @@ class BookingModel {
         return cancelledByRole == null ? 'Hệ thống' : null;
     }
   }
+}
+
+/// Chi tiết tính giá booking (§5.3 `priceBreakdown`) — hiển thị minh bạch
+/// từng đêm + phụ thu để owner đối chiếu tổng tiền.
+class BookingPriceBreakdown {
+  final int nights;
+  final List<PriceLineItem> lineItems;
+  final int extraAdults;
+  final int extraChildren;
+  final double surchargePerNight;
+  final double surchargeTotal;
+  final double roomTotal;
+  final double total;
+
+  const BookingPriceBreakdown({
+    required this.nights,
+    required this.lineItems,
+    this.extraAdults = 0,
+    this.extraChildren = 0,
+    this.surchargePerNight = 0,
+    this.surchargeTotal = 0,
+    this.roomTotal = 0,
+    this.total = 0,
+  });
+
+  factory BookingPriceBreakdown.fromJson(Map<String, dynamic> json) =>
+      BookingPriceBreakdown(
+        nights: json['nights'] ?? 0,
+        lineItems: (json['lineItems'] as List?)
+                ?.map((e) => PriceLineItem.fromJson(e as Map<String, dynamic>))
+                .toList() ??
+            const [],
+        extraAdults: json['extraAdults'] ?? 0,
+        extraChildren: json['extraChildren'] ?? 0,
+        surchargePerNight: (json['surchargePerNight'] as num?)?.toDouble() ?? 0,
+        surchargeTotal: (json['surchargeTotal'] as num?)?.toDouble() ?? 0,
+        roomTotal: (json['roomTotal'] as num?)?.toDouble() ?? 0,
+        total: (json['total'] as num?)?.toDouble() ?? 0,
+      );
+}
+
+/// Một dòng giá theo đêm trong `priceBreakdown.lineItems`.
+/// [type]: `weekday | weekend | holiday`.
+class PriceLineItem {
+  final String date;
+  final String type;
+  final double amount;
+
+  const PriceLineItem({
+    required this.date,
+    required this.type,
+    required this.amount,
+  });
+
+  factory PriceLineItem.fromJson(Map<String, dynamic> json) => PriceLineItem(
+        date: json['date'] ?? '',
+        type: json['type'] ?? 'weekday',
+        amount: (json['amount'] as num?)?.toDouble() ?? 0,
+      );
 }
 
 class CalendarBooking {

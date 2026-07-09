@@ -62,6 +62,87 @@ void main() {
       expect(booking.holdRemainingSeconds, 0);
       expect(booking.propertyName, 'N/A');
       expect(booking.saleName, 'N/A');
+      // Money/checkin fields (v1.31) default null.
+      expect(booking.remainingAmount, isNull);
+      expect(booking.priceBreakdown, isNull);
+      expect(booking.depositProofUrl, isNull);
+      expect(booking.checkedInAt, isNull);
+      expect(booking.completedAt, isNull);
+    });
+
+    test('parses money + checkin fields and priceBreakdown (v1.31)', () {
+      final booking = BookingModel.fromJson({
+        'id': 'b-1',
+        'propertyId': 'p-1',
+        'checkinDate': '2026-06-15T00:00:00.000Z',
+        'checkoutDate': '2026-06-17T00:00:00.000Z',
+        'status': 1, // CONFIRMED
+        'totalAmount': 4000000,
+        'paidAmount': 0,
+        'remainingAmount': 4000000,
+        'depositProofUrl': 'https://res.cloudinary.com/x/bill.jpg',
+        'checkedInAt': null,
+        'priceBreakdown': {
+          'nights': 2,
+          'lineItems': [
+            {'date': '2026-06-15', 'type': 'weekday', 'amount': 2000000},
+            {'date': '2026-06-16', 'type': 'weekend', 'amount': 2000000},
+          ],
+          'extraAdults': 1,
+          'surchargeTotal': 0,
+          'roomTotal': 4000000,
+          'total': 4000000,
+        },
+      });
+
+      expect(booking.totalAmount, 4000000.0);
+      expect(booking.paidAmount, 0.0);
+      expect(booking.remainingAmount, 4000000.0);
+      expect(booking.depositProofUrl, 'https://res.cloudinary.com/x/bill.jpg');
+      expect(booking.hasPrice, true);
+      // CONFIRMED + checkedInAt null → có thể check-in.
+      expect(booking.canCheckin, true);
+
+      final bd = booking.priceBreakdown!;
+      expect(bd.nights, 2);
+      expect(bd.lineItems.length, 2);
+      expect(bd.lineItems.first.type, 'weekday');
+      expect(bd.lineItems.first.amount, 2000000.0);
+      expect(bd.extraAdults, 1);
+      expect(bd.total, 4000000.0);
+    });
+
+    test('hasPrice false + canCheckin false when appropriate', () {
+      // Chưa cấu hình giá → totalAmount null.
+      final noPrice = BookingModel.fromJson({
+        'id': 'b-2',
+        'propertyId': 'p-1',
+        'checkinDate': '2026-06-15T00:00:00.000Z',
+        'checkoutDate': '2026-06-17T00:00:00.000Z',
+        'status': 1,
+      });
+      expect(noPrice.hasPrice, false);
+
+      // Đã check-in → không cho check-in lại.
+      final checkedIn = BookingModel.fromJson({
+        'id': 'b-3',
+        'propertyId': 'p-1',
+        'checkinDate': '2026-06-15T00:00:00.000Z',
+        'checkoutDate': '2026-06-17T00:00:00.000Z',
+        'status': 1,
+        'checkedInAt': '2026-06-15T08:00:00.000Z',
+      });
+      expect(checkedIn.canCheckin, false);
+
+      // HOLD → chưa tới bước check-in.
+      final hold = BookingModel.fromJson({
+        'id': 'b-4',
+        'propertyId': 'p-1',
+        'checkinDate': '2026-06-15T00:00:00.000Z',
+        'checkoutDate': '2026-06-17T00:00:00.000Z',
+        'status': 0,
+      });
+      expect(hold.canCheckin, false);
     });
   });
 

@@ -10,9 +10,12 @@ class NotificationRepository {
   Future<ApiResponse<List<NotificationModel>>> getNotifications() async {
     try {
       final response = await _dio.get(ApiConstants.notifications);
-      final list = (response.data['data'] as List)
-          .map((e) => NotificationModel.fromJson(e))
-          .toList();
+      // BE trả Shape B: data = mảng, phân trang ở `meta` (ngang hàng data).
+      // Parse phòng thủ phòng khi BE chuẩn hoá sang `{ items }` sau này.
+      final data = response.data['data'];
+      final rawList = data is List ? data : (data?['items'] as List? ?? const []);
+      final list =
+          rawList.map((e) => NotificationModel.fromJson(e)).toList();
       return ApiResponse(success: true, data: list, message: '');
     } on DioException catch (e) {
       return ApiResponse(success: false, message: parseDioError(e));

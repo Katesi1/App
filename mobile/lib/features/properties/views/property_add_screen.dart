@@ -64,6 +64,9 @@ class _PropertyAddScreenState extends ConsumerState<PropertyAddScreen> {
   final _standardChildrenCtrl = TextEditingController();
   final _maxGuestsCtrl = TextEditingController();
 
+  // Trẻ em tự động = 1/2 người lớn cho tới khi OWNER tự sửa ô này.
+  bool _autoFillChildren = true;
+
   final _weekdayPriceCtrl = TextEditingController();
   final _weekendPriceCtrl = TextEditingController();
   final _holidayPriceCtrl = TextEditingController();
@@ -177,6 +180,16 @@ class _PropertyAddScreenState extends ConsumerState<PropertyAddScreen> {
     super.dispose();
   }
 
+  // Khi nhập số người lớn → tự điền trẻ em = 1/2 (làm tròn xuống).
+  // Chỉ tự điền khi OWNER chưa tự sửa ô trẻ em (vẫn cho phép sửa lại).
+  void _onAdultsChanged(String value) {
+    if (!_autoFillChildren) {
+      return;
+    }
+    final adults = int.tryParse(value.trim()) ?? 0;
+    _standardChildrenCtrl.text = (adults ~/ 2).toString();
+  }
+
   @override
   void initState() {
     super.initState();
@@ -227,9 +240,13 @@ class _PropertyAddScreenState extends ConsumerState<PropertyAddScreen> {
   void _applyRoomDefaults() {
     final effectiveRooms = _bedrooms == 0 ? 1 : _bedrooms;
     _bathrooms = effectiveRooms;
-    final guests = (effectiveRooms * 2).toString();
-    _standardGuestsCtrl.text = guests;
-    _maxGuestsCtrl.text = guests;
+    final adults = effectiveRooms * 2;
+    _standardGuestsCtrl.text = adults.toString();
+    _maxGuestsCtrl.text = adults.toString();
+    // Trẻ em = 1/2 người lớn cho tới khi OWNER tự sửa ô này.
+    if (_autoFillChildren) {
+      _standardChildrenCtrl.text = (adults ~/ 2).toString();
+    }
   }
 
   /// Bottom sheet nhập số phòng ngủ lớn (≥10).
@@ -723,14 +740,16 @@ class _PropertyAddScreenState extends ConsumerState<PropertyAddScreen> {
                                 ctrl: _standardGuestsCtrl,
                                 label: 'Người lớn',
                                 hint: 'VD: 10',
-                                keyboard: TextInputType.number)),
+                                keyboard: TextInputType.number,
+                                onChanged: _onAdultsChanged)),
                         const SizedBox(width: AppSpacing.md),
                         Expanded(
                             child: _Field(
                                 ctrl: _standardChildrenCtrl,
                                 label: 'Trẻ em',
                                 hint: 'VD: 2',
-                                keyboard: TextInputType.number)),
+                                keyboard: TextInputType.number,
+                                onChanged: (_) => _autoFillChildren = false)),
                         const SizedBox(width: AppSpacing.md),
                         Expanded(
                             child: _Field(
@@ -1124,6 +1143,7 @@ class _Field extends StatelessWidget {
   final List<TextInputFormatter>? inputFormatters;
   final String? suffix;
   final int? maxLines;
+  final ValueChanged<String>? onChanged;
 
   const _Field({
     required this.ctrl,
@@ -1134,6 +1154,7 @@ class _Field extends StatelessWidget {
     this.inputFormatters,
     this.suffix,
     this.maxLines,
+    this.onChanged,
   });
 
   @override
@@ -1155,6 +1176,7 @@ class _Field extends StatelessWidget {
               : keyboard,
           maxLines: maxLines ?? 1,
           validator: validator,
+          onChanged: onChanged,
           inputFormatters: inputFormatters,
           style: GoogleFonts.beVietnamPro(fontSize: 14),
           decoration: InputDecoration(

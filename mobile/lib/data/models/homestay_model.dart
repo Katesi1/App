@@ -11,6 +11,9 @@ class HomestayModel {
   final List<String>? rules;
   final List<String>? services;
   final bool isActive;
+  // Đánh giá denormalized từ BE (ratingAvg=0 khi reviewCount=0). Spec §4.5.
+  final double ratingAvg;
+  final int reviewCount;
   final Map<String, dynamic>? owner;
   final int? roomCount;
   final String? createdAt;
@@ -29,6 +32,8 @@ class HomestayModel {
     this.rules,
     this.services,
     this.isActive = true,
+    this.ratingAvg = 0,
+    this.reviewCount = 0,
     this.owner,
     this.roomCount,
     this.createdAt,
@@ -56,6 +61,8 @@ class HomestayModel {
                 ? [json['services'] as String]
                 : null,
         isActive: json['isActive'] ?? true,
+        ratingAvg: (json['ratingAvg'] as num?)?.toDouble() ?? 0,
+        reviewCount: (json['reviewCount'] as num?)?.toInt() ?? 0,
         owner: json['owner'],
         roomCount: json['_count']?['rooms'],
         createdAt: json['createdAt'],
@@ -64,4 +71,7 @@ class HomestayModel {
 
   String get ownerName => owner?['name'] ?? 'N/A';
   String get ownerPhone => owner?['phone'] ?? '';
+
+  /// Có đánh giá để hiển thị badge sao không (ẩn khi chưa ai review — spec §4.5).
+  bool get hasRating => reviewCount > 0;
 }

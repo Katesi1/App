@@ -49,8 +49,11 @@ String? _routeForType(String? type, String? targetId, String? deepLink) {
     'booking_created' ||
     'booking_confirmed' ||
     'booking_paid' ||
-    'booking_cancelled' =>
-      '/bookings',
+    'booking_cancelled' ||
+    'booking_deposit_proof' ||
+    'booking_checkin_reminder' ||
+    'booking_completed' =>
+      id != null ? '/bookings/$id' : '/bookings',
     'property_approved' ||
     'property_rejected' ||
     'property_suspended' ||

@@ -12,6 +12,7 @@ import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../data/models/room_model.dart';
 import '../../../shared/widgets/loading_widget.dart';
+import '../../../shared/widgets/rating_badge.dart';
 import '../controllers/room_controller.dart';
 
 class RoomDetailScreen extends ConsumerWidget {
@@ -121,6 +122,16 @@ class RoomDetailScreen extends ConsumerWidget {
                               : colors.textSecondary,
                         ),
                       ),
+                      if (room.hasRating) ...[
+                        const SizedBox(height: 12),
+                        Align(
+                          alignment: Alignment.centerLeft,
+                          child: RatingBadge(
+                            ratingAvg: room.ratingAvg,
+                            reviewCount: room.reviewCount,
+                          ),
+                        ).animate(delay: 80.ms).fadeIn(duration: 300.ms),
+                      ],
                       const SizedBox(height: 16),
                       Wrap(
                         spacing: 10,

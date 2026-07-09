@@ -166,6 +166,20 @@ class BookingActionsNotifier extends StateNotifier<AsyncValue<void>> {
     return false;
   }
 
+  /// Xác nhận nhận phòng + thu nốt tiền của khách → booking COMPLETED (§5.5).
+  Future<bool> checkin(String id, {double? amount}) async {
+    state = const AsyncValue.loading();
+    final result = await _repo.checkin(id, amount: amount);
+    if (result.success) {
+      _ref.invalidate(bookingDetailProvider(id));
+      _refreshAll();
+      state = const AsyncValue.data(null);
+      return true;
+    }
+    state = AsyncValue.error(result.message, StackTrace.current);
+    return false;
+  }
+
   Future<bool> update(String id, Map<String, dynamic> data) async {
     state = const AsyncValue.loading();
     final result = await _repo.updateBooking(id, data);

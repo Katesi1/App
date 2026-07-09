@@ -81,14 +81,33 @@ void main() {
       );
     });
 
-    test('booking_* → /bookings', () {
+    test('booking_* thiếu id → /bookings (list)', () {
       for (final t in [
         'booking_created',
         'booking_confirmed',
         'booking_paid',
         'booking_cancelled',
+        'booking_deposit_proof',
+        'booking_checkin_reminder',
+        'booking_completed',
       ]) {
         expect(resolveNotificationRoute({'type': t}), '/bookings');
+      }
+    });
+
+    test('booking_* có targetId → /bookings/:id (v1.31 deeplink)', () {
+      for (final t in [
+        'booking_created',
+        'booking_confirmed',
+        'booking_paid',
+        'booking_deposit_proof',
+        'booking_checkin_reminder',
+        'booking_completed',
+      ]) {
+        expect(
+          resolveNotificationRoute({'type': t, 'targetId': 'bk-9'}),
+          '/bookings/bk-9',
+        );
       }
     });
 

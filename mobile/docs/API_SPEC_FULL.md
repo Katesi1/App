@@ -3,7 +3,7 @@
 > Tài liệu chính thức cho team FE Web (Next.js admin/host) và App Mobile (Android/iOS).
 > Bao gồm tất cả endpoint, schema response, business rule, WebSocket guide và integration checklist.
 >
-> **Cập nhật**: 2026-07-09 (v1.31 — Booking check-in flow: `POST /bookings/:id/deposit-proof` (ảnh bill cọc) + `PATCH /bookings/:id/checkin` (xác nhận nhận phòng + thu nốt → COMPLETED) + cron nhắc 15h. Xem §5.5, §5.6, changelog §21) · **BE base**: NestJS 11 · **DB**: PostgreSQL + Prisma · **Auth**: JWT · **Real-time**: Socket.IO
+> **Cập nhật**: 2026-07-09 (v1.33 — Đánh giá chỉ mở sau 12h trưa ngày trả phòng: BookingDto thêm `canReview` + `reviewUnlockAt`; review 400 `reviewNotYetAllowed` nếu chưa tới mốc. Xem §7, §5.3, changelog §21) · **BE base**: NestJS 11 · **DB**: PostgreSQL + Prisma · **Auth**: JWT · **Real-time**: Socket.IO
 
 ---
 
@@ -902,7 +902,7 @@ Một số action chỉ hợp lệ ở state nhất định:
 |---|---|---|
 | `PATCH /bookings/:id/confirm` | Booking đang HOLD | 400 `onlyConfirmHold` |
 | `PATCH /bookings/:id/customer-cancel` | Booking đang HOLD và thuộc customer | 400 `onlyCancelHold` hoặc `notYourBooking` |
-| `POST /properties/:id/reviews` | Có booking COMPLETED tương ứng và chưa review | 400 `bookingNotCompleted` hoặc 409 `alreadyReviewed` |
+| `POST /properties/:id/reviews` | Booking COMPLETED, đã qua 12h trưa ngày checkout, chưa review | 400 `bookingNotCompleted` / `reviewNotYetAllowed` hoặc 409 `alreadyReviewed` |
 | `POST /admin/disputes/:id/resolve` | Dispute đang pending/investigating | 400 `alreadyClosed` |
 | `POST /admin/subscriptions/.../mark-paid` | Trong 10 giây vừa rồi chưa có mark-paid khác | 409 `markPaidDuplicate` (chống double-click) |
 | `POST /admin/users/:id/trial` | User KHÔNG đang ACTIVE và KHÔNG đang FROZEN | 409 `alreadyActive` hoặc `cannotGrantTrialFrozen` |
@@ -1695,6 +1695,8 @@ Khách (CUSTOMER) đặt giữ chỗ 24h. Từ v1.26 **bắt buộc gửi thông
   "host": { "name": "Nguyễn Văn A", "phone": null },
   "cancellationPolicy": 1,
   "hasReview": false,
+  "canReview": false,
+  "reviewUnlockAt": "2026-06-17T05:00:00.000Z",
   "depositDeadlineAt": "2026-06-04T11:00:00.000Z",
   "depositProofUrl": null,
   "checkedInAt": null,
@@ -1717,7 +1719,9 @@ Status: `0=HOLD, 1=CONFIRMED, 2=CANCELLED, 3=COMPLETED, 4=NO_SHOW`
 | `coverImageUrl` | `string \| null` | Ảnh cover (fallback ảnh đầu danh sách) |
 | `host` | `{ name, phone } \| null` | Chủ nhà. **`phone` CHỈ trả khi `status >= CONFIRMED` (= 1, 3, 4)** — tránh leak số trước khi cọc. HOLD/CANCELLED → `phone = null` |
 | `cancellationPolicy` | `0 \| 1 \| 2 \| null` | Chính sách huỷ của property: 0=FLEXIBLE, 1=MODERATE, 2=STRICT. Xem [§19 Enums](#19-enums-reference) |
-| `hasReview` | `boolean` | True nếu customer đã review booking này → FE disable nút "Đánh giá" |
+| `hasReview` | `boolean` | True nếu customer đã review booking này. |
+| `canReview` (v1.33) | `boolean` | True **chỉ khi**: `status=COMPLETED` **và** chưa review **và** đã qua **12h trưa ngày trả phòng**. FE dùng cờ này để enable nút "Đánh giá" (KHÔNG chỉ dựa `status=COMPLETED` — vì check-in có thể đưa booking sang COMPLETED sớm khi khách chưa trả phòng). |
+| `reviewUnlockAt` (v1.33) | `ISO \| null` | Mốc mở đánh giá = `checkoutDate + 12h trưa VN`. FE hiển thị "Đánh giá sau {ngày}" khi chưa tới mốc. `null` nếu thiếu checkoutDate. |
 | `depositDeadlineAt` | `ISO \| null` | Hạn cọc: HOLD = `holdExpireAt` (countdown khách phải cọc trong cửa sổ này); CONFIRMED/CANCELLED/... = `null` (chưa có business rule riêng cho CONFIRMED) |
 | `paymentInfo` | `object \| null` | **Thông tin chuyển khoản + VietQR động** cho khách trả cọc. Xem shape bên dưới |
 
@@ -1950,6 +1954,8 @@ Status string: `available | hold | booked | locked`.
 |---|---|---|---|
 | `POST` | `/properties/:id/reviews` | CUSTOMER | `{ bookingId, cleanliness, location, amenities, service, value, accuracy (1-5), comment?, photos?[] }` |
 | `GET` | `/properties/:id/reviews?page&pageSize&sort&minRating` | Public | sort: `newest\|oldest\|highest\|lowest` |
+
+> **Điều kiện đánh giá (v1.33)**: booking phải `status=COMPLETED` **VÀ** đã qua **12h trưa (giờ VN) ngày trả phòng** (`checkoutDate + 5h`) **VÀ** chưa review. Chưa tới mốc → 400 `reviews.reviewNotYetAllowed` ("Chỉ có thể đánh giá sau 12h trưa ngày trả phòng"). Lý do: owner check-in (§5.5) đưa booking sang COMPLETED **sớm** khi khách vừa nhận phòng (chưa trả phòng) — nhưng đánh giá chỉ hợp lệ sau khi kết thúc kỳ lưu trú. FE dùng `booking.canReview` / `booking.reviewUnlockAt` (§5.3) để enable nút, không tự suy từ `status`.
 | `POST` | `/properties/:id/reviews/:reviewId/reply` | ADMIN/OWNER | `{ reply }` |
 
 ### 7.2 Admin moderation
@@ -2135,7 +2141,7 @@ Endpoints KPI cho Owner/Sale/Admin. Auth: Bearer. Roles: ADMIN, OWNER, SALE.
 - `occupancyRate` top-level + `previousPeriod.occupancy` = **0..100** (đã ×100, FE chỉ append `%`)
 - `revenueByDay[].occupancy` + `topRooms[].occupancy` + `dayOfWeekOccupancy.values[]` = **0..1** (FE ×100 khi plot)
 
-**Nguồn doanh thu**: aggregate `Booking.depositAmount` của booking `status ∈ {CONFIRMED, COMPLETED}` overlapping kỳ. Revenue mỗi ngày = chia đều `depositAmount / số đêm`.
+**Nguồn doanh thu (sửa v1.32)**: aggregate **`Booking.paidAmount`** (tiền THỰC thu) của booking `status ∈ {CONFIRMED, COMPLETED}` overlapping kỳ. Revenue mỗi ngày = chia đều `paidAmount / số đêm`. Trước v1.32 dùng `depositAmount` → booking khách (`customer-hold`, `depositAmount=null`) cho doanh thu = 0 dù đã thu đủ tiền; nay dùng `paidAmount` phản ánh đúng tiền đã nhận.
 
 ### 7A.5 GET /admin/reports/risk-kpis — Risk KPIs cho trang admin reports
 
@@ -2199,10 +2205,16 @@ Base path: `/notifications`. Auth required.
 
 | Method | Path | Mô tả |
 |---|---|---|
-| `GET` | `/notifications?type&isRead&page&limit` | List |
+| `GET` | `/notifications?type&isRead&page&limit` | List — **Shape B** (xem dưới) |
 | `GET` | `/notifications/unread-count` | `{ count }` |
 | `PATCH` | `/notifications/:id/read` | Mark 1 read |
 | `PATCH` | `/notifications/read-all` | Mark all read |
+
+> **Response shape `GET /notifications` (Shape B — đính chính 2026-07-09)**: `data` là **MẢNG** `NotificationDto[]`, phân trang ở `meta` top-level (sibling của `data`), KHÔNG bọc trong object `{ items }`:
+> ```jsonc
+> { "success": true, "message": "...", "data": [ /* NotificationDto */ ], "meta": { "total": 120, "page": 1, "limit": 50 } }
+> ```
+> App parse `response.data['data'] as List` → ĐÚNG. Đọc paging ở `response.data['meta']`. (Trước đây §22 C3 liệt kê nhầm endpoint này ở Shape A — đã sửa.)
 
 ### 8.2 NotificationDto
 
@@ -3462,6 +3474,30 @@ CONVERSATION_MEMBER_ROLE = 'owner' | 'sale' | 'customer' | 'admin'
 
 ## 21. Changelog & Bug fixes
 
+### v1.33 — 2026-07-09 (Đánh giá chỉ mở sau 12h trưa ngày trả phòng)
+
+Làm rõ nghiệp vụ: check-in thu tiền full + đưa booking sang COMPLETED **ngay khi khách nhận phòng** (giữ nguyên), nhưng **đánh giá chỉ được sau khi trả phòng**.
+
+| Thay đổi | Chi tiết |
+|---|---|
+| `POST /properties/:id/reviews` | Ngoài `status=COMPLETED` + chưa review, thêm điều kiện **đã qua 12h trưa (VN) ngày trả phòng** (`checkoutDate + 5h`). Chưa tới → 400 `reviews.reviewNotYetAllowed`. Trước đây COMPLETED (do check-in sớm) là đánh giá được ngay — sai. |
+| BookingDto | Thêm `canReview: boolean` (đủ 3 điều kiện) + `reviewUnlockAt: ISO` (mốc mở đánh giá). FE enable nút "Đánh giá" theo `canReview`, hiển thị "Đánh giá sau {ngày}" khi chưa tới. |
+| i18n | `reviews.reviewNotYetAllowed` (vi/en). |
+
+**Breaking?** Không — chỉ siết điều kiện + thêm 2 field. FE nên chuyển nút đánh giá sang đọc `canReview` thay vì tự suy từ `status=COMPLETED`.
+
+### v1.32 — 2026-07-09 (Fix hệ quả v1.31: dashboard "đang có khách"=0, đặt trùng lịch, doanh thu=null)
+
+3 bug do quyết định v1.31 (`/checkin` đưa booking sang `COMPLETED` ngay khi khách nhận phòng dù vẫn đang lưu trú) + do doanh thu tính nhầm field.
+
+| Bug | Thay đổi |
+|---|---|
+| **Dashboard "đang có khách" = 0** | `GET /dashboard/stats` `occupiedRooms` cũ lọc `status ∈ {HOLD, CONFIRMED}` → loại COMPLETED-đang-lưu-trú → 0. Nay gồm `COMPLETED`; window `checkinDate <= now < checkoutDate` vẫn loại đúng booking đã trả phòng. `checkoutToday` cũng gồm COMPLETED. |
+| **⚠️ Rủi ro ĐẶT TRÙNG lịch** | Check trùng lịch (`POST /bookings/hold`, `/customer-hold`, `POST /partner/bookings`), filter phòng đã đặt trong `GET /properties/search` + `/public`, availability `GET /partner/properties/:id/availability`, và calendar grid/lock **cũ chỉ chặn `[HOLD, CONFIRMED]`** → booking check-in sớm (COMPLETED, còn trong kỳ) KHÔNG chặn đặt đè + hiện "trống". Nay dùng `[HOLD, CONFIRMED, COMPLETED]` (hằng số `BLOCKING_BOOKING_STATUSES`). Booking đã trả phòng (checkout đã qua) không overlap với đặt mới (checkin ≥ hôm nay) nên an toàn. Ô lịch của ngày COMPLETED-đang-ở giờ hiện `booked` (trước hiện `hold` sai). |
+| **Doanh thu = null dù đã thu đủ** | Dashboard + `GET /reports` tính doanh thu bằng `depositAmount` → booking khách (`customer-hold`, `depositAmount=null`) cho doanh thu = 0 dù đã thu full. Nay dùng **`paidAmount`** (tiền thực thu). Xem §7A.4. |
+
+**Breaking?** Không — chỉ sửa cách đếm/tính, shape response giữ nguyên. FE không cần đổi.
+
 ### v1.31 — 2026-07-09 (Booking check-in flow: ảnh bill cọc + xác nhận nhận phòng + thu nốt → hoàn tất)
 
 Hoàn thiện luồng booking khách: khách gửi ảnh bill cọc, owner check-in + thu nốt, nhắc check-in 15h.
@@ -4170,10 +4206,11 @@ ThrottlerModule mặc định **không trả** `X-RateLimit-Remaining` / `Retry-
 **Listing endpoints đều trả 1 trong 2 shape**:
 
 **Shape A** — `{ items, total, page, limit, totalPages }`:
-- `/admin/subscriptions`, `/admin/disputes`, `/admin/audit-log`, `/admin/reviews`, `/conversations`, `/notifications`, `/bookings/my-bookings`, `/leads`
+- `/admin/subscriptions`, `/admin/disputes`, `/admin/audit-log`, `/admin/reviews`, `/conversations`, `/bookings/my-bookings`, `/leads`
 
-**Shape B** — array trực tiếp + `meta`:
+**Shape B** — `data` là array trực tiếp + `meta` ở top-level (sibling của `data`, KHÔNG bọc trong `data`):
 - `/bookings` → `data: BookingDto[], meta: { total, page, limit }`
+- **`/notifications`** → `data: NotificationDto[], meta: { total, page, limit }` — ⚠️ **đính chính 2026-07-09**: trước đây liệt kê nhầm ở Shape A. BE thực tế trả `data` là **MẢNG**; phân trang ở `response.data.meta` (KHÔNG có `items` bên trong `data`). App parse `response.data['data'] as List` là ĐÚNG với thực tế; đọc `response.data['meta']` cho total/page/limit.
 
 **Endpoint trả array plain (không paginate)**:
 - `/users`, `/users/my-staff`, `/users/available-staff`, `/staff`, `/staff/invites`, `/properties`, `/properties/public`, `/billing/plans`, `/notifications/unread-count` (object), `/calendar/properties`, `/devices`, `/admin/emails/templates`
