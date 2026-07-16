@@ -1,55 +1,32 @@
-import 'package:animations/animations.dart';
-import 'package:flutter/material.dart';
-import 'package:go_router/go_router.dart';
+import 'package:flutter/cupertino.dart';
 
-/// Horizontal shared-axis (list → sub-list level)
+/// Page transitions — dùng [CupertinoPage] để mọi trang push đều có cử chỉ
+/// vuốt-cạnh-trái-để-back (interactive edge swipe-back), hoạt động trên cả
+/// Android lẫn iOS (do [CupertinoRouteTransitionMixin] cung cấp, không phụ
+/// thuộc platform).
+///
+/// 3 hàm dưới đây giữ nguyên tên + chữ ký cũ để router không phải đổi call-site;
+/// tất cả cùng trả [CupertinoPage] (trượt ngang iOS-style + swipe-back). Cử chỉ
+/// tự động vô hiệu khi trang là route gốc (không có gì để back) hoặc khi màn
+/// đăng ký chặn pop (PopScope/onPopInvoked).
+
+/// Điều hướng phân cấp (list → detail). Trượt ngang + swipe-back.
 Page<T> horizontalPage<T>({
   required LocalKey key,
   required Widget child,
 }) =>
-    CustomTransitionPage<T>(
-      key: key,
-      child: child,
-      transitionDuration: const Duration(milliseconds: 300),
-      reverseTransitionDuration: const Duration(milliseconds: 250),
-      transitionsBuilder: (_, animation, secondaryAnimation, c) =>
-          SharedAxisTransition(
-        animation: animation,
-        secondaryAnimation: secondaryAnimation,
-        transitionType: SharedAxisTransitionType.horizontal,
-        child: c,
-      ),
-    );
+    CupertinoPage<T>(key: key, child: child);
 
-/// Vertical slide-up (detail screens, calendar)
+/// Trước là slide-up; nay dùng chung Cupertino để có swipe-back đồng nhất.
 Page<T> slideUpPage<T>({
   required LocalKey key,
   required Widget child,
 }) =>
-    CustomTransitionPage<T>(
-      key: key,
-      child: child,
-      transitionDuration: const Duration(milliseconds: 350),
-      reverseTransitionDuration: const Duration(milliseconds: 280),
-      transitionsBuilder: (_, animation, secondaryAnimation, c) =>
-          SharedAxisTransition(
-        animation: animation,
-        secondaryAnimation: secondaryAnimation,
-        transitionType: SharedAxisTransitionType.vertical,
-        child: c,
-      ),
-    );
+    CupertinoPage<T>(key: key, child: child);
 
-/// Fade-scale (modal forms sliding up from bottom)
+/// Trước là fade-scale (modal form); nay dùng chung Cupertino để có swipe-back.
 Page<T> fadeScalePage<T>({
   required LocalKey key,
   required Widget child,
 }) =>
-    CustomTransitionPage<T>(
-      key: key,
-      child: child,
-      transitionDuration: const Duration(milliseconds: 300),
-      reverseTransitionDuration: const Duration(milliseconds: 250),
-      transitionsBuilder: (_, animation, secondaryAnimation, c) =>
-          FadeScaleTransition(animation: animation, child: c),
-    );
+    CupertinoPage<T>(key: key, child: child);

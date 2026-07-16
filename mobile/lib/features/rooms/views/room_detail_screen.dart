@@ -12,7 +12,9 @@ import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../data/models/room_model.dart';
 import '../../../shared/widgets/loading_widget.dart';
+import '../../../shared/widgets/owner_info_tile.dart';
 import '../../../shared/widgets/pull_to_refresh.dart';
+import '../../auth/controllers/auth_controller.dart';
 import '../controllers/room_controller.dart';
 
 class RoomDetailScreen extends ConsumerWidget {
@@ -24,6 +26,8 @@ class RoomDetailScreen extends ConsumerWidget {
     final roomAsync = ref.watch(roomDetailProvider(roomId));
     final colors = context.colors;
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final showOwner =
+        ref.watch(currentUserProvider)?.seesCrossOwnerData ?? false;
     return roomAsync.when(
       loading: () => Scaffold(
         appBar: AppBar(),
@@ -120,6 +124,15 @@ class RoomDetailScreen extends ConsumerWidget {
                           .slideY(begin: 0.08, end: 0),
 
                       const SizedBox(height: 10),
+
+                      // ── Chủ sở hữu (ADMIN / SALE hệ thống) ──────────
+                      if (showOwner) ...[
+                        OwnerInfoTile(
+                          name: room.ownerName,
+                          phone: room.ownerPhone,
+                        ).animate(delay: 60.ms).fadeIn(duration: 300.ms),
+                        const SizedBox(height: 14),
+                      ],
 
                       // ── Price ────────────────────────────────────────
                       Text(

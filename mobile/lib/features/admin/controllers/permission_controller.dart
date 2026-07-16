@@ -1,79 +1,63 @@
+import 'dart:async';
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
-import '../../../core/constants/app_constants.dart';
-import '../data/models/permission_model.dart';
+import '../../../data/models/user_model.dart';
+import '../data/models/user_permission.dart';
+import '../data/repositories/permission_repository.dart';
 
-class PermissionNotifier extends StateNotifier<List<PermissionGroup>> {
-  PermissionNotifier(this._role) : super([]) {
-    _load();
+// ─── Repository provider ──────────────────────────────────────────────────────
+final permissionRepositoryProvider = Provider<PermissionRepository>(
+  (ref) => PermissionRepository(),
+);
+
+// ─── Danh sách SALE hệ thống (ADMIN) ─────────────────────────────────────────
+final systemSaleListProvider =
+    FutureProvider.autoDispose<List<UserModel>>((ref) async {
+  final link = ref.keepAlive();
+  final timer = Timer(const Duration(minutes: 2), link.close);
+  ref.onDispose(timer.cancel);
+  final repo = ref.watch(permissionRepositoryProvider);
+  final result = await repo.listSystemStaff();
+  if (result.success) {
+    return result.data ?? (throw Exception('Dữ liệu trả về trống'));
   }
+  throw Exception(result.message);
+});
 
-  final UserRole _role;
-  static const String _keyPrefix = 'role_permissions_v1_';
-
-  String get _storageKey => '$_keyPrefix${_role.value}';
-
-  Future<void> _load() async {
-    final prefs = await SharedPreferences.getInstance();
-    final saved = _readMap(prefs);
-    state = PermissionDefinitions.applyOverrides(_role, saved);
+// ─── Quyền của 1 user ────────────────────────────────────────────────────────
+final userPermissionsProvider = FutureProvider.autoDispose
+    .family<List<UserPermission>, String>((ref, userId) async {
+  final repo = ref.watch(permissionRepositoryProvider);
+  final result = await repo.getPermissions(userId);
+  if (result.success) {
+    return result.data ?? (throw Exception('Dữ liệu trả về trống'));
   }
+  throw Exception(result.message);
+});
 
-  Map<String, bool> _readMap(SharedPreferences prefs) {
-    final keys = prefs.getKeys().where((k) => k.startsWith('${_storageKey}_'));
-    final map = <String, bool>{};
-    for (final k in keys) {
-      final entryId = k.substring('${_storageKey}_'.length);
-      map[entryId] = prefs.getBool(k) ?? false;
+// ─── Action lưu quyền (PUT) ──────────────────────────────────────────────────
+class PermissionSaveNotifier extends StateNotifier<AsyncValue<void>> {
+  final PermissionRepository _repo;
+  final Ref _ref;
+
+  PermissionSaveNotifier(this._repo, this._ref)
+      : super(const AsyncValue.data(null));
+
+  Future<bool> save(String userId, List<UserPermission> permissions) async {
+    state = const AsyncValue.loading();
+    final result = await _repo.updatePermissions(userId, permissions);
+    if (result.success) {
+      _ref.invalidate(userPermissionsProvider(userId));
+      state = const AsyncValue.data(null);
+      return true;
     }
-    return map;
-  }
-
-  void toggleGroup(String groupId) {
-    final updated = state.map((g) {
-      if (g.id != groupId) return g;
-      return g.withAllEnabled(!g.allEnabled);
-    }).toList();
-    state = updated;
-  }
-
-  void toggleSubGroup(String groupId, String subGroupId) {
-    final updated = state.map((g) {
-      if (g.id != groupId) return g;
-      return g.withSubGroupToggled(subGroupId);
-    }).toList();
-    state = updated;
-  }
-
-  void toggleEntry(String groupId, String subGroupId, String entryId) {
-    final updated = state.map((g) {
-      if (g.id != groupId) return g;
-      return g.withEntryToggled(subGroupId, entryId);
-    }).toList();
-    state = updated;
-  }
-
-  Future<void> save() async {
-    final prefs = await SharedPreferences.getInstance();
-    final map = PermissionDefinitions.toMap(state);
-    for (final entry in map.entries) {
-      await prefs.setBool('${_storageKey}_${entry.key}', entry.value);
-    }
-  }
-
-  Future<void> resetToDefaults() async {
-    final prefs = await SharedPreferences.getInstance();
-    final keysToRemove =
-        prefs.getKeys().where((k) => k.startsWith('${_storageKey}_')).toList();
-    for (final k in keysToRemove) {
-      await prefs.remove(k);
-    }
-    state = PermissionDefinitions.defaultsForRole(_role);
+    state = AsyncValue.error(result.message, StackTrace.current);
+    return false;
   }
 }
 
-final rolePermissionsProvider = StateNotifierProvider.family<PermissionNotifier,
-    List<PermissionGroup>, UserRole>(
-  (ref, role) => PermissionNotifier(role),
-);
+final permissionSaveProvider =
+    StateNotifierProvider<PermissionSaveNotifier, AsyncValue<void>>((ref) {
+  return PermissionSaveNotifier(ref.read(permissionRepositoryProvider), ref);
+});

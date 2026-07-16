@@ -1,10 +1,12 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../models/abuse_report.dart';
-import 'mock_abuse_report_repository.dart';
+import 'abuse_report_repository_impl.dart';
 
+/// Real impl gọi backend Disputes (`/admin/disputes`). QA override bằng
+/// `abuseReportRepositoryProvider.overrideWithValue(MockAbuseReportRepository())`.
 final abuseReportRepositoryProvider = Provider<AbuseReportRepository>(
-  (ref) => MockAbuseReportRepository(),
+  (ref) => AbuseReportRepositoryImpl(),
 );
 
 abstract class AbuseReportRepository {

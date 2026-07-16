@@ -90,6 +90,16 @@ class BookingModel {
   String get propertyName => property?['name'] ?? 'N/A';
 
   String get saleName => sale?['name'] ?? 'N/A';
+
+  /// Thông tin chủ sở hữu property — chỉ có ở `GET /bookings/:id` (detail),
+  /// KHÔNG có ở list. Dùng cho ADMIN / SALE hệ thống xem data cross-owner.
+  Map<String, dynamic>? get owner => property?['owner'] is Map<String, dynamic>
+      ? property!['owner'] as Map<String, dynamic>
+      : null;
+
+  String get ownerName => owner?['name'] ?? 'N/A';
+
+  String get ownerPhone => owner?['phone'] ?? '';
 }
 
 class CalendarBooking {

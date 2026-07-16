@@ -31,6 +31,17 @@ class UserModel {
   final String? ownerId;
   final String? saleMembershipStatus;
 
+  /// Phạm vi SALE (BE §26.1): `owner` = SALE thuộc 1 OWNER (chỉ thấy data owner
+  /// mình), `system` = SALE hệ thống admin-grade (thấy toàn hệ thống). Mặc
+  /// định `owner` để tương thích backend cũ.
+  @JsonKey(defaultValue: 'owner')
+  final String scope;
+
+  /// Thông tin chủ sở hữu `{id, name, phone}` — BE chỉ đính kèm ở item
+  /// `GET /staff` (v1.44) để ADMIN/SALE hệ thống biết SALE thuộc OWNER nào.
+  /// Null ở các shape user khác (login/profile...).
+  final Map<String, dynamic>? owner;
+
   // ── KYC + Subscription (BE trả từ /auth/profile) ──
   @JsonKey(defaultValue: 'none')
   final String kycStatus; // none | pending | approved | rejected
@@ -71,6 +82,8 @@ class UserModel {
     this.dateOfBirth,
     this.ownerId,
     this.saleMembershipStatus,
+    this.scope = 'owner',
+    this.owner,
     this.kycStatus = 'none',
     this.kycBypass = false,
     this.kycSubmissionId,
@@ -154,6 +167,25 @@ class UserModel {
 
   /// ID owner hiệu lực: OWNER → mình, SALE → ownerId
   String? get effectiveOwnerId => isOwner ? id : (isSale ? ownerId : null);
+
+  /// Tên/SĐT chủ sở hữu (từ quan hệ `owner` ở item GET /staff). Rỗng nếu BE
+  /// không đính kèm (shape user khác).
+  String get ownerName => (owner?['name'] as String?)?.trim().isNotEmpty == true
+      ? owner!['name'] as String
+      : '';
+  String get ownerPhone =>
+      (owner?['phone'] as String?)?.trim().isNotEmpty == true
+          ? owner!['phone'] as String
+          : '';
+
+  /// SALE hệ thống (scope=system): admin-grade, thấy toàn hệ thống. Phân biệt
+  /// với SALE owner-scope (chỉ thấy data của 1 owner).
+  bool get isSystemSale => isSale && scope == 'system';
+
+  /// Viewer thấy dữ liệu cross-owner (ADMIN hoặc SALE hệ thống) → cần hiển thị
+  /// thông tin chủ sở hữu (owner tên + SĐT) trên các list/detail dùng chung.
+  /// OWNER và SALE owner-scope chỉ thấy data của mình nên không cần.
+  bool get seesCrossOwnerData => isAdmin || isSystemSale;
 
   // ── KYC helpers ──
   bool get isKycApproved => kycStatus == 'approved';
@@ -342,6 +374,8 @@ class UserModel {
     String? dateOfBirth,
     String? ownerId,
     String? saleMembershipStatus,
+    String? scope,
+    Map<String, dynamic>? owner,
     String? kycStatus,
     bool? kycBypass,
     String? kycSubmissionId,
@@ -373,6 +407,8 @@ class UserModel {
         dateOfBirth: dateOfBirth ?? this.dateOfBirth,
         ownerId: ownerId ?? this.ownerId,
         saleMembershipStatus: saleMembershipStatus ?? this.saleMembershipStatus,
+        scope: scope ?? this.scope,
+        owner: owner ?? this.owner,
         kycStatus: kycStatus ?? this.kycStatus,
         kycBypass: kycBypass ?? this.kycBypass,
         kycSubmissionId: kycSubmissionId ?? this.kycSubmissionId,

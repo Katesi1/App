@@ -112,6 +112,7 @@ class _PropertyManagementScreenState
     final user = ref.watch(currentUserProvider);
     final canEdit = user?.canEdit ?? false;
     final canManageProperty = user?.canManageProperty ?? false;
+    final showOwner = user?.seesCrossOwnerData ?? false;
     final colors = context.colors;
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final headerGradient = isDark
@@ -304,6 +305,7 @@ class _PropertyManagementScreenState
                   separatorBuilder: (_, __) => const SizedBox(height: 10),
                   itemBuilder: (_, i) => PropertyManagementCard(
                     homestay: filtered[i],
+                    showOwner: showOwner,
                     onTap: () => context.push('/properties/${filtered[i].id}'),
                     onEdit: canEdit
                         ? () => context.push('/properties/${filtered[i].id}')

@@ -3,7 +3,7 @@
 > Tài liệu chính thức cho team FE Web (Next.js admin/host) và App Mobile (Android/iOS).
 > Bao gồm tất cả endpoint, schema response, business rule, WebSocket guide và integration checklist.
 >
-> **Cập nhật**: 2026-07-13 (v1.41 — Bắt buộc OWNER có SĐT trước khi đăng/sửa cơ sở + mời SALE → 403 `PHONE_REQUIRED`. Xem §2A.5, changelog §21) · **BE base**: NestJS 11 · **DB**: PostgreSQL + Prisma · **Auth**: JWT · **Real-time**: Socket.IO
+> **Cập nhật**: 2026-07-16 (v1.42 — Trial cap: trần 1 → 3 cơ sở, áp cho cả `kycBypass`/KYC đã duyệt; chỉ mua gói mới gỡ cap. Xem §2A.5, changelog §21) · **BE base**: NestJS 11 · **DB**: PostgreSQL + Prisma · **Auth**: JWT · **Real-time**: Socket.IO
 
 ---
 
@@ -884,7 +884,7 @@ Hết trial mà chưa có thanh toán được duyệt → các endpoint sau **t
 
 | Endpoint | Hành vi |
 |---|---|
-| `POST /properties` | Hết trial → 403 `subscription.featureLocked` · Còn trial nhưng đã có 1 cơ sở → 403 `code: "PROPERTY_LIMIT_REACHED"` (xem trial cap bên dưới) |
+| `POST /properties` | Hết trial → 403 `subscription.featureLocked` · Chưa mua gói mà đã có 3 cơ sở → 403 `code: "PROPERTY_LIMIT_REACHED"` (xem trial cap bên dưới) |
 | `PUT /properties/:id` | 403 `subscription.featureLocked` |
 | `POST /staff/invites` | 403 `subscription.featureLocked` (thay cho `staff.subscriptionRequired` cũ — không lộ trạng thái) |
 
@@ -894,8 +894,8 @@ SALE inherit entitlement của OWNER được gán (`user.ownerId`). Nếu OWNER
 
 **Note**: Các status khác (`past_due`, `cancelled`, `frozen`) cũng làm `isOwnerEntitled` trả false → cùng message `featureLocked`. Riêng `frozen` vẫn giữ logic block ở payment endpoints (existing).
 
-**Trial cap số cơ sở (v1.39)**: OWNER đang ở **trial ngầm chưa mua gói** (`subscriptionStatus="trial"` **và** `subscriptionPlanId=null`) chỉ được đăng **tối đa 1 cơ sở** (1 villa / 1 homestay / 1 khách sạn — mọi `type` tính chung). Khi đã có ≥ 1 cơ sở chưa xoá, `POST /properties` trả **403 `code: "PROPERTY_LIMIT_REACHED"`**, message trung tính (không lộ trial/gói/thanh toán để an toàn Apple review): *"Tài khoản của bạn hiện chỉ có thể đăng tối đa 1 cơ sở. Vui lòng liên hệ hỗ trợ nếu cần đăng thêm."*
-- Gỡ cap ngay khi owner **mua bất kỳ gói nào** (`subscriptionPlanId` khác null) hoặc được ADMIN cấp `kycBypass`.
+**Trial cap số cơ sở (v1.42 · 2026-07-16 — trần 1 → 3, áp cho cả kycBypass/KYC đã duyệt)**: OWNER **chưa mua gói** (`subscriptionPlanId=null`) chỉ được đăng **tối đa 3 cơ sở** (mọi `type` villa/homestay/khách sạn tính chung). Điều kiện này áp dụng cho **mọi owner còn trong giai đoạn dùng thử — kể cả đã được ADMIN cấp `kycBypass` hoặc đã duyệt KYC** (trial sẽ hết hạn nên vẫn là giai đoạn dùng thử). Khi đã có ≥ 3 cơ sở chưa xoá, `POST /properties` trả **403 `code: "PROPERTY_LIMIT_REACHED"`**, message trung tính (không lộ trial/gói/thanh toán để an toàn Apple review): *"Tài khoản của bạn hiện chỉ có thể đăng tối đa 3 cơ sở. Vui lòng liên hệ hỗ trợ nếu cần đăng thêm."*
+- Gỡ cap **chỉ khi** owner **mua bất kỳ gói nào** (`subscriptionPlanId` khác null) → gói tự quản lý giới hạn phòng. `kycBypass` **KHÔNG** còn gỡ cap này (đổi ở v1.42).
 - ADMIN tạo hộ (`POST /properties` với `ownerId`) **không** bị cap.
 - SALE tạo cho owner được gán → cap tính theo owner đó.
 
@@ -2935,6 +2935,23 @@ Base path: `/staff`.
 
 ADMIN dùng `?ownerId=` để filter theo OWNER cụ thể, không truyền → xem tất cả.
 
+**Response `GET /staff`** — mỗi item (v1.44 · 2026-07-16 — thêm `owner`):
+```json
+{
+  "id": "uuid",
+  "name": "Nguyễn Văn B",
+  "email": "sale@example.com",
+  "phone": "0901234567",
+  "avatar": null,
+  "role": 2,
+  "isActive": true,
+  "ownerId": "uuid",
+  "createdAt": "2026-07-01T00:00:00.000Z",
+  "owner": { "id": "uuid", "name": "Nguyễn Văn A", "phone": "0900000001" }
+}
+```
+- `owner` (v1.44) — chủ homestay của SALE: `{ id, name, phone }`. **`null`** với SALE hệ thống (`scope='system'`, `ownerId=null`). FE dùng để hiển thị cột "Chủ homestay" trên màn Nhân viên mà không cần gọi thêm `/users/:id`. `owner.phone` có thể `null` nếu owner chưa cập nhật SĐT.
+
 ### 11.1.1 Quota mời nhân viên theo gói (plan entitlement)
 
 `POST /staff/invites` enforce quota server-side, **mirror FE `StaffEntitlement`** trong `app/lib/core/utils/staff_entitlement.dart`. Khi đổi quota, phải sửa cả 2 nơi.
@@ -3548,6 +3565,33 @@ CONVERSATION_MEMBER_ROLE = 'owner' | 'sale' | 'customer' | 'admin'
 ---
 
 ## 21. Changelog & Bug fixes
+
+### v1.43 — 2026-07-16 (Login mobile mới → dọn FCM device cũ để ngừng nhận push)
+
+Trước đây khi một thiết bị bị **đá phiên ngầm** (do thiết bị khác login đè slot mobile — xem §1.6.1), access token của máy cũ bị vô hiệu ngay nhưng **FCM token của nó vẫn còn** trong `UserDevice` → **máy đã out vẫn tiếp tục nhận thông báo đẩy**. Chỉ ban / revoke-sessions / xoá account mới dọn token.
+
+| Thay đổi | Chi tiết |
+|---|---|
+| Dọn device khi login mobile mới | Mỗi lần **đăng nhập mới vào slot `mobile`** (`/auth/login|register|google|apple`, staff accept với `X-Client-Type: mobile`) → BE xoá **toàn bộ `UserDevice`** của user trước khi cấp token (`clearMobileDevices` trong `auth.service.ts`). Máy bị đá ngừng nhận push; máy mới tự gọi `POST /devices` sau login để đăng ký lại FCM. |
+| KHÔNG dọn khi refresh | `POST /auth/refresh` **không** đụng `UserDevice` (giữ nguyên push cho phiên đang chạy). Chỉ login mới (đổi `sid`) mới dọn. |
+| Slot web | Không đụng device (web không đăng ký FCM). |
+
+**Breaking?** Không đổi API/schema. Hệ quả hành vi: sau khi login máy mobile mới, các thiết bị mobile cũ (đã bị đá) sẽ **ngừng nhận push** cho tới khi đăng nhập lại — đúng kỳ vọng "đã out thì không nhận thông báo, muốn nhận phải login lại". FE app **phải** gọi lại `POST /devices` ngay sau mỗi lần login (đã có trong checklist §20.2) để re-register FCM.
+
+> **Lưu ý cho FE app**: nếu 2 app (Android + iOS) đều muốn đá nhau đúng (chỉ 1 phiên mobile), **cả hai phải gửi `X-Client-Type: mobile`** (xem §1.6.1.3). Nếu 1 app quên gửi header → bị coi là `web` → chiếm slot web → 2 máy cùng sống song song (1 mobile + 1 web) và device cũ không bị dọn.
+
+### v1.42 — 2026-07-16 (Trial cap: trần 1 → 3 cơ sở + áp cho cả kycBypass/KYC đã duyệt)
+
+Trước đây `kycBypass=true` **gỡ hoàn toàn** trần số cơ sở của trial → owner được cấp bypass (hoặc chỉ cần duyệt KYC nhưng chưa mua gói) đăng **không giới hạn** phòng. Nay mọi owner **chưa mua gói** đều bị trần **3 cơ sở**.
+
+| Thay đổi | Chi tiết |
+|---|---|
+| Trần 1 → 3 | `TRIAL_MAX_PROPERTIES: 1 → 3` (`src/common/subscription.ts`). Owner chưa mua gói đăng cơ sở thứ 4 → **403 `code: "PROPERTY_LIMIT_REACHED"`**. |
+| Điều kiện cap mở rộng | `isTrialPropertyCapped` giờ chỉ dựa `subscriptionPlanId === null` (chưa mua gói) → **cap**. **Bỏ** nhánh `kycBypass` gỡ cap và điều kiện `status===trial`. `kycBypass` / KYC đã duyệt **không** còn gỡ cap. Chỉ **mua gói** (`subscriptionPlanId != null`) mới gỡ. |
+| Message | Copy trung tính iOS cập nhật số: *"Tài khoản của bạn hiện chỉ có thể đăng tối đa 3 cơ sở…"* (i18n tự nội suy `${max}` = 3, vi/en). |
+| Không đổi | ADMIN tạo hộ (`ownerId`) vẫn không bị cap; SALE tính theo owner được gán; entitlement gate (`assertOwnerEntitled`) chạy trước, không đổi. |
+
+**Breaking?** Về HTTP: owner chưa mua gói mà đã có ≥ 3 cơ sở sẽ nhận 403 khi tạo thêm (trước đây owner có `kycBypass` không bị chặn). FE giữ nguyên cách xử lý `code: "PROPERTY_LIMIT_REACHED"`. Không đổi schema/DB. Cơ sở hiện hữu vượt trần (đăng trước v1.42) **không** bị xoá — chỉ chặn tạo mới.
 
 ### v1.41 — 2026-07-13 (Bắt buộc OWNER có SĐT trước khi đăng/sửa cơ sở + mời SALE)
 

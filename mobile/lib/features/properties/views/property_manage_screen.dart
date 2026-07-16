@@ -10,6 +10,7 @@ import '../../../core/theme/app_spacing.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import '../../../shared/widgets/feature_locked.dart';
 import '../../../shared/widgets/loading_widget.dart';
+import '../../../shared/widgets/owner_info_tile.dart';
 import '../../rooms/controllers/room_controller.dart';
 import '../../auth/controllers/auth_controller.dart';
 import '../controllers/property_controller.dart';
@@ -34,6 +35,8 @@ class _PropertyManageScreenState extends ConsumerState<PropertyManageScreen> {
     final colors = context.colors;
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final roomAsync = ref.watch(roomDetailProvider(widget.homestayId));
+    final showOwner =
+        ref.watch(currentUserProvider)?.seesCrossOwnerData ?? false;
 
     return roomAsync.when(
       loading: () => Scaffold(
@@ -117,6 +120,18 @@ class _PropertyManageScreenState extends ConsumerState<PropertyManageScreen> {
                           .animate()
                           .fadeIn(duration: 300.ms)
                           .slideY(begin: 0.05, end: 0),
+
+                      // ── Chủ sở hữu (ADMIN / SALE hệ thống) ──
+                      if (showOwner) ...[
+                        const SizedBox(height: 16),
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 20),
+                          child: OwnerInfoTile(
+                            name: room.ownerName,
+                            phone: room.ownerPhone,
+                          ),
+                        ).animate(delay: 80.ms).fadeIn(duration: 300.ms),
+                      ],
 
                       const SizedBox(height: 16),
 

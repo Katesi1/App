@@ -250,6 +250,9 @@ class _StaffListTab extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final staffAsync = ref.watch(staffListProvider);
+    // Chỉ ADMIN / SALE hệ thống mới thấy "thuộc chủ nào" (cross-owner).
+    final showOwner =
+        ref.watch(currentUserProvider)?.seesCrossOwnerData ?? false;
 
     return RefreshIndicator(
       onRefresh: () async => ref.invalidate(staffListProvider),
@@ -278,6 +281,8 @@ class _StaffListTab extends ConsumerWidget {
                 name: user.name.isEmpty ? user.email ?? 'Nhân viên' : user.name,
                 email: user.email ?? '',
                 phone: user.phone,
+                ownerName: showOwner ? user.ownerName : '',
+                ownerPhone: showOwner ? user.ownerPhone : '',
                 onRemove: () =>
                     _confirmRemove(context, ref, user.id, user.name),
               );
@@ -327,12 +332,18 @@ class _StaffTile extends StatelessWidget {
   final String name;
   final String email;
   final String phone;
+
+  /// Chủ sở hữu (tên + SĐT) — chỉ truyền khi ADMIN/SALE hệ thống xem. Rỗng = ẩn.
+  final String ownerName;
+  final String ownerPhone;
   final VoidCallback onRemove;
 
   const _StaffTile({
     required this.name,
     required this.email,
     required this.phone,
+    this.ownerName = '',
+    this.ownerPhone = '',
     required this.onRemove,
   });
 
@@ -439,6 +450,24 @@ class _StaffTile extends StatelessWidget {
                     icon: Icons.phone_outlined,
                     text: phone,
                     colors: colors,
+                  ),
+                ],
+                if (ownerName.isNotEmpty) ...[
+                  const SizedBox(height: 6),
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 8, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: colors.bgSurfaceContainer,
+                      borderRadius: BorderRadius.circular(AppRadius.sm),
+                    ),
+                    child: _IconLine(
+                      icon: Icons.storefront_outlined,
+                      text: ownerPhone.isNotEmpty
+                          ? 'Chủ: $ownerName · $ownerPhone'
+                          : 'Chủ: $ownerName',
+                      colors: colors,
+                    ),
                   ),
                 ],
                 const SizedBox(height: 6),

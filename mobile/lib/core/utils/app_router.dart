@@ -12,6 +12,7 @@ import '../../features/admin/views/kyc_approval_list_screen.dart';
 import '../../features/admin/views/moderation_audit_screen.dart';
 import '../../data/models/notification_model.dart';
 import '../../features/admin/views/role_permission_screen.dart';
+import '../../features/admin/views/permission_editor_screen.dart';
 import '../../features/properties/views/property_management_screen.dart';
 import '../../features/admin/views/user_form_screen.dart';
 import '../../features/admin/views/user_list_screen.dart';
@@ -819,6 +820,18 @@ final routerProvider = Provider<GoRouter>((ref) {
           key: state.pageKey,
           child: const RolePermissionScreen(),
         ),
+        routes: [
+          GoRoute(
+            path: ':userId',
+            pageBuilder: (_, state) => slideUpPage(
+              key: state.pageKey,
+              child: PermissionEditorScreen(
+                userId: state.pathParameters['userId']!,
+                userName: state.uri.queryParameters['name'] ?? '',
+              ),
+            ),
+          ),
+        ],
       ),
 
       // ── Admin – Users ──────────────────────────────────────────────

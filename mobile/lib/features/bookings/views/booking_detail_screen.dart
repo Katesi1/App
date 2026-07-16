@@ -12,6 +12,7 @@ import '../../../core/utils/helpers.dart';
 import '../../../data/models/booking_model.dart';
 import '../../../shared/widgets/loading_widget.dart';
 import '../../../shared/widgets/pull_to_refresh.dart';
+import '../../auth/controllers/auth_controller.dart';
 import '../../chat/controllers/chat_controller.dart';
 import '../controllers/booking_controller.dart';
 import '../utils/guest_flow_filter.dart';
@@ -25,6 +26,9 @@ class BookingDetailScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final colors = context.colors;
     final async = ref.watch(bookingDetailProvider(id));
+    // Chỉ ADMIN / SALE hệ thống mới thấy thông tin chủ sở hữu (cross-owner).
+    final showOwner =
+        ref.watch(currentUserProvider)?.seesCrossOwnerData ?? false;
 
     return Scaffold(
       backgroundColor: colors.bgCanvas,
@@ -50,7 +54,8 @@ class BookingDetailScreen extends ConsumerWidget {
               onRetry: () => ref.invalidate(bookingDetailProvider(id)),
             ),
           ),
-          data: (booking) => _BookingDetailBody(booking: booking),
+          data: (booking) =>
+              _BookingDetailBody(booking: booking, showOwner: showOwner),
         ),
       ),
     );
@@ -310,7 +315,13 @@ class _ChatWithGuestButton extends ConsumerWidget {
 class _BookingDetailBody extends StatelessWidget {
   final BookingModel booking;
 
-  const _BookingDetailBody({required this.booking});
+  /// ADMIN / SALE hệ thống → hiện section "CHỦ SỞ HỮU". Role khác → ẩn.
+  final bool showOwner;
+
+  const _BookingDetailBody({
+    required this.booking,
+    required this.showOwner,
+  });
 
   String _relativeDateLabel(DateTime date) {
     final today = GuestFlowFilter.dateOnly(DateTime.now());
@@ -411,6 +422,25 @@ class _BookingDetailBody extends StatelessWidget {
               ),
           ],
         ),
+        if (showOwner) ...[
+          const SizedBox(height: AppSpacing.md),
+          _DetailSection(
+            title: 'CHỦ SỞ HỮU',
+            children: [
+              _InfoRow(
+                icon: Icons.storefront_outlined,
+                label: 'Tên chủ',
+                value: booking.ownerName,
+              ),
+              _InfoRow(
+                icon: Icons.phone_outlined,
+                label: 'Số điện thoại',
+                value:
+                    booking.ownerPhone.isEmpty ? 'Chưa có' : booking.ownerPhone,
+              ),
+            ],
+          ),
+        ],
         const SizedBox(height: AppSpacing.md),
         _DetailSection(
           title: 'LỊCH LƯU TRÚ',

@@ -16,6 +16,9 @@ class ApiConstants {
   // Users
   static const String users = '/users';
   static String userDetail(String id) => '/users/$id';
+
+  // Per-user permissions (chỉ ADMIN — BE §12): GET lấy quyền, PUT bulk upsert.
+  static String permissions(String userId) => '/permissions/$userId';
   static const String userMeDataExport = '/users/me/data-export';
   static const String userMeConsents = '/users/me/consents';
   static const String userMeNotificationPreferences =
@@ -105,6 +108,18 @@ class ApiConstants {
       '/admin/kyc/submissions/$id/approve';
   static String adminKycReject(String id) =>
       '/admin/kyc/submissions/$id/reject';
+
+  /// Nhật ký audit / moderation (chỉ ADMIN). Query: action, targetType,
+  /// actorId, search, from, to, page, limit.
+  static const String adminAuditLog = '/admin/audit-log';
+
+  // Admin Disputes / Báo cáo vi phạm (chỉ ADMIN)
+  static const String adminDisputes = '/admin/disputes';
+  static String adminDisputeDetail(String id) => '/admin/disputes/$id';
+  static String adminDisputeInvestigate(String id) =>
+      '/admin/disputes/$id/investigate';
+  static String adminDisputeResolve(String id) => '/admin/disputes/$id/resolve';
+  static String adminDisputeReject(String id) => '/admin/disputes/$id/reject';
 
   // Calendar
   static const String calendarPublicGrid =

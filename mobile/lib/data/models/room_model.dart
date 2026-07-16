@@ -111,6 +111,9 @@ class RoomModel {
   final List<RoomImageModel> images;
   final RoomPriceModel? price;
   final HomestaySimpleModel? homestay;
+  // Chủ sở hữu {id,name,phone} — BE trả kèm ở GET /properties/:id cho viewer
+  // cross-owner (ADMIN / SALE hệ thống). null với viewer thường.
+  final Map<String, dynamic>? owner;
 
   RoomModel({
     required this.id,
@@ -136,6 +139,7 @@ class RoomModel {
     this.images = const [],
     this.price,
     this.homestay,
+    this.owner,
   });
 
   factory RoomModel.fromJson(Map<String, dynamic> json) => RoomModel(
@@ -195,7 +199,13 @@ class RoomModel {
         homestay: (json['property'] ?? json['homestay']) != null
             ? HomestaySimpleModel.fromJson(json['property'] ?? json['homestay'])
             : null,
+        owner: json['owner'] is Map<String, dynamic>
+            ? json['owner'] as Map<String, dynamic>
+            : null,
       );
+
+  String get ownerName => owner?['name'] ?? 'N/A';
+  String get ownerPhone => owner?['phone'] ?? '';
 
   String? get coverImageUrl {
     if (images.isEmpty) return null;

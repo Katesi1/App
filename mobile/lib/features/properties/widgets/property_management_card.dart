@@ -3,6 +3,7 @@ import 'package:google_fonts/google_fonts.dart';
 import '../../../core/theme/app_color_scheme.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../data/models/homestay_model.dart';
+import '../../../shared/widgets/owner_info_tile.dart';
 
 /// Card quản lý phòng (dùng HomestayModel) — có nút edit
 class PropertyManagementCard extends StatelessWidget {
@@ -10,11 +11,15 @@ class PropertyManagementCard extends StatelessWidget {
   final VoidCallback? onTap;
   final VoidCallback? onEdit;
 
+  /// Hiện thông tin chủ sở hữu (chỉ ADMIN / SALE hệ thống).
+  final bool showOwner;
+
   const PropertyManagementCard({
     super.key,
     required this.homestay,
     this.onTap,
     this.onEdit,
+    this.showOwner = false,
   });
 
   @override
@@ -125,6 +130,14 @@ class PropertyManagementCard extends StatelessWidget {
                           ],
                         ],
                       ),
+                      if (showOwner) ...[
+                        const SizedBox(height: 8),
+                        OwnerInfoTile(
+                          name: homestay.ownerName,
+                          phone: homestay.ownerPhone,
+                          dense: true,
+                        ),
+                      ],
                     ],
                   ),
                 ),
