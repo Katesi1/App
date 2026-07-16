@@ -72,6 +72,10 @@ class HomestayModel {
   String get ownerName => owner?['name'] ?? 'N/A';
   String get ownerPhone => owner?['phone'] ?? '';
 
+  /// Có thông tin chủ nhà để hiển thị cho quản lý cấp hệ thống không
+  /// (BE chỉ nhúng `owner` cho ADMIN / SALE hệ thống).
+  bool get hasOwnerInfo => (owner?['name'] as String?)?.isNotEmpty == true;
+
   /// Có đánh giá để hiển thị badge sao không (ẩn khi chưa ai review — spec §4.5).
   bool get hasRating => reviewCount > 0;
 }

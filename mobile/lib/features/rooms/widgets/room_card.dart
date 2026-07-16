@@ -17,11 +17,16 @@ class RoomCard extends StatefulWidget {
   final VoidCallback? onTap;
   final int animationIndex;
 
+  /// Hiển thị chủ sở hữu (người đăng phòng) — chỉ bật cho quản lý cấp hệ thống
+  /// (ADMIN / SALE hệ thống). Xem [UserModel.isSystemManager].
+  final bool showOwner;
+
   const RoomCard({
     super.key,
     required this.room,
     this.onTap,
     this.animationIndex = 0,
+    this.showOwner = false,
   });
 
   @override
@@ -168,6 +173,30 @@ class _RoomCardState extends State<RoomCard> {
                         ),
                       ],
                     ),
+
+                    // Chủ sở hữu (người đăng phòng) — chỉ cho quản lý hệ thống.
+                    if (widget.showOwner && room.hasOwnerInfo) ...[
+                      const SizedBox(height: 6),
+                      Row(
+                        children: [
+                          Icon(Icons.person_pin_rounded,
+                              size: 13, color: colors.textTertiary),
+                          const SizedBox(width: 4),
+                          Expanded(
+                            child: Text(
+                              'Chủ: ${room.ownerName}',
+                              style: GoogleFonts.beVietnamPro(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w600,
+                                color: colors.textSecondary,
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
 
                     // Amenity chips
                     const SizedBox(height: 8),

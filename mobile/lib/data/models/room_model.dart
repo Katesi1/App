@@ -120,6 +120,12 @@ class RoomModel {
   final List<RoomImageModel> images;
   final RoomPriceModel? price;
   final HomestaySimpleModel? homestay;
+  // Chủ sở hữu cơ sở (người đăng phòng). BE chỉ trả `ownerId` + `owner`
+  // {id,name,phone} cho ADMIN/SALE hệ thống (§4.5) — các role khác thường null.
+  // Chỉ dùng để hiển thị cho quản lý cấp hệ thống (UserModel.isSystemManager).
+  final String? ownerId;
+  final String? ownerName;
+  final String? ownerPhone;
 
   RoomModel({
     required this.id,
@@ -149,6 +155,9 @@ class RoomModel {
     this.images = const [],
     this.price,
     this.homestay,
+    this.ownerId,
+    this.ownerName,
+    this.ownerPhone,
   });
 
   factory RoomModel.fromJson(Map<String, dynamic> json) => RoomModel(
@@ -212,7 +221,14 @@ class RoomModel {
         homestay: (json['property'] ?? json['homestay']) != null
             ? HomestaySimpleModel.fromJson(json['property'] ?? json['homestay'])
             : null,
+        // Owner info — chỉ có mặt trong response cho ADMIN/SALE hệ thống.
+        ownerId: json['ownerId'] ?? (json['owner']?['id'] as String?),
+        ownerName: json['owner']?['name'] as String?,
+        ownerPhone: json['owner']?['phone'] as String?,
       );
+
+  /// Có thông tin chủ sở hữu để hiển thị cho quản lý cấp hệ thống không.
+  bool get hasOwnerInfo => (ownerName != null && ownerName!.isNotEmpty);
 
   /// Chỉ cho share khi phòng đang hoạt động VÀ đã được duyệt — khớp với
   /// visibility rule của web khách (isActive && moderationStatus=='approved').

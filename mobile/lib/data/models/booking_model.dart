@@ -34,6 +34,10 @@ class BookingModel {
   final int holdRemainingSeconds;
   final Map<String, dynamic>? property;
   final Map<String, dynamic>? sale;
+  // Chủ homestay của booking (§5.3 `host` {name, phone}; phone chỉ có khi
+  // status ≥ CONFIRMED). BE cũng nhúng `property.owner` {id,name,phone}. Chỉ
+  // hiển thị cho quản lý cấp hệ thống (UserModel.isSystemManager).
+  final Map<String, dynamic>? host;
   // Cancellation tracking (v1.14) — null on non-cancelled bookings or pre-migration rows
   final DateTime? cancelledAt;
   final String? cancelledByUserId;
@@ -65,6 +69,7 @@ class BookingModel {
     this.holdRemainingSeconds = 0,
     this.property,
     this.sale,
+    this.host,
     this.cancelledAt,
     this.cancelledByUserId,
     this.cancelledByRole,
@@ -106,6 +111,7 @@ class BookingModel {
         holdRemainingSeconds: json['holdRemainingSeconds'] ?? 0,
         property: json['property'],
         sale: json['sale'],
+        host: json['host'] as Map<String, dynamic>?,
         cancelledAt: json['cancelledAt'] != null
             ? DateTime.tryParse(json['cancelledAt'])
             : null,
@@ -131,6 +137,24 @@ class BookingModel {
   String get propertyName => property?['name'] ?? 'N/A';
 
   String get saleName => sale?['name'] ?? 'N/A';
+
+  /// Chủ homestay của booking — ưu tiên `property.owner`, fallback `host`.
+  /// null cho response không kèm owner (role thường của owner/sale-của-owner).
+  Map<String, dynamic>? get _owner {
+    final o = property?['owner'];
+    if (o is Map<String, dynamic>) return o;
+    return host;
+  }
+
+  String? get ownerName => _owner?['name'] as String?;
+  String? get ownerPhone => _owner?['phone'] as String?;
+
+  /// Có thông tin chủ homestay để hiển thị cho quản lý cấp hệ thống không.
+  bool get hasOwnerInfo => ownerName != null && ownerName!.isNotEmpty;
+
+  /// Có nhân viên (SALE) tạo hold không — dùng để hiển thị cho quản lý hệ thống.
+  bool get hasSaleInfo =>
+      sale != null && (sale?['name'] as String?)?.isNotEmpty == true;
 
   String? get cancelledByRoleLabel {
     switch (cancelledByRole) {

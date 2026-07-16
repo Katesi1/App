@@ -33,6 +33,10 @@ class _PropertyManageScreenState extends ConsumerState<PropertyManageScreen> {
     final colors = context.colors;
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final roomAsync = ref.watch(roomDetailProvider(widget.homestayId));
+    // Chỉ quản lý cấp hệ thống (ADMIN / SALE hệ thống) thấy chủ nhà.
+    final showOwner = ref.watch(
+      currentUserProvider.select((u) => u?.isSystemManager ?? false),
+    );
 
     return roomAsync.when(
       loading: () => Scaffold(
@@ -112,6 +116,32 @@ class _PropertyManageScreenState extends ConsumerState<PropertyManageScreen> {
                               maxLines: 2,
                               overflow: TextOverflow.ellipsis,
                             ),
+                            // Chủ nhà — chỉ cho quản lý cấp hệ thống.
+                            if (showOwner && room.hasOwnerInfo) ...[
+                              const SizedBox(height: 6),
+                              Row(
+                                children: [
+                                  Icon(Icons.person_pin_rounded,
+                                      size: 15, color: colors.textTertiary),
+                                  const SizedBox(width: 4),
+                                  Expanded(
+                                    child: Text(
+                                      room.ownerPhone != null &&
+                                              room.ownerPhone!.isNotEmpty
+                                          ? 'Chủ: ${room.ownerName} · ${room.ownerPhone}'
+                                          : 'Chủ: ${room.ownerName}',
+                                      style: GoogleFonts.beVietnamPro(
+                                        fontSize: 13,
+                                        fontWeight: FontWeight.w600,
+                                        color: colors.textSecondary,
+                                      ),
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ],
                           ],
                         ),
                       )

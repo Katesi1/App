@@ -294,20 +294,19 @@ class _PropertyManagementScreenState
                           child: EmptyStateWidget(
                             icon: tab.icon,
                             message: 'Chưa có ${tab.label} nào',
-                            subMessage:
-                                canEdit ? 'Nhấn + để thêm mới' : null,
+                            subMessage: canEdit ? 'Nhấn + để thêm mới' : null,
                           ),
                         )
                       : ListView.separated(
-                          padding:
-                              const EdgeInsets.fromLTRB(16, 16, 16, 100),
+                          padding: const EdgeInsets.fromLTRB(16, 16, 16, 100),
                           itemCount: filtered.length,
                           separatorBuilder: (_, __) =>
                               const SizedBox(height: 10),
                           itemBuilder: (_, i) => PropertyManagementCard(
                             homestay: filtered[i],
-                            onTap: () => context
-                                .push('/properties/${filtered[i].id}'),
+                            showOwner: user?.isSystemManager ?? false,
+                            onTap: () =>
+                                context.push('/properties/${filtered[i].id}'),
                             onEdit: canEdit
                                 ? () => context
                                     .push('/properties/${filtered[i].id}')

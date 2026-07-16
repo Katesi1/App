@@ -176,6 +176,13 @@ class UserModel {
   /// Effective owner id: OWNER → self, SALE → their ownerId, otherwise null.
   String? get effectiveOwnerId => isOwner ? id : (isSale ? ownerId : null);
 
+  /// Quản lý cấp hệ thống — thấy dữ liệu chéo nhiều owner: ADMIN, hoặc SALE
+  /// hệ thống (chưa gắn với owner nào → [ownerId] null). OWNER và SALE của một
+  /// owner chỉ thấy dữ liệu của đúng owner mình, nên với họ nhãn "chủ homestay"
+  /// là thừa. Dùng getter này để quyết định có hiển thị thông tin owner (người
+  /// đăng phòng / owner của booking) trên list + detail hay không.
+  bool get isSystemManager => effectiveOwnerId == null;
+
   /// Tài khoản nhận tiền đã được admin DUYỆT → dùng được để sinh VietQR cho
   /// khách trả cọc, và là điều kiện bắt buộc để OWNER tạo phòng.
   bool get hasApprovedBank => bankStatus == 'approved';

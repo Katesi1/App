@@ -13,6 +13,7 @@ import '../../../core/theme/app_spacing.dart';
 import '../../../data/models/room_model.dart';
 import '../../../shared/widgets/loading_widget.dart';
 import '../../../shared/widgets/rating_badge.dart';
+import '../../auth/controllers/auth_controller.dart';
 import '../controllers/room_controller.dart';
 
 class RoomDetailScreen extends ConsumerWidget {
@@ -24,6 +25,10 @@ class RoomDetailScreen extends ConsumerWidget {
     final roomAsync = ref.watch(roomDetailProvider(roomId));
     final colors = context.colors;
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    // Chỉ quản lý cấp hệ thống (ADMIN / SALE hệ thống) thấy thông tin chủ phòng.
+    final showOwner = ref.watch(
+      currentUserProvider.select((u) => u?.isSystemManager ?? false),
+    );
     return roomAsync.when(
       loading: () => Scaffold(
         appBar: AppBar(),
@@ -81,6 +86,32 @@ class RoomDetailScreen extends ConsumerWidget {
                                     maxLines: 1,
                                     overflow: TextOverflow.ellipsis,
                                   ),
+                                // Chủ sở hữu — chỉ cho quản lý cấp hệ thống.
+                                if (showOwner && room.hasOwnerInfo) ...[
+                                  const SizedBox(height: 4),
+                                  Row(
+                                    children: [
+                                      Icon(Icons.person_pin_rounded,
+                                          size: 15, color: colors.textTertiary),
+                                      const SizedBox(width: 4),
+                                      Expanded(
+                                        child: Text(
+                                          room.ownerPhone != null &&
+                                                  room.ownerPhone!.isNotEmpty
+                                              ? 'Chủ: ${room.ownerName} · ${room.ownerPhone}'
+                                              : 'Chủ: ${room.ownerName}',
+                                          style: GoogleFonts.beVietnamPro(
+                                            color: colors.textSecondary,
+                                            fontSize: 13.5,
+                                            fontWeight: FontWeight.w600,
+                                          ),
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ],
                               ],
                             ),
                           ),

@@ -42,6 +42,10 @@ class _BookingDetailScreenState extends ConsumerState<BookingDetailScreen> {
     final canManage = ref.watch(
       currentUserProvider.select((u) => u?.canEdit ?? false),
     );
+    // Chỉ quản lý cấp hệ thống (ADMIN / SALE hệ thống) thấy chủ homestay + sale.
+    final showOwner = ref.watch(
+      currentUserProvider.select((u) => u?.isSystemManager ?? false),
+    );
 
     return AppScaffold(
       title: 'Chi tiết booking',
@@ -54,12 +58,12 @@ class _BookingDetailScreenState extends ConsumerState<BookingDetailScreen> {
           onRetry: () =>
               ref.invalidate(bookingDetailProvider(widget.bookingId)),
         ),
-        data: (booking) => _content(booking, canManage),
+        data: (booking) => _content(booking, canManage, showOwner),
       ),
     );
   }
 
-  Widget _content(BookingModel booking, bool canManage) {
+  Widget _content(BookingModel booking, bool canManage, bool showOwner) {
     final colors = context.colors;
     return RefreshIndicator(
       onRefresh: () async =>
@@ -68,7 +72,7 @@ class _BookingDetailScreenState extends ConsumerState<BookingDetailScreen> {
         padding: const EdgeInsets.fromLTRB(
             AppSpacing.md, AppSpacing.md, AppSpacing.md, AppSpacing.xxl),
         children: [
-          _HeaderCard(booking: booking),
+          _HeaderCard(booking: booking, showOwner: showOwner),
           const SizedBox(height: AppSpacing.md),
           _MoneyCard(booking: booking),
           if (booking.priceBreakdown != null) ...[
@@ -298,7 +302,11 @@ class _BookingDetailScreenState extends ConsumerState<BookingDetailScreen> {
 // ─── Header card ───────────────────────────────────────────────────────────
 class _HeaderCard extends StatelessWidget {
   final BookingModel booking;
-  const _HeaderCard({required this.booking});
+
+  /// Hiển thị chủ homestay + nhân viên tạo booking — chỉ cho quản lý cấp hệ
+  /// thống (ADMIN / SALE hệ thống). Xem [UserModel.isSystemManager].
+  final bool showOwner;
+  const _HeaderCard({required this.booking, this.showOwner = false});
 
   Color _statusColor(AppColorScheme colors) {
     switch (booking.status) {
@@ -366,6 +374,18 @@ class _HeaderCard extends StatelessWidget {
             _row(colors, Icons.person_outline_rounded, booking.customerName!),
           if (booking.customerPhone != null)
             _row(colors, Icons.phone_outlined, booking.customerPhone!),
+          // Chủ homestay + nhân viên phụ trách — chỉ cho quản lý cấp hệ thống.
+          if (showOwner && booking.hasOwnerInfo)
+            _row(
+              colors,
+              Icons.person_pin_rounded,
+              booking.ownerPhone != null && booking.ownerPhone!.isNotEmpty
+                  ? 'Chủ: ${booking.ownerName} · ${booking.ownerPhone}'
+                  : 'Chủ: ${booking.ownerName}',
+            ),
+          if (showOwner && booking.hasSaleInfo)
+            _row(
+                colors, Icons.badge_outlined, 'Nhân viên: ${booking.saleName}'),
           if (booking.checkedInAt != null)
             _row(colors, Icons.login_rounded,
                 'Nhận phòng lúc ${DateFormat('dd/MM HH:mm').format(booking.checkedInAt!.toLocal())}'),

@@ -10,11 +10,16 @@ class PropertyManagementCard extends StatelessWidget {
   final VoidCallback? onTap;
   final VoidCallback? onEdit;
 
+  /// Hiển thị chủ nhà (người sở hữu cơ sở) — chỉ bật cho quản lý cấp hệ thống
+  /// (ADMIN / SALE hệ thống). Xem [UserModel.isSystemManager].
+  final bool showOwner;
+
   const PropertyManagementCard({
     super.key,
     required this.homestay,
     this.onTap,
     this.onEdit,
+    this.showOwner = false,
   });
 
   @override
@@ -125,6 +130,29 @@ class PropertyManagementCard extends StatelessWidget {
                           ],
                         ],
                       ),
+                      // Chủ nhà — chỉ cho quản lý cấp hệ thống.
+                      if (showOwner && homestay.hasOwnerInfo) ...[
+                        const SizedBox(height: 6),
+                        Row(
+                          children: [
+                            Icon(Icons.person_pin_rounded,
+                                size: 12, color: colors.textTertiary),
+                            const SizedBox(width: 4),
+                            Expanded(
+                              child: Text(
+                                'Chủ: ${homestay.ownerName}',
+                                style: GoogleFonts.beVietnamPro(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w600,
+                                  color: colors.textSecondary,
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
                     ],
                   ),
                 ),

@@ -41,11 +41,31 @@ VerifyStatus _verifyStatusFromUserKyc(String kycStatus) {
   }
 }
 
-class DashboardScreen extends ConsumerWidget {
+class DashboardScreen extends ConsumerStatefulWidget {
   const DashboardScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<DashboardScreen> createState() => _DashboardScreenState();
+}
+
+class _DashboardScreenState extends ConsumerState<DashboardScreen> {
+  @override
+  void initState() {
+    super.initState();
+    // Vào dashboard → luôn kéo lại GET /auth/profile để bắt thay đổi phía
+    // backend (vd admin vừa duyệt KYC khi app đang chạy), KHÔNG đọc cache cũ.
+    // Đây là nguyên nhân banner "Xác thực" còn kẹt dù đã approved. Defer 1
+    // frame để không sửa provider trong lúc dựng cây widget đầu tiên.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      if (ref.read(authProvider).isLoggedIn) {
+        ref.read(authProvider.notifier).refreshProfile();
+      }
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final colors = context.colors;
     final user = ref.watch(currentUserProvider);
     final statsAsync = ref.watch(dashboardStatsProvider);

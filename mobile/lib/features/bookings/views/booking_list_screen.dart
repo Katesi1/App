@@ -237,6 +237,7 @@ class _BookingListScreenState extends ConsumerState<BookingListScreen> {
                       booking: filtered[i],
                       index: i,
                       canManage: user?.canEdit ?? false,
+                      showOwner: user?.isSystemManager ?? false,
                       onAction: () => ref.invalidate(bookingListProvider(null)),
                     ),
                   ),
@@ -270,12 +271,17 @@ class _BookingCard extends ConsumerStatefulWidget {
   final BookingModel booking;
   final int index;
   final bool canManage;
+
+  /// Hiển thị chủ homestay của booking — chỉ cho quản lý cấp hệ thống
+  /// (ADMIN / SALE hệ thống). Xem [UserModel.isSystemManager].
+  final bool showOwner;
   final VoidCallback onAction;
 
   const _BookingCard({
     required this.booking,
     required this.index,
     required this.canManage,
+    required this.showOwner,
     required this.onAction,
   });
 
@@ -447,14 +453,30 @@ class _BookingCardState extends ConsumerState<_BookingCard> {
                         ],
                       ),
 
-                      // Homestay
-                      Text(
-                        booking.propertyName,
-                        style: GoogleFonts.beVietnamPro(
-                          fontSize: 12,
-                          color: colors.textSecondary,
+                      // Chủ homestay (người sở hữu booking) — chỉ cho quản lý
+                      // cấp hệ thống. Các role khác không cần (đều thuộc 1 owner).
+                      if (widget.showOwner && booking.hasOwnerInfo) ...[
+                        const SizedBox(height: 3),
+                        Row(
+                          children: [
+                            Icon(Icons.person_pin_rounded,
+                                size: 13, color: colors.textTertiary),
+                            const SizedBox(width: 4),
+                            Expanded(
+                              child: Text(
+                                'Chủ: ${booking.ownerName}',
+                                style: GoogleFonts.beVietnamPro(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w600,
+                                  color: colors.textSecondary,
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                          ],
                         ),
-                      ),
+                      ],
 
                       const SizedBox(height: AppSpacing.sm),
 

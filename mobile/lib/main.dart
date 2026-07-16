@@ -101,6 +101,10 @@ class _HomestayAppState extends ConsumerState<HomestayApp>
         // guards update before we navigate.
         _maybeRefreshOnSubscriptionPush(data);
 
+        // Admin vừa duyệt/từ chối KYC (`kyc_approved` deepLink `/dashboard`) →
+        // refresh profile TRƯỚC khi điều hướng để banner "Xác thực" tự ẩn.
+        _maybeRefreshOnKycPush(data);
+
         // BE gửi deepLink dạng path web (`/host/...`, `/my-bookings`...) không
         // khớp router app → dịch qua pushType/path sang route app (fallback
         // `/notifications` khi đích chưa có route). Resolver chỉ trả path nội bộ
@@ -115,6 +119,7 @@ class _HomestayAppState extends ConsumerState<HomestayApp>
       // chat_message → cập nhật badge chưa đọc.
       PushNotificationService.instance.onForegroundData = (data) {
         _maybeRefreshOnSubscriptionPush(data);
+        _maybeRefreshOnKycPush(data);
         _maybeBumpChatBadge(data);
         _maybeRefreshOnBankPush(data);
         _maybeBumpNotificationBadge(data);
@@ -164,6 +169,19 @@ class _HomestayAppState extends ConsumerState<HomestayApp>
     } else if (pushType == 'bank_submitted') {
       ref.invalidate(bankQueueProvider);
     }
+  }
+
+  /// Push KYC gửi cho OWNER khi admin thao tác duyệt hồ sơ:
+  /// - `kyc_approved` → `user.kycStatus` chuyển `approved` → ẩn banner "Xác
+  ///   thực danh tính", mở khoá tạo phòng (route guard).
+  /// - `kyc_rejected` → cập nhật trạng thái để banner đổi sang "Bổ sung".
+  /// Refresh profile ngay thay vì đọc cache cũ (nguyên nhân banner còn kẹt).
+  /// `kyc_submitted` gửi ADMIN nên không xử lý ở đây.
+  void _maybeRefreshOnKycPush(Map<String, dynamic> data) {
+    final pushType = _pushTypeOf(data);
+    if (pushType != 'kyc_approved' && pushType != 'kyc_rejected') return;
+    if (!ref.read(authProvider).isLoggedIn) return;
+    ref.read(authProvider.notifier).refreshProfile();
   }
 
   /// Chat push đến khi app foreground → refresh badge chưa đọc. WS đã lo khi

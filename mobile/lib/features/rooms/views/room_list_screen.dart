@@ -825,6 +825,7 @@ class _RoomListScreenState extends ConsumerState<RoomListScreen>
                           itemBuilder: (_, i) => RoomCard(
                             room: filtered[i],
                             animationIndex: i,
+                            showOwner: user?.isSystemManager ?? false,
                             onTap: () =>
                                 context.push('/rooms/${filtered[i].id}'),
                           ),
