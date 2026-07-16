@@ -42,7 +42,7 @@ class GuestFlowListScreen extends ConsumerWidget {
         title: Text(_title),
       ),
       body: async.when(
-        loading: () => const LoadingWidget(),
+        loading: () => const SkeletonList(skeleton: BookingCardSkeleton()),
         error: (error, _) => ErrorStateWidget(
           message: error.toString().replaceAll('Exception: ', ''),
           onRetry: () {

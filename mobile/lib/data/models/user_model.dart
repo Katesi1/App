@@ -37,6 +37,12 @@ class UserModel {
   @JsonKey(defaultValue: false)
   final bool kycBypass;
   final String? kycSubmissionId;
+
+  // ── Bank (tài khoản nhận tiền OWNER — BE §3.3) ──
+  @JsonKey(defaultValue: 'none')
+  final String bankStatus; // none | pending | approved | rejected
+  final String? bankRejectReason;
+
   @JsonKey(defaultValue: 'none')
   final String
       subscriptionStatus; // none | trial | active | past_due | cancelled | frozen | expired
@@ -68,6 +74,8 @@ class UserModel {
     this.kycStatus = 'none',
     this.kycBypass = false,
     this.kycSubmissionId,
+    this.bankStatus = 'none',
+    this.bankRejectReason,
     this.subscriptionStatus = 'none',
     this.subscriptionPlanId,
     this.subscriptionCycle,
@@ -113,6 +121,16 @@ class UserModel {
 
   /// Có quyền tạo/xóa property (SALE không được)
   bool get canManageProperty => isAdmin || isOwner;
+
+  /// Đã có SĐT chưa. BE v1.41 bắt buộc OWNER có `phone` trước khi đăng/sửa
+  /// cơ sở hoặc mời SALE (đăng ký Google/Apple không lấy được SĐT).
+  bool get hasPhone => phone.trim().isNotEmpty;
+
+  // ── Bank helpers (BE §3.3) ──
+  bool get hasApprovedBank => bankStatus == 'approved';
+  bool get isBankPending => bankStatus == 'pending';
+  bool get isBankRejected => bankStatus == 'rejected';
+  bool get isBankNone => bankStatus == 'none';
 
   /// SALE đã được gán cho owner chưa
   bool get hasOwner => ownerId != null;
@@ -327,6 +345,8 @@ class UserModel {
     String? kycStatus,
     bool? kycBypass,
     String? kycSubmissionId,
+    String? bankStatus,
+    String? bankRejectReason,
     String? subscriptionStatus,
     String? subscriptionPlanId,
     String? subscriptionCycle,
@@ -356,6 +376,8 @@ class UserModel {
         kycStatus: kycStatus ?? this.kycStatus,
         kycBypass: kycBypass ?? this.kycBypass,
         kycSubmissionId: kycSubmissionId ?? this.kycSubmissionId,
+        bankStatus: bankStatus ?? this.bankStatus,
+        bankRejectReason: bankRejectReason ?? this.bankRejectReason,
         subscriptionStatus: subscriptionStatus ?? this.subscriptionStatus,
         subscriptionPlanId: subscriptionPlanId ?? this.subscriptionPlanId,
         subscriptionCycle: subscriptionCycle ?? this.subscriptionCycle,

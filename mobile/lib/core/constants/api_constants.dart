@@ -20,6 +20,8 @@ class ApiConstants {
   static const String userMeConsents = '/users/me/consents';
   static const String userMeNotificationPreferences =
       '/users/me/notification-preferences';
+  // Tài khoản nhận tiền OWNER (duyệt bởi ADMIN — BE §3.3)
+  static const String userMeBank = '/users/me/bank';
 
   // Support & feedback
   static const String supportTickets = '/support/tickets';
@@ -44,6 +46,8 @@ class ApiConstants {
   static String bookingDetail(String id) => '/bookings/$id';
   static String bookingConfirm(String id) => '/bookings/$id/confirm';
   static String bookingCancel(String id) => '/bookings/$id/cancel';
+  static String bookingPaid(String id) => '/bookings/$id/paid';
+  static String bookingCheckin(String id) => '/bookings/$id/checkin';
   static String bookingUpdate(String id) => '/bookings/$id';
   static String bookingCalendar(String propertyId) =>
       '/bookings/calendar/$propertyId';
@@ -58,6 +62,11 @@ class ApiConstants {
 
   // Property share (public, không trả giá)
   static String propertyShare(String id) => '/properties/share/$id';
+
+  /// Link preview công khai để OWNER chia sẻ 1 phòng qua Zalo/Messenger
+  /// (trang web che giá bán). BE §4.14.
+  static const String previewShareBase = 'https://preview.halong24h.com';
+  static String propertyShareLink(String id) => '$previewShareBase/$id';
 
   // KYC (verify identity cho OWNER)
   static const String kycUploadCccdFront = '/kyc/upload-cccd-front';

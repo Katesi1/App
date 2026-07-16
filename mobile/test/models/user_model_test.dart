@@ -223,6 +223,51 @@ void main() {
       });
     });
 
+    group('hasPhone (v1.41)', () {
+      test('true khi có SĐT', () {
+        expect(_makeUser(role: 1).hasPhone, true);
+      });
+
+      test('false khi SĐT rỗng (đăng ký Google/Apple)', () {
+        const owner = UserModel(id: '1', name: 'Owner', phone: '', role: 1);
+        expect(owner.hasPhone, false);
+      });
+
+      test('false khi SĐT chỉ khoảng trắng', () {
+        const owner = UserModel(id: '1', name: 'Owner', phone: '   ', role: 1);
+        expect(owner.hasPhone, false);
+      });
+    });
+
+    group('bank helpers (§3.3)', () {
+      UserModel owner(String bankStatus) => UserModel(
+            id: '1',
+            name: 'Owner',
+            phone: '0900000001',
+            role: 1,
+            bankStatus: bankStatus,
+          );
+
+      test('hasApprovedBank only when approved', () {
+        expect(owner('approved').hasApprovedBank, true);
+        expect(owner('pending').hasApprovedBank, false);
+        expect(owner('rejected').hasApprovedBank, false);
+        expect(owner('none').hasApprovedBank, false);
+      });
+
+      test('status flags', () {
+        expect(owner('pending').isBankPending, true);
+        expect(owner('rejected').isBankRejected, true);
+        expect(owner('none').isBankNone, true);
+      });
+
+      test('defaults to none when not provided by BE', () {
+        const u = UserModel(id: '1', name: 'O', phone: '0900000001', role: 1);
+        expect(u.bankStatus, 'none');
+        expect(u.hasApprovedBank, false);
+      });
+    });
+
     group('subscription plan actions', () {
       test('never purchased shows Mua gói', () {
         const user = UserModel(

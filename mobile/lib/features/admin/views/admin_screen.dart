@@ -12,6 +12,7 @@ import '../../../data/models/user_model.dart';
 import '../../auth/controllers/auth_controller.dart';
 import '../../bookings/controllers/booking_controller.dart';
 import '../../properties/controllers/property_controller.dart';
+import '../../properties/utils/create_property_flow.dart';
 import '../controllers/abuse_report_controller.dart';
 import '../controllers/kyc_approval_controller.dart';
 import '../controllers/user_controller.dart';
@@ -25,7 +26,13 @@ class AdminScreen extends ConsumerWidget {
     final user = ref.watch(currentUserProvider);
     final isAdmin = user?.isAdmin ?? false;
     final isOwner = user?.isOwner ?? false;
-    final usersAsync = ref.watch(staffListProvider);
+    final isSale = user?.isSale ?? false;
+    // OWNER/ADMIN xem KPI + quản lý phòng/nhân viên; SALE chỉ booking/lịch/chat.
+    final showManagerTools = isOwner || isAdmin;
+    // SALE không được list /staff → chỉ watch cho OWNER/ADMIN, tránh 403 thừa.
+    final usersAsync = showManagerTools
+        ? ref.watch(staffListProvider)
+        : const AsyncValue<List<UserModel>>.data(<UserModel>[]);
     final homestaysAsync = ref.watch(homestayListProvider(true));
     final bookingsAsync = ref.watch(bookingListProvider(null));
     final pendingKycCount = ref.watch(pendingKycCountProvider).valueOrNull ?? 0;
@@ -99,7 +106,9 @@ class AdminScreen extends ConsumerWidget {
                           Text(
                             isAdmin
                                 ? 'Toàn quyền quản trị'
-                                : 'Phòng & nhân viên của tôi',
+                                : isSale
+                                    ? 'Công việc của tôi'
+                                    : 'Phòng & nhân viên của tôi',
                             style: GoogleFonts.beVietnamPro(
                               fontSize: 12,
                               color: Colors.white.withValues(alpha: 0.65),
@@ -130,76 +139,75 @@ class AdminScreen extends ConsumerWidget {
               child: ListView(
                 padding: const EdgeInsets.all(20),
                 children: [
-                  // ── Summary KPI Cards (2x2) ─────────────────
-                  Row(
-                    children: [
-                      Expanded(
-                        child: _KpiCard(
-                          icon: Icons.people_rounded,
-                          iconBg: AppColors.jade50,
-                          iconColor: colors.brand,
-                          label: 'Nhân viên',
-                          asyncValue: usersAsync.whenData(
-                            (users) => '${users.length}',
+                  // ── Summary KPI Cards (2x2) — OWNER/ADMIN ────
+                  if (showManagerTools) ...[
+                    Row(
+                      children: [
+                        Expanded(
+                          child: _KpiCard(
+                            icon: Icons.people_rounded,
+                            iconBg: AppColors.jade50,
+                            iconColor: colors.brand,
+                            label: 'Nhân viên',
+                            asyncValue: usersAsync.whenData(
+                              (users) => '${users.length}',
+                            ),
+                            sub: usersAsync.whenOrNull(
+                                  data: (users) =>
+                                      '${users.where((u) => u.isActive).length} hoạt động',
+                                ) ??
+                                '',
                           ),
-                          sub: usersAsync.whenOrNull(
-                                data: (users) =>
-                                    '${users.where((u) => u.isActive).length} hoạt động',
-                              ) ??
-                              '',
                         ),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: _KpiCard(
-                          icon: Icons.villa_rounded,
-                          iconBg: colors.successBg,
-                          iconColor: colors.success,
-                          label: 'Villa',
-                          asyncValue: homestaysAsync.whenData(
-                            (list) =>
-                                '${list.where((h) => h.type == 0).length}',
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: _KpiCard(
+                            icon: Icons.villa_rounded,
+                            iconBg: colors.successBg,
+                            iconColor: colors.success,
+                            label: 'Villa',
+                            asyncValue: homestaysAsync.whenData(
+                              (list) =>
+                                  '${list.where((h) => h.type == 0).length}',
+                            ),
+                            sub: 'Biệt thự',
                           ),
-                          sub: 'Biệt thự',
                         ),
-                      ),
-                    ],
-                  ),
-
-                  const SizedBox(height: 12),
-
-                  Row(
-                    children: [
-                      Expanded(
-                        child: _KpiCard(
-                          icon: Icons.home_work_rounded,
-                          iconBg: AppColors.jade50,
-                          iconColor: colors.brandLight,
-                          label: 'Phòng',
-                          asyncValue: homestaysAsync.whenData(
-                            (list) =>
-                                '${list.where((h) => h.type != 0).length}',
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: _KpiCard(
+                            icon: Icons.home_work_rounded,
+                            iconBg: AppColors.jade50,
+                            iconColor: colors.brandLight,
+                            label: 'Phòng',
+                            asyncValue: homestaysAsync.whenData(
+                              (list) =>
+                                  '${list.where((h) => h.type != 0).length}',
+                            ),
+                            sub: 'Cơ sở lưu trú',
                           ),
-                          sub: 'Cơ sở lưu trú',
                         ),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: _KpiCard(
-                          icon: Icons.book_rounded,
-                          iconBg: AppColors.gold50,
-                          iconColor: AppColors.gold700,
-                          label: 'Booking',
-                          asyncValue: bookingsAsync.whenData(
-                            (list) => '${list.length}',
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: _KpiCard(
+                            icon: Icons.book_rounded,
+                            iconBg: AppColors.gold50,
+                            iconColor: AppColors.gold700,
+                            label: 'Booking',
+                            asyncValue: bookingsAsync.whenData(
+                              (list) => '${list.length}',
+                            ),
+                            sub: 'Tổng đặt phòng',
                           ),
-                          sub: 'Tổng đặt phòng',
                         ),
-                      ),
-                    ],
-                  ),
-
-                  const SizedBox(height: 28),
+                      ],
+                    ),
+                    const SizedBox(height: 28),
+                  ],
 
                   // ── Quản lý Section ─────────────────────────
                   Text(
@@ -213,37 +221,37 @@ class AdminScreen extends ConsumerWidget {
                   ),
                   const SizedBox(height: 12),
 
-                  _MenuCard(
-                    icon: Icons.people_rounded,
-                    iconBg: AppColors.jade50,
-                    iconColor: colors.brand,
-                    title: isAdmin ? 'Quản lý nhân viên' : 'Nhân viên của tôi',
-                    subtitle: isAdmin
-                        ? 'Thêm, sửa, vô hiệu hoá tài khoản'
-                        : 'Mời qua email, chia sẻ mã HL-XXXXXX',
-                    trailing: usersAsync.whenOrNull(
-                      data: (users) => '${users.length} người',
+                  if (showManagerTools) ...[
+                    _MenuCard(
+                      icon: Icons.people_rounded,
+                      iconBg: AppColors.jade50,
+                      iconColor: colors.brand,
+                      title:
+                          isAdmin ? 'Quản lý nhân viên' : 'Nhân viên của tôi',
+                      subtitle: isAdmin
+                          ? 'Thêm, sửa, vô hiệu hoá tài khoản'
+                          : 'Mời qua email, chia sẻ mã HL-XXXXXX',
+                      trailing: usersAsync.whenOrNull(
+                        data: (users) => '${users.length} người',
+                      ),
+                      onTap: () => context.push(
+                        isOwner && !isAdmin ? '/staff/manage' : '/admin/users',
+                      ),
                     ),
-                    onTap: () => context.push(
-                      isOwner && !isAdmin ? '/staff/manage' : '/admin/users',
+                    const SizedBox(height: 10),
+                    _MenuCard(
+                      icon: Icons.home_work_rounded,
+                      iconBg: AppColors.jade50,
+                      iconColor: colors.brandLight,
+                      title: 'Quản lý phòng',
+                      subtitle: 'Villa, Homestay, Khách sạn',
+                      trailing: homestaysAsync.whenOrNull(
+                        data: (list) => '${list.length} phòng',
+                      ),
+                      onTap: () => context.push('/admin/rooms'),
                     ),
-                  ),
-
-                  const SizedBox(height: 10),
-
-                  _MenuCard(
-                    icon: Icons.home_work_rounded,
-                    iconBg: AppColors.jade50,
-                    iconColor: colors.brandLight,
-                    title: 'Quản lý phòng',
-                    subtitle: 'Villa, Homestay, Khách sạn',
-                    trailing: homestaysAsync.whenOrNull(
-                      data: (list) => '${list.length} phòng',
-                    ),
-                    onTap: () => context.push('/admin/rooms'),
-                  ),
-
-                  const SizedBox(height: 10),
+                    const SizedBox(height: 10),
+                  ],
 
                   _MenuCard(
                     icon: Icons.book_rounded,
@@ -266,6 +274,16 @@ class AdminScreen extends ConsumerWidget {
                     title: 'Lịch phòng',
                     subtitle: 'Quản lý lịch lock/mở phòng của chủ nhà',
                     onTap: () => context.push('/admin/owner-calendar'),
+                  ),
+
+                  const SizedBox(height: 10),
+                  _MenuCard(
+                    icon: Icons.forum_rounded,
+                    iconBg: AppColors.jade50,
+                    iconColor: colors.brand,
+                    title: 'Tin nhắn',
+                    subtitle: 'Trao đổi với khách & hệ thống',
+                    onTap: () => context.push('/chat'),
                   ),
 
                   if (isAdmin) ...[
@@ -329,149 +347,151 @@ class AdminScreen extends ConsumerWidget {
                     ),
                   ],
 
-                  const SizedBox(height: 28),
+                  if (showManagerTools) ...[
+                    const SizedBox(height: 28),
 
-                  // ── Quick Actions ───────────────────────────
-                  Text(
-                    'THAO TÁC NHANH',
-                    style: GoogleFonts.beVietnamPro(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w600,
-                      color: colors.textSecondary,
-                      letterSpacing: 1.2,
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-
-                  Row(
-                    children: [
-                      if (isAdmin) ...[
-                        Expanded(
-                          child: _QuickAction(
-                            icon: Icons.person_add_rounded,
-                            label: 'Thêm\nnhân viên',
-                            color: colors.brand,
-                            onTap: () => context.push('/admin/users/new'),
-                          ),
-                        ),
-                        const SizedBox(width: 10),
-                      ],
-                      if (isOwner && !isAdmin) ...[
-                        Expanded(
-                          child: _QuickAction(
-                            icon: Icons.mail_outline_rounded,
-                            label: 'Mời\nnhân viên',
-                            color: colors.brand,
-                            onTap: () => context.push('/staff/manage'),
-                          ),
-                        ),
-                        const SizedBox(width: 10),
-                      ],
-                      Expanded(
-                        child: _QuickAction(
-                          icon: Icons.add_home_work_rounded,
-                          label: 'Thêm\nphòng',
-                          color: colors.brandLight,
-                          onTap: () => context.push('/properties/new'),
-                        ),
+                    // ── Quick Actions ───────────────────────────
+                    Text(
+                      'THAO TÁC NHANH',
+                      style: GoogleFonts.beVietnamPro(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w600,
+                        color: colors.textSecondary,
+                        letterSpacing: 1.2,
                       ),
-                    ],
-                  ),
-
-                  const SizedBox(height: 28),
-
-                  // ── Nhân viên gần đây ───────────────────────
-                  Text(
-                    'NHÂN VIÊN GẦN ĐÂY',
-                    style: GoogleFonts.beVietnamPro(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w600,
-                      color: colors.textSecondary,
-                      letterSpacing: 1.2,
                     ),
-                  ),
-                  const SizedBox(height: 12),
+                    const SizedBox(height: 12),
 
-                  usersAsync.when(
-                    loading: () => const SizedBox(
-                      height: 80,
-                      child: Center(child: LoadingWidget()),
-                    ),
-                    error: (e, _) => ErrorStateWidget(
-                      message: e.toString().replaceAll('Exception: ', ''),
-                      onRetry: () => ref.invalidate(staffListProvider),
-                    ),
-                    data: (users) {
-                      if (users.isEmpty) {
-                        return const EmptyStateWidget(
-                          icon: Icons.people_outline_rounded,
-                          message: 'Chưa có nhân viên',
-                        );
-                      }
-                      final recent = users.take(5).toList();
-                      final isDark =
-                          Theme.of(context).brightness == Brightness.dark;
-                      return Container(
-                        decoration: BoxDecoration(
-                          color: colors.bgSurface,
-                          borderRadius: BorderRadius.circular(AppRadius.lg),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black
-                                  .withValues(alpha: isDark ? 0.30 : 0.04),
-                              blurRadius: 8,
-                              offset: const Offset(0, 2),
+                    Row(
+                      children: [
+                        if (isAdmin) ...[
+                          Expanded(
+                            child: _QuickAction(
+                              icon: Icons.person_add_rounded,
+                              label: 'Thêm\nnhân viên',
+                              color: colors.brand,
+                              onTap: () => context.push('/admin/users/new'),
                             ),
-                          ],
+                          ),
+                          const SizedBox(width: 10),
+                        ],
+                        if (isOwner && !isAdmin) ...[
+                          Expanded(
+                            child: _QuickAction(
+                              icon: Icons.mail_outline_rounded,
+                              label: 'Mời\nnhân viên',
+                              color: colors.brand,
+                              onTap: () => context.push('/staff/manage'),
+                            ),
+                          ),
+                          const SizedBox(width: 10),
+                        ],
+                        Expanded(
+                          child: _QuickAction(
+                            icon: Icons.add_home_work_rounded,
+                            label: 'Thêm\nphòng',
+                            color: colors.brandLight,
+                            onTap: () => startCreatePropertyFlow(context, ref),
+                          ),
                         ),
-                        child: Column(
-                          children: [
-                            for (int i = 0; i < recent.length; i++) ...[
-                              if (i > 0)
-                                Divider(
-                                  height: 1,
-                                  color: colors.borderDefault,
-                                  indent: 60,
-                                ),
-                              _UserRow(
-                                user: recent[i],
-                                onTap: isAdmin
-                                    ? () => context.push(
-                                          '/admin/users/${recent[i].id}/edit',
-                                        )
-                                    : null,
+                      ],
+                    ),
+
+                    const SizedBox(height: 28),
+
+                    // ── Nhân viên gần đây ───────────────────────
+                    Text(
+                      'NHÂN VIÊN GẦN ĐÂY',
+                      style: GoogleFonts.beVietnamPro(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w600,
+                        color: colors.textSecondary,
+                        letterSpacing: 1.2,
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+
+                    usersAsync.when(
+                      loading: () => const SizedBox(
+                        height: 80,
+                        child: Center(child: LoadingWidget()),
+                      ),
+                      error: (e, _) => ErrorStateWidget(
+                        message: e.toString().replaceAll('Exception: ', ''),
+                        onRetry: () => ref.invalidate(staffListProvider),
+                      ),
+                      data: (users) {
+                        if (users.isEmpty) {
+                          return const EmptyStateWidget(
+                            icon: Icons.people_outline_rounded,
+                            message: 'Chưa có nhân viên',
+                          );
+                        }
+                        final recent = users.take(5).toList();
+                        final isDark =
+                            Theme.of(context).brightness == Brightness.dark;
+                        return Container(
+                          decoration: BoxDecoration(
+                            color: colors.bgSurface,
+                            borderRadius: BorderRadius.circular(AppRadius.lg),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black
+                                    .withValues(alpha: isDark ? 0.30 : 0.04),
+                                blurRadius: 8,
+                                offset: const Offset(0, 2),
                               ),
                             ],
-                          ],
-                        ),
-                      );
-                    },
-                  ),
-
-                  // ── View all button ─────────────────────────
-                  usersAsync.whenOrNull(
-                        data: (users) => users.length > 5
-                            ? Padding(
-                                padding: const EdgeInsets.only(top: 8),
-                                child: TextButton(
-                                  onPressed: () => context.push(
-                                    isOwner && !isAdmin
-                                        ? '/staff/manage'
-                                        : '/admin/users',
+                          ),
+                          child: Column(
+                            children: [
+                              for (int i = 0; i < recent.length; i++) ...[
+                                if (i > 0)
+                                  Divider(
+                                    height: 1,
+                                    color: colors.borderDefault,
+                                    indent: 60,
                                   ),
-                                  child: Text(
-                                    'Xem tất cả ${users.length} nhân viên →',
-                                    style: GoogleFonts.beVietnamPro(
-                                      fontSize: 13,
-                                      fontWeight: FontWeight.w600,
-                                      color: colors.brand,
+                                _UserRow(
+                                  user: recent[i],
+                                  onTap: isAdmin
+                                      ? () => context.push(
+                                            '/admin/users/${recent[i].id}/edit',
+                                          )
+                                      : null,
+                                ),
+                              ],
+                            ],
+                          ),
+                        );
+                      },
+                    ),
+
+                    // ── View all button ─────────────────────────
+                    usersAsync.whenOrNull(
+                          data: (users) => users.length > 5
+                              ? Padding(
+                                  padding: const EdgeInsets.only(top: 8),
+                                  child: TextButton(
+                                    onPressed: () => context.push(
+                                      isOwner && !isAdmin
+                                          ? '/staff/manage'
+                                          : '/admin/users',
+                                    ),
+                                    child: Text(
+                                      'Xem tất cả ${users.length} nhân viên →',
+                                      style: GoogleFonts.beVietnamPro(
+                                        fontSize: 13,
+                                        fontWeight: FontWeight.w600,
+                                        color: colors.brand,
+                                      ),
                                     ),
                                   ),
-                                ),
-                              )
-                            : const SizedBox.shrink(),
-                      ) ??
-                      const SizedBox.shrink(),
+                                )
+                              : const SizedBox.shrink(),
+                        ) ??
+                        const SizedBox.shrink(),
+                  ],
 
                   const SizedBox(height: 80),
                 ],

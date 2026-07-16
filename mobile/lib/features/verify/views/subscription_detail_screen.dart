@@ -27,7 +27,6 @@ import '../utils/payment_status_poller.dart';
 import '../utils/subscription_renew_validator.dart';
 import '../utils/verify_flow_navigation.dart';
 import 'widgets/payment_dialogs.dart';
-import 'widgets/status_timeline.dart';
 import 'widgets/subscription_hero_card.dart';
 import 'widgets/verify_format.dart';
 
@@ -390,95 +389,6 @@ class _SubscriptionDetailScreenState
   String _cycleLabel(BillingCycle cycle) =>
       cycle == BillingCycle.yearly ? 'Hàng năm' : 'Hàng tháng';
 
-  List<TimelineStep> _timelineSteps(UserModel user) {
-    if (user.isInTrial) {
-      return [
-        const TimelineStep(
-          title: 'KYC & thanh toán',
-          subtitle: 'Đã hoàn tất',
-          status: TimelineStepStatus.done,
-        ),
-        TimelineStep(
-          title: 'Gói đang hoạt động',
-          subtitle: user.subscriptionPlanLabel,
-          status: TimelineStepStatus.current,
-        ),
-        TimelineStep(
-          title: 'Gia hạn tiếp theo',
-          subtitle: user.nextChargeAt != null
-              ? VerifyFormat.dateVN(user.nextChargeAt!)
-              : 'Theo chu kỳ đã chọn',
-          status: TimelineStepStatus.pending,
-        ),
-      ];
-    }
-
-    if (user.isSubscriptionActive) {
-      return [
-        const TimelineStep(
-          title: 'KYC & thanh toán',
-          subtitle: 'Đã hoàn tất',
-          status: TimelineStepStatus.done,
-        ),
-        TimelineStep(
-          title: 'Gói đang hoạt động',
-          subtitle: user.subscriptionPlanLabel,
-          status: TimelineStepStatus.current,
-        ),
-        TimelineStep(
-          title: 'Gia hạn tiếp theo',
-          subtitle: user.nextChargeAt != null
-              ? VerifyFormat.dateVN(user.nextChargeAt!)
-              : 'Theo chu kỳ đã chọn',
-          status: TimelineStepStatus.pending,
-        ),
-      ];
-    }
-
-    if (user.isSubscriptionPastDue) {
-      return [
-        const TimelineStep(
-          title: 'Gói trước đó',
-          subtitle: 'Đã kích hoạt',
-          status: TimelineStepStatus.done,
-        ),
-        const TimelineStep(
-          title: 'Quá hạn thanh toán',
-          subtitle: 'Vui lòng gia hạn để tiếp tục',
-          status: TimelineStepStatus.current,
-        ),
-        const TimelineStep(
-          title: 'Khôi phục dịch vụ',
-          subtitle: 'Sau khi thanh toán thành công',
-          status: TimelineStepStatus.pending,
-        ),
-      ];
-    }
-
-    if (user.isSubscriptionCancelled) {
-      return [
-        const TimelineStep(
-          title: 'Đã huỷ gói',
-          subtitle: 'Subscription không còn hiệu lực',
-          status: TimelineStepStatus.current,
-        ),
-        const TimelineStep(
-          title: 'Mua lại gói',
-          subtitle: 'Chọn gói mới để tiếp tục quản lý',
-          status: TimelineStepStatus.pending,
-        ),
-      ];
-    }
-
-    return const [
-      TimelineStep(
-        title: 'Chưa kích hoạt',
-        subtitle: 'Chọn gói để bắt đầu',
-        status: TimelineStepStatus.current,
-      ),
-    ];
-  }
-
   @override
   Widget build(BuildContext context) {
     final colors = context.colors;
@@ -551,7 +461,6 @@ class _SubscriptionDetailScreenState
     final planActionIcon = user.hasEverPurchasedSubscription
         ? Icons.upgrade
         : Icons.shopping_cart_outlined;
-    final timeline = _timelineSteps(user);
     final metrics = _buildMetrics(user, plan, cycle, displayCost);
 
     return PopScope(
@@ -568,98 +477,93 @@ class _SubscriptionDetailScreenState
         ),
         body: Stack(
           children: [
-            ListView(
-              padding: const EdgeInsets.fromLTRB(
-                AppSpacing.md,
-                AppSpacing.md,
-                AppSpacing.md,
-                AppSpacing.xxl,
-              ),
-              children: [
-                if (_awaitingReconcile) ...[
-                  StatusStrip(
-                    icon: Icons.schedule,
-                    label: 'Đang chờ đối soát thủ công',
-                    subtitle: 'Có thể mất 1–3 giờ. Bạn có thể đóng app — '
-                        'sẽ nhận thông báo khi xác nhận thành công.',
-                    variant: StatusStripVariant.brand,
-                    trailing: TextButton(
-                      onPressed: _reopenPaymentDialog,
-                      child: const Text('Xem QR'),
+            RefreshIndicator(
+              color: colors.brand,
+              onRefresh: () async {
+                await ref.read(authProvider.notifier).refreshProfile();
+                ref.invalidate(verifyPlansProvider);
+              },
+              child: ListView(
+                physics: const AlwaysScrollableScrollPhysics(),
+                padding: const EdgeInsets.fromLTRB(
+                  AppSpacing.md,
+                  AppSpacing.md,
+                  AppSpacing.md,
+                  AppSpacing.xxl,
+                ),
+                children: [
+                  if (_awaitingReconcile) ...[
+                    StatusStrip(
+                      icon: Icons.schedule,
+                      label: 'Đang chờ đối soát thủ công',
+                      subtitle: 'Có thể mất 1–3 giờ. Bạn có thể đóng app — '
+                          'sẽ nhận thông báo khi xác nhận thành công.',
+                      variant: StatusStripVariant.brand,
+                      trailing: TextButton(
+                        onPressed: _reopenPaymentDialog,
+                        child: const Text('Xem QR'),
+                      ),
+                    ),
+                    const SizedBox(height: AppSpacing.md),
+                  ],
+                  if (user.isSubscriptionFrozen) ...[
+                    SubscriptionStatusBanner(user: user),
+                    const SizedBox(height: AppSpacing.md),
+                  ],
+                  if (user.hasPendingDowngrade &&
+                      user.pendingEffectiveAt != null) ...[
+                    StatusStrip(
+                      icon: Icons.trending_down,
+                      label: 'Đã đặt lịch hạ gói',
+                      subtitle: 'Gói ${user.pendingPlanLabel} áp dụng từ '
+                          '${VerifyFormat.dateVN(user.pendingEffectiveAt!)}',
+                      variant: StatusStripVariant.brand,
+                    ),
+                    const SizedBox(height: AppSpacing.md),
+                  ],
+                  SubscriptionHeroCard(
+                    user: user,
+                    plan: plan,
+                    billingCycle: cycle,
+                    costLabel: displayCost,
+                  ),
+                  const SizedBox(height: AppSpacing.md),
+                  _sectionEntrance(
+                    index: 0,
+                    child: _SectionHeader(
+                      title: 'Thông tin nhanh',
+                      subtitle: user.subscriptionMenuSubtitle,
                     ),
                   ),
-                  const SizedBox(height: AppSpacing.md),
-                ],
-                if (user.isSubscriptionFrozen) ...[
-                  SubscriptionStatusBanner(user: user),
-                  const SizedBox(height: AppSpacing.md),
-                ],
-                if (user.hasPendingDowngrade &&
-                    user.pendingEffectiveAt != null) ...[
-                  StatusStrip(
-                    icon: Icons.trending_down,
-                    label: 'Đã đặt lịch hạ gói',
-                    subtitle: 'Gói ${user.pendingPlanLabel} áp dụng từ '
-                        '${VerifyFormat.dateVN(user.pendingEffectiveAt!)}',
-                    variant: StatusStripVariant.brand,
+                  const SizedBox(height: AppSpacing.sm),
+                  _sectionEntrance(
+                    index: 1,
+                    child: _MetricsGrid(metrics: metrics),
                   ),
-                  const SizedBox(height: AppSpacing.md),
-                ],
-                SubscriptionHeroCard(
-                  user: user,
-                  plan: plan,
-                  billingCycle: cycle,
-                  costLabel: displayCost,
-                ),
-                const SizedBox(height: AppSpacing.md),
-                _sectionEntrance(
-                  index: 0,
-                  child: _SectionHeader(
-                    title: 'Thông tin nhanh',
-                    subtitle: user.subscriptionMenuSubtitle,
-                  ),
-                ),
-                const SizedBox(height: AppSpacing.sm),
-                _sectionEntrance(
-                  index: 1,
-                  child: _MetricsGrid(metrics: metrics),
-                ),
-                const SizedBox(height: AppSpacing.lg),
-                _sectionEntrance(
-                  index: 2,
-                  child: const _SectionHeader(
-                    title: 'Tiến trình gói',
-                    subtitle: 'Các mốc quan trọng của subscription',
-                  ),
-                ),
-                const SizedBox(height: AppSpacing.sm),
-                _sectionEntrance(
-                  index: 3,
-                  child: StatusTimeline(steps: timeline),
-                ),
-                if (plan != null && plan.features.isNotEmpty) ...[
+                  if (plan != null && plan.features.isNotEmpty) ...[
+                    const SizedBox(height: AppSpacing.lg),
+                    _sectionEntrance(
+                      index: 2,
+                      child: _FeaturesSection(plan: plan),
+                    ),
+                  ],
                   const SizedBox(height: AppSpacing.lg),
                   _sectionEntrance(
-                    index: 4,
-                    child: _FeaturesSection(plan: plan),
+                    index: 3,
+                    child: _ActionsSection(
+                      planActionLabel: planActionLabel,
+                      planActionRoute: planActionRoute,
+                      planActionIcon: planActionIcon,
+                      canOpenPlanPicker: user.canOpenPlanPicker,
+                      renewValidation: renewValidation,
+                      renewing: _renewing,
+                      plan: plan,
+                      renewPriceLabel: renewPriceLabel,
+                      onRenew: _handleRenew,
+                    ),
                   ),
                 ],
-                const SizedBox(height: AppSpacing.lg),
-                _sectionEntrance(
-                  index: 5,
-                  child: _ActionsSection(
-                    planActionLabel: planActionLabel,
-                    planActionRoute: planActionRoute,
-                    planActionIcon: planActionIcon,
-                    canOpenPlanPicker: user.canOpenPlanPicker,
-                    renewValidation: renewValidation,
-                    renewing: _renewing,
-                    plan: plan,
-                    renewPriceLabel: renewPriceLabel,
-                    onRenew: _handleRenew,
-                  ),
-                ),
-              ],
+              ),
             ),
             if (authState.isLoading || plansAsync.isLoading)
               Positioned(

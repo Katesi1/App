@@ -9,6 +9,7 @@ import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../data/models/notification_model.dart';
 import '../../../shared/widgets/loading_widget.dart';
+import '../../../shared/widgets/pull_to_refresh.dart';
 import '../controllers/notification_controller.dart';
 
 /// Detail screen cho 1 thông báo. Resolve model qua `id` từ
@@ -45,9 +46,7 @@ class _NotificationDetailScreenState
     final notification = _findById(list, widget.id);
     if (notification == null || notification.isRead) return;
     _markedAsRead = true;
-    await ref
-        .read(notificationActionsProvider.notifier)
-        .markAsRead(widget.id);
+    await ref.read(notificationActionsProvider.notifier).markAsRead(widget.id);
   }
 
   NotificationModel? _findById(List<NotificationModel> list, String id) {
@@ -67,29 +66,37 @@ class _NotificationDetailScreenState
       appBar: AppBar(
         title: const Text('Chi tiết thông báo'),
       ),
-      body: listAsync.when(
-        loading: () => const LoadingWidget(),
-        error: (e, _) => ErrorStateWidget(
-          message: e.toString().replaceAll('Exception: ', ''),
-          onRetry: () => ref.invalidate(notificationListProvider),
+      body: RefreshIndicator(
+        color: colors.brand,
+        onRefresh: () async => ref.invalidate(notificationListProvider),
+        child: listAsync.when(
+          loading: () => const LoadingWidget(),
+          error: (e, _) => RefreshableMessage(
+            child: ErrorStateWidget(
+              message: e.toString().replaceAll('Exception: ', ''),
+              onRetry: () => ref.invalidate(notificationListProvider),
+            ),
+          ),
+          data: (list) {
+            final notification = _findById(list, widget.id);
+            if (notification == null) {
+              return const RefreshableMessage(
+                child: EmptyStateWidget(
+                  icon: Icons.notifications_off_outlined,
+                  message: 'Không tìm thấy thông báo',
+                  subMessage: 'Thông báo có thể đã bị xoá',
+                ),
+              );
+            }
+            // Mark-as-read sau khi list load thành công (postFrame trong init
+            // chạy sớm hơn list async load).
+            if (!_markedAsRead && !notification.isRead) {
+              WidgetsBinding.instance
+                  .addPostFrameCallback((_) => _maybeMarkRead());
+            }
+            return _DetailBody(notification: notification);
+          },
         ),
-        data: (list) {
-          final notification = _findById(list, widget.id);
-          if (notification == null) {
-            return const EmptyStateWidget(
-              icon: Icons.notifications_off_outlined,
-              message: 'Không tìm thấy thông báo',
-              subMessage: 'Thông báo có thể đã bị xoá',
-            );
-          }
-          // Mark-as-read sau khi list load thành công (postFrame trong init
-          // chạy sớm hơn list async load).
-          if (!_markedAsRead && !notification.isRead) {
-            WidgetsBinding.instance
-                .addPostFrameCallback((_) => _maybeMarkRead());
-          }
-          return _DetailBody(notification: notification);
-        },
       ),
     );
   }
@@ -105,6 +112,7 @@ class _DetailBody extends StatelessWidget {
     final (IconData icon, Color color) = _iconForType(colors);
 
     return ListView(
+      physics: const AlwaysScrollableScrollPhysics(),
       padding: const EdgeInsets.all(AppSpacing.md),
       children: [
         // ── Header card: icon + type badge ──

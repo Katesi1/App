@@ -12,6 +12,7 @@ import '../../../core/storage/secure_storage.dart';
 import '../../../core/theme/app_color_scheme.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../shared/widgets/app_toast.dart';
+import '../../../core/network/api_client.dart';
 import '../controllers/auth_controller.dart';
 import 'role_picker_screen.dart';
 
@@ -193,10 +194,12 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
     // Detect force-logout (token refresh fail) → show toast 1 lần.
     ref.listen(authProvider, (prev, next) {
       if (next.forceLoggedOut && (prev?.forceLoggedOut ?? false) == false) {
-        AppToast.error(
-          context,
-          'Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.',
-        );
+        final message = switch (next.forceLogoutReason) {
+          ForceLogoutReason.sessionKicked =>
+            'Tài khoản đã đăng nhập ở thiết bị khác. Vui lòng đăng nhập lại.',
+          _ => 'Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.',
+        };
+        AppToast.error(context, message);
         // Clear flag để toast không hiện lại khi user back-vào lại screen.
         ref.read(authProvider.notifier).consumeForceLogoutFlag();
       }

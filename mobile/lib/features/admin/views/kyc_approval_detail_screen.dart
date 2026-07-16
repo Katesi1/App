@@ -6,6 +6,7 @@ import '../../../core/theme/app_color_scheme.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../shared/widgets/loading_widget.dart';
+import '../../../shared/widgets/pull_to_refresh.dart';
 import '../../../shared/widgets/status_strip.dart';
 import '../../auth/controllers/auth_controller.dart';
 import '../../verify/data/models/cccd_upload.dart';
@@ -50,15 +51,24 @@ class KYCApprovalDetailScreen extends ConsumerWidget {
           ),
         ),
       ),
-      body: async.when(
-        loading: () => const LoadingWidget(),
-        error: (e, _) => Center(child: Text('Lỗi: $e')),
-        data: (s) {
-          if (s == null) {
-            return const Center(child: Text('Không tìm thấy hồ sơ.'));
-          }
-          return _Content(submission: s);
-        },
+      body: RefreshIndicator(
+        color: colors.brand,
+        onRefresh: () async =>
+            ref.invalidate(kycSubmissionProvider(submissionId)),
+        child: async.when(
+          loading: () => const LoadingWidget(),
+          error: (e, _) => RefreshableMessage(
+            child: Center(child: Text('Lỗi: $e')),
+          ),
+          data: (s) {
+            if (s == null) {
+              return const RefreshableMessage(
+                child: Center(child: Text('Không tìm thấy hồ sơ.')),
+              );
+            }
+            return _Content(submission: s);
+          },
+        ),
       ),
     );
   }
@@ -207,6 +217,7 @@ class _ContentState extends ConsumerState<_Content> {
     return Stack(
       children: [
         ListView(
+          physics: const AlwaysScrollableScrollPhysics(),
           padding: EdgeInsets.fromLTRB(
             AppSpacing.md,
             AppSpacing.md,

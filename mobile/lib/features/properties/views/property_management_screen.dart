@@ -8,10 +8,8 @@ import '../../../core/theme/app_colors.dart';
 import '../../../data/models/homestay_model.dart';
 import '../../../shared/widgets/loading_widget.dart';
 import '../../auth/controllers/auth_controller.dart';
-import '../../../core/utils/property_room_counter.dart';
 import '../../properties/controllers/property_controller.dart';
-import '../../verify/controllers/verify_flow_controller.dart';
-import '../../verify/views/paywall_modal.dart';
+import '../utils/create_property_flow.dart';
 import '../widgets/property_management_card.dart';
 
 // gradient.brandHero stop "jade-mid" theo spec section 3.7
@@ -327,60 +325,9 @@ class _PropertyManagementScreenState
     );
   }
 
-  /// Owner phải verify CCCD trước khi tạo property.
-  /// - Owner đã approved → push thẳng property add screen
-  /// - Owner chưa approved → show paywall, route theo status hiện tại
-  /// - Admin / Sale → bypass verify (không cần KYC)
+  /// Luồng thêm phòng dùng chung (cổng SĐT → KYC → bank → quota).
   Future<void> _onCreateProperty() async {
-    final user = ref.read(currentUserProvider);
-    final verifyState = ref.read(verifyFlowControllerProvider);
-
-    if (user == null) return;
-
-    if (user.isOwner && !user.needsKyc) {
-      try {
-        final homestays = await ref.read(homestayListProvider(true).future);
-        final count = PropertyRoomCounter.fromHomestays(homestays);
-        if (!user.canAddMoreRooms(count)) {
-          if (mounted) {
-            AppSnackBar.error(
-              context,
-              user.roomQuotaAtLimitMessage(count),
-            );
-          }
-          return;
-        }
-      } catch (_) {}
-      if (mounted) context.push('/properties/new');
-      return;
-    }
-
-    if (!user.isOwner) {
-      context.push('/properties/new');
-      return;
-    }
-
-    // Source of truth: user.kycStatus từ /auth/profile.
-    if (user.isKycPending) {
-      context.push('/verify/pending');
-      return;
-    }
-    if (user.isKycRejected) {
-      context.push('/verify/rejected');
-      return;
-    }
-
-    final ok = await showPaywallModal(context);
-    if (ok == true && mounted) {
-      final step = verifyState.kycCurrentStep;
-      final route = switch (step) {
-        2 => '/verify/cccd-back',
-        3 => '/verify/selfie',
-        4 => '/verify/pending',
-        _ => '/verify/cccd-front',
-      };
-      if (mounted) context.push(route);
-    }
+    await startCreatePropertyFlow(context, ref);
   }
 }
 

@@ -28,247 +28,259 @@ class ProfileScreen extends ConsumerWidget {
     final showVerifySection = user?.isOwner ?? false;
 
     return Scaffold(
-      body: SingleChildScrollView(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            // ── Immersive gradient header ──────────────────────────
-            _ProfileHeader(user: user, topPad: topPad, isDark: isDark)
-                .animate()
-                .fadeIn(duration: 400.ms)
-                .slideY(begin: -0.04, end: 0),
+      body: RefreshIndicator(
+        color: colors.brand,
+        onRefresh: () async => ref.read(authProvider.notifier).refreshProfile(),
+        child: SingleChildScrollView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              // ── Immersive gradient header ──────────────────────────
+              _ProfileHeader(user: user, topPad: topPad, isDark: isDark)
+                  .animate()
+                  .fadeIn(duration: 400.ms)
+                  .slideY(begin: -0.04, end: 0),
 
-            const SizedBox(height: 24),
+              const SizedBox(height: 24),
 
-            // ── Section: TÀI KHOẢN ────────────────────────────────
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  _SectionLabel('TÀI KHOẢN'),
-                  const SizedBox(height: 8),
-                  _MenuCard(
-                    isDark: isDark,
-                    items: [
-                      _MenuItemData(
-                        icon: Icons.person_outline_rounded,
-                        label: 'Thông tin cá nhân',
-                        subtitle: 'Cập nhật hồ sơ của bạn',
-                        iconColor: colors.brand,
-                        onTap: () => context.push('/profile/edit'),
-                      ),
-                      _MenuItemData(
-                        icon: Icons.lock_outline_rounded,
-                        label: 'Đổi mật khẩu',
-                        subtitle: 'Bảo mật tài khoản',
-                        iconColor: colors.brand,
-                        onTap: () => context.push('/profile/change-password'),
-                      ),
-                      _MenuItemData(
-                        icon: Icons.person_remove_outlined,
-                        label: 'Xoá tài khoản',
-                        subtitle: 'Xoá vĩnh viễn dữ liệu của bạn',
-                        iconColor: colors.error,
-                        onTap: () => context.push('/profile/delete-account'),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            )
-                .animate(delay: 100.ms)
-                .fadeIn(duration: 300.ms)
-                .slideX(begin: 0.05, end: 0),
-
-            const SizedBox(height: 16),
-
-            // ── Section: KYC + SUBSCRIPTION (chỉ cho Owner) ───────
-            if (showVerifySection)
+              // ── Section: TÀI KHOẢN ────────────────────────────────
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 20),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    _SectionLabel('XÁC THỰC + GÓI ĐĂNG KÝ'),
+                    _SectionLabel('TÀI KHOẢN'),
                     const SizedBox(height: 8),
                     _MenuCard(
                       isDark: isDark,
                       items: [
-                        _kycMenuItem(context, user, colors),
-                        _subscriptionMenuItem(context, user, colors),
+                        _MenuItemData(
+                          icon: Icons.person_outline_rounded,
+                          label: 'Thông tin cá nhân',
+                          subtitle: 'Cập nhật hồ sơ của bạn',
+                          iconColor: colors.brand,
+                          onTap: () => context.push('/profile/edit'),
+                        ),
+                        _MenuItemData(
+                          icon: Icons.lock_outline_rounded,
+                          label: 'Đổi mật khẩu',
+                          subtitle: 'Bảo mật tài khoản',
+                          iconColor: colors.brand,
+                          onTap: () => context.push('/profile/change-password'),
+                        ),
+                        _MenuItemData(
+                          icon: Icons.person_remove_outlined,
+                          label: 'Xoá tài khoản',
+                          subtitle: 'Xoá vĩnh viễn dữ liệu của bạn',
+                          iconColor: colors.error,
+                          onTap: () => context.push('/profile/delete-account'),
+                        ),
                       ],
                     ),
                   ],
                 ),
               )
-                  .animate(delay: 150.ms)
+                  .animate(delay: 100.ms)
                   .fadeIn(duration: 300.ms)
                   .slideX(begin: 0.05, end: 0),
 
-            if (showVerifySection) const SizedBox(height: 16),
+              const SizedBox(height: 16),
 
-            // ── Section: CÀI ĐẶT ──────────────────────────────────
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  _SectionLabel('CÀI ĐẶT'),
-                  const SizedBox(height: 8),
-                  _MenuCard(
-                    isDark: isDark,
-                    items: [
-                      _MenuItemData(
-                        icon: isDark
-                            ? Icons.light_mode_rounded
-                            : Icons.dark_mode_rounded,
-                        label: 'Chế độ tối',
-                        subtitle: isDark ? 'Đang bật' : 'Đang tắt',
-                        iconColor: colors.textPrimary,
-                        isToggle: true,
-                        toggleValue: isDark,
-                        onToggle: (_) =>
-                            ref.read(themeProvider.notifier).toggle(),
+              // ── Section: KYC + SUBSCRIPTION (chỉ cho Owner) ───────
+              if (showVerifySection)
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 20),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      _SectionLabel('XÁC THỰC + GÓI ĐĂNG KÝ'),
+                      const SizedBox(height: 8),
+                      _MenuCard(
+                        isDark: isDark,
+                        items: [
+                          _kycMenuItem(context, user, colors),
+                          _subscriptionMenuItem(context, user, colors),
+                          _MenuItemData(
+                            icon: Icons.account_balance_outlined,
+                            label: 'Tài khoản nhận tiền',
+                            subtitle: _bankSubtitle(user),
+                            iconColor: colors.brand,
+                            onTap: () => context.push('/profile/bank-account'),
+                          ),
+                        ],
                       ),
                     ],
                   ),
-                ],
-              ),
-            )
-                .animate(delay: 200.ms)
-                .fadeIn(duration: 300.ms)
-                .slideX(begin: 0.05, end: 0),
+                )
+                    .animate(delay: 150.ms)
+                    .fadeIn(duration: 300.ms)
+                    .slideX(begin: 0.05, end: 0),
 
-            const SizedBox(height: 16),
+              if (showVerifySection) const SizedBox(height: 16),
 
-            // ── Section: HỖ TRỢ ───────────────────────────────────
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  _SectionLabel('HỖ TRỢ'),
-                  const SizedBox(height: 8),
-                  _MenuCard(
-                    isDark: isDark,
-                    items: [
-                      _MenuItemData(
-                        icon: Icons.help_outline_rounded,
-                        label: 'Trợ giúp',
-                        subtitle: 'Câu hỏi thường gặp & liên hệ',
-                        iconColor: colors.warning,
-                        onTap: () => context.push('/profile/help'),
-                      ),
-                      _MenuItemData(
-                        icon: Icons.notifications_active_outlined,
-                        label: 'Tùy chọn thông báo',
-                        subtitle: 'Booking và thanh toán',
-                        iconColor: colors.brand,
-                        onTap: () => context.push('/profile/notifications'),
-                      ),
-                      _MenuItemData(
-                        icon: Icons.feedback_outlined,
-                        label: 'Gửi phản hồi / Báo lỗi',
-                        subtitle: 'Tạo ticket hỗ trợ',
-                        iconColor: colors.success,
-                        onTap: () => context.push('/profile/feedback'),
-                      ),
-                      _MenuItemData(
-                        icon: Icons.confirmation_number_outlined,
-                        label: 'Yêu cầu hỗ trợ của tôi',
-                        subtitle: 'Theo dõi tiến độ xử lý',
-                        iconColor: colors.brandSecondary,
-                        onTap: () => context.push('/profile/tickets'),
-                      ),
-                      _MenuItemData(
-                        icon: Icons.privacy_tip_outlined,
-                        label: 'Quyền riêng tư',
-                        subtitle: 'Chính sách bảo vệ dữ liệu',
-                        iconColor: colors.textSecondary,
-                        onTap: () => context.push('/profile/privacy'),
-                      ),
-                      _MenuItemData(
-                        icon: Icons.verified_user_outlined,
-                        label: 'Quyền đồng ý dữ liệu',
-                        subtitle: 'KYC (khóa server) & marketing',
-                        iconColor: colors.brand,
-                        onTap: () => context.push('/profile/consent'),
-                      ),
-                      _MenuItemData(
-                        icon: Icons.download_outlined,
-                        label: 'Yêu cầu dữ liệu cá nhân',
-                        subtitle: 'Xuất bản sao dữ liệu tài khoản',
-                        iconColor: colors.brandSecondary,
-                        onTap: () => context.push('/profile/data-request'),
-                      ),
-                      _MenuItemData(
-                        icon: Icons.gavel_outlined,
-                        label: 'Điều khoản sử dụng',
-                        subtitle: 'Điều khoản dịch vụ',
-                        iconColor: colors.textSecondary,
-                        onTap: () => context.push('/profile/terms'),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            )
-                .animate(delay: 300.ms)
-                .fadeIn(duration: 300.ms)
-                .slideX(begin: 0.05, end: 0),
-
-            const SizedBox(height: 24),
-
-            // ── Logout button ──────────────────────────────────────
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20),
-              child: OutlinedButton.icon(
-                onPressed: () => _confirmLogout(context, ref),
-                icon: Icon(
-                  Icons.logout_rounded,
-                  color: colors.error,
-                  size: 20,
+              // ── Section: CÀI ĐẶT ──────────────────────────────────
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 20),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _SectionLabel('CÀI ĐẶT'),
+                    const SizedBox(height: 8),
+                    _MenuCard(
+                      isDark: isDark,
+                      items: [
+                        _MenuItemData(
+                          icon: isDark
+                              ? Icons.light_mode_rounded
+                              : Icons.dark_mode_rounded,
+                          label: 'Chế độ tối',
+                          subtitle: isDark ? 'Đang bật' : 'Đang tắt',
+                          iconColor: colors.textPrimary,
+                          isToggle: true,
+                          toggleValue: isDark,
+                          onToggle: (_) =>
+                              ref.read(themeProvider.notifier).toggle(),
+                        ),
+                      ],
+                    ),
+                  ],
                 ),
-                label: Text(
-                  'Đăng xuất',
+              )
+                  .animate(delay: 200.ms)
+                  .fadeIn(duration: 300.ms)
+                  .slideX(begin: 0.05, end: 0),
+
+              const SizedBox(height: 16),
+
+              // ── Section: HỖ TRỢ ───────────────────────────────────
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 20),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _SectionLabel('HỖ TRỢ'),
+                    const SizedBox(height: 8),
+                    _MenuCard(
+                      isDark: isDark,
+                      items: [
+                        _MenuItemData(
+                          icon: Icons.help_outline_rounded,
+                          label: 'Trợ giúp',
+                          subtitle: 'Câu hỏi thường gặp & liên hệ',
+                          iconColor: colors.warning,
+                          onTap: () => context.push('/profile/help'),
+                        ),
+                        _MenuItemData(
+                          icon: Icons.notifications_active_outlined,
+                          label: 'Tùy chọn thông báo',
+                          subtitle: 'Booking và thanh toán',
+                          iconColor: colors.brand,
+                          onTap: () => context.push('/profile/notifications'),
+                        ),
+                        _MenuItemData(
+                          icon: Icons.feedback_outlined,
+                          label: 'Gửi phản hồi / Báo lỗi',
+                          subtitle: 'Tạo ticket hỗ trợ',
+                          iconColor: colors.success,
+                          onTap: () => context.push('/profile/feedback'),
+                        ),
+                        _MenuItemData(
+                          icon: Icons.confirmation_number_outlined,
+                          label: 'Yêu cầu hỗ trợ của tôi',
+                          subtitle: 'Theo dõi tiến độ xử lý',
+                          iconColor: colors.brandSecondary,
+                          onTap: () => context.push('/profile/tickets'),
+                        ),
+                        _MenuItemData(
+                          icon: Icons.privacy_tip_outlined,
+                          label: 'Quyền riêng tư',
+                          subtitle: 'Chính sách bảo vệ dữ liệu',
+                          iconColor: colors.textSecondary,
+                          onTap: () => context.push('/profile/privacy'),
+                        ),
+                        _MenuItemData(
+                          icon: Icons.verified_user_outlined,
+                          label: 'Quyền đồng ý dữ liệu',
+                          subtitle: 'KYC (khóa server) & marketing',
+                          iconColor: colors.brand,
+                          onTap: () => context.push('/profile/consent'),
+                        ),
+                        _MenuItemData(
+                          icon: Icons.download_outlined,
+                          label: 'Yêu cầu dữ liệu cá nhân',
+                          subtitle: 'Xuất bản sao dữ liệu tài khoản',
+                          iconColor: colors.brandSecondary,
+                          onTap: () => context.push('/profile/data-request'),
+                        ),
+                        _MenuItemData(
+                          icon: Icons.gavel_outlined,
+                          label: 'Điều khoản sử dụng',
+                          subtitle: 'Điều khoản dịch vụ',
+                          iconColor: colors.textSecondary,
+                          onTap: () => context.push('/profile/terms'),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              )
+                  .animate(delay: 300.ms)
+                  .fadeIn(duration: 300.ms)
+                  .slideX(begin: 0.05, end: 0),
+
+              const SizedBox(height: 24),
+
+              // ── Logout button ──────────────────────────────────────
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 20),
+                child: OutlinedButton.icon(
+                  onPressed: () => _confirmLogout(context, ref),
+                  icon: Icon(
+                    Icons.logout_rounded,
+                    color: colors.error,
+                    size: 20,
+                  ),
+                  label: Text(
+                    'Đăng xuất',
+                    style: GoogleFonts.beVietnamPro(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w600,
+                      color: colors.error,
+                    ),
+                  ),
+                  style: OutlinedButton.styleFrom(
+                    minimumSize: const Size(double.infinity, 52),
+                    side: BorderSide(
+                      color: colors.error,
+                      width: 1.5,
+                    ),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(AppRadius.lg),
+                    ),
+                  ),
+                ),
+              )
+                  .animate(delay: 400.ms)
+                  .fadeIn(duration: 300.ms)
+                  .slideX(begin: 0.05, end: 0),
+
+              const SizedBox(height: 16),
+
+              // ── App version ────────────────────────────────────────
+              Center(
+                child: Text(
+                  'Halong24h v1.0.0',
                   style: GoogleFonts.beVietnamPro(
-                    fontSize: 15,
-                    fontWeight: FontWeight.w600,
-                    color: colors.error,
+                    fontSize: 11,
+                    color: colors.textTertiary,
                   ),
                 ),
-                style: OutlinedButton.styleFrom(
-                  minimumSize: const Size(double.infinity, 52),
-                  side: BorderSide(
-                    color: colors.error,
-                    width: 1.5,
-                  ),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(AppRadius.lg),
-                  ),
-                ),
-              ),
-            )
-                .animate(delay: 400.ms)
-                .fadeIn(duration: 300.ms)
-                .slideX(begin: 0.05, end: 0),
+              ).animate(delay: 450.ms).fadeIn(duration: 300.ms),
 
-            const SizedBox(height: 16),
-
-            // ── App version ────────────────────────────────────────
-            Center(
-              child: Text(
-                'Halong24h v1.0.0',
-                style: GoogleFonts.beVietnamPro(
-                  fontSize: 11,
-                  color: colors.textTertiary,
-                ),
-              ),
-            ).animate(delay: 450.ms).fadeIn(duration: 300.ms),
-
-            const SizedBox(height: 32),
-          ],
+              const SizedBox(height: 32),
+            ],
+          ),
         ),
       ),
     );
@@ -361,6 +373,20 @@ class ProfileScreen extends ConsumerWidget {
           iconColor: colors.brand,
           onTap: () => context.push('/verify/cccd-front'),
         );
+    }
+  }
+
+  /// Subtitle cho mục "Tài khoản nhận tiền" theo `bankStatus`.
+  String _bankSubtitle(UserModel? user) {
+    switch (user?.bankStatus ?? 'none') {
+      case 'approved':
+        return 'Đã duyệt · đang nhận cọc';
+      case 'pending':
+        return 'Đang chờ admin duyệt';
+      case 'rejected':
+        return 'Bị từ chối · gửi lại';
+      default:
+        return 'Chưa cấu hình · thêm để nhận cọc';
     }
   }
 

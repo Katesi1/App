@@ -24,7 +24,7 @@ class MyTicketsScreen extends ConsumerWidget {
         label: const Text('Tạo yêu cầu'),
       ),
       body: ticketsAsync.when(
-        loading: () => const LoadingWidget(),
+        loading: () => const SkeletonList(skeleton: UserCardSkeleton()),
         error: (e, _) => ErrorStateWidget(
           message: e.toString().replaceAll('Exception: ', ''),
           onRetry: () => ref.invalidate(supportTicketListProvider),

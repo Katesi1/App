@@ -9,6 +9,7 @@ import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_spacing.dart';
 import '../../features/notifications/controllers/notification_controller.dart';
 import '../../features/chat/controllers/chat_controller.dart';
+import '../../features/properties/utils/create_property_flow.dart';
 
 class AppScaffold extends ConsumerWidget {
   final String title;
@@ -125,74 +126,100 @@ class _BottomNav extends ConsumerStatefulWidget {
 }
 
 class _BottomNavState extends ConsumerState<_BottomNav> {
-  late int _current;
-
-  // ── Nav items theo role ────────────────────────────────────────────
-  static const _staffNavItems = <_NavItem>[
-    _NavItem(
-      icon: Icons.home_outlined,
-      activeIcon: Icons.home_rounded,
-      label: 'Tổng quan',
-      route: '/dashboard',
-    ),
-    _NavItem(
-      icon: Icons.apartment_outlined,
-      activeIcon: Icons.apartment_rounded,
-      label: 'Phòng',
-      route: '/rooms',
-    ),
-    _NavItem(
-      icon: Icons.calendar_month_outlined,
-      activeIcon: Icons.calendar_month_rounded,
-      label: 'Lịch',
-      route: '/calendar',
-    ),
-    _NavItem(
-      icon: Icons.bar_chart_outlined,
-      activeIcon: Icons.bar_chart_rounded,
-      label: 'Báo cáo',
-      route: '/reports',
-    ),
-  ];
-
-  static const _adminExtraItem = _NavItem(
+  // ── Nav item catalog ───────────────────────────────────────────────
+  static const _dashboard = _NavItem(
+    icon: Icons.home_outlined,
+    activeIcon: Icons.home_rounded,
+    label: 'Tổng quan',
+    route: '/dashboard',
+  );
+  static const _rooms = _NavItem(
+    icon: Icons.apartment_outlined,
+    activeIcon: Icons.apartment_rounded,
+    label: 'Phòng',
+    route: '/rooms',
+  );
+  static const _calendar = _NavItem(
+    icon: Icons.calendar_month_outlined,
+    activeIcon: Icons.calendar_month_rounded,
+    label: 'Lịch',
+    route: '/calendar',
+  );
+  static const _reports = _NavItem(
+    icon: Icons.bar_chart_outlined,
+    activeIcon: Icons.bar_chart_rounded,
+    label: 'Báo cáo',
+    route: '/reports',
+  );
+  static const _addProperty = _NavItem(
+    icon: Icons.add_circle_outline_rounded,
+    activeIcon: Icons.add_circle_rounded,
+    label: 'Thêm phòng',
+    route: '/properties/new',
+    isAddProperty: true,
+  );
+  static const _notifications = _NavItem(
+    icon: Icons.notifications_outlined,
+    activeIcon: Icons.notifications_rounded,
+    label: 'Thông báo',
+    route: '/notifications',
+  );
+  static const _management = _NavItem(
     icon: Icons.admin_panel_settings_outlined,
     activeIcon: Icons.admin_panel_settings_rounded,
     label: 'Quản lý',
     route: '/admin',
   );
 
+  // ── Nav items theo role ────────────────────────────────────────────
+  // OWNER: Tổng quan · Báo cáo · Thêm phòng · Thông báo · Quản lý
+  //   (bỏ Phòng/Lịch — xem phòng ngay trên dashboard).
+  // SALE:  Tổng quan · Báo cáo · Thông báo · Quản lý (không tạo được phòng).
+  // ADMIN: giữ nav cũ (Tổng quan · Phòng · Lịch · Báo cáo · Quản lý).
   List<_NavItem> _getNavItems(UserModel? user) {
-    if (user == null) return _staffNavItems;
-    if (user.isAdmin || user.isOwner) {
-      return [..._staffNavItems, _adminExtraItem];
+    if (user == null) return const [_dashboard, _rooms, _calendar, _reports];
+    if (user.isAdmin) {
+      return const [_dashboard, _rooms, _calendar, _reports, _management];
     }
-    return _staffNavItems;
+    if (user.isOwner) {
+      return const [
+        _dashboard,
+        _reports,
+        _addProperty,
+        _notifications,
+        _management,
+      ];
+    }
+    if (user.isSale) {
+      return const [_dashboard, _reports, _notifications, _management];
+    }
+    return const [_dashboard, _rooms, _calendar, _reports];
   }
 
-  @override
-  void initState() {
-    super.initState();
-    _current = widget.selectedIndex;
-  }
-
-  @override
-  void didUpdateWidget(_BottomNav old) {
-    super.didUpdateWidget(old);
-    if (old.selectedIndex != widget.selectedIndex) {
-      setState(() => _current = widget.selectedIndex);
+  /// Index tab đang chọn — suy từ route hiện tại (không phụ thuộc index cứng
+  /// vì nav khác nhau theo role). Action "Thêm phòng" không bao giờ selected.
+  int _selectedIndex(List<_NavItem> items) {
+    final location = GoRouterState.of(context).matchedLocation;
+    var best = -1;
+    var bestLen = -1;
+    for (var i = 0; i < items.length; i++) {
+      final item = items[i];
+      if (item.isAddProperty) continue;
+      final r = item.route;
+      final matched = location == r || location.startsWith('$r/');
+      if (matched && r.length > bestLen) {
+        best = i;
+        bestLen = r.length;
+      }
     }
+    return best < 0 ? 0 : best;
   }
 
   @override
   Widget build(BuildContext context) {
     final user = ref.watch(currentUserProvider);
     final navItems = _getNavItems(user);
-
-    // Clamp index to valid range
-    if (_current >= navItems.length) {
-      _current = 0;
-    }
+    final current = _selectedIndex(navItems);
 
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
@@ -226,7 +253,7 @@ class _BottomNavState extends ConsumerState<_BottomNav> {
             ),
             child: Row(
               children: List.generate(navItems.length, (i) {
-                return _buildNavItem(i, navItems[i]);
+                return _buildNavItem(i, navItems[i], current);
               }),
             ),
           ),
@@ -235,8 +262,8 @@ class _BottomNavState extends ConsumerState<_BottomNav> {
     );
   }
 
-  Widget _buildNavItem(int index, _NavItem item) {
-    final isSelected = _current == index;
+  Widget _buildNavItem(int index, _NavItem item, int current) {
+    final isSelected = index == current;
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final activeColor = isDark ? AppColors.jadeText : AppColors.jade500;
     final inactiveColor = isDark ? AppColors.darkHint : AppColors.slate400;
@@ -244,7 +271,11 @@ class _BottomNavState extends ConsumerState<_BottomNav> {
     return Expanded(
       child: GestureDetector(
         onTap: () {
-          setState(() => _current = index);
+          if (item.isAddProperty) {
+            // Action: chạy luồng thêm phòng (cổng SĐT→KYC→bank→quota).
+            startCreatePropertyFlow(context, ref);
+            return;
+          }
           context.go(item.route);
         },
         behavior: HitTestBehavior.opaque,
@@ -377,10 +408,16 @@ class _NavItem {
   final IconData activeIcon;
   final String label;
   final String route;
+
+  /// True → tab là action "Thêm phòng": bấm chạy luồng tạo cơ sở thay vì
+  /// điều hướng, và không bao giờ ở trạng thái selected.
+  final bool isAddProperty;
+
   const _NavItem({
     required this.icon,
     required this.activeIcon,
     required this.label,
     required this.route,
+    this.isAddProperty = false,
   });
 }

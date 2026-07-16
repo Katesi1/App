@@ -16,6 +16,7 @@ import '../../verify/controllers/verify_flow_controller.dart';
 import '../../verify/data/models/verify_enums.dart';
 import '../../../shared/widgets/app_scaffold.dart';
 import '../../../shared/widgets/app_toast.dart';
+import '../../../shared/widgets/feature_locked.dart';
 import '../../../shared/widgets/loading_widget.dart';
 import '../controllers/staff_controller.dart';
 import '../data/models/staff_invite.dart';
@@ -73,6 +74,10 @@ class _StaffManagementScreenState extends ConsumerState<StaffManagementScreen>
       AppSnackBar.info(context, user.staffInviteBlockReason);
       return;
     }
+
+    // v1.41: OWNER phải có SĐT trước khi mời SALE (BE 403 PHONE_REQUIRED).
+    if (!await ensureOwnerHasPhone(context, user)) return;
+    if (!mounted) return;
 
     final limitMsg = await _staffInviteLimitMessage(user);
     if (!mounted) return;
@@ -249,7 +254,7 @@ class _StaffListTab extends ConsumerWidget {
     return RefreshIndicator(
       onRefresh: () async => ref.invalidate(staffListProvider),
       child: staffAsync.when(
-        loading: () => const LoadingWidget(),
+        loading: () => const SkeletonList(skeleton: UserCardSkeleton()),
         error: (e, _) => ErrorStateWidget(
           message: e.toString().replaceAll('Exception: ', ''),
           onRetry: () => ref.invalidate(staffListProvider),
@@ -523,7 +528,7 @@ class _InvitesListTab extends ConsumerWidget {
     return RefreshIndicator(
       onRefresh: () async => ref.invalidate(staffInvitesProvider),
       child: invitesAsync.when(
-        loading: () => const LoadingWidget(),
+        loading: () => const SkeletonList(skeleton: UserCardSkeleton()),
         error: (e, _) => ErrorStateWidget(
           message: e.toString().replaceAll('Exception: ', ''),
           onRetry: () => ref.invalidate(staffInvitesProvider),

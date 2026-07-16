@@ -5,11 +5,14 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
+import 'package:share_plus/share_plus.dart';
+import '../../../core/constants/api_constants.dart';
 import '../../../core/constants/app_constants.dart';
 import '../../../core/theme/app_color_scheme.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../core/utils/helpers.dart';
+import '../../../data/models/homestay_model.dart';
 import '../../../data/models/user_model.dart';
 import '../../auth/controllers/auth_controller.dart';
 import '../../bookings/controllers/booking_controller.dart';
@@ -22,8 +25,8 @@ import '../../../shared/widgets/app_scaffold.dart';
 import '../../../shared/widgets/loading_widget.dart';
 import '../../../shared/widgets/pagination_bar.dart';
 import '../../../shared/widgets/subscription_status_banner.dart';
-import '../../../core/utils/property_room_counter.dart';
 import '../../properties/controllers/property_controller.dart';
+import '../../properties/utils/create_property_flow.dart';
 
 // gradient.brandHero stop "jade-mid" theo spec section 3.7
 const _jadeMidLight = Color(0xFF1B7E94);
@@ -44,11 +47,29 @@ VerifyStatus _verifyStatusFromUserKyc(String kycStatus) {
   }
 }
 
-class DashboardScreen extends ConsumerWidget {
+class DashboardScreen extends ConsumerStatefulWidget {
   const DashboardScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<DashboardScreen> createState() => _DashboardScreenState();
+}
+
+class _DashboardScreenState extends ConsumerState<DashboardScreen> {
+  @override
+  void initState() {
+    super.initState();
+    // Auto-refresh profile khi vào dashboard để bắt KYC/subscription mới từ
+    // backend (vd admin vừa approve trong lúc user đứng ở màn khác). Throttle
+    // 30s tập trung trong AuthNotifier → không spam /auth/profile mỗi lần đổi
+    // tab. Defer sau frame đầu để không mutate provider trong lúc build.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      ref.read(authProvider.notifier).refreshProfileIfStale();
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final colors = context.colors;
     final user = ref.watch(currentUserProvider);
     final statsAsync = ref.watch(dashboardStatsProvider);
@@ -366,6 +387,12 @@ class DashboardScreen extends ConsumerWidget {
                   ),
                 ],
 
+                // ── Phòng của tôi (xem & chia sẻ) — OWNER + SALE ───────
+                if (user != null && (user.isOwner || user.isSale)) ...[
+                  const SizedBox(height: 28),
+                  const _MyRoomsSection(),
+                ],
+
                 const SizedBox(height: 28),
 
                 // ── Booking gần đây ─────────────────────────────────────
@@ -485,6 +512,207 @@ class _DashboardRecentBookingsSectionState
           ],
         );
       },
+    );
+  }
+}
+
+// ─── Phòng của tôi (xem & chia sẻ) ──────────────────────────────────────────
+class _MyRoomsSection extends ConsumerWidget {
+  const _MyRoomsSection();
+
+  static const int _maxPreview = 5;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final colors = context.colors;
+    final user = ref.watch(currentUserProvider);
+    // Owner-scoped theo token (SALE thấy phòng của owner mình). Chỉ phòng active.
+    final roomsAsync = ref.watch(homestayListProvider(false));
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Expanded(child: _SectionLabel('PHÒNG CỦA TÔI')),
+              if (user?.isOwner ?? false)
+                GestureDetector(
+                  onTap: () => context.push('/properties'),
+                  child: Text(
+                    'Xem tất cả →',
+                    style: GoogleFonts.beVietnamPro(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                      color: colors.textBrand,
+                    ),
+                  ),
+                ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          roomsAsync.when(
+            loading: () => const SkeletonList(
+              skeleton: HomestayCardSkeleton(),
+              count: 2,
+            ),
+            error: (e, _) => _InlineHint(
+              icon: Icons.cloud_off_rounded,
+              text: 'Không tải được danh sách phòng',
+              onTap: () => ref.invalidate(homestayListProvider(false)),
+            ),
+            data: (rooms) {
+              if (rooms.isEmpty) {
+                return _InlineHint(
+                  icon: Icons.apartment_outlined,
+                  text: user?.isOwner ?? false
+                      ? 'Chưa có phòng. Bấm "Thêm phòng" để đăng cơ sở đầu tiên.'
+                      : 'Chủ nhà chưa có phòng nào.',
+                );
+              }
+              final preview = rooms.take(_maxPreview).toList();
+              return Column(
+                children: [
+                  for (var i = 0; i < preview.length; i++) ...[
+                    if (i > 0) const SizedBox(height: 10),
+                    _MyRoomCard(
+                        room: preview[i], isOwner: user?.isOwner ?? false),
+                  ],
+                ],
+              );
+            },
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _MyRoomCard extends StatelessWidget {
+  final HomestayModel room;
+  final bool isOwner;
+
+  const _MyRoomCard({required this.room, required this.isOwner});
+
+  IconData get _typeIcon => switch (room.type) {
+        0 => Icons.villa_rounded,
+        2 => Icons.apartment_rounded,
+        _ => Icons.home_work_rounded,
+      };
+
+  void _share() {
+    final link = ApiConstants.propertyShareLink(room.id);
+    final name = room.name.isNotEmpty ? room.name : room.code;
+    Share.share('$name\n$link', subject: 'Phòng $name');
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.colors;
+    return Material(
+      color: colors.bgSurface,
+      borderRadius: BorderRadius.circular(AppRadius.lg),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(AppRadius.lg),
+        onTap: () => context.push(
+          isOwner ? '/properties/${room.id}' : '/rooms/${room.id}',
+        ),
+        child: Container(
+          padding: const EdgeInsets.all(AppSpacing.md),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(AppRadius.lg),
+            border: Border.all(color: colors.borderDefault),
+          ),
+          child: Row(
+            children: [
+              Container(
+                width: 44,
+                height: 44,
+                decoration: BoxDecoration(
+                  color: colors.brand.withValues(alpha: 0.10),
+                  borderRadius: BorderRadius.circular(AppRadius.md),
+                ),
+                child: Icon(_typeIcon, color: colors.brand, size: 22),
+              ),
+              const SizedBox(width: AppSpacing.md),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      room.name.isNotEmpty ? room.name : room.code,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: GoogleFonts.beVietnamPro(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w700,
+                        color: colors.textPrimary,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      'Mã ${room.code}${room.isActive ? '' : ' · Đang ẩn'}',
+                      style: GoogleFonts.beVietnamPro(
+                        fontSize: 12,
+                        color: colors.textTertiary,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              IconButton(
+                tooltip: 'Chia sẻ phòng',
+                icon: Icon(Icons.ios_share_rounded, color: colors.brand),
+                onPressed: _share,
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Dòng gợi ý inline nhỏ (empty/error) — gọn hơn EmptyStateWidget cho dashboard.
+class _InlineHint extends StatelessWidget {
+  final IconData icon;
+  final String text;
+  final VoidCallback? onTap;
+
+  const _InlineHint({required this.icon, required this.text, this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.colors;
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(AppSpacing.md),
+        decoration: BoxDecoration(
+          color: colors.bgSurface,
+          borderRadius: BorderRadius.circular(AppRadius.lg),
+          border: Border.all(color: colors.borderDefault),
+        ),
+        child: Row(
+          children: [
+            Icon(icon, size: 20, color: colors.textTertiary),
+            const SizedBox(width: AppSpacing.sm),
+            Expanded(
+              child: Text(
+                text,
+                style: GoogleFonts.beVietnamPro(
+                  fontSize: 13,
+                  color: colors.textSecondary,
+                ),
+              ),
+            ),
+            if (onTap != null)
+              Icon(Icons.refresh_rounded, size: 18, color: colors.textTertiary),
+          ],
+        ),
+      ),
     );
   }
 }
@@ -1906,21 +2134,6 @@ Future<void> _onAddProperty(
   BuildContext context,
   WidgetRef ref,
   UserModel? user,
-) async {
-  if (user == null) return;
-  if (user.needsKyc) {
-    context.push('/verify/cccd-front');
-    return;
-  }
-  try {
-    final homestays = await ref.read(homestayListProvider(true).future);
-    final count = PropertyRoomCounter.fromHomestays(homestays);
-    if (!user.canAddMoreRooms(count)) {
-      AppSnackBar.error(context, user.roomQuotaAtLimitMessage(count));
-      return;
-    }
-  } catch (_) {
-    // Best-effort — list lỗi vẫn cho mở form; BE enforce ở payment.
-  }
-  if (context.mounted) context.push('/properties/new');
-}
+) =>
+    // Luồng thêm phòng dùng chung (cổng SĐT → KYC → bank → quota).
+    startCreatePropertyFlow(context, ref);

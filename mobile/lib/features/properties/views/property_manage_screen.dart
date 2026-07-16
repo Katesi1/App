@@ -65,253 +65,261 @@ class _PropertyManageScreenState extends ConsumerState<PropertyManageScreen> {
 
               // ── Content ──────────────────────────────────
               Expanded(
-                child: ListView(
-                  padding: EdgeInsets.zero,
-                  children: [
-                    // ── Name + subtitle ─────────────────────
-                    Padding(
-                      padding: const EdgeInsets.fromLTRB(
-                        20,
-                        20,
-                        20,
-                        0,
-                      ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            '${room.code} · ${room.name}',
-                            style: GoogleFonts.beVietnamPro(
-                              fontSize: 22,
-                              fontWeight: FontWeight.w700,
-                              color: colors.textPrimary,
-                            ),
-                          ),
-                          const SizedBox(height: 4),
-                          Text(
-                            [
-                              room.bedrooms == 0
-                                  ? 'Studio'
-                                  : '${room.bedrooms}PN',
-                              '${room.bathrooms}WC',
-                              '${room.standardGuests} người',
-                              if (room.address != null &&
-                                  room.address!.isNotEmpty)
-                                room.address!,
-                            ].join(' · '),
-                            style: GoogleFonts.beVietnamPro(
-                              fontSize: 13,
-                              color: colors.textSecondary,
-                            ),
-                            maxLines: 2,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ],
-                      ),
-                    )
-                        .animate()
-                        .fadeIn(duration: 300.ms)
-                        .slideY(begin: 0.05, end: 0),
-
-                    const SizedBox(height: 16),
-
-                    // ── Active toggle ───────────────────────
-                    Padding(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 20,
-                      ),
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 16,
-                          vertical: 12,
-                        ),
-                        decoration: BoxDecoration(
-                          color: colors.bgSurface,
-                          borderRadius: BorderRadius.circular(
-                            AppRadius.lg,
-                          ),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black
-                                  .withValues(alpha: isDark ? 0.30 : 0.04),
-                              blurRadius: 8,
-                              offset: const Offset(0, 2),
-                            ),
-                          ],
-                        ),
-                        child: Row(
-                          children: [
-                            Container(
-                              width: 10,
-                              height: 10,
-                              decoration: BoxDecoration(
-                                color: room.isActive
-                                    ? colors.success
-                                    : colors.textTertiary,
-                                shape: BoxShape.circle,
-                              ),
-                            ),
-                            const SizedBox(width: 10),
-                            Expanded(
-                              child: Text(
-                                room.isActive ? 'Đang hoạt động' : 'Tạm ngưng',
-                                style: GoogleFonts.beVietnamPro(
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.w600,
-                                  color: colors.textPrimary,
-                                ),
-                              ),
-                            ),
-                            _togglingActive
-                                ? SizedBox(
-                                    width: 24,
-                                    height: 24,
-                                    child: CircularProgressIndicator(
-                                      strokeWidth: 2,
-                                      color: colors.brand,
-                                    ),
-                                  )
-                                : Switch(
-                                    value: room.isActive,
-                                    activeTrackColor: colors.brand,
-                                    onChanged: (val) => _toggleActive(val),
-                                  ),
-                          ],
-                        ),
-                      ),
-                    ).animate(delay: 100.ms).fadeIn(duration: 300.ms),
-
-                    const SizedBox(height: 20),
-
-                    // ── Menu items ──────────────────────────
-                    Padding(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 20,
-                      ),
-                      child: Container(
-                        decoration: BoxDecoration(
-                          color: colors.bgSurface,
-                          borderRadius: BorderRadius.circular(
-                            AppRadius.lg,
-                          ),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black
-                                  .withValues(alpha: isDark ? 0.30 : 0.04),
-                              blurRadius: 8,
-                              offset: const Offset(0, 2),
-                            ),
-                          ],
+                child: RefreshIndicator(
+                  color: colors.brand,
+                  onRefresh: () async =>
+                      ref.invalidate(roomDetailProvider(widget.homestayId)),
+                  child: ListView(
+                    physics: const AlwaysScrollableScrollPhysics(),
+                    padding: EdgeInsets.zero,
+                    children: [
+                      // ── Name + subtitle ─────────────────────
+                      Padding(
+                        padding: const EdgeInsets.fromLTRB(
+                          20,
+                          20,
+                          20,
+                          0,
                         ),
                         child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            _MenuItem(
-                              icon: Icons.camera_alt_outlined,
-                              label: 'Ảnh',
-                              trailing: '',
-                              onTap: () => context.push(
-                                '/properties/${widget.homestayId}/images',
+                            Text(
+                              '${room.code} · ${room.name}',
+                              style: GoogleFonts.beVietnamPro(
+                                fontSize: 22,
+                                fontWeight: FontWeight.w700,
+                                color: colors.textPrimary,
                               ),
                             ),
-                            const _MenuDivider(),
-                            _MenuItem(
-                              icon: Icons.description_outlined,
-                              label: 'Thông tin chi tiết',
-                              onTap: () => context.push(
-                                '/properties/${widget.homestayId}/info',
+                            const SizedBox(height: 4),
+                            Text(
+                              [
+                                room.bedrooms == 0
+                                    ? 'Studio'
+                                    : '${room.bedrooms}PN',
+                                '${room.bathrooms}WC',
+                                '${room.standardGuests} người',
+                                if (room.address != null &&
+                                    room.address!.isNotEmpty)
+                                  room.address!,
+                              ].join(' · '),
+                              style: GoogleFonts.beVietnamPro(
+                                fontSize: 13,
+                                color: colors.textSecondary,
                               ),
-                            ),
-                            const _MenuDivider(),
-                            _MenuItem(
-                              icon: Icons.check_circle_outline_rounded,
-                              label: 'Tiện ích',
-                              onTap: () => context.push(
-                                '/properties/${widget.homestayId}/amenities',
-                              ),
-                            ),
-                            const _MenuDivider(),
-                            _MenuItem(
-                              icon: Icons.price_change_outlined,
-                              label: 'Bảng giá',
-                              onTap: () => context.push(
-                                '/properties/${widget.homestayId}/pricing',
-                              ),
-                            ),
-                            const _MenuDivider(),
-                            _MenuItem(
-                              icon: Icons.room_service_outlined,
-                              label: 'Dịch vụ trả phí',
-                              onTap: () => context.push(
-                                '/properties/${widget.homestayId}/services',
-                              ),
-                            ),
-                            const _MenuDivider(),
-                            _MenuItem(
-                              icon: Icons.rule_rounded,
-                              label: 'Quy định',
-                              onTap: () => context.push(
-                                '/properties/${widget.homestayId}/rules',
-                              ),
-                            ),
-                            const _MenuDivider(),
-                            _MenuItem(
-                              icon: Icons.location_on_outlined,
-                              label: 'Vị trí',
-                              onTap: () => context.push(
-                                '/properties/${widget.homestayId}/location',
-                              ),
-                            ),
-                            const _MenuDivider(),
-                            _MenuItem(
-                              icon: Icons.cancel_outlined,
-                              label: 'Chính sách huỷ',
-                              onTap: () => context.push(
-                                '/properties/${widget.homestayId}/cancellation',
-                              ),
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
                             ),
                           ],
                         ),
-                      ),
-                    ).animate(delay: 200.ms).fadeIn(duration: 300.ms),
+                      )
+                          .animate()
+                          .fadeIn(duration: 300.ms)
+                          .slideY(begin: 0.05, end: 0),
 
-                    const SizedBox(height: 24),
+                      const SizedBox(height: 16),
 
-                    // ── Delete button (ADMIN + OWNER only) ──
-                    if (ref.watch(currentUserProvider)?.canManageProperty ??
-                        false)
+                      // ── Active toggle ───────────────────────
                       Padding(
                         padding: const EdgeInsets.symmetric(
                           horizontal: 20,
                         ),
-                        child: OutlinedButton.icon(
-                          onPressed: () => _deleteHomestay(context),
-                          icon: Icon(
-                            Icons.delete_outline_rounded,
-                            color: colors.error,
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 12,
                           ),
-                          label: Text(
-                            'Xoá căn này',
-                            style: GoogleFonts.beVietnamPro(
-                              fontWeight: FontWeight.w600,
+                          decoration: BoxDecoration(
+                            color: colors.bgSurface,
+                            borderRadius: BorderRadius.circular(
+                              AppRadius.lg,
+                            ),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black
+                                    .withValues(alpha: isDark ? 0.30 : 0.04),
+                                blurRadius: 8,
+                                offset: const Offset(0, 2),
+                              ),
+                            ],
+                          ),
+                          child: Row(
+                            children: [
+                              Container(
+                                width: 10,
+                                height: 10,
+                                decoration: BoxDecoration(
+                                  color: room.isActive
+                                      ? colors.success
+                                      : colors.textTertiary,
+                                  shape: BoxShape.circle,
+                                ),
+                              ),
+                              const SizedBox(width: 10),
+                              Expanded(
+                                child: Text(
+                                  room.isActive
+                                      ? 'Đang hoạt động'
+                                      : 'Tạm ngưng',
+                                  style: GoogleFonts.beVietnamPro(
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w600,
+                                    color: colors.textPrimary,
+                                  ),
+                                ),
+                              ),
+                              _togglingActive
+                                  ? SizedBox(
+                                      width: 24,
+                                      height: 24,
+                                      child: CircularProgressIndicator(
+                                        strokeWidth: 2,
+                                        color: colors.brand,
+                                      ),
+                                    )
+                                  : Switch(
+                                      value: room.isActive,
+                                      activeTrackColor: colors.brand,
+                                      onChanged: (val) => _toggleActive(val),
+                                    ),
+                            ],
+                          ),
+                        ),
+                      ).animate(delay: 100.ms).fadeIn(duration: 300.ms),
+
+                      const SizedBox(height: 20),
+
+                      // ── Menu items ──────────────────────────
+                      Padding(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 20,
+                        ),
+                        child: Container(
+                          decoration: BoxDecoration(
+                            color: colors.bgSurface,
+                            borderRadius: BorderRadius.circular(
+                              AppRadius.lg,
+                            ),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black
+                                    .withValues(alpha: isDark ? 0.30 : 0.04),
+                                blurRadius: 8,
+                                offset: const Offset(0, 2),
+                              ),
+                            ],
+                          ),
+                          child: Column(
+                            children: [
+                              _MenuItem(
+                                icon: Icons.camera_alt_outlined,
+                                label: 'Ảnh',
+                                trailing: '',
+                                onTap: () => context.push(
+                                  '/properties/${widget.homestayId}/images',
+                                ),
+                              ),
+                              const _MenuDivider(),
+                              _MenuItem(
+                                icon: Icons.description_outlined,
+                                label: 'Thông tin chi tiết',
+                                onTap: () => context.push(
+                                  '/properties/${widget.homestayId}/info',
+                                ),
+                              ),
+                              const _MenuDivider(),
+                              _MenuItem(
+                                icon: Icons.check_circle_outline_rounded,
+                                label: 'Tiện ích',
+                                onTap: () => context.push(
+                                  '/properties/${widget.homestayId}/amenities',
+                                ),
+                              ),
+                              const _MenuDivider(),
+                              _MenuItem(
+                                icon: Icons.price_change_outlined,
+                                label: 'Bảng giá',
+                                onTap: () => context.push(
+                                  '/properties/${widget.homestayId}/pricing',
+                                ),
+                              ),
+                              const _MenuDivider(),
+                              _MenuItem(
+                                icon: Icons.room_service_outlined,
+                                label: 'Dịch vụ trả phí',
+                                onTap: () => context.push(
+                                  '/properties/${widget.homestayId}/services',
+                                ),
+                              ),
+                              const _MenuDivider(),
+                              _MenuItem(
+                                icon: Icons.rule_rounded,
+                                label: 'Quy định',
+                                onTap: () => context.push(
+                                  '/properties/${widget.homestayId}/rules',
+                                ),
+                              ),
+                              const _MenuDivider(),
+                              _MenuItem(
+                                icon: Icons.location_on_outlined,
+                                label: 'Vị trí',
+                                onTap: () => context.push(
+                                  '/properties/${widget.homestayId}/location',
+                                ),
+                              ),
+                              const _MenuDivider(),
+                              _MenuItem(
+                                icon: Icons.cancel_outlined,
+                                label: 'Chính sách huỷ',
+                                onTap: () => context.push(
+                                  '/properties/${widget.homestayId}/cancellation',
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ).animate(delay: 200.ms).fadeIn(duration: 300.ms),
+
+                      const SizedBox(height: 24),
+
+                      // ── Delete button (ADMIN + OWNER only) ──
+                      if (ref.watch(currentUserProvider)?.canManageProperty ??
+                          false)
+                        Padding(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 20,
+                          ),
+                          child: OutlinedButton.icon(
+                            onPressed: () => _deleteHomestay(context),
+                            icon: Icon(
+                              Icons.delete_outline_rounded,
                               color: colors.error,
                             ),
-                          ),
-                          style: OutlinedButton.styleFrom(
-                            side: BorderSide(
-                              color: colors.error,
+                            label: Text(
+                              'Xoá căn này',
+                              style: GoogleFonts.beVietnamPro(
+                                fontWeight: FontWeight.w600,
+                                color: colors.error,
+                              ),
                             ),
-                            minimumSize: const Size(double.infinity, 48),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(
-                                AppRadius.lg,
+                            style: OutlinedButton.styleFrom(
+                              side: BorderSide(
+                                color: colors.error,
+                              ),
+                              minimumSize: const Size(double.infinity, 48),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(
+                                  AppRadius.lg,
+                                ),
                               ),
                             ),
                           ),
-                        ),
-                      ).animate(delay: 300.ms).fadeIn(duration: 300.ms),
+                        ).animate(delay: 300.ms).fadeIn(duration: 300.ms),
 
-                    const SizedBox(height: 40),
-                  ],
+                      const SizedBox(height: 40),
+                    ],
+                  ),
                 ),
               ),
             ],

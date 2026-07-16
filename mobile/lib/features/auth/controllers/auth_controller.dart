@@ -37,12 +37,17 @@ class AuthState {
   /// `consumeForceLogoutFlag()` để reset.
   final bool forceLoggedOut;
 
+  /// Lý do bị đẩy về login — quyết định message ở login screen. Null khi
+  /// [forceLoggedOut] = false.
+  final ForceLogoutReason? forceLogoutReason;
+
   AuthState({
     this.user,
     this.isLoading = false,
     this.isLoggedIn = false,
     this.error,
     this.forceLoggedOut = false,
+    this.forceLogoutReason,
   });
 
   AuthState copyWith({
@@ -51,6 +56,7 @@ class AuthState {
     bool? isLoggedIn,
     String? error,
     bool? forceLoggedOut,
+    ForceLogoutReason? forceLogoutReason,
   }) =>
       AuthState(
         user: user ?? this.user,
@@ -58,6 +64,7 @@ class AuthState {
         isLoggedIn: isLoggedIn ?? this.isLoggedIn,
         error: error,
         forceLoggedOut: forceLoggedOut ?? this.forceLoggedOut,
+        forceLogoutReason: forceLogoutReason ?? this.forceLogoutReason,
       );
 }
 
@@ -65,7 +72,11 @@ class AuthNotifier extends StateNotifier<AuthState> {
   final AuthRepository _repo;
   final Ref _ref;
 
-  StreamSubscription<void>? _forceLogoutSub;
+  StreamSubscription<ForceLogoutReason>? _forceLogoutSub;
+
+  /// Thời điểm gần nhất [refreshProfile] chạy — dùng cho [refreshProfileIfStale]
+  /// throttle auto-refresh (app resume + vào dashboard) tránh spam /auth/profile.
+  DateTime? _lastProfileRefreshAt;
 
   AuthNotifier(this._repo, this._ref) : super(AuthState()) {
     unawaited(_init());
@@ -73,11 +84,11 @@ class AuthNotifier extends StateNotifier<AuthState> {
     // SecureStorage đã được clear bởi interceptor trước khi event fire — chỉ
     // cần reset state để router redirect /login + flag để login screen
     // show snackbar.
-    _forceLogoutSub = ApiClient.onForceLogout.listen((_) {
+    _forceLogoutSub = ApiClient.onForceLogout.listen((reason) {
       if (!mounted) return;
       // Token chết → đóng socket chat (sẽ reconnect sau khi login lại).
       ChatSocketService.instance.disconnect();
-      state = AuthState(forceLoggedOut: true);
+      state = AuthState(forceLoggedOut: true, forceLogoutReason: reason);
     });
   }
 
@@ -298,12 +309,25 @@ class AuthNotifier extends StateNotifier<AuthState> {
 
   /// Gọi GET /auth/profile và cập nhật state + bộ nhớ cục bộ.
   Future<(bool success, String message)> refreshProfile() async {
+    _lastProfileRefreshAt = DateTime.now();
     final result = await _repo.getProfile();
     if (result.success && result.data != null) {
       state = state.copyWith(user: result.data);
       return (true, '');
     }
     return (false, result.message);
+  }
+
+  /// Refresh profile chỉ khi đã qua [minInterval] kể từ lần refresh gần nhất.
+  /// Dùng cho auto-refresh khi app resume / vào dashboard để bắt KYC +
+  /// subscription mới từ backend mà không spam request. No-op nếu chưa login.
+  Future<void> refreshProfileIfStale({
+    Duration minInterval = const Duration(seconds: 30),
+  }) async {
+    if (!state.isLoggedIn) return;
+    final last = _lastProfileRefreshAt;
+    if (last != null && DateTime.now().difference(last) < minInterval) return;
+    await refreshProfile();
   }
 
   /// Cập nhật user trong state (đã lưu [SecureStorage] ở repo nếu cần).

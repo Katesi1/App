@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -10,6 +11,7 @@ import '../../../core/theme/app_spacing.dart';
 import '../../../core/utils/helpers.dart';
 import '../../../data/models/booking_model.dart';
 import '../../../shared/widgets/loading_widget.dart';
+import '../../../shared/widgets/pull_to_refresh.dart';
 import '../../chat/controllers/chat_controller.dart';
 import '../controllers/booking_controller.dart';
 import '../utils/guest_flow_filter.dart';
@@ -33,14 +35,231 @@ class BookingDetailScreen extends ConsumerWidget {
         data: (_) => _ChatWithGuestButton(bookingId: id),
         orElse: () => null,
       ),
-      body: async.when(
-        loading: () => const LoadingWidget(),
-        error: (error, _) => ErrorStateWidget(
-          message: error.toString().replaceAll('Exception: ', ''),
-          onRetry: () => ref.invalidate(bookingDetailProvider(id)),
-        ),
-        data: (booking) => _BookingDetailBody(booking: booking),
+      bottomNavigationBar: async.maybeWhen(
+        data: (booking) => _BookingActionBar(booking: booking),
+        orElse: () => null,
       ),
+      body: RefreshIndicator(
+        color: colors.brand,
+        onRefresh: () async => ref.invalidate(bookingDetailProvider(id)),
+        child: async.when(
+          loading: () => const LoadingWidget(),
+          error: (error, _) => RefreshableMessage(
+            child: ErrorStateWidget(
+              message: error.toString().replaceAll('Exception: ', ''),
+              onRetry: () => ref.invalidate(bookingDetailProvider(id)),
+            ),
+          ),
+          data: (booking) => _BookingDetailBody(booking: booking),
+        ),
+      ),
+    );
+  }
+}
+
+/// Thanh hành động theo trạng thái booking (OWNER/SALE):
+/// - HOLD → "Ghi nhận thu cọc" (`/paid`, BE tự chuyển CONFIRMED).
+/// - CONFIRMED → "Nhận phòng & hoàn tất" (`/checkin` → COMPLETED).
+/// Trạng thái khác → không hiện (SizedBox.shrink).
+class _BookingActionBar extends ConsumerStatefulWidget {
+  final BookingModel booking;
+
+  const _BookingActionBar({required this.booking});
+
+  @override
+  ConsumerState<_BookingActionBar> createState() => _BookingActionBarState();
+}
+
+class _BookingActionBarState extends ConsumerState<_BookingActionBar> {
+  bool _busy = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final status = widget.booking.status;
+    final (label, icon, onTap) = switch (status) {
+      BookingStatus.hold => (
+          'Ghi nhận thu cọc',
+          Icons.payments_outlined,
+          _markPaid,
+        ),
+      BookingStatus.confirmed => (
+          'Nhận phòng & hoàn tất',
+          Icons.login_rounded,
+          _checkin,
+        ),
+      _ => (null, null, null),
+    };
+
+    if (label == null) return const SizedBox.shrink();
+
+    final colors = context.colors;
+    return SafeArea(
+      minimum: const EdgeInsets.fromLTRB(
+          AppSpacing.md, AppSpacing.sm, AppSpacing.md, AppSpacing.md),
+      child: SizedBox(
+        height: 52,
+        child: FilledButton.icon(
+          onPressed: _busy ? null : onTap,
+          icon: _busy
+              ? const SizedBox(
+                  width: 18,
+                  height: 18,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    color: Colors.white,
+                  ),
+                )
+              : Icon(icon),
+          label: Text(label),
+          style: FilledButton.styleFrom(
+            backgroundColor: colors.brand,
+            foregroundColor: Colors.white,
+            textStyle: GoogleFonts.beVietnamPro(
+              fontSize: 15,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _markPaid() async {
+    final amount = await _showAmountSheet(
+      title: 'Ghi nhận thu cọc',
+      subtitle: 'Bỏ trống để hệ thống ghi nhận cọc mặc định (50%). '
+          'Đơn đang giữ chỗ sẽ tự chuyển sang đã xác nhận.',
+      actionLabel: 'Ghi nhận',
+    );
+    if (amount == null) return; // Huỷ dialog
+    await _run(() => ref
+        .read(bookingActionsProvider.notifier)
+        .markPaid(widget.booking.id, amount: amount.value));
+  }
+
+  Future<void> _checkin() async {
+    final amount = await _showAmountSheet(
+      title: 'Nhận phòng & hoàn tất',
+      subtitle: 'Xác nhận khách đã nhận phòng và thu nốt tiền. Bỏ trống để '
+          'thu cho đủ tổng tiền. Đơn sẽ chuyển sang Hoàn tất.',
+      actionLabel: 'Hoàn tất',
+    );
+    if (amount == null) return;
+    await _run(() => ref
+        .read(bookingActionsProvider.notifier)
+        .checkin(widget.booking.id, amount: amount.value));
+  }
+
+  Future<void> _run(Future<bool> Function() action) async {
+    setState(() => _busy = true);
+    final ok = await action();
+    if (!mounted) return;
+    setState(() => _busy = false);
+    if (ok) {
+      AppSnackBar.success(context, 'Cập nhật booking thành công');
+    } else {
+      final err = ref.read(bookingActionsProvider).error;
+      AppSnackBar.error(
+        context,
+        err?.toString().replaceAll('Exception: ', '') ?? 'Có lỗi xảy ra',
+      );
+    }
+  }
+
+  /// Trả `null` khi user huỷ; `(value: null)` khi xác nhận bỏ trống số tiền;
+  /// `(value: n)` khi nhập số tiền cụ thể.
+  Future<({int? value})?> _showAmountSheet({
+    required String title,
+    required String subtitle,
+    required String actionLabel,
+  }) {
+    return showDialog<({int? value})>(
+      context: context,
+      builder: (_) => _AmountDialog(
+        title: title,
+        subtitle: subtitle,
+        actionLabel: actionLabel,
+      ),
+    );
+  }
+}
+
+/// Dialog nhập số tiền VND (tuỳ chọn). Bỏ trống → BE dùng mặc định.
+class _AmountDialog extends StatefulWidget {
+  final String title;
+  final String subtitle;
+  final String actionLabel;
+
+  const _AmountDialog({
+    required this.title,
+    required this.subtitle,
+    required this.actionLabel,
+  });
+
+  @override
+  State<_AmountDialog> createState() => _AmountDialogState();
+}
+
+class _AmountDialogState extends State<_AmountDialog> {
+  final _ctrl = TextEditingController();
+
+  @override
+  void dispose() {
+    _ctrl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.colors;
+    return AlertDialog(
+      title: Text(
+        widget.title,
+        style: GoogleFonts.beVietnamPro(fontWeight: FontWeight.w700),
+      ),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            widget.subtitle,
+            style: GoogleFonts.beVietnamPro(
+              fontSize: 13,
+              color: colors.textSecondary,
+            ),
+          ),
+          const SizedBox(height: AppSpacing.md),
+          TextField(
+            controller: _ctrl,
+            autofocus: true,
+            keyboardType: TextInputType.number,
+            inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+            style: GoogleFonts.beVietnamPro(fontWeight: FontWeight.w600),
+            decoration: InputDecoration(
+              labelText: 'Số tiền (VND) — tuỳ chọn',
+              hintText: 'Bỏ trống nếu dùng mặc định',
+              suffixText: 'đ',
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(AppRadius.md),
+              ),
+            ),
+          ),
+        ],
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: const Text('Huỷ'),
+        ),
+        FilledButton(
+          onPressed: () {
+            final raw = _ctrl.text.trim();
+            final amount = raw.isEmpty ? null : int.tryParse(raw);
+            Navigator.pop(context, (value: amount));
+          },
+          child: Text(widget.actionLabel),
+        ),
+      ],
     );
   }
 }
@@ -116,6 +335,7 @@ class _BookingDetailBody extends StatelessWidget {
     final fmt = DateFormat('dd/MM/yyyy HH:mm');
 
     return ListView(
+      physics: const AlwaysScrollableScrollPhysics(),
       padding: const EdgeInsets.all(AppSpacing.md),
       children: [
         Container(

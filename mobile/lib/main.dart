@@ -91,7 +91,6 @@ class HomestayApp extends ConsumerStatefulWidget {
 
 class _HomestayAppState extends ConsumerState<HomestayApp>
     with WidgetsBindingObserver {
-  DateTime? _lastProfileRefresh;
   @override
   void initState() {
     super.initState();
@@ -143,15 +142,9 @@ class _HomestayAppState extends ConsumerState<HomestayApp>
     // status mới (vd admin vừa approve trong khi app đang ở background).
     // No-op nếu chưa login (notifier check).
     if (state == AppLifecycleState.resumed) {
-      final auth = ref.read(authProvider);
-      if (auth.isLoggedIn) {
-        final now = DateTime.now();
-        final last = _lastProfileRefresh;
-        if (last == null || now.difference(last).inSeconds >= 30) {
-          _lastProfileRefresh = now;
-          ref.read(authProvider.notifier).refreshProfile();
-        }
-      }
+      // Throttle 30s tập trung trong AuthNotifier — dùng chung với auto-refresh
+      // khi vào dashboard, tránh double-fetch nếu resume rơi trúng dashboard.
+      unawaited(ref.read(authProvider.notifier).refreshProfileIfStale());
     }
   }
 

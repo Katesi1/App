@@ -78,6 +78,45 @@ class BookingRepository {
     }
   }
 
+  /// PATCH /bookings/:id/paid — OWNER/SALE ghi nhận thu tiền cọc của khách.
+  /// [amount] bỏ trống → BE mặc định 50% totalAmount (hoặc depositAmount).
+  /// Nếu booking đang HOLD → BE tự chuyển CONFIRMED.
+  Future<ApiResponse<BookingModel>> markPaid(String id, {int? amount}) async {
+    try {
+      final response = await _dio.patch(
+        ApiConstants.bookingPaid(id),
+        data: {if (amount != null) 'amount': amount},
+      );
+      return ApiResponse(
+        success: true,
+        data: BookingModel.fromJson(response.data['data']),
+        message: response.data['message'] ?? 'Đã ghi nhận thanh toán',
+      );
+    } on DioException catch (e) {
+      return ApiResponse.fromDioError(e);
+    }
+  }
+
+  /// PATCH /bookings/:id/checkin — xác nhận khách nhận phòng + thu nốt →
+  /// COMPLETED (yêu cầu booking đang CONFIRMED). [amount] bỏ trống → BE thu
+  /// cho đủ totalAmount; có [amount] → cộng dồn vào paidAmount.
+  Future<ApiResponse<BookingModel>> checkinBooking(String id,
+      {int? amount}) async {
+    try {
+      final response = await _dio.patch(
+        ApiConstants.bookingCheckin(id),
+        data: {if (amount != null) 'amount': amount},
+      );
+      return ApiResponse(
+        success: true,
+        data: BookingModel.fromJson(response.data['data']),
+        message: response.data['message'] ?? 'Đã hoàn tất nhận phòng',
+      );
+    } on DioException catch (e) {
+      return ApiResponse.fromDioError(e);
+    }
+  }
+
   Future<ApiResponse<void>> cancelBooking(String id) async {
     try {
       await _dio.patch('${ApiConstants.bookings}/$id/cancel');

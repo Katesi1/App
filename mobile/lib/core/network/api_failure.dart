@@ -28,6 +28,10 @@ class ApiFailure implements Exception {
 
   bool get isKycRequired => code == ApiErrorCodes.kycPropertyRequiresKyc;
 
+  bool get isPhoneRequired => code == ApiErrorCodes.phoneRequired;
+
+  bool get isPropertyLimitReached => code == ApiErrorCodes.propertyLimitReached;
+
   @override
   String toString() => message;
 }

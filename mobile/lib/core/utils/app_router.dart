@@ -44,6 +44,7 @@ import '../../features/properties/views/property_location_screen.dart';
 import '../../features/properties/views/property_pricing_screen.dart';
 import '../../features/properties/views/property_rules_screen.dart';
 import '../../features/properties/views/property_services_screen.dart';
+import '../../features/profile/views/bank_account_screen.dart';
 import '../../features/profile/views/change_password_screen.dart';
 import '../../features/profile/views/consent_screen.dart';
 import '../../features/profile/views/data_request_screen.dart';
@@ -141,7 +142,9 @@ String? resolveRedirectPath({
     return '/notifications';
   }
 
-  if (user != null && !(user.isAdmin || user.isOwner)) {
+  // Hub Quản lý (/admin) mở cho ADMIN + OWNER + SALE (SALE thấy bản rút gọn:
+  // booking, lịch, tin nhắn). Các sub-route admin-only vẫn chặn riêng bên dưới.
+  if (user != null && !user.isManagement) {
     if (path.startsWith('/admin')) return '/dashboard';
   }
 
@@ -341,6 +344,13 @@ final routerProvider = Provider<GoRouter>((ref) {
             pageBuilder: (_, state) => slideUpPage(
               key: state.pageKey,
               child: const ChangePasswordScreen(),
+            ),
+          ),
+          GoRoute(
+            path: 'bank-account',
+            pageBuilder: (_, state) => slideUpPage(
+              key: state.pageKey,
+              child: const BankAccountScreen(),
             ),
           ),
           GoRoute(

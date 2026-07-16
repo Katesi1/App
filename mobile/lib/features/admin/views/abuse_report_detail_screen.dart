@@ -6,6 +6,7 @@ import 'package:intl/intl.dart';
 import '../../../core/theme/app_color_scheme.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../shared/widgets/loading_widget.dart';
+import '../../../shared/widgets/pull_to_refresh.dart';
 import '../../auth/controllers/auth_controller.dart';
 import '../controllers/abuse_report_controller.dart';
 import '../data/models/abuse_report.dart';
@@ -34,15 +35,24 @@ class AbuseReportDetailScreen extends ConsumerWidget {
           ),
         ),
       ),
-      body: async.when(
-        loading: () => const LoadingWidget(),
-        error: (e, _) => Center(child: Text('Lỗi: $e')),
-        data: (report) {
-          if (report == null) {
-            return const Center(child: Text('Không tìm thấy báo cáo.'));
-          }
-          return _Content(report: report);
-        },
+      body: RefreshIndicator(
+        color: colors.brand,
+        onRefresh: () async =>
+            ref.invalidate(abuseReportDetailProvider(reportId)),
+        child: async.when(
+          loading: () => const LoadingWidget(),
+          error: (e, _) => RefreshableMessage(
+            child: Center(child: Text('Lỗi: $e')),
+          ),
+          data: (report) {
+            if (report == null) {
+              return const RefreshableMessage(
+                child: Center(child: Text('Không tìm thấy báo cáo.')),
+              );
+            }
+            return _Content(report: report);
+          },
+        ),
       ),
     );
   }
@@ -168,6 +178,7 @@ class _ContentState extends ConsumerState<_Content> {
       children: [
         Expanded(
           child: ListView(
+            physics: const AlwaysScrollableScrollPhysics(),
             padding: const EdgeInsets.all(AppSpacing.md),
             children: [
               _StatusBanner(report: r),

@@ -48,6 +48,14 @@ class ApiErrorCodes {
 
   /// OWNER chưa hoàn thành KYC khi tạo/sửa property hoặc mời nhân viên.
   static const String kycPropertyRequiresKyc = 'kyc.propertyRequiresKyc';
+
+  /// OWNER chưa có SĐT khi tạo/sửa property hoặc mời SALE (v1.41). FE điều
+  /// hướng cập nhật hồ sơ (`PATCH /auth/profile { phone }`) rồi thử lại.
+  static const String phoneRequired = 'PHONE_REQUIRED';
+
+  /// OWNER trial ngầm (chưa mua gói) đã có 1 cơ sở → chặn đăng cơ sở thứ 2
+  /// (v1.39). Message trung tính, FE gợi ý liên hệ hỗ trợ.
+  static const String propertyLimitReached = 'PROPERTY_LIMIT_REACHED';
 }
 
 extension ApiResponseErrorX<T> on ApiResponse<T> {
@@ -59,6 +67,10 @@ extension ApiResponseErrorX<T> on ApiResponse<T> {
       (code == null && statusCode == 403);
 
   bool get isKycRequired => code == ApiErrorCodes.kycPropertyRequiresKyc;
+
+  bool get isPhoneRequired => code == ApiErrorCodes.phoneRequired;
+
+  bool get isPropertyLimitReached => code == ApiErrorCodes.propertyLimitReached;
 }
 
 // Helper để parse lỗi từ Dio

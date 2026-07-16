@@ -267,6 +267,20 @@ void main() {
         isTrue,
       );
     });
+
+    test('isPhoneRequired khi code khớp (v1.41)', () {
+      final e = err(code: ApiErrorCodes.phoneRequired, statusCode: 403);
+      expect(e.isPhoneRequired, isTrue);
+      // Mang code riêng → KHÔNG bị nhầm sang featureLocked.
+      expect(e.isFeatureLocked, isFalse);
+      expect(e.isKycRequired, isFalse);
+    });
+
+    test('isPropertyLimitReached khi code khớp (v1.39)', () {
+      final e = err(code: ApiErrorCodes.propertyLimitReached, statusCode: 403);
+      expect(e.isPropertyLimitReached, isTrue);
+      expect(e.isFeatureLocked, isFalse);
+    });
   });
 
   group('ApiFailure', () {
@@ -284,6 +298,16 @@ void main() {
 
       const codeless403 = ApiFailure('x', statusCode: 403);
       expect(codeless403.isFeatureLocked, isTrue);
+    });
+
+    test('isPhoneRequired / isPropertyLimitReached theo code', () {
+      const phone = ApiFailure('x', code: ApiErrorCodes.phoneRequired);
+      expect(phone.isPhoneRequired, isTrue);
+      expect(phone.isFeatureLocked, isFalse);
+
+      const limit = ApiFailure('x', code: ApiErrorCodes.propertyLimitReached);
+      expect(limit.isPropertyLimitReached, isTrue);
+      expect(limit.isFeatureLocked, isFalse);
     });
 
     test('fromResponse copy code + statusCode', () {

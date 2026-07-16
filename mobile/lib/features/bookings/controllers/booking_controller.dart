@@ -86,12 +86,15 @@ class BookingActionsNotifier extends StateNotifier<AsyncValue<void>> {
   BookingActionsNotifier(this._repo, this._ref)
       : super(const AsyncValue.data(null));
 
-  void _refreshAll() {
+  void _refreshAll({String? bookingId}) {
     _ref.invalidate(bookingListProvider);
     _ref.invalidate(calendarProvider);
     _ref.invalidate(calendarGridProvider);
     _ref.invalidate(dashboardStatsProvider);
     _ref.invalidate(reportDataProvider);
+    if (bookingId != null) {
+      _ref.invalidate(bookingDetailProvider(bookingId));
+    }
   }
 
   Future<bool> hold(Map<String, dynamic> data) async {
@@ -111,6 +114,33 @@ class BookingActionsNotifier extends StateNotifier<AsyncValue<void>> {
     final result = await _repo.confirmBooking(id);
     if (result.success) {
       _refreshAll();
+      state = const AsyncValue.data(null);
+      return true;
+    }
+    state = AsyncValue.error(result.message, StackTrace.current);
+    return false;
+  }
+
+  /// Ghi nhận thu tiền cọc (HOLD → BE tự CONFIRMED). [amount] tuỳ chọn.
+  Future<bool> markPaid(String id, {int? amount}) async {
+    state = const AsyncValue.loading();
+    final result = await _repo.markPaid(id, amount: amount);
+    if (result.success) {
+      _refreshAll(bookingId: id);
+      state = const AsyncValue.data(null);
+      return true;
+    }
+    state = AsyncValue.error(result.message, StackTrace.current);
+    return false;
+  }
+
+  /// Xác nhận nhận phòng + thu nốt → COMPLETED (yêu cầu CONFIRMED). [amount]
+  /// tuỳ chọn (bỏ trống = thu cho đủ totalAmount).
+  Future<bool> checkin(String id, {int? amount}) async {
+    state = const AsyncValue.loading();
+    final result = await _repo.checkinBooking(id, amount: amount);
+    if (result.success) {
+      _refreshAll(bookingId: id);
       state = const AsyncValue.data(null);
       return true;
     }

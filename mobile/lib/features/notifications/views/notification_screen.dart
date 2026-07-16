@@ -5,7 +5,9 @@ import 'package:google_fonts/google_fonts.dart';
 import '../../../core/theme/app_color_scheme.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../data/models/notification_model.dart';
+import '../../../shared/widgets/app_scaffold.dart';
 import '../../../shared/widgets/loading_widget.dart';
+import '../../../shared/widgets/pull_to_refresh.dart';
 import '../controllers/notification_controller.dart';
 
 class NotificationScreen extends ConsumerStatefulWidget {
@@ -24,8 +26,7 @@ class _NotificationScreenState extends ConsumerState<NotificationScreen> {
   void initState() {
     super.initState();
     final initial = widget.initialType;
-    _selectedType =
-        initial != null && initial.isInboxType ? initial : null;
+    _selectedType = initial != null && initial.isInboxType ? initial : null;
   }
 
   @override
@@ -33,25 +34,23 @@ class _NotificationScreenState extends ConsumerState<NotificationScreen> {
     final colors = context.colors;
     final notificationsAsync = ref.watch(notificationListProvider);
 
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Thông báo'),
-        actions: [
-          TextButton(
-            onPressed: () {
-              ref.read(notificationActionsProvider.notifier).markAllAsRead();
-            },
-            child: Text(
-              'Đọc tất cả',
-              style: GoogleFonts.beVietnamPro(
-                fontSize: 13,
-                fontWeight: FontWeight.w600,
-                color: colors.brand,
-              ),
+    return AppScaffold(
+      title: 'Thông báo',
+      actions: [
+        TextButton(
+          onPressed: () {
+            ref.read(notificationActionsProvider.notifier).markAllAsRead();
+          },
+          child: Text(
+            'Đọc tất cả',
+            style: GoogleFonts.beVietnamPro(
+              fontSize: 13,
+              fontWeight: FontWeight.w600,
+              color: colors.brand,
             ),
           ),
-        ],
-      ),
+        ),
+      ],
       body: Column(
         children: [
           // ── Filter chips ───────────────────────────────────
@@ -62,51 +61,59 @@ class _NotificationScreenState extends ConsumerState<NotificationScreen> {
 
           // ── List ───────────────────────────────────────────
           Expanded(
-            child: notificationsAsync.when(
-              data: (notifications) {
-                final inbox = notifications
-                    .where((n) => n.type.isInboxType)
-                    .toList();
-                final filtered = _selectedType == null
-                    ? inbox
-                    : inbox.where((n) => n.type == _selectedType).toList();
+            child: RefreshIndicator(
+              color: colors.brand,
+              onRefresh: () async => ref.invalidate(notificationListProvider),
+              child: notificationsAsync.when(
+                data: (notifications) {
+                  final inbox =
+                      notifications.where((n) => n.type.isInboxType).toList();
+                  final filtered = _selectedType == null
+                      ? inbox
+                      : inbox.where((n) => n.type == _selectedType).toList();
 
-                if (filtered.isEmpty) {
-                  return const EmptyStateWidget(
-                    icon: Icons.notifications_off_outlined,
-                    message: 'Không có thông báo',
-                    subMessage:
-                        'Cập nhật booking và thanh toán sẽ hiện tại đây',
-                  );
-                }
-
-                return ListView.builder(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: AppSpacing.md,
-                    vertical: AppSpacing.xs,
-                  ),
-                  itemCount: filtered.length,
-                  itemBuilder: (context, index) {
-                    final notification = filtered[index];
-                    return _NotificationCard(
-                      notification: notification,
-                      onTap: () {
-                        // Navigate sang detail. Detail screen tự mark-as-read
-                        // sau khi mount + show smart "Mở liên kết" button
-                        // theo targetType (booking/kyc/payment).
-                        context.push('/notifications/${notification.id}');
-                      },
+                  if (filtered.isEmpty) {
+                    return const RefreshableMessage(
+                      child: EmptyStateWidget(
+                        icon: Icons.notifications_off_outlined,
+                        message: 'Không có thông báo',
+                        subMessage:
+                            'Cập nhật booking và thanh toán sẽ hiện tại đây',
+                      ),
                     );
-                  },
-                );
-              },
-              loading: () => SkeletonList(
-                skeleton: const UserCardSkeleton(),
-                count: 6,
-              ),
-              error: (e, _) => ErrorStateWidget(
-                message: e.toString().replaceAll('Exception: ', ''),
-                onRetry: () => ref.invalidate(notificationListProvider),
+                  }
+
+                  return ListView.builder(
+                    physics: const AlwaysScrollableScrollPhysics(),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: AppSpacing.md,
+                      vertical: AppSpacing.xs,
+                    ),
+                    itemCount: filtered.length,
+                    itemBuilder: (context, index) {
+                      final notification = filtered[index];
+                      return _NotificationCard(
+                        notification: notification,
+                        onTap: () {
+                          // Navigate sang detail. Detail screen tự mark-as-read
+                          // sau khi mount + show smart "Mở liên kết" button
+                          // theo targetType (booking/kyc/payment).
+                          context.push('/notifications/${notification.id}');
+                        },
+                      );
+                    },
+                  );
+                },
+                loading: () => SkeletonList(
+                  skeleton: const UserCardSkeleton(),
+                  count: 6,
+                ),
+                error: (e, _) => RefreshableMessage(
+                  child: ErrorStateWidget(
+                    message: e.toString().replaceAll('Exception: ', ''),
+                    onRetry: () => ref.invalidate(notificationListProvider),
+                  ),
+                ),
               ),
             ),
           ),
